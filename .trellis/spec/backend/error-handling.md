@@ -13,7 +13,7 @@ does not define a custom error hierarchy.
   the input boundary in `src/index.js`.
 - Let unexpected transport and policy errors reject `runAction()`; do not
   convert them into a successful `none` route.
-- `GitHubClient.request()` includes the HTTP method, path, and GitHub response
+- `GitHubClient#request()` includes the HTTP method, path, and GitHub response
   message when a request fails.
 - The executable entrypoint catches once, emits an escaped GitHub
   `::error::` annotation, and sets `process.exitCode = 1`.

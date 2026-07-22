@@ -34,8 +34,9 @@ routing semantics; `README.md` owns consumer installation.
 ## Naming Conventions
 
 Use lowercase hyphenated names for workflows/docs and lowercase module names
-for JavaScript. Export behavior-oriented camelCase functions such as
-`routeReview`, `listPullRequestFiles`, and `writeSummary`.
+for JavaScript. Use behavior-oriented camelCase names for exports and instance
+methods, such as `routeReview()`, `GitHubClient#listPullRequestFiles()`, and
+`writeSummary()`.
 
 ## Examples
 
