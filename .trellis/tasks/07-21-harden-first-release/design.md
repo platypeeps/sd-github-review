@@ -1,36 +1,8 @@
 # Design: Harden MVP for First Release
 
-## Architecture and Boundaries
-
-Keep three explicit layers:
-
-1. **Event triage** reads the GitHub event and rejects irrelevant events before
-   network work.
-2. **Routing orchestration** resolves fixed/command/label precedence and asks
-   for changed files only when automatic sensitive-path evaluation is needed.
-3. **Side effects and reporting** request Copilot when selected, then write
-   outputs, the step summary, and annotations.
-
-`src/router.js` remains the pure policy layer. `src/github.js` remains the HTTP
-boundary. `src/index.js` should expose an injectable orchestration function and
-retain a thin executable wrapper so tests do not need live GitHub calls or
-process-global mutation beyond a controlled harness.
-
-## Decision and Data Flow
-
-```text
-event + inputs
-  -> reject unrelated comment/label event
-  -> obtain only metadata needed to authorize command or read labels
-  -> resolve fixed / command / label route
-  -> if still auto: obtain changed files and evaluate risk
-  -> if Copilot: inspect requested reviewers and request once
-  -> write stable outputs and summary
-```
-
-Explicit routes still report available pull-request metadata, but
-`sensitive-files` may be an empty array because sensitive-path evaluation did
-not participate in the decision. This behavior must be documented and tested.
+The product architecture, routing workflow, backend contract, and security
+boundaries are canonical in [`DESIGN.md`](../../../DESIGN.md). This task design
+records only the first-release implementation and verification choices.
 
 ## Test Boundaries
 
@@ -44,22 +16,6 @@ not participate in the decision. This behavior must be documented and tested.
 Prefer test seams over a large rewrite. Extract only enough process and file
 I/O to make the current behavior deterministic under Node's built-in test
 runner.
-
-## Compatibility
-
-- Preserve all existing action input and output names.
-- Preserve GitHub Enterprise API URL support and use GitHub's current Node.js
-  24 action runtime.
-- Preserve the documented route precedence.
-- Do not require consumers to add runtime npm installation.
-
-## Security
-
-- Never log tokens or provider secrets.
-- Keep the router's own permissions at `contents: read` and
-  `pull-requests: write` only when Copilot requests are enabled.
-- Do not add PR checkout to the comment-triggered example.
-- Pin CI Actions by full SHA and keep automated dependency updates reviewable.
 
 ## Operational and Rollback Considerations
 

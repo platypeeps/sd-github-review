@@ -21,6 +21,7 @@
   "children": [],
   "parent": null,
   "relatedFiles": [
+    "DESIGN.md",
     "src/index.js",
     "src/github.js",
     "src/router.js",

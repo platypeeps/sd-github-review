@@ -9,12 +9,8 @@ credential broker or a replacement for branch protection.
 
 ## Current Baseline
 
-- The dependency-free Node.js 24 action supports automatic, label, command,
-  and fixed-mode routing.
-- Sensitive paths, changed-line thresholds, draft policy, and earlier-review
-  confidence feed automatic routing.
-- Copilot requests are handled directly; cheap and deep routes are emitted as
-  outputs for a consumer-owned reviewer step.
+- The canonical architecture, selection rules, output contract, security
+  boundaries, and backend plan are documented in `DESIGN.md`.
 - Thirty routing, orchestration, GitHub-client, and metadata tests pass
   locally; the candidate CI run remains part of the release gate.
 - The repository is public, `main` is protected, and the SD AI command pack is
@@ -70,6 +66,8 @@ The initial Trellis task is
 - Add bounded retry/backoff and clearer rate-limit diagnostics.
 - Define concurrency and deduplication behavior for synchronize, label, and
   command events.
+- Add tested Gito and PR-Agent adapter examples, followed by a documented
+  command or HTTP contract for internal review services.
 - Publish semantic releases and immutable SHA examples, then test upgrades in
   a small consumer fleet.
 - Add optional setup tooling only for repeated, evidenced adoption pain.
