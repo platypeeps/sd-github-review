@@ -1,54 +1,15 @@
 # Directory Structure
 
-> How frontend code is organized in this project.
+> Frontend scope for this repository.
 
----
+## Status
 
-## Overview
+Not applicable. The project has no browser application, pages, components,
+styles, or client bundle. `README.md`, `DESIGN.md`, GitHub step summaries, and
+workflow examples are documentation or Action output—not a frontend layer.
 
-<!--
-Document your project's frontend directory structure here.
+## Guardrail
 
-Questions to answer:
-- Where do components live?
-- How are features/modules organized?
-- Where are shared utilities?
-- How are assets organized?
--->
-
-(To be filled by the team)
-
----
-
-## Directory Layout
-
-```
-<!-- Replace with your actual structure -->
-src/
-├── ...
-└── ...
-```
-
----
-
-## Module Organization
-
-<!-- How should new features be organized? -->
-
-(To be filled by the team)
-
----
-
-## Naming Conventions
-
-<!-- File and folder naming rules -->
-
-(To be filled by the team)
-
----
-
-## Examples
-
-<!-- Link to well-organized modules as examples -->
-
-(To be filled by the team)
+Do not create `frontend/`, `components/`, or UI framework scaffolding for an
+Action feature. A dashboard or hosted UI requires a separately approved product
+and architecture task.

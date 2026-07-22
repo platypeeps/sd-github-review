@@ -1,51 +1,34 @@
 # Logging Guidelines
 
-> How logging is done in this project.
+> Operator-visible output for the GitHub Action.
 
----
+## Log Surfaces
 
-## Overview
+The runtime uses three intentional surfaces instead of a logging framework:
 
-<!--
-Document your project's logging conventions here.
+- one concise console line from `runAction()` identifying PR, route, and
+  reason;
+- structured values written to `GITHUB_OUTPUT` for downstream steps; and
+- a Markdown route summary written to `GITHUB_STEP_SUMMARY`.
 
-Questions to answer:
-- What logging library do you use?
-- What are the log levels and when to use each?
-- What should be logged?
-- What should NOT be logged (PII, secrets)?
--->
-
-(To be filled by the team)
-
----
-
-## Log Levels
-
-<!-- When to use each level: debug, info, warn, error -->
-
-(To be filled by the team)
-
----
-
-## Structured Logging
-
-<!-- Log format, required fields -->
-
-(To be filled by the team)
-
----
+Fatal errors use an escaped `::error::` workflow annotation. Repository
+validation scripts may print progress and diagnostics to stdout/stderr.
 
 ## What to Log
 
-<!-- Important events to log -->
+- PR number, selected route, and human-readable reason;
+- changed-line and sensitive-file counts in the step summary;
+- whether this invocation newly requested Copilot;
+- validation failures with the file or API boundary that caused them.
 
-(To be filled by the team)
+## What Not to Log
 
----
+- GitHub or provider tokens;
+- provider credentials, raw authorization headers, or full environment dumps;
+- pull-request source contents;
+- unnecessary event payloads or personally identifying account data.
 
-## What NOT to Log
+## Example
 
-<!-- Sensitive data, PII, secrets -->
-
-(To be filled by the team)
+Prefer `Selected cheap for PR #42: routine pull request within configured risk
+limits` over dumping the event or client configuration.

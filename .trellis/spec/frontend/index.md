@@ -1,39 +1,23 @@
-# Frontend Development Guidelines
+# Frontend Scope
 
-> Best practices for frontend development in this project.
-
----
+> Explicit non-applicability contract for this backend-only GitHub Action.
 
 ## Overview
 
-This directory contains guidelines for frontend development. Fill in each file with your project's specific conventions.
-
----
+This repository has no frontend runtime. The files in this directory document
+that boundary so future agents do not invent UI frameworks, components, state,
+or build tooling when implementing Action features.
 
 ## Guidelines Index
 
 | Guide | Description | Status |
-|-------|-------------|--------|
-| [Directory Structure](./directory-structure.md) | Module organization and file layout | To fill |
-| [Component Guidelines](./component-guidelines.md) | Component patterns, props, composition | To fill |
-| [Hook Guidelines](./hook-guidelines.md) | Custom hooks, data fetching patterns | To fill |
-| [State Management](./state-management.md) | Local state, global state, server state | To fill |
-| [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
-| [Type Safety](./type-safety.md) | Type patterns, validation | To fill |
+| --- | --- | --- |
+| [Directory Structure](./directory-structure.md) | No browser/client tree | N/A documented |
+| [Component Guidelines](./component-guidelines.md) | No UI component runtime | N/A documented |
+| [Hook Guidelines](./hook-guidelines.md) | No frontend hooks | N/A documented |
+| [State Management](./state-management.md) | Stateless Action invocation | N/A documented |
+| [Type Safety](./type-safety.md) | No frontend TypeScript layer | N/A documented |
+| [Quality Guidelines](./quality-guidelines.md) | Docs/workflow presentation checks only | N/A documented |
 
----
-
-## How to Fill These Guidelines
-
-For each guideline file:
-
-1. Document your project's **actual conventions** (not ideals)
-2. Include **code examples** from your codebase
-3. List **forbidden patterns** and why
-4. Add **common mistakes** your team has made
-
-The goal is to help AI assistants and new team members understand how YOUR project works.
-
----
-
-**Language**: All documentation should be written in **English**.
+If a future approved task adds a hosted UI, replace these files with conventions
+derived from that implementation and update Trellis package/layer routing.
