@@ -139,14 +139,16 @@ parse_args() {
           printf 'error: --finish-work-head requires a commit OID\n' >&2
           exit 2
         fi
+        # Enumerate lowercase hex digits because locale-aware ranges can treat
+        # uppercase letters as members of [a-f] on older macOS Bash versions.
         case "$1" in
-          *[!0-9a-fA-F]*)
-            printf 'error: --finish-work-head must be a full 40-character commit OID\n' >&2
+          *[!0123456789abcdef]*)
+            printf 'error: --finish-work-head must be a full 40-character commit OID in lowercase\n' >&2
             exit 2
             ;;
         esac
         if [ "${#1}" -ne 40 ]; then
-          printf 'error: --finish-work-head must be a full 40-character commit OID\n' >&2
+          printf 'error: --finish-work-head must be a full 40-character commit OID in lowercase\n' >&2
           exit 2
         fi
         FINISH_WORK_HEAD="$1"
@@ -667,6 +669,7 @@ maybe_merge_ready_open_pr() {
     add_anomaly "PR #$pr_number base is $pr_base, expected $DEFAULT_BRANCH; skipped auto-merge"
     return 0
   fi
+
   local_head_oid="$(git rev-parse --verify "refs/heads/$branch^{commit}")"
   if [ -z "$FINISH_WORK_HEAD" ]; then
     add_anomaly "SD finish-work completion was not attested for PR #$pr_number; run the sd-finish-work flow, push any resulting commits, wait for required checks, then rerun housekeeping with --finish-work-head \"$local_head_oid\"; skipped auto-merge"
