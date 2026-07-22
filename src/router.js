@@ -96,6 +96,26 @@ export function isTrustedCommand({
   return trustedAssociations.has(String(association ?? "").toUpperCase());
 }
 
+export function ignoredEventDecision({
+  eventName,
+  eventAction,
+  isRelevantLabelEvent = true,
+  commandMode,
+}) {
+  if (eventName === "issue_comment" && !commandMode) {
+    return { route: "none", reason: "comment did not contain a trusted review command" };
+  }
+  if (eventName === "pull_request" && eventAction === "labeled" && !isRelevantLabelEvent) {
+    return { route: "none", reason: "label event was unrelated to review routing" };
+  }
+  return null;
+}
+
+export function resolveExplicitMode({ configuredMode, commandMode, labelMode }) {
+  const explicitMode = configuredMode !== "auto" ? configuredMode : commandMode ?? labelMode;
+  return explicitMode && explicitMode !== "auto" ? explicitMode : null;
+}
+
 export function routeReview({
   configuredMode,
   labelMode,
@@ -111,15 +131,16 @@ export function routeReview({
   confidence,
   lowConfidenceRoute,
 }) {
-  if (eventName === "issue_comment" && !commandMode) {
-    return { route: "none", reason: "comment did not contain a trusted review command" };
-  }
-  if (eventName === "pull_request" && eventAction === "labeled" && !isRelevantLabelEvent) {
-    return { route: "none", reason: "label event was unrelated to review routing" };
-  }
+  const ignoredDecision = ignoredEventDecision({
+    eventName,
+    eventAction,
+    isRelevantLabelEvent,
+    commandMode,
+  });
+  if (ignoredDecision) return ignoredDecision;
 
-  const explicitMode = configuredMode !== "auto" ? configuredMode : commandMode ?? labelMode;
-  if (explicitMode && explicitMode !== "auto") {
+  const explicitMode = resolveExplicitMode({ configuredMode, commandMode, labelMode });
+  if (explicitMode) {
     return { route: explicitMode, reason: `explicit ${explicitMode} route selected` };
   }
   if (draft && !reviewDrafts) {

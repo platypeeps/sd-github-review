@@ -1,0 +1,44 @@
+name: AI review router pilot
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  route:
+    if: github.event_name == 'pull_request' || github.event.issue.pull_request != null
+    runs-on: ubuntu-latest
+    steps:
+      - name: Choose reviewer
+        id: review
+        # Replace with the full SHA of a green release candidate.
+        uses: platypeeps/sd-github-review@<commit-sha>
+        with:
+          github-token: ${{ github.token }}
+          cheap-model: pilot-cheap
+          deep-model: pilot-deep
+          sensitive-paths: |-
+            **/auth/**
+            **/billing/**
+            **/migrations/**
+            **/api/**
+
+      - name: Record provider-free routing evidence
+        env:
+          REVIEW_ROUTE: ${{ steps.review.outputs.route }}
+          REVIEW_REASON: ${{ steps.review.outputs.reason }}
+          REVIEW_MODEL: ${{ steps.review.outputs.model }}
+          RUN_EXTERNAL_REVIEWER: ${{ steps.review.outputs.run-external-reviewer }}
+          COPILOT_REQUESTED: ${{ steps.review.outputs.copilot-requested }}
+        run: |
+          echo "route=${REVIEW_ROUTE}"
+          echo "reason=${REVIEW_REASON}"
+          echo "model=${REVIEW_MODEL}"
+          echo "run-external-reviewer=${RUN_EXTERNAL_REVIEWER}"
+          echo "copilot-requested=${COPILOT_REQUESTED}"

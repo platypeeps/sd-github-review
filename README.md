@@ -11,10 +11,18 @@ The Copilot route requests `copilot-pull-request-reviewer[bot]` through GitHub's
 
 ## Quick start
 
-Copy [`examples/review-router.yml`](examples/review-router.yml) into the consuming repository and replace both placeholders:
+For a provider-free evaluation, start with
+[`examples/pilot-router.yml`](examples/pilot-router.yml). It exercises routing
+and Copilot without checking out pull-request code or using LLM provider
+credentials. Replace `<commit-sha>` with the full SHA of a green candidate.
+
+For a production integration, copy
+[`examples/review-router.yml`](examples/review-router.yml) into the consuming
+repository and replace both placeholders:
 
 1. Pin this action to a released commit SHA.
-2. Replace `./scripts/run-ai-review` with the organization's PR-Agent, Gito, or review-service adapter.
+2. Replace the example external-reviewer command with the organization's
+   PR-Agent, Gito, or review-service adapter.
 
 The workflow needs `pull-requests: write` only because the Copilot route creates a review request. Keep deterministic test, lint, type-check, CodeQL, or Semgrep jobs ahead of the routing job with normal `needs` dependencies.
 
@@ -45,6 +53,12 @@ The main outputs are:
 | `copilot-requested` | Whether this run created a Copilot review request |
 | `sensitive-files` | JSON array of matched paths |
 
+An explicit input, trusted command, label, or disabled-draft decision does not
+need automatic path-risk evaluation. Those routes report `sensitive-files` as
+`[]` and do not enumerate pull-request files. An empty `cheap-model` or
+`deep-model` is valid: it means the consumer-owned adapter chooses its own
+default. Set repository variables when the adapter requires an explicit model.
+
 Configure current provider model identifiers in repository variables such as `CHEAP_REVIEW_MODEL` and `DEEP_REVIEW_MODEL`. This keeps model churn out of the action and makes changes auditable in each consuming organization.
 
 ## Sensitive path patterns
@@ -61,9 +75,16 @@ Patterns are comma- or newline-separated. `*` matches within one path segment, `
 
 ## Development
 
-The action has no runtime dependencies and uses Node.js 20's built-in test runner.
+The action has no runtime dependencies and uses Node.js 20's built-in test
+runner. The development-only YAML parser validates the action and workflow
+metadata.
 
 ```sh
+npm ci
 npm test
 npm run check
+npm run validate:metadata
 ```
+
+The first-release and pilot gates are recorded in
+[`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md).
