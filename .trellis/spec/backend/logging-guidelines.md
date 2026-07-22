@@ -30,5 +30,10 @@ validation scripts may print progress and diagnostics to stdout/stderr.
 
 ## Example
 
-Prefer `Selected cheap for PR #42: routine pull request within configured risk
-limits` over dumping the event or client configuration.
+Prefer a single concise line:
+
+```text
+Selected cheap for PR #42: routine pull request within configured risk limits
+```
+
+Do not dump the event or client configuration.
