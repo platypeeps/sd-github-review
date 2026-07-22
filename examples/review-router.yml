@@ -1,0 +1,41 @@
+name: AI review router
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  route:
+    if: github.event_name == 'pull_request' || github.event.issue.pull_request != null
+    runs-on: ubuntu-latest
+    steps:
+      - name: Choose reviewer
+        id: review
+        # Pin released actions to a full commit SHA in production.
+        uses: your-org/sd-github-review@<commit-sha>
+        with:
+          github-token: ${{ github.token }}
+          cheap-model: ${{ vars.CHEAP_REVIEW_MODEL }}
+          deep-model: ${{ vars.DEEP_REVIEW_MODEL }}
+          sensitive-paths: |-
+            **/auth/**
+            **/billing/**
+            **/migrations/**
+            **/api/**
+
+      # Add the external reviewer your organization operates here. The selected
+      # model is available as steps.review.outputs.model. Keep provider secrets
+      # on this step, not on the routing step.
+      - name: Run external reviewer
+        if: steps.review.outputs.run-external-reviewer == 'true'
+        env:
+          REVIEW_ROUTE: ${{ steps.review.outputs.route }}
+          REVIEW_MODEL: ${{ steps.review.outputs.model }}
+          PULL_REQUEST_NUMBER: ${{ steps.review.outputs.pull-request-number }}
+        run: ./scripts/run-ai-review

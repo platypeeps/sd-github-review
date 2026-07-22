@@ -1,0 +1,93 @@
+name: SD GitHub review router
+description: Route a pull request to a cost-efficient reviewer, a deep reviewer, Copilot, or no AI review.
+author: platypeeps
+
+inputs:
+  github-token:
+    description: Token used to inspect the pull request and request Copilot. Requires pull-requests: write when Copilot can be selected.
+    required: true
+  mode:
+    description: Routing mode. One of auto, cheap, deep, copilot, or none.
+    required: false
+    default: auto
+  pr-number:
+    description: Pull request number. Usually inferred from the event payload.
+    required: false
+  changed-line-threshold:
+    description: In auto mode, additions plus deletions at or above this value route to Copilot.
+    required: false
+    default: "800"
+  sensitive-paths:
+    description: Comma- or newline-separated glob patterns that route to Copilot in auto mode.
+    required: false
+    default: |-
+      **/auth/**
+      **/authentication/**
+      **/authorization/**
+      **/billing/**
+      **/crypto/**
+      **/migrations/**
+      **/schema/**
+      **/api/**
+  confidence:
+    description: Optional confidence from an earlier review stage. One of unknown, high, medium, or low.
+    required: false
+    default: unknown
+  low-confidence-route:
+    description: Route used when confidence is low. One of deep or copilot.
+    required: false
+    default: deep
+  cheap-model:
+    description: Provider model identifier emitted when the cheap route is selected.
+    required: false
+    default: ""
+  deep-model:
+    description: Provider model identifier emitted when the deep route is selected.
+    required: false
+    default: ""
+  request-copilot:
+    description: Whether to request the Copilot reviewer when the copilot route is selected.
+    required: false
+    default: "true"
+  copilot-reviewer:
+    description: GitHub login used for Copilot code review.
+    required: false
+    default: copilot-pull-request-reviewer[bot]
+  review-drafts:
+    description: Whether auto mode should review draft pull requests.
+    required: false
+    default: "false"
+  trusted-associations:
+    description: Comma-separated author associations allowed to issue /review commands.
+    required: false
+    default: OWNER,MEMBER,COLLABORATOR
+  allow-pr-author-commands:
+    description: Allow the pull request author to issue /review commands regardless of repository association.
+    required: false
+    default: "false"
+
+outputs:
+  route:
+    description: Selected route: cheap, deep, copilot, or none.
+  reason:
+    description: Human-readable explanation of the routing decision.
+  model:
+    description: Configured model identifier for a cheap or deep external reviewer.
+  pull-request-number:
+    description: Pull request number that was evaluated.
+  changed-lines:
+    description: Additions plus deletions reported by GitHub.
+  sensitive-files:
+    description: JSON array of files matching sensitive-path patterns.
+  run-external-reviewer:
+    description: true when the caller should run PR-Agent, Gito, or another external reviewer.
+  copilot-requested:
+    description: true when this invocation requested Copilot through the GitHub API.
+
+runs:
+  using: node20
+  main: src/index.js
+
+branding:
+  icon: shuffle
+  color: purple
