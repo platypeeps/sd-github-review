@@ -1027,7 +1027,7 @@ run_self_test() {
   local failures=0
 
   self_test_scenario "finish-work head required" refuse false CLEAN 0 2 0 main https://example.test/pr/153 1 1 "" || failures=$((failures + 1))
-  self_test_scenario "stale finish-work head refuses" refuse false CLEAN 0 2 0 main https://example.test/pr/153 1 1 staleoid || failures=$((failures + 1))
+  self_test_scenario "stale finish-work head refuses" refuse false CLEAN 0 2 0 main https://example.test/pr/153 1 1 0000000000000000000000000000000000000000 || failures=$((failures + 1))
   self_test_scenario "green executed checks merge" merge false CLEAN 0 2 0 || failures=$((failures + 1))
   # A single executed success is enough: SKIPPED/NEUTRAL conclusions are
   # pre-aggregated out of the counts by the readiness query, whose

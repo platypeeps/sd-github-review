@@ -131,7 +131,7 @@
     ".prism/rules.schema.json": "sha256:5b082936cc38420b48850a8a357c7d2e791dbd3bd40caa65d2cb922087bd5b2a",
     "docs/SD_AI_COMMAND_PACK.md": "sha256:7a95e0263cb7505358737d796f4448976e12b156bf2af6ae830e9d608d8710e6",
     "scripts/sd-ai-command-pack-full-check.sh": "sha256:c371ec783cbb1f6c64d4dce2d223d7cfd1bc0aa942de3a47b2147cf2f7a24e21",
-    "scripts/sd-ai-command-pack-housekeeping.sh": "sha256:5bcaa1a5e9f599700aa22bce5f648c7af49c422f8844be2bf6a0f501bee3cfd3",
+    "scripts/sd-ai-command-pack-housekeeping.sh": "sha256:8330237f7e728bf9eca1e08d8f188f88329afe8a77343631fe5dcf6792dcb57f",
     "scripts/sd-ai-command-pack-install-audit.py": "sha256:a37595cf2e78a2e5e78adefe0a820eb8ca9150b723c4b0bdfa33801e3b2e94f9",
     "scripts/sd-ai-command-pack-pr-body-scope.py": "sha256:850416370be7772d0a475468d7250eb33266d4207767638d0612e1a2ece4872e",
     "scripts/sd-ai-command-pack-record-session.py": "sha256:8571c423a1aad5b87452e02900e731e9fd6c267f7a779cc179df06444714b0ae",
