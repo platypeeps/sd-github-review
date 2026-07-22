@@ -1,51 +1,10 @@
 # State Management
 
-> How state is managed in this project.
+## Status
 
----
+Not applicable. There is no client-side or global UI state.
 
-## Overview
-
-<!--
-Document your project's state management conventions here.
-
-Questions to answer:
-- What state management solution do you use?
-- How is local vs global state decided?
-- How do you handle server state?
-- What are the patterns for derived state?
--->
-
-(To be filled by the team)
-
----
-
-## State Categories
-
-<!-- Local state, global state, server state, URL state -->
-
-(To be filled by the team)
-
----
-
-## When to Use Global State
-
-<!-- Criteria for promoting state to global -->
-
-(To be filled by the team)
-
----
-
-## Server State
-
-<!-- How server data is cached and synchronized -->
-
-(To be filled by the team)
-
----
-
-## Common Mistakes
-
-<!-- State management mistakes your team has made -->
-
-(To be filled by the team)
+Each Action invocation derives its decision from inputs, one GitHub event, and
+live PR metadata. Do not add cross-run state or a state library; persistence
+would be a backend/product architecture change covered by the backend database
+guideline and `DESIGN.md`.

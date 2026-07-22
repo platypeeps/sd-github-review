@@ -1,51 +1,21 @@
 # Database Guidelines
 
-> Database patterns and conventions for this project.
+> Database scope for this repository.
 
----
+## Status
 
-## Overview
+Not applicable. The Action is stateless and has no database, ORM, migrations,
+cache, queue, or persistence schema. Runtime state comes only from the GitHub
+event payload, Action inputs, and live GitHub REST responses.
 
-<!--
-Document your project's database conventions here.
+## Guardrail
 
-Questions to answer:
-- What ORM/query library do you use?
-- How are migrations managed?
-- What are the naming conventions for tables/columns?
-- How do you handle transactions?
--->
+Do not introduce persistence as an incidental implementation detail. A hosted
+service, cross-run state, or database-backed deduplication would change the
+product boundary described in `DESIGN.md` and requires a separately approved
+task, architecture design, threat model, and operational plan.
 
-(To be filled by the team)
+## Current Example
 
----
-
-## Query Patterns
-
-<!-- How should queries be written? Batch operations? -->
-
-(To be filled by the team)
-
----
-
-## Migrations
-
-<!-- How to create and run migrations -->
-
-(To be filled by the team)
-
----
-
-## Naming Conventions
-
-<!-- Table names, column names, index names -->
-
-(To be filled by the team)
-
----
-
-## Common Mistakes
-
-<!-- Database-related mistakes your team has made -->
-
-(To be filled by the team)
+Copilot deduplication in `src/index.js` derives state from requested reviewers
+and completed reviews for the current PR head instead of storing local state.
