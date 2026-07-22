@@ -98,7 +98,10 @@ Quick links:
   review-tool runner for the review-local loop, including its `all`
   full-codebase mode.
 - `scripts/sd-ai-command-pack-review-learnings.py`: local review feedback
-  pattern scanner and managed learning-block updater.
+  pattern scanner and managed learning-block updater. It preserves current,
+  non-outdated unresolved comments as individual actionable rows, clusters
+  historical signals deterministically with bounded evidence, and proposes
+  only category-specific actions backed by recurring observations.
 - `scripts/sd-ai-command-pack-install-audit.py`: structural post-install audit
   for missing installed targets and unlisted pack-like files.
 - `scripts/sd-ai-command-pack-pr-body-scope.py`: configurable PR-body scope
@@ -259,7 +262,12 @@ whether to keep going. Once the overall loop meets its stop conditions,
 review-pr runs
 `sd-ai-command-pack-review-learnings.py --github-pr <number> --dry-run`
 exactly once and reports any preventive follow-up without reopening the clean
-review cycle.
+review cycle. Time-window and repeated `--github-pr` scans render actionable
+comments first, then bounded historical clusters for task metadata, boundary
+validation, contract/documentation drift, generated surfaces, reviewer/test
+harness quality, and uncategorized evidence. Cluster summaries retain counts,
+PRs, path families, observed dates, and bounded examples, and explicitly report
+truncation. Preventive actions appear only for detected recurring categories.
 
 The create-pr wrapper honors `SD_AI_COMMAND_PACK_CREATE_PR_BASE` for a base
 branch override, `SD_AI_COMMAND_PACK_CREATE_PR_COMMIT_MESSAGE` when it creates
@@ -442,7 +450,7 @@ Use the script directly from any shell:
 bash scripts/sd-ai-command-pack-full-check.sh
 bash scripts/sd-ai-command-pack-review-local.sh
 bash scripts/sd-ai-command-pack-review-local.sh --full-codebase
-bash scripts/sd-ai-command-pack-housekeeping.sh
+bash scripts/sd-ai-command-pack-housekeeping.sh # cleanup-only or already merged
 bash scripts/sd-ai-command-pack-toolchain.sh run-python -- scripts/sd-ai-command-pack-status.py
 bash scripts/sd-ai-command-pack-toolchain.sh run-python -- scripts/sd-ai-command-pack-status.py fleet --json
 bash scripts/sd-ai-command-pack-toolchain.sh run-python -- \
@@ -565,16 +573,22 @@ placeholder or journal/index commit drift, generated `_example` seed rows in
 changed task context after a task enters implementation, completes, or is
 archived, edits to historical
 journal sessions relative to the review base, and large diffs that are likely
-to skip remote AI review. It also emits soft first-review warnings when changed
-code adds parser/structured-input, subprocess, filesystem/path, environment or
-global-state, or digest/integrity behavior. The warning names a conservative
-boundary-test matrix for author disposition before remote review. Diff sizing
-uses the complete review-base-to-working-tree state plus untracked files; large
-untracked files are counted as large without reading the entire file. The same
-byte limit bounds the first-review boundary-risk content scan; skipped
-oversized untracked code files are named in an explicit warning. Its
-authored-source threshold excludes installed pack/Trellis mirrors, Trellis task
-and workspace records, and known generated reports. A separate warning calls
+to skip remote AI review. It also emits a soft first-review warning when changed
+production code matches the stable `structured-input-types`,
+`subprocess-command`, `environment-global-state`, `path-filesystem`,
+`normalization-evidence`, or `diagnostic-redaction` categories. Every triggered
+category includes bounded good/base/failure regression prompts for author
+disposition; detection remains advisory and does not claim that focused
+coverage exists or is missing. Diff sizing uses the complete review-base-to-
+working-tree state plus untracked files; large untracked files are counted as
+large without reading the entire file. The same byte limit bounds the first-
+review boundary-risk content scan; skipped
+oversized untracked code files are named in an explicit warning. Conventional
+test and fixture paths, vendored/generated directories, installed payload
+mirrors, and non-workflow YAML remain outside the production-risk scan, while
+`.github/workflows/*.yml` and `.yaml` participate as executable configuration.
+The authored-source threshold excludes installed pack/Trellis mirrors, Trellis
+task and workspace records, and known generated reports. A separate warning calls
 out changes spanning more than one Trellis task directory. The task-context
 check inspects `implement.jsonl` and
 `check.jsonl`; a changed qualifying `task.json` also checks both sibling files.
@@ -589,7 +603,11 @@ symlinked task entries are ignored. Target repos can tune roots,
 path-reference prefixes, integration paths, optional paths, copied-template
 paths, and the `diffSizeWarningLines`, `largeFileWarningLines`,
 `sourceReviewWarningLines`, and `untrackedFileReadLimitBytes` warning thresholds
-with `.sd-ai-command-pack/review-preflight.json`. Repos that intentionally
+with `.sd-ai-command-pack/review-preflight.json`. The config's additive
+`reviewRiskCategorySignals` object maps a stable category ID to at most 20
+literal, nonblank signals of at most 120 characters each; invalid or unknown
+category configuration fails the preflight instead of silently changing the
+matrix. Repos that intentionally
 document service-user paths under `/home/<user>/` can add those service users to
 `allowedLinuxHomeUsers` in that config. The script requires Node 16.9 or newer
 and scans regular documentation files only; symlinked docs are skipped
@@ -809,7 +827,10 @@ Copy-Item -Recurse -Force -Path "C:\path\to\repo\.obsidian-kb\*" -Destination "C
 The housekeeping command ends a single active development stream. On an open
 PR, it runs the SD finish-work flow before actual cleanup and pushes any
 archive or journal commits that finish-work creates. It then runs the
-housekeeping script, which checks a strict auto-merge gate:
+housekeeping script with `--finish-work-head "$(git rev-parse HEAD)"`. The
+exact-head attestation is valid only after that lifecycle step and its required
+checks finish; without it, or if the branch advances afterward, the executable
+leaves an open PR unmerged. The script then checks a strict auto-merge gate:
 
 - the working tree is clean
 - the local branch head, remote branch head, and PR head all match
@@ -1093,8 +1114,10 @@ Lifecycle side effects have one owner. `until=review` keeps finish-work in
 watches with `no-merge` in Stage 3, and invokes housekeeping exactly once in
 Stage 4. A blocked or timed-out watch therefore leaves the active Trellis task
 available for a later resume instead of archiving it before the PR settles.
-After finish-work, housekeeping owns one normal KB refresh before its merge
-gate so archived task documentation is current. That refresh creates an absent
+After finish-work, housekeeping passes `--finish-work-head` with the exact
+current commit to the shell gate and owns one normal KB refresh before merge so
+archived task documentation is current. A missing handoff leaves the PR open.
+The refresh creates an absent
 KB and preserves a valid root directory symlink. `sd-ship` does not repeat that
 refresh.
 
@@ -1553,11 +1576,12 @@ checks.
 ## Housekeeping cadence
 
 Run housekeeping at the end of a development stream. From an open PR branch it
-owns finish-work before applying the merge gate; after an already-merged PR it
-performs the remaining cleanup and verification. If the command reports
-anomalies, treat them as the next manual action: dirty files, an unmerged PR,
-extra branches, open PRs/issues, or remaining Trellis tasks mean the repo is
-not yet in the expected clean state.
+owns finish-work before applying the merge gate and passes the exact current
+commit through `--finish-work-head` only after the lifecycle handoff succeeds;
+after an already-merged PR it performs the remaining cleanup and verification
+without the flag. If the command reports anomalies, treat them as the next
+manual action: dirty files, an unmerged PR, extra branches, open PRs/issues, or
+remaining Trellis tasks mean the repo is not yet in the expected clean state.
 
 ## Updating the pack
 

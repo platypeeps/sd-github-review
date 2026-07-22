@@ -1,0 +1,2 @@
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Defines regression coverage and repository verification required for behavior changes."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Defines how safety-critical orchestration handoffs must stay consistent across skills, adapters, scripts, and tests."}
