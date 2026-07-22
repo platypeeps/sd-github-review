@@ -66,36 +66,51 @@ pass.
 
 ## Acceptance Criteria
 
-- [ ] Existing routing tests remain green and new tests lock the documented
+- [x] Existing routing tests remain green and new tests lock the documented
   precedence without changing intentional behavior.
-- [ ] Unrelated comments and labels perform no PR-file listing, verified with
+- [x] Unrelated comments and labels perform no PR-file listing, verified with
   injected/mocked GitHub client assertions.
-- [ ] A fixed or otherwise explicit route succeeds for a simulated PR beyond
+- [x] A fixed or otherwise explicit route succeeds for a simulated PR beyond
   3,000 files without attempting automatic file enumeration.
-- [ ] GitHub client tests cover multi-page results, final-page termination,
+- [x] GitHub client tests cover multi-page results, final-page termination,
   HTTP failures, reviewer lookup, and reviewer-request payloads.
-- [ ] Entrypoint/orchestration tests verify outputs and summaries for at least
+- [x] Entrypoint/orchestration tests verify outputs and summaries for at least
   cheap, deep, Copilot, and none routes, plus one failing input/API case.
-- [ ] CI validates JavaScript, tests, action metadata, and workflow syntax with
+- [x] CI validates JavaScript, tests, action metadata, and workflow syntax with
   immutable third-party Action references.
-- [ ] The quick start clearly identifies every consumer-owned placeholder and
+- [x] The quick start clearly identifies every consumer-owned placeholder and
   includes a smoke-test procedure that does not expose secrets to PR code.
-- [ ] A documented release checklist defines version/tag naming, required
+- [x] A documented release checklist defines version/tag naming, required
   checks, immutable SHA guidance, and rollback steps.
-- [ ] The checklist identifies the pilot repository, exercised routes,
+- [x] The checklist identifies the pilot repository, exercised routes,
   observation window, exit criteria, and rollback procedure.
-- [ ] `platypeeps/sd-github-review-pilot` is private, contains no provider
+- [x] `platypeeps/sd-github-review-pilot` is private, contains no provider
   credentials, and has no automatic Copilot review ruleset during the request
   test.
-- [ ] Pilot scenarios cover automatic, trusted-command, and label routing;
+- [x] Pilot scenarios cover automatic, trusted-command, and label routing;
   at least one scenario creates or verifies a live Copilot review request.
-- [ ] Cheap/deep scenarios assert `route`, `model`, and
+- [x] Cheap/deep scenarios assert `route`, `model`, and
   `run-external-reviewer` outputs without executing an external reviewer.
-- [ ] The pilot workflow contains no LLM provider credentials.
-- [ ] No public `v0.1.0` tag or release is created until the recorded pilot
+- [x] The pilot workflow contains no LLM provider credentials.
+- [x] No public `v0.1.0` tag or release is created until the recorded pilot
   evidence satisfies the exit criteria.
-- [ ] `npm test`, `npm run check`, metadata/workflow validation, and
+- [x] `npm test`, `npm run check`, metadata/workflow validation, and
   `git diff --check` all pass.
+
+## Verification Evidence
+
+- Source runtime candidate `e12ad52deaf92cd38b881338db7a1015a3c108f5` passed CI job
+  `test` in run `29889087445`; the same checkout passed all local validation
+  commands on 2026-07-21.
+- Private pilot PR `platypeeps/sd-github-review-pilot#1` produced successful
+  automatic cheap/Copilot, trusted command, explicit label, none, unrelated
+  event, and Copilot-deduplication runs while pinned to
+  `9d10ac126d014e56763d7740d694c9a50f32212d`.
+- The pilot repository has no Actions secrets and no automatic Copilot review
+  ruleset. Copilot reviews are visible on the pilot PR.
+- The source repository has no tags or releases. The 24-hour observation
+  window is still a public-release gate; completing this task does not assert
+  that the release gate has passed or authorize publishing `v0.1.0`.
 
 ## Out of Scope
 
