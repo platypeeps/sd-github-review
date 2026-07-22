@@ -1,0 +1,245 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { annotationEscape, errorAnnotation, runAction, writeOutput, writeSummary } from "../src/index.js";
+
+const basePullRequest = {
+  number: 23,
+  additions: 40,
+  deletions: 2,
+  draft: false,
+  labels: [],
+  head: { sha: "current-head" },
+  user: { login: "author" },
+};
+
+function createHarness(overrides = {}) {
+  const calls = {
+    factories: 0,
+    getPullRequest: 0,
+    listPullRequestFiles: 0,
+    getRequestedReviewers: 0,
+    listPullRequestReviews: 0,
+    requestReviewer: [],
+  };
+  const client = {
+    async getPullRequest() {
+      calls.getPullRequest += 1;
+      return overrides.pullRequest ?? basePullRequest;
+    },
+    async listPullRequestFiles() {
+      calls.listPullRequestFiles += 1;
+      if (overrides.listError) throw overrides.listError;
+      return overrides.files ?? [];
+    },
+    async getRequestedReviewers() {
+      calls.getRequestedReviewers += 1;
+      return { users: overrides.requestedUsers ?? [] };
+    },
+    async listPullRequestReviews() {
+      calls.listPullRequestReviews += 1;
+      return overrides.reviews ?? [];
+    },
+    async requestReviewer(number, reviewer) {
+      calls.requestReviewer.push({ number, reviewer });
+    },
+  };
+  const outputs = new Map();
+  const summaries = [];
+  const logs = [];
+  const run = ({ event, eventName = "pull_request", env = {} }) =>
+    runAction({
+      event,
+      eventName,
+      env: {
+        GITHUB_REPOSITORY: "platypeeps/example",
+        "INPUT_GITHUB-TOKEN": "test-token",
+        ...env,
+      },
+      clientFactory() {
+        calls.factories += 1;
+        return client;
+      },
+      outputWriter(name, value) {
+        outputs.set(name, value);
+      },
+      summaryWriter(summary) {
+        summaries.push(summary);
+      },
+      logger(message) {
+        logs.push(message);
+      },
+    });
+  return { calls, outputs, summaries, logs, run };
+}
+
+test("ignores unrelated comments without constructing a GitHub client", async () => {
+  const harness = createHarness();
+
+  const result = await harness.run({
+    eventName: "issue_comment",
+    event: { action: "created", issue: { number: 23 }, comment: { body: "looks good" } },
+  });
+
+  assert.equal(result.decision.route, "none");
+  assert.equal(harness.calls.factories, 0);
+  assert.equal(harness.outputs.get("changed-lines"), "0");
+  assert.equal(harness.outputs.get("run-external-reviewer"), "false");
+});
+
+test("ignores unrelated label events without constructing a GitHub client", async () => {
+  const harness = createHarness();
+
+  await harness.run({
+    event: { action: "labeled", label: { name: "documentation" }, pull_request: basePullRequest },
+  });
+
+  assert.equal(harness.calls.factories, 0);
+  assert.equal(harness.outputs.get("route"), "none");
+  assert.equal(harness.outputs.get("changed-lines"), "42");
+});
+
+test("explicit routes skip file enumeration even when it would exceed 3,000 files", async () => {
+  const harness = createHarness({ listError: new Error("should not list files") });
+
+  const result = await harness.run({
+    event: { action: "opened", pull_request: basePullRequest },
+    env: { INPUT_MODE: "cheap", "INPUT_CHEAP-MODEL": "economy-model" },
+  });
+
+  assert.equal(result.decision.route, "cheap");
+  assert.equal(harness.calls.factories, 0);
+  assert.equal(harness.calls.listPullRequestFiles, 0);
+  assert.equal(harness.outputs.get("model"), "economy-model");
+  assert.equal(harness.outputs.get("sensitive-files"), "[]");
+  assert.equal(harness.outputs.get("run-external-reviewer"), "true");
+});
+
+test("trusted comment commands fetch PR metadata but skip file enumeration", async () => {
+  const harness = createHarness();
+
+  const result = await harness.run({
+    eventName: "issue_comment",
+    event: {
+      action: "created",
+      issue: { number: 23 },
+      comment: {
+        body: "/review deep",
+        author_association: "MEMBER",
+        user: { login: "maintainer" },
+      },
+    },
+    env: { "INPUT_DEEP-MODEL": "deep-model" },
+  });
+
+  assert.equal(result.decision.route, "deep");
+  assert.equal(harness.calls.getPullRequest, 1);
+  assert.equal(harness.calls.listPullRequestFiles, 0);
+  assert.equal(harness.outputs.get("model"), "deep-model");
+});
+
+test("automatic sensitive routing requests Copilot once and reports outputs", async () => {
+  const harness = createHarness({ files: ["src/auth/session.js"] });
+
+  const result = await harness.run({
+    event: { action: "opened", pull_request: basePullRequest },
+    env: { "INPUT_SENSITIVE-PATHS": "**/auth/**" },
+  });
+
+  assert.equal(result.decision.route, "copilot");
+  assert.equal(harness.calls.listPullRequestFiles, 1);
+  assert.equal(harness.calls.getRequestedReviewers, 1);
+  assert.deepEqual(harness.calls.requestReviewer, [
+    { number: 23, reviewer: "copilot-pull-request-reviewer[bot]" },
+  ]);
+  assert.equal(harness.outputs.get("copilot-requested"), "true");
+  assert.equal(harness.outputs.get("run-external-reviewer"), "false");
+  assert.deepEqual(harness.summaries[0].sensitiveFiles, ["src/auth/session.js"]);
+  assert.match(harness.logs[0], /Selected copilot for PR #23/u);
+});
+
+test("does not duplicate an existing Copilot review request", async () => {
+  const harness = createHarness({
+    requestedUsers: [{ login: "copilot-pull-request-reviewer[bot]" }],
+  });
+
+  await harness.run({
+    event: { action: "opened", pull_request: basePullRequest },
+    env: { INPUT_MODE: "copilot" },
+  });
+
+  assert.equal(harness.calls.listPullRequestFiles, 0);
+  assert.equal(harness.calls.getRequestedReviewers, 1);
+  assert.equal(harness.calls.listPullRequestReviews, 0);
+  assert.deepEqual(harness.calls.requestReviewer, []);
+  assert.equal(harness.outputs.get("copilot-requested"), "false");
+});
+
+test("does not re-request Copilot after it reviewed the current head commit", async () => {
+  const harness = createHarness({
+    reviews: [
+      {
+        user: { login: "copilot-pull-request-reviewer[bot]" },
+        commit_id: "current-head",
+        state: "COMMENTED",
+      },
+    ],
+  });
+
+  await harness.run({
+    event: { action: "opened", pull_request: basePullRequest },
+    env: { INPUT_MODE: "copilot" },
+  });
+
+  assert.equal(harness.calls.listPullRequestReviews, 1);
+  assert.deepEqual(harness.calls.requestReviewer, []);
+  assert.equal(harness.outputs.get("copilot-requested"), "false");
+});
+
+test("skips automatic file enumeration for disabled draft reviews", async () => {
+  const harness = createHarness({ listError: new Error("should not list files") });
+
+  await harness.run({
+    event: { action: "opened", pull_request: { ...basePullRequest, draft: true } },
+  });
+
+  assert.equal(harness.calls.factories, 0);
+  assert.equal(harness.outputs.get("route"), "none");
+});
+
+test("rejects invalid inputs and escapes workflow error annotations", async () => {
+  const harness = createHarness();
+
+  await assert.rejects(
+    harness.run({
+      event: { action: "opened", pull_request: basePullRequest },
+      env: { INPUT_MODE: "expensive" },
+    }),
+    /mode must be one of/u,
+  );
+  assert.equal(annotationEscape("bad%value\nnext"), "bad%25value%0Anext");
+  assert.equal(errorAnnotation(new Error("bad\nvalue")).startsWith("::error::Error: bad%0Avalue"), true);
+});
+
+test("writes multiline outputs and summaries through injected append operations", async () => {
+  const writes = [];
+  const env = { GITHUB_OUTPUT: "/tmp/output", GITHUB_STEP_SUMMARY: "/tmp/summary" };
+  const appendFileImpl = async (path, value) => writes.push({ path, value });
+
+  await writeOutput("reason", "line one\nline two", { env, appendFileImpl });
+  await writeSummary(
+    {
+      pullRequestNumber: 23,
+      route: "cheap",
+      reason: "routine",
+      changedLines: 42,
+      sensitiveFiles: [],
+      copilotRequested: false,
+    },
+    { env, appendFileImpl },
+  );
+
+  assert.equal(writes[0].path, "/tmp/output");
+  assert.match(writes[0].value, /^reason<<sd_review_[^\n]+\nline one\nline two\n/u);
+  assert.equal(writes[1].path, "/tmp/summary");
+  assert.match(writes[1].value, /Pull request: #23/u);
+});

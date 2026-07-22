@@ -2,13 +2,18 @@
   "name": "sd-github-review",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "A dependency-free GitHub Action that routes pull requests to cost-appropriate AI reviewers.",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "scripts": {
-    "check": "node --check src/index.js && node --check src/router.js && node --check src/github.js",
+    "check": "node --check src/index.js && node --check src/router.js && node --check src/github.js && node --check scripts/validate-action-metadata.mjs",
+    "validate:metadata": "node scripts/validate-action-metadata.mjs",
     "test": "node --test"
+  },
+  "devDependencies": {
+    "yaml": "^2.9.0"
   }
 }

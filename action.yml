@@ -4,7 +4,7 @@ author: platypeeps
 
 inputs:
   github-token:
-    description: Token used to inspect the pull request and request Copilot. Requires pull-requests: write when Copilot can be selected.
+    description: "Token used to inspect the pull request and request Copilot. Requires pull-requests: write when Copilot can be selected."
     required: true
   mode:
     description: Routing mode. One of auto, cheap, deep, copilot, or none.
@@ -68,7 +68,7 @@ inputs:
 
 outputs:
   route:
-    description: Selected route: cheap, deep, copilot, or none.
+    description: "Selected route: cheap, deep, copilot, or none."
   reason:
     description: Human-readable explanation of the routing decision.
   model:
@@ -85,7 +85,7 @@ outputs:
     description: true when this invocation requested Copilot through the GitHub API.
 
 runs:
-  using: node20
+  using: node24
   main: src/index.js
 
 branding:

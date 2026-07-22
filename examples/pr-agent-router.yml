@@ -1,0 +1,42 @@
+name: AI review router with PR-Agent
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  route:
+    if: github.event.sender.type != 'Bot' && (github.event_name == 'pull_request' || github.event.issue.pull_request != null)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Choose reviewer
+        id: review
+        # Replace with the full SHA of an approved sd-github-review release.
+        uses: platypeeps/sd-github-review@<sd-github-review-commit-sha>
+        with:
+          github-token: ${{ github.token }}
+          cheap-model: ${{ vars.CHEAP_REVIEW_MODEL }}
+          deep-model: ${{ vars.DEEP_REVIEW_MODEL }}
+
+      - name: Run PR-Agent review
+        if: steps.review.outputs.run-external-reviewer == 'true' && (github.event_name == 'issue_comment' || github.event.pull_request.head.repo.fork == false)
+        # Replace with the full SHA of an approved PR-Agent revision.
+        uses: the-pr-agent/pr-agent@<pr-agent-commit-sha>
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OPENAI_KEY: ${{ secrets.PR_AGENT_OPENAI_KEY }}
+          config.model: ${{ steps.review.outputs.model }}
+          config.restricted_mode: "true"
+          github_action_config.auto_review: "true"
+          github_action_config.auto_describe: "false"
+          github_action_config.auto_improve: "false"
+          github_action_config.pr_actions: '["opened", "reopened", "ready_for_review", "labeled"]'
+          github_action_config.handle_push_trigger: "true"
+          github_action_config.push_commands: '["/review"]'

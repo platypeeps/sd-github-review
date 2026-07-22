@@ -1,69 +1,121 @@
 # SD GitHub review router
 
-A small, dependency-free GitHub Action that chooses the appropriate AI review tier for a pull request:
+[![CI](https://github.com/platypeeps/sd-github-review/actions/workflows/ci.yml/badge.svg)](https://github.com/platypeeps/sd-github-review/actions/workflows/ci.yml)
+[![Node.js 24](https://img.shields.io/badge/Node.js-24-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+A small, dependency-free GitHub Action that chooses the appropriate AI review
+tier for a pull request:
 
 - `cheap` for routine changes within configured risk limits
 - `deep` for an external premium model
 - `copilot` for sensitive or unusually large changes
 - `none` when AI review is explicitly disabled
 
-The Copilot route requests `copilot-pull-request-reviewer[bot]` through GitHub's review-request API. The `cheap` and `deep` routes intentionally emit outputs instead of owning provider credentials or a reviewer runtime. A following workflow step can invoke PR-Agent, Gito, or an internal service with the selected model.
+Copilot is integrated directly. The `cheap` and `deep` routes emit a generic
+adapter contract for PR-Agent, Gito, or an internal service; the router does
+not own provider credentials or a reviewer runtime. See [`DESIGN.md`](DESIGN.md)
+for the architecture, automatic and manual selection rules, outputs, security
+boundaries, and planned backends.
 
-## Quick start
+## Installation on GitHub
 
-Copy [`examples/review-router.yml`](examples/review-router.yml) into the consuming repository and replace both placeholders:
+### 1. Add the routing workflow
+
+For a provider-free evaluation, start with
+[`examples/pilot-router.yml`](examples/pilot-router.yml). It exercises routing
+and Copilot without checking out pull-request code or using LLM provider
+credentials. Replace `<commit-sha>` with the full SHA of a green candidate.
+
+For a production integration, copy
+[`examples/review-router.yml`](examples/review-router.yml) into the consuming
+repository and replace both placeholders:
 
 1. Pin this action to a released commit SHA.
-2. Replace `./scripts/run-ai-review` with the organization's PR-Agent, Gito, or review-service adapter.
+2. Replace the example external-reviewer command with the organization's
+   PR-Agent, Gito, or review-service adapter.
 
-The workflow needs `pull-requests: write` only because the Copilot route creates a review request. Keep deterministic test, lint, type-check, CodeQL, or Semgrep jobs ahead of the routing job with normal `needs` dependencies.
+The workflow needs `pull-requests: write` only because the Copilot route creates
+a review request. Keep deterministic test, lint, type-check, CodeQL, or Semgrep
+jobs ahead of routing with normal `needs` dependencies.
 
-## Routing order
+### 2. Configure repository labels and variables
 
-The first applicable rule wins:
+Create the labels used for manual routing:
 
-1. A non-`auto` `mode` action input.
-2. A trusted exact command: `/review cheap`, `/review deep`, `/review copilot`, `/review none`, or `/review auto`.
-3. A `review:cheap`, `review:deep`, `review:copilot`, or `review:none` label.
-4. Draft policy, sensitive paths, changed-line threshold, and earlier-review confidence.
-5. The `cheap` route.
+- `review:cheap`
+- `review:deep`
+- `review:copilot`
+- `review:none`
+- `review:auto`
 
-`review:auto` removes an explicit preference without selecting a route. Conflicting explicit route labels fail visibly instead of choosing an arbitrary winner.
+Set `CHEAP_REVIEW_MODEL` and `DEEP_REVIEW_MODEL` under **Settings → Secrets and
+variables → Actions → Variables** when an external adapter needs explicit model
+identifiers. Copilot routing does not require either variable.
 
-Commands default to repository owners, members, and collaborators. Set `allow-pr-author-commands: "true"` if outside contributors should be allowed to spend review capacity. Unrelated issue comments and label events are ignored so they do not retrigger reviews.
+### 3. Protect the default branch
 
-## Consuming outputs
+Require the repository's deterministic CI and human-approval policy before
+merge. AI review should remain supplemental. Open a smoke pull request and
+confirm the selected route, reason, and side effect in the workflow summary.
 
-The main outputs are:
+### PR-Agent adapter
 
-| Output | Meaning |
-|---|---|
-| `route` | `cheap`, `deep`, `copilot`, or `none` |
-| `reason` | Why the route was selected |
-| `model` | Configured provider model for `cheap` or `deep` |
-| `run-external-reviewer` | `true` for `cheap` and `deep` |
-| `copilot-requested` | Whether this run created a Copilot review request |
-| `sensitive-files` | JSON array of matched paths |
+Use [`examples/pr-agent-router.yml`](examples/pr-agent-router.yml) when
+`cheap` and `deep` should run the open-source PR-Agent GitHub Action.
 
-Configure current provider model identifiers in repository variables such as `CHEAP_REVIEW_MODEL` and `DEEP_REVIEW_MODEL`. This keeps model churn out of the action and makes changes auditable in each consuming organization.
+1. Copy the example into the consuming repository's workflow directory.
+2. Replace both action placeholders with reviewed, full 40-character commit
+   SHAs. Do not use a floating branch such as `@main` in production.
+3. Add `PR_AGENT_OPENAI_KEY` under **Settings → Secrets and variables → Actions
+   → Secrets**. For another supported model provider, replace `OPENAI_KEY` with
+   PR-Agent's provider-specific secret and use matching model identifiers.
+4. Set `CHEAP_REVIEW_MODEL` and `DEEP_REVIEW_MODEL` to model identifiers PR-Agent
+   accepts. The router passes the selected value as `config.model`.
+5. Keep `config.restricted_mode=true`. The example grants `contents: read`,
+   `issues: write`, and `pull-requests: write`; it does not grant contents write
+   or check out pull-request code.
 
-## Sensitive path patterns
+The PR-Agent step runs only for `cheap` or `deep`. Its automatic describe and
+improve tools are disabled, while review is enabled for the router's open,
+reopen, ready, label, synchronize, and trusted comment paths. Pull-request
+workflows from forks do not receive repository secrets, so the example skips
+the PR-Agent step for fork-originated `pull_request` events. A trusted
+`issue_comment` invocation can still run from the base workflow without
+checking out contributor code.
 
-Patterns are comma- or newline-separated. `*` matches within one path segment, `**` crosses directories, and `?` matches one non-separator character. Defaults cover authentication, authorization, billing, cryptography, migrations, schemas, and public API directories. Override the list to match the repository's actual layout.
+PR-Agent can also read settings from a repository-root `.pr_agent.toml`. See
+its [GitHub installation guide](https://github.com/The-PR-Agent/pr-agent/blob/main/docs/docs/installation/github.md)
+and [automation/configuration guide](https://github.com/The-PR-Agent/pr-agent/blob/main/docs/docs/usage-guide/automations_and_usage.md)
+for provider-specific variables and review settings.
 
-## Security notes
+PR-Agent currently describes its open-source project as community-maintained
+legacy software and distributes it under AGPL-3.0. Review that dependency's
+maintenance and license fit independently; this repository's MIT license does
+not relicense PR-Agent.
 
-- Pin this action and external reviewer actions to full commit SHAs.
-- Do not check out or execute pull-request code in an `issue_comment` job with secrets.
-- Keep LLM provider keys on the external-reviewer step; the router needs only a GitHub token.
-- Leave outside-contributor commands disabled unless the associated cost exposure is acceptable.
-- Treat AI review as supplemental. Branch protection should still require the project's deterministic checks and human approval policy.
+Supply-chain note: pinning PR-Agent's repository revision does not fully pin
+its current Docker runtime because the upstream action builds from the floating
+`pragent/pr-agent:github_action` image tag. Environments requiring complete
+immutability should review and fork the action, then pin the base image by
+digest or publish an internally controlled wrapper.
 
 ## Development
 
-The action has no runtime dependencies and uses Node.js 20's built-in test runner.
+The action has no runtime dependencies and uses Node.js 24's built-in test
+runner. The development-only YAML parser validates the action and workflow
+metadata.
 
 ```sh
+npm ci
 npm test
 npm run check
+npm run validate:metadata
 ```
+
+The first-release and pilot gates are recorded in
+[`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md).
+
+## License
+
+Licensed under the [MIT License](LICENSE).

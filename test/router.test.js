@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   findSensitiveFiles,
+  ignoredEventDecision,
   isTrustedCommand,
   modeFromLabels,
   parseReviewCommand,
+  resolveExplicitMode,
   routeReview,
 } from "../src/router.js";
 
@@ -98,4 +100,19 @@ test("trusts repository members and optionally the PR author", () => {
   assert.equal(isTrustedCommand(args), false);
   assert.equal(isTrustedCommand({ ...args, association: "MEMBER" }), true);
   assert.equal(isTrustedCommand({ ...args, allowPullRequestAuthor: true }), true);
+});
+
+test("exposes shared event-gate and explicit-route decisions", () => {
+  assert.deepEqual(
+    ignoredEventDecision({ eventName: "issue_comment", commandMode: null }),
+    { route: "none", reason: "comment did not contain a trusted review command" },
+  );
+  assert.equal(
+    resolveExplicitMode({ configuredMode: "auto", commandMode: "deep", labelMode: "cheap" }),
+    "deep",
+  );
+  assert.equal(
+    resolveExplicitMode({ configuredMode: "auto", commandMode: "auto", labelMode: "cheap" }),
+    null,
+  );
 });
