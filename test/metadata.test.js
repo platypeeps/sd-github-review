@@ -22,7 +22,7 @@ test("rejects floating third-party Action references", async () => {
       "inputs: {}",
       "outputs: {}",
       "runs:",
-      "  using: node20",
+      "  using: node24",
       "  main: index.js",
       "",
     ].join("\n"),

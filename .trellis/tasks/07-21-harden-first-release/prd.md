@@ -46,9 +46,9 @@ pass.
 - **R6 — Define consumer readiness.** Documentation must distinguish the
   runnable router from required consumer-owned model variables and external
   reviewer adapter, and provide a first-release checklist and smoke scenario.
-- **R7 — Keep the runtime small.** The shipped action must remain compatible
-  with Node.js 20 and dependency-free unless implementation evidence shows a
-  dependency is necessary.
+- **R7 — Keep the runtime small.** The shipped action must use GitHub's current
+  Node.js 24 action runtime and remain dependency-free unless implementation
+  evidence shows a dependency is necessary.
 - **R8 — Preserve security boundaries.** The example must not check out or run
   PR-authored code with provider secrets in an `issue_comment` context, and the
   router must continue to require only the minimum documented GitHub token

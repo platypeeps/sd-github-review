@@ -9,7 +9,7 @@ credential broker or a replacement for branch protection.
 
 ## Current Baseline
 
-- The dependency-free Node.js 20 action supports automatic, label, command,
+- The dependency-free Node.js 24 action supports automatic, label, command,
   and fixed-mode routing.
 - Sensitive paths, changed-line thresholds, draft policy, and earlier-review
   confidence feed automatic routing.
@@ -84,6 +84,7 @@ The initial Trellis task is
 | P2 | The example intentionally contains an action placeholder and a nonexistent external-reviewer command; copying it without completing both edits fails at runtime. | `examples/review-router.yml:20`, `examples/review-router.yml:41` | Add a smoke-tested example and an explicit preflight checklist. |
 | P2 | CI runs unit tests and syntax checks only; it does not validate action metadata or workflow syntax, and third-party Actions use floating major tags. | `.github/workflows/ci.yml:11` | Add metadata/workflow validation and pin Actions by full SHA. |
 | P2 | Empty cheap/deep model inputs can still emit `run-external-reviewer=true`, leaving provider-default behavior implicit in each consumer. | `src/index.js:135`, `src/index.js:148`, `action.yml:31` | Decide whether empty means consumer default or configuration error, then test and document it. |
+| P2 | GitHub-hosted runners have deprecated the Node.js 20 action runtime and force it onto Node.js 24. | Initial private pilot run `29887640242` | Declare `node24`, test on Node.js 24 in CI, and repin the pilot to the corrected candidate. |
 | P2 | The Trellis bootstrap task and specs assume a generic full-stack application, so future agents may receive irrelevant database/frontend guidance. | `.trellis/tasks/00-bootstrap-guidelines/prd.md:1` | Complete or replace the bootstrap guidance before broad implementation. |
 | P3 | GitHub requests have no bounded retry/backoff or rate-limit-specific diagnostics. | `src/github.js:20` | Defer until pilot evidence shows the needed policy. |
 | P3 | External reviewer invocations have no cross-run deduplication contract. | `examples/review-router.yml:35` | Measure during pilot, then define concurrency behavior. |

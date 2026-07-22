@@ -48,7 +48,8 @@ runner.
 ## Compatibility
 
 - Preserve all existing action input and output names.
-- Preserve Node.js 20 and GitHub Enterprise API URL support.
+- Preserve GitHub Enterprise API URL support and use GitHub's current Node.js
+  24 action runtime.
 - Preserve the documented route precedence.
 - Do not require consumers to add runtime npm installation.
 

@@ -45,8 +45,8 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
   assertObject(action.inputs, actionPath, "inputs");
   assertObject(action.outputs, actionPath, "outputs");
   assertObject(action.runs, actionPath, "runs");
-  if (action.runs.using !== "node20") {
-    throw new Error(`${actionPath}: runs.using must be node20`);
+  if (action.runs.using !== "node24") {
+    throw new Error(`${actionPath}: runs.using must be node24`);
   }
   if (typeof action.runs.main !== "string") {
     throw new Error(`${actionPath}: runs.main must name the JavaScript entrypoint`);

@@ -75,7 +75,7 @@ Patterns are comma- or newline-separated. `*` matches within one path segment, `
 
 ## Development
 
-The action has no runtime dependencies and uses Node.js 20's built-in test
+The action has no runtime dependencies and uses Node.js 24's built-in test
 runner. The development-only YAML parser validates the action and workflow
 metadata.
 

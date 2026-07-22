@@ -85,7 +85,7 @@ outputs:
     description: true when this invocation requested Copilot through the GitHub API.
 
 runs:
-  using: node20
+  using: node24
   main: src/index.js
 
 branding:
