@@ -36,7 +36,7 @@ pass.
   result.
 - **R3 — Cover GitHub contracts.** Automated tests must cover request headers,
   pagination, API error propagation, the 3,000-file boundary, requested-reviewer
-  deduplication, and reviewer request payloads.
+  and current-commit review deduplication, and reviewer request payloads.
 - **R4 — Cover action orchestration.** Automated tests must cover representative
   pull-request, label, trusted/untrusted comment, draft, explicit, and Copilot
   flows, including outputs, summaries, and error annotations.

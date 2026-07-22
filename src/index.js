@@ -217,7 +217,17 @@ export async function runAction({
     const reviewer = input("copilot-reviewer", "copilot-pull-request-reviewer[bot]", env);
     const requested = await getClient().getRequestedReviewers(pullRequestNumber);
     const alreadyRequested = requested.users?.some((user) => user.login === reviewer);
-    if (!alreadyRequested) {
+    const headSha = pullRequest.head?.sha;
+    const alreadyReviewed =
+      !alreadyRequested && headSha
+        ? (await getClient().listPullRequestReviews(pullRequestNumber)).some(
+            (review) =>
+              review.user?.login === reviewer &&
+              review.commit_id === headSha &&
+              review.state !== "DISMISSED",
+          )
+        : false;
+    if (!alreadyRequested && !alreadyReviewed) {
       await getClient().requestReviewer(pullRequestNumber, reviewer);
       copilotRequested = true;
     }

@@ -77,21 +77,30 @@ test("surfaces GitHub API error messages with method and path", async () => {
   );
 });
 
-test("reads and requests reviewers with the documented payload", async () => {
+test("reads requested and completed reviews and sends the documented request payload", async () => {
   const calls = [];
   const client = createClient(async (url, options) => {
     calls.push({ url, options });
     if (options.method === "POST") return jsonResponse({ users: [{ login: "copilot" }] });
+    if (url.includes("/reviews?")) {
+      const page = Number(new URL(url).searchParams.get("page"));
+      return jsonResponse(
+        page === 1
+          ? Array.from({ length: 100 }, (_, index) => ({ id: index, commit_id: "head" }))
+          : [{ id: 100, commit_id: "head" }],
+      );
+    }
     return jsonResponse({ users: [], teams: [] });
   });
 
   assert.deepEqual(await client.getRequestedReviewers(8), { users: [], teams: [] });
+  assert.equal((await client.listPullRequestReviews(8)).length, 101);
   await client.requestReviewer(8, "copilot-pull-request-reviewer[bot]");
 
-  assert.equal(calls.length, 2);
-  assert.equal(calls[1].options.method, "POST");
-  assert.equal(calls[1].options.headers["Content-Type"], "application/json");
-  assert.deepEqual(JSON.parse(calls[1].options.body), {
+  assert.equal(calls.length, 4);
+  assert.equal(calls[3].options.method, "POST");
+  assert.equal(calls[3].options.headers["Content-Type"], "application/json");
+  assert.deepEqual(JSON.parse(calls[3].options.body), {
     reviewers: ["copilot-pull-request-reviewer[bot]"],
   });
 });

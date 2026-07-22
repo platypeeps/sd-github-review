@@ -8,6 +8,7 @@ const basePullRequest = {
   deletions: 2,
   draft: false,
   labels: [],
+  head: { sha: "current-head" },
   user: { login: "author" },
 };
 
@@ -17,6 +18,7 @@ function createHarness(overrides = {}) {
     getPullRequest: 0,
     listPullRequestFiles: 0,
     getRequestedReviewers: 0,
+    listPullRequestReviews: 0,
     requestReviewer: [],
   };
   const client = {
@@ -32,6 +34,10 @@ function createHarness(overrides = {}) {
     async getRequestedReviewers() {
       calls.getRequestedReviewers += 1;
       return { users: overrides.requestedUsers ?? [] };
+    },
+    async listPullRequestReviews() {
+      calls.listPullRequestReviews += 1;
+      return overrides.reviews ?? [];
     },
     async requestReviewer(number, reviewer) {
       calls.requestReviewer.push({ number, reviewer });
@@ -163,6 +169,28 @@ test("does not duplicate an existing Copilot review request", async () => {
 
   assert.equal(harness.calls.listPullRequestFiles, 0);
   assert.equal(harness.calls.getRequestedReviewers, 1);
+  assert.equal(harness.calls.listPullRequestReviews, 0);
+  assert.deepEqual(harness.calls.requestReviewer, []);
+  assert.equal(harness.outputs.get("copilot-requested"), "false");
+});
+
+test("does not re-request Copilot after it reviewed the current head commit", async () => {
+  const harness = createHarness({
+    reviews: [
+      {
+        user: { login: "copilot-pull-request-reviewer[bot]" },
+        commit_id: "current-head",
+        state: "COMMENTED",
+      },
+    ],
+  });
+
+  await harness.run({
+    event: { action: "opened", pull_request: basePullRequest },
+    env: { INPUT_MODE: "copilot" },
+  });
+
+  assert.equal(harness.calls.listPullRequestReviews, 1);
   assert.deepEqual(harness.calls.requestReviewer, []);
   assert.equal(harness.outputs.get("copilot-requested"), "false");
 });

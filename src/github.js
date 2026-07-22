@@ -52,6 +52,17 @@ export class GitHubClient {
     return this.request(`/repos/${this.owner}/${this.repo}/pulls/${number}/requested_reviewers`);
   }
 
+  async listPullRequestReviews(number) {
+    const reviews = [];
+    for (let page = 1; ; page += 1) {
+      const batch = await this.request(
+        `/repos/${this.owner}/${this.repo}/pulls/${number}/reviews?per_page=100&page=${page}`,
+      );
+      reviews.push(...batch);
+      if (batch.length < 100) return reviews;
+    }
+  }
+
   requestReviewer(number, reviewer) {
     return this.request(`/repos/${this.owner}/${this.repo}/pulls/${number}/requested_reviewers`, {
       method: "POST",

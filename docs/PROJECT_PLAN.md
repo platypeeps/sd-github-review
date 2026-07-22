@@ -15,7 +15,7 @@ credential broker or a replacement for branch protection.
   confidence feed automatic routing.
 - Copilot requests are handled directly; cheap and deep routes are emitted as
   outputs for a consumer-owned reviewer step.
-- Twenty-nine routing, orchestration, GitHub-client, and metadata tests pass
+- Thirty routing, orchestration, GitHub-client, and metadata tests pass
   locally; the candidate CI run remains part of the release gate.
 - The repository is public, `main` is protected, and the SD AI command pack is
   installed for the active local frameworks.
@@ -88,6 +88,7 @@ The initial Trellis task is
 | P2 | The Trellis bootstrap task and specs assume a generic full-stack application, so future agents may receive irrelevant database/frontend guidance. | `.trellis/tasks/00-bootstrap-guidelines/prd.md:1` | Complete or replace the bootstrap guidance before broad implementation. |
 | P3 | GitHub requests have no bounded retry/backoff or rate-limit-specific diagnostics. | `src/github.js:20` | Defer until pilot evidence shows the needed policy. |
 | P3 | External reviewer invocations have no cross-run deduplication contract. | `examples/review-router.yml:35` | Measure during pilot, then define concurrency behavior. |
+| P3 | GitHub removes Copilot from requested reviewers after it accepts, so requested-reviewer-only deduplication can re-request a completed review for the same commit. | Initial private pilot review state | Also inspect completed reviews for the current head SHA before requesting Copilot. |
 
 ## Explicit Non-Goals
 
