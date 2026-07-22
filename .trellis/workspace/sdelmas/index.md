@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 3
+- **Total Sessions**: 4
 - **Last Active**: 2026-07-22
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~126 | Active |
+| `journal-1.md` | ~162 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 4 | 2026-07-22 | Close tracked workspace review loop | `5171df4`, `87be303` | `codex/enforce-housekeeping-finish-work` |
 | 3 | 2026-07-22 | Finish-work merge attestation and pack refresh | `291a9f2`, `f618ec1`, `5165ad2`, `2c2d614` | `codex/enforce-housekeeping-finish-work` |
 | 2 | 2026-07-21 | Complete Trellis project guidelines | `293c562`, `1220888`, `28d2167`, `a12920d` | `codex/archive-bootstrap-guidelines` |
 | 1 | 2026-07-21 | Harden GitHub review router for pilot | `5480cb1`, `6e2de0b`, `9d10ac1`, `8308353`, `e12ad52`, `1f72733` | `codex/harden-first-release` |

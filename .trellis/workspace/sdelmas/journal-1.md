@@ -124,3 +124,42 @@ Enforced exact-head finish-work attestation before housekeeping merge, refreshed
 ### Next Steps
 
 - None - task complete
+
+
+## Session 4: Close tracked workspace review loop
+
+**Date**: 2026-07-22
+**Task**: Close tracked workspace review loop
+**Branch**: `codex/enforce-housekeeping-finish-work`
+
+### Summary
+
+Aligned tracked Trellis records with the final pack provenance and corrected the housekeeping stale-head regression fixture through three Copilot review rounds.
+
+### Main Changes
+
+- Aligned archived task provenance and the tracked workspace index with the final repository state.
+- Replaced the stale finish-work-head test fixture with a production-shaped Git OID and refreshed its vouched provenance hash.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5171df4` | docs: align Trellis records with final provenance |
+| `87be303` | test: use realistic stale finish-work head |
+
+### Testing
+
+- [OK] Deterministic full review check passed with Prism and Gito disabled.
+- [OK] npm test passed 32 tests and npm run check passed.
+- [OK] Housekeeping self-test passed 13 tests; installation audit verified 151 targets.
+- [OK] GitHub CI passed and all Copilot review threads were resolved.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
