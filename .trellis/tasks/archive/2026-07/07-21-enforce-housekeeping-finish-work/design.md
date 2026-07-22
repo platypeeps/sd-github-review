@@ -47,4 +47,4 @@ The local override updates `.sd-ai-command-pack/provenance.json` with a build
 metadata version, the base pack version, a human-readable override summary,
 and the reviewed hashes of every changed pack-owned target. This keeps the
 install audit meaningful: it vouches the bytes actually reviewed in this repo
-without claiming they are unchanged upstream `0.28.0` content.
+without claiming they are unchanged upstream `0.30.4` content.

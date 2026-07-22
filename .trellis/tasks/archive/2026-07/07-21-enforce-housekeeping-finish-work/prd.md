@@ -40,6 +40,7 @@ Prevent housekeeping from merging a delivery PR unless the caller explicitly com
 - Root cause category: cross-layer contract plus missing integration coverage.
 - Scope is this repository's installed command-pack surface. Upstream fleet
   propagation is a separate repository change and must not be implied here.
-- The repository records the reviewed override as provenance version
-  `0.28.0+sd-github-review.1` over base pack `0.28.0` so install audit remains
-  fail-closed and does not mislabel modified bytes as the upstream payload.
+- After the upstream exact-head implementation landed, the repository refreshed
+  to base pack `0.30.4` and records the reviewed follow-up fixes as provenance
+  version `0.30.4+sd-github-review.1`. This keeps install audit fail-closed and
+  does not mislabel modified bytes as the unchanged upstream payload.
