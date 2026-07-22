@@ -22,6 +22,7 @@
   "parent": null,
   "relatedFiles": [
     "DESIGN.md",
+    "LICENSE",
     "src/index.js",
     "src/github.js",
     "src/router.js",
@@ -29,7 +30,9 @@
     ".github/workflows/ci.yml",
     "action.yml",
     "README.md",
-    "examples/review-router.yml"
+    "examples/review-router.yml",
+    "examples/pr-agent-router.yml",
+    "package.json"
   ],
   "notes": "",
   "meta": {}

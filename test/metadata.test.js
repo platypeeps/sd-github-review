@@ -5,9 +5,10 @@ import path from "node:path";
 import test from "node:test";
 import { validateMetadata } from "../scripts/validate-action-metadata.mjs";
 
-test("validates the repository action metadata and pinned workflows", async () => {
+test("validates the repository action metadata, pinned workflows, and examples", async () => {
   const result = await validateMetadata(path.resolve(import.meta.dirname, ".."));
   assert.equal(result.workflowCount, 1);
+  assert.equal(result.exampleCount, 3);
 });
 
 test("rejects floating third-party Action references", async () => {

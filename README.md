@@ -1,5 +1,9 @@
 # SD GitHub review router
 
+[![CI](https://github.com/platypeeps/sd-github-review/actions/workflows/ci.yml/badge.svg)](https://github.com/platypeeps/sd-github-review/actions/workflows/ci.yml)
+[![Node.js 24](https://img.shields.io/badge/Node.js-24-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A small, dependency-free GitHub Action that chooses the appropriate AI review
 tier for a pull request:
 
@@ -14,7 +18,9 @@ not own provider credentials or a reviewer runtime. See [`DESIGN.md`](DESIGN.md)
 for the architecture, automatic and manual selection rules, outputs, security
 boundaries, and planned backends.
 
-## Quick start
+## Installation on GitHub
+
+### 1. Add the routing workflow
 
 For a provider-free evaluation, start with
 [`examples/pilot-router.yml`](examples/pilot-router.yml). It exercises routing
@@ -33,6 +39,67 @@ The workflow needs `pull-requests: write` only because the Copilot route creates
 a review request. Keep deterministic test, lint, type-check, CodeQL, or Semgrep
 jobs ahead of routing with normal `needs` dependencies.
 
+### 2. Configure repository labels and variables
+
+Create the labels used for manual routing:
+
+- `review:cheap`
+- `review:deep`
+- `review:copilot`
+- `review:none`
+- `review:auto`
+
+Set `CHEAP_REVIEW_MODEL` and `DEEP_REVIEW_MODEL` under **Settings → Secrets and
+variables → Actions → Variables** when an external adapter needs explicit model
+identifiers. Copilot routing does not require either variable.
+
+### 3. Protect the default branch
+
+Require the repository's deterministic CI and human-approval policy before
+merge. AI review should remain supplemental. Open a smoke pull request and
+confirm the selected route, reason, and side effect in the workflow summary.
+
+### PR-Agent adapter
+
+Use [`examples/pr-agent-router.yml`](examples/pr-agent-router.yml) when
+`cheap` and `deep` should run the open-source PR-Agent GitHub Action.
+
+1. Copy the example into the consuming repository's workflow directory.
+2. Replace both action placeholders with reviewed, full 40-character commit
+   SHAs. Do not use a floating branch such as `@main` in production.
+3. Add `PR_AGENT_OPENAI_KEY` under **Settings → Secrets and variables → Actions
+   → Secrets**. For another supported model provider, replace `OPENAI_KEY` with
+   PR-Agent's provider-specific secret and use matching model identifiers.
+4. Set `CHEAP_REVIEW_MODEL` and `DEEP_REVIEW_MODEL` to model identifiers PR-Agent
+   accepts. The router passes the selected value as `config.model`.
+5. Keep `config.restricted_mode=true`. The example grants `contents: read`,
+   `issues: write`, and `pull-requests: write`; it does not grant contents write
+   or check out pull-request code.
+
+The PR-Agent step runs only for `cheap` or `deep`. Its automatic describe and
+improve tools are disabled, while review is enabled for the router's open,
+reopen, ready, label, synchronize, and trusted comment paths. Pull-request
+workflows from forks do not receive repository secrets, so the example skips
+the PR-Agent step for fork-originated `pull_request` events. A trusted
+`issue_comment` invocation can still run from the base workflow without
+checking out contributor code.
+
+PR-Agent can also read settings from a repository-root `.pr_agent.toml`. See
+its [GitHub installation guide](https://github.com/The-PR-Agent/pr-agent/blob/main/docs/docs/installation/github.md)
+and [automation/configuration guide](https://github.com/The-PR-Agent/pr-agent/blob/main/docs/docs/usage-guide/automations_and_usage.md)
+for provider-specific variables and review settings.
+
+PR-Agent currently describes its open-source project as community-maintained
+legacy software and distributes it under AGPL-3.0. Review that dependency's
+maintenance and license fit independently; this repository's MIT license does
+not relicense PR-Agent.
+
+Supply-chain note: pinning PR-Agent's repository revision does not fully pin
+its current Docker runtime because the upstream action builds from the floating
+`pragent/pr-agent:github_action` image tag. Environments requiring complete
+immutability should review and fork the action, then pin the base image by
+digest or publish an internally controlled wrapper.
+
 ## Development
 
 The action has no runtime dependencies and uses Node.js 24's built-in test
@@ -48,3 +115,7 @@ npm run validate:metadata
 
 The first-release and pilot gates are recorded in
 [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md).
+
+## License
+
+Licensed under the [MIT License](LICENSE).

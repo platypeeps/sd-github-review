@@ -28,8 +28,8 @@ configuration.
 
 The planned integration order is:
 
-1. A runnable Gito adapter example consuming the generic output contract.
-2. A runnable PR-Agent adapter example using the same contract.
+1. Live contract validation for the documented PR-Agent reference workflow.
+2. A runnable Gito adapter example consuming the generic output contract.
 3. A documented command or HTTP adapter pattern for internal review services.
 
 Direct OpenAI, Anthropic, Google, or other model-provider SDK integrations are
@@ -206,6 +206,8 @@ roadmap items to address from adoption evidence.
 - [`README.md`](README.md) — installation and development quick start
 - [`examples/review-router.yml`](examples/review-router.yml) — production
   adapter skeleton
+- [`examples/pr-agent-router.yml`](examples/pr-agent-router.yml) — PR-Agent
+  reference adapter
 - [`examples/pilot-router.yml`](examples/pilot-router.yml) — provider-free
   routing smoke workflow
 - [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) — roadmap, risks, and success

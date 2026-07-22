@@ -77,13 +77,33 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
     }
   }
 
-  return { actionPath, workflowCount: workflowNames.length };
+  const examplesDirectory = path.join(repositoryRoot, "examples");
+  const exampleNames = (await readdir(examplesDirectory))
+    .filter((name) => name.endsWith(".yml") || name.endsWith(".yaml"))
+    .sort();
+  for (const name of exampleNames) {
+    const examplePath = path.join(examplesDirectory, name);
+    const example = parseYaml(await readFile(examplePath, "utf8"), examplePath);
+    assertObject(example, examplePath, "document");
+    assertObject(example.on, examplePath, "on");
+    assertObject(example.jobs, examplePath, "jobs");
+  }
+
+  return {
+    actionPath,
+    workflowCount: workflowNames.length,
+    exampleCount: exampleNames.length,
+  };
 }
 
 const isEntrypoint = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isEntrypoint) {
   validateMetadata()
-    .then(({ workflowCount }) => console.log(`Validated action.yml and ${workflowCount} workflow(s).`))
+    .then(({ workflowCount, exampleCount }) =>
+      console.log(
+        `Validated action.yml, ${workflowCount} workflow(s), and ${exampleCount} example(s).`,
+      ),
+    )
     .catch((error) => {
       console.error(error.message);
       process.exitCode = 1;

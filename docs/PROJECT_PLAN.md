@@ -66,8 +66,8 @@ The initial Trellis task is
 - Add bounded retry/backoff and clearer rate-limit diagnostics.
 - Define concurrency and deduplication behavior for synchronize, label, and
   command events.
-- Add tested Gito and PR-Agent adapter examples, followed by a documented
-  command or HTTP contract for internal review services.
+- Live-test the documented PR-Agent adapter, add a tested Gito adapter, then
+  document a command or HTTP contract for internal review services.
 - Publish semantic releases and immutable SHA examples, then test upgrades in
   a small consumer fleet.
 - Add optional setup tooling only for repeated, evidenced adoption pain.
