@@ -1,6 +1,6 @@
-# Backend Development Guidelines
+# Backend Implementation Contracts
 
-> Best practices for backend development in this project.
+> Executable conventions and boundaries for the GitHub Action runtime.
 
 ---
 
