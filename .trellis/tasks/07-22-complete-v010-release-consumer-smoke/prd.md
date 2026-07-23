@@ -2,31 +2,81 @@
 
 ## Goal
 
-Close the remaining pilot observation and maintainer-approval gates, publish an
-immutable first semantic release, and verify installation in a small consumer
-set without weakening the existing release checklist.
+Publish the first immutable semantic release only after the current runtime has
+passed a provider-free private pilot, a 24-hour observation window, and a
+separate maintainer publication decision. Prove the released commit can be
+installed, exercised, and rolled back by a bounded consumer without weakening
+the existing release checklist.
+
+## Confirmed Facts
+
+- Source `main` is currently `32fc23d4a59aee4e84d25d44861e7e5e7b8d6483`.
+  GitHub Actions run `30013641301` completed successfully for that exact SHA.
+- The source repository currently has no tag or GitHub release.
+- The earlier provider-free pilot passed against
+  `9d10ac126d014e56763d7740d694c9a50f32212d`, but that predates the durable
+  routed-review runtime and cannot qualify the current candidate.
+- `platypeeps/sd-github-review-pilot` is private, has no Actions secrets or
+  repository rulesets, and retains open smoke PR `#1`. Its current workflow is
+  still pinned to the earlier candidate.
+- The existing runnable examples intentionally contain commit-SHA
+  placeholders. A source commit cannot contain its own full SHA, so examples
+  can be pinned only in a post-release documentation commit or in the consumer
+  repository.
+- On 2026-07-23 the maintainer explicitly authorized updating and exercising
+  `platypeeps/sd-github-review-pilot` against the frozen candidate. This
+  authorization does not include publishing `v0.1.0` or making an upstream
+  command-pack change.
 
 ## Requirements
 
-- Reconfirm the recorded private-pilot scenarios and complete the outstanding
-  observation window in `docs/RELEASE_CHECKLIST.md`.
-- Require explicit maintainer approval before creating `v0.1.0`.
-- Tag and release the exact green candidate without moving an existing tag.
-- Replace consumer-facing action placeholders with reviewed full commit SHAs
-  where the example is intended to be runnable.
-- Smoke-test installation and routing in a bounded consumer set and document
-  rollback/upgrade evidence.
+- Freeze one full candidate SHA and record its exact successful source CI run
+  before making any pilot mutation.
+- Obtain explicit authority for the bounded private-pilot writes. Pilot only in
+  `platypeeps/sd-github-review-pilot`; do not use a production repository.
+- Re-run the standalone automatic, command, label, Copilot, deduplication,
+  `none`, and unrelated-event scenarios against the frozen candidate.
+- Exercise provider-free durable `route`, `query`, and synthetic external
+  `finalize` behavior on one exact head. Prove replay does not authorize a
+  duplicate adapter request, a new head receives a new identity, and ambiguous
+  or changed-head finalization fails closed.
+- Observe the pilot for 24 hours after its final scenario. Record sanitized run
+  URLs, route/receipt identities, failures, false positives, API errors,
+  operator friction, and rollback state; never publish raw findings or private
+  payloads.
+- After the observation gate passes, require a new explicit maintainer approval
+  before creating `v0.1.0`. Task selection, planning approval, and private-pilot
+  authority are not publication approval.
+- Create an annotated `v0.1.0` tag and GitHub release at the approved candidate
+  without moving or replacing any existing tag.
+- Use the private pilot repository as the bounded provider-free consumer smoke.
+  Pin its runnable workflow to the released full SHA and record upgrade and
+  disable/rollback evidence.
+- Pin runnable consumer examples to the released full SHA in a post-release
+  documentation commit. Keep template-only examples visibly parameterized when
+  a literal source SHA would make the release commit self-referential.
 
 ## Acceptance Criteria
 
-- [ ] Candidate SHA, source CI, pilot evidence, and approval are recorded.
+- [ ] The candidate SHA and exact successful source CI run are recorded before
+  pilot execution.
+- [ ] Every standalone and durable provider-free scenario has bounded,
+  sanitized evidence against the candidate; replay, new-head, and fail-closed
+  behavior match `docs/RELEASE_CHECKLIST.md`.
+- [ ] The final pilot scenario is followed by a completed 24-hour observation
+  window with no unresolved release blocker.
+- [ ] The specific publication approval is recorded after pilot evidence is
+  complete.
 - [ ] `v0.1.0` and its GitHub release point to the approved immutable commit.
-- [ ] A provider-free consumer smoke PR completes with documented route output.
-- [ ] Installation examples use immutable SHAs and rollback is tested or
-  concretely documented.
-- [ ] No provider secret or PR-controlled checkout crosses the pilot boundary.
+- [ ] The provider-free consumer smoke completes while pinned to the released
+  full SHA, with documented route output and disable/rollback evidence.
+- [ ] Runnable installation guidance uses the released full SHA; retained
+  placeholders are clearly template-only.
+- [ ] No provider secret, raw private payload, or PR-controlled checkout crosses
+  the pilot or public evidence boundary.
 
 ## Out of Scope
 
-- Publishing without explicit approval.
+- Publishing without a separate post-pilot explicit approval.
 - Live external-reviewer validation, which belongs to the adapter task.
+- Command-pack handoff or any unrelated upstream repository mutation.
