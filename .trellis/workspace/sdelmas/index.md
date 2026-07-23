@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 13
+- **Total Sessions**: 14
 - **Last Active**: 2026-07-23
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~525 | Active |
+| `journal-1.md` | ~568 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 14 | 2026-07-23 | Implement on-demand routed-review dispatch | `013f78256f0a3c5f01be15cef768f5da06fd8f23`, `10a5729bcc4989923891dcff65501129823b9b18` | `codex/implement-on-demand-routed-review-dispatch` |
 | 13 | 2026-07-23 | Implement durable routed-review receipts | `9b9fd9bcd6294dc6f8223e100010140f22fa9170`, `4f16606c36b7138962d7bbf747c5d1f1dde63bcf` | `codex/implement-durable-routed-review-receipts` |
 | 12 | 2026-07-23 | Implement routed-review protocol core | `4d29fe3ec9e3005e2fe76e32f31f945bac7f2c8c`, `a28ce2a812dd831cefb30dc0737157d11940ef6a`, `6e907f46d24e9c4e593983212ace489c7228542b`, `ecd283897aa1ad57586c94e08e358b8b33dee9f9`, `be126cb84fd1de5c47fef0d48a4bff0ed15df3f9`, `f7657e7d13febec04afd1a0b464f4f774e02c7f7` | `codex/implement-routed-review-protocol-core` |
 | 11 | 2026-07-23 | Decompose routed-review runtime delivery | `88c2ee3555ab8d48d3d8538feb9ff8a25a0d0a2a` | `codex/decompose-routed-review-runtime` |

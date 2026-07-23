@@ -45,7 +45,7 @@ Completed, reviewed, and merged the first-release hardening stream; preserved pi
 
 ### Next Steps
 
-- None - task complete
+- Continue with the repo-local GitHub API retry-policy task; keep external adapter validation and pilot work parked until credentials and authority are available.
 
 
 ## Session 2: Complete Trellis project guidelines
@@ -529,3 +529,42 @@ Added exact-head GitHub Check Run receipt persistence, strict fail-closed reconc
 ### Next Steps
 
 - Merge PR #12 and continue with the on-demand routed-review dispatch task.
+
+
+## Session 14: Implement on-demand routed-review dispatch
+
+**Date**: 2026-07-23
+**Task**: Implement on-demand routed-review dispatch
+**Branch**: `codex/implement-on-demand-routed-review-dispatch`
+
+### Summary
+
+Added explicit durable route, finalize, and query operations with exact-head dispatch, durable setup discovery, and a no-checkout consumer workflow.
+
+### Main Changes
+
+- Added durable operation orchestration and fail-closed receipt mirroring for native Copilot and external adapters.
+- Published the setup descriptor, discovery fixtures, and no-checkout on-demand workflow.
+- Aligned Action metadata, README, design, release guidance, and executable backend specifications.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `013f78256f0a3c5f01be15cef768f5da06fd8f23` | feat: add on-demand routed review dispatch |
+| `10a5729bcc4989923891dcff65501129823b9b18` | fix: validate durable workflow URLs |
+
+### Testing
+
+- [OK] npm test: 99 tests passed
+- [OK] npm run check and metadata validation passed
+- [OK] Full review gate, exact-head CI, Copilot round 2, and delayed thread poll passed
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
