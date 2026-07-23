@@ -9,7 +9,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "check": "node --check src/index.js && node --check src/router.js && node --check src/protocol.js && node --check src/receipt.js && node --check src/github.js && node --check scripts/validate-action-metadata.mjs",
+    "check": "node --check src/index.js && node --check src/operations.js && node --check src/router.js && node --check src/protocol.js && node --check src/receipt.js && node --check src/github.js && node --check scripts/validate-action-metadata.mjs",
     "validate:metadata": "node scripts/validate-action-metadata.mjs",
     "test": "node --test"
   },

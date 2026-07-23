@@ -320,6 +320,22 @@ test("acknowledgment and observation advance phases monotonically", async () => 
   assert.equal(storedCheck.status, "completed");
   assert.equal(storedCheck.conclusion, "success");
 
+  const replayed = await store.acknowledge({
+    pullRequestNumber: request.pullRequestNumber,
+    headSha: request.headSha,
+    logicalDispatchId: started.receipt.logicalDispatchId,
+    acknowledgment: {
+      schemaVersion: 1,
+      logicalDispatchId: started.receipt.logicalDispatchId,
+      backendId: "pr-agent",
+      status: "acknowledged",
+      acknowledgedAt: "2026-07-23T12:30:30Z",
+      findingChannels: ["conversation-comment"],
+    },
+  });
+  assert.equal(replayed.state, "observed");
+  assert.equal(replayed.receipt.dispatch.phase, "observed");
+
   await assert.rejects(
     store.acknowledge({
       pullRequestNumber: request.pullRequestNumber,
@@ -329,8 +345,9 @@ test("acknowledgment and observation advance phases monotonically", async () => 
         schemaVersion: 1,
         logicalDispatchId: started.receipt.logicalDispatchId,
         backendId: "pr-agent",
-        status: "acknowledged",
-        acknowledgedAt: "2026-07-23T12:30:30Z",
+        status: "failed",
+        errorCode: "late-failure",
+        acknowledgedAt: "2026-07-23T12:30:31Z",
         findingChannels: ["conversation-comment"],
       },
     }),

@@ -26,16 +26,21 @@ configuration.
 
 ## Architecture
 
-The implementation has four boundaries:
+The implementation has six boundaries:
 
 1. `src/router.js` contains pure routing policy, command parsing, label parsing,
    trust checks, and sensitive-path matching.
-2. `src/index.js` interprets the event, minimizes API work, invokes the policy,
-   performs the selected side effect, and emits outputs and a step summary.
-3. `src/github.js` owns GitHub REST requests, pagination, reviewer requests,
-   and review-state lookup.
-4. The consuming workflow owns external reviewer adapters for `cheap` and
-   `deep`.
+2. `src/protocol.js` validates and canonicalizes the versioned request,
+   backend, acknowledgment, successor, and receipt envelopes.
+3. `src/receipt.js` persists and reconciles exact-head receipts in GitHub Check
+   Runs.
+4. `src/operations.js` coordinates explicit `route`, `finalize`, and `query`
+   operations and emits bounded durable outputs.
+5. `src/index.js` selects standalone or durable orchestration and owns GitHub
+   output/error surfaces.
+6. `src/github.js` owns GitHub REST requests, pagination, reviewer requests,
+   comparison metadata, and Check Run transport. Consumer workflows still own
+   external reviewer adapters for `cheap` and `deep`.
 
 ```mermaid
 flowchart TD
@@ -58,6 +63,43 @@ flowchart TD
 Irrelevant events and explicit routes are resolved before pull-request file
 enumeration. This allows manual routing to work even for a pull request beyond
 GitHub's 3,000-file listing window and avoids unnecessary API use.
+
+## Durable On-Demand Workflow
+
+`operation=standalone` preserves the event-driven behavior above. A trusted
+caller can instead provide one canonical v1 `review-request` and choose:
+
+| Operation | Behavior |
+| --- | --- |
+| `route` | Revalidates the live PR head, selects policy, creates or reconciles one Check Run receipt, and performs at most one authorized dispatch |
+| `finalize` | Validates one external adapter acknowledgment, revalidates the head, and advances that same receipt to failed or observed |
+| `query` | Reads one exact repository/PR/head/logical identity and never dispatches |
+
+The durable identity is derived from repository, pull request, full head SHA,
+and attempt. Correlation IDs are aliases, not permission to dispatch again. A
+matching retry returns the existing receipt; a conflicting fingerprint fails;
+an uncertain mutation leaves the receipt in `reconciliation-required` with
+dispatch forbidden.
+
+For Copilot, `route` checks both pending requests and non-dismissed reviews on
+the exact head before requesting. For `cheap` and `deep`, it emits one bounded
+`adapter-request`. The consumer-owned adapter writes findings to its declared
+review, comment, or check channels and returns one v1 acknowledgment. Only then
+does `finalize` complete the receipt. `none` records a skipped receipt without
+reviewer mutation.
+
+Every new head has a distinct identity. Optional `supersedes` data is verified
+against the prior durable receipt and trusted GitHub comparison metadata. Raw
+paths are used only in memory; receipts retain a digest, counts, and normalized
+delta class. A bookkeeping-only successor may select `none` only in `auto`,
+when explicitly enabled and no independent-review floor overrides it.
+
+[`config/routed-review-setup-v1.json`](config/routed-review-setup-v1.json)
+declares the workflow identity, contract major, supported intents and
+operations, Check Run capability, permissions, and immutable Action
+placeholder. Read-only clients combine that declaration with GitHub workflow
+metadata to classify `ready`, `absent`, `invalid`, `incompatible`, or
+`unavailable` before any dispatch.
 
 ## Automatic Selection
 
@@ -170,11 +212,18 @@ has already left a non-dismissed review on the current head commit, it also
 suppresses a repeat request. The route remains `copilot`, while
 `copilot-requested=false` explains that no new side effect occurred.
 
+Durable operations retain the compatible route outputs and add the canonical
+`receipt`, `receipt-id`, `logical-dispatch-id`, `request-fingerprint`,
+`durable-state`, `receipt-verified`, dispatch status/phase, selected backend and tiers, finding
+channels, limitations, workflow URL, latency, and reconciliation flags.
+`adapter-request` is nonempty only for the first authorized external dispatch.
+Durable mode exposes a sensitive-file count but never emits the paths.
+
 ## Security and Operational Boundaries
 
 - Pin this action and external reviewer actions to full commit SHAs.
 - Grant `contents: read`; add `pull-requests: write` only when Copilot requests
-  are enabled.
+  are enabled, and add `checks: write` only to a durable receipt workflow.
 - Do not check out or execute pull-request-authored code with secrets in an
   `issue_comment` workflow.
 - Keep provider credentials in the consumer-owned adapter step.
@@ -182,9 +231,14 @@ suppresses a repeat request. The route remains `copilot`, while
   explicitly accepted.
 - Run deterministic checks before AI routing and retain human approval where
   required.
+- Setup discovery, durable routing, comparison, dispatch, finalization, and
+  query are noninteractive and never check out or execute pull-request code.
+- After an ambiguous side effect, query the durable identity and stop; never
+  try a direct or alternate reviewer as fallback.
 
-The action currently has no bounded retry/backoff policy or cross-run
-deduplication contract for generic external reviewers.
+Durable operations deduplicate native and external dispatches across runs.
+Standalone external routing remains a compatibility mode whose adapter
+lifecycle is owned entirely by the consumer workflow.
 
 ## Related Documents
 
@@ -195,5 +249,9 @@ deduplication contract for generic external reviewers.
   reference adapter
 - [`examples/pilot-router.yml`](examples/pilot-router.yml) — provider-free
   routing smoke workflow
+- [`examples/on-demand-review-router.yml`](examples/on-demand-review-router.yml)
+  — no-checkout durable dispatch and finalization workflow
+- [`config/routed-review-setup-v1.json`](config/routed-review-setup-v1.json) —
+  read-only setup capability descriptor
 - [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) — candidate, pilot,
   and release gates

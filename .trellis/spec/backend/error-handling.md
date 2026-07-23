@@ -17,6 +17,9 @@ does not define a custom error hierarchy.
   object. They never return partially trusted data.
 - Let unexpected transport and policy errors reject `runAction()`; do not
   convert them into a successful `none` route.
+- Durable operations parse bounded JSON before constructing side effects.
+  Missing acknowledgments fail; uncertain create/update or post-dispatch head
+  changes return reconciliation required with fallback dispatch forbidden.
 - `GitHubClient#request()` includes the HTTP method, path, and GitHub response
   message when a request fails.
 - The executable entrypoint catches once, emits an escaped GitHub
@@ -44,6 +47,9 @@ does not define a custom error hierarchy.
 | Check Run create/update result is ambiguous | Return `reconciliationRequired: true` and `dispatchAllowed: false` |
 | Live PR head changes before or during receipt creation | Fail closed; do not authorize dispatch for the stale head |
 | GitHub comparison is rewritten, truncated, incomplete, or changes head | Emit an ineligible bounded successor class; never infer bookkeeping-only |
+| Missing/mismatched external acknowledgment | Throw or retain started receipt; never finalize or dispatch a fallback |
+| Changed head during finalization | Return reconciliation required without updating the old-head receipt |
+| Query has no exact receipt | Emit `not-found` with no dispatch authorization |
 
 ## Example
 

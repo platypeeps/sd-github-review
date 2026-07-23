@@ -3,7 +3,7 @@
   "name": "implement-on-demand-routed-review-dispatch",
   "title": "Implement on-demand routed-review dispatch",
   "description": "Add explicit on-demand request, dispatch and external acknowledgment/finalization operations with setup discovery and mirrored receipt outputs.",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": "on-demand routed-review dispatch",
   "package": null,
@@ -12,7 +12,7 @@
   "assignee": "sdelmas",
   "createdAt": "2026-07-23",
   "completedAt": null,
-  "branch": null,
+  "branch": "codex/implement-on-demand-routed-review-dispatch",
   "base_branch": "main",
   "worktree_path": null,
   "commit": null,
@@ -22,10 +22,15 @@
   "parent": null,
   "relatedFiles": [
     "src/index.js",
+    "src/operations.js",
+    "src/receipt.js",
     "action.yml",
     "examples",
+    "config/routed-review-setup-v1.json",
+    "fixtures/setup/v1/discovery.json",
     "DESIGN.md",
-    "README.md"
+    "README.md",
+    "docs/RELEASE_CHECKLIST.md"
   ],
   "notes": "",
   "meta": {

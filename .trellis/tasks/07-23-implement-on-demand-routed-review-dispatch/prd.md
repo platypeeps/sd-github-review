@@ -29,21 +29,21 @@ one canonical durable receipt without breaking standalone event routing.
 
 ## Acceptance Criteria
 
-- [ ] Standalone examples and current event tests are unchanged or explicitly
+- [x] Standalone examples and current event tests are unchanged or explicitly
   compatible.
-- [ ] Native Copilot, external comment, external check, and `none` paths emit
+- [x] Native Copilot, external comment, external check, and `none` paths emit
   the same canonical receipt envelope with correct finding channels.
-- [ ] Same-head replay, new-head, explicit rerequest, conflicting retry,
+- [x] Same-head replay, new-head, explicit rerequest, conflicting retry,
   missing/unacknowledged adapter, and changed-head finalization fixtures pass
   without duplicate dispatch.
-- [ ] Action outputs exactly mirror the persisted receipt and expose backend,
+- [x] Action outputs exactly mirror the persisted receipt and expose backend,
   reason, tier, phase, latency, workflow URL, channels, and limitations.
-- [ ] Setup fixtures make ready, absent, missing/disabled/incompatible, and
+- [x] Setup fixtures make ready, absent, missing/disabled/incompatible, and
   metadata-unavailable states unambiguous through read-only discovery.
-- [ ] Workflows grant `checks: write` only for durable mode and never check out
+- [x] Workflows grant `checks: write` only for durable mode and never check out
   or execute PR-controlled code with provider credentials.
-- [ ] README, DESIGN, action metadata, examples, and release checklist agree.
-- [ ] Full repository and command-pack checks pass.
+- [x] README, DESIGN, action metadata, examples, and release checklist agree.
+- [x] Full repository and command-pack checks pass.
 
 ## Dependencies
 

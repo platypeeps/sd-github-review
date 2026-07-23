@@ -11,6 +11,8 @@ passes and the maintainer explicitly approves publication.
   `npm run validate:metadata`.
 - [ ] Run `python3 scripts/sd-ai-command-pack-install-audit.py` and
   `git diff --check`.
+- [ ] Validate the v1 setup descriptor and no-checkout on-demand workflow;
+  confirm only the durable example grants `checks: write`.
 - [ ] Confirm the GitHub Actions job named `test` is green for the exact
   candidate commit.
 - [ ] Record the candidate's full 40-character commit SHA. Never pilot or
@@ -59,6 +61,11 @@ friction in the source task before deciding to release.
 
 Any permission failure, incorrect route, missing output, unexpected paid
 reviewer call, or duplicate Copilot request is a release blocker.
+
+For the durable candidate, also exercise `route`, `query`, and external
+`finalize` on one exact head. Confirm matching replay emits no second adapter
+request, a new head creates a different logical identity, and changed-head or
+ambiguous finalization requires reconciliation without fallback.
 
 ## 5. Publish Only After Approval
 

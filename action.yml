@@ -4,8 +4,58 @@ author: platypeeps
 
 inputs:
   github-token:
-    description: "Token used to inspect the pull request and request Copilot. Requires pull-requests: write when Copilot can be selected."
+    description: "Token used to inspect the pull request, request Copilot, and manage durable receipts. Durable operations require checks: write."
     required: true
+  operation:
+    description: "Operation mode: standalone, route, finalize, or query."
+    required: false
+    default: standalone
+  review-request:
+    description: "Canonical v1 review-request JSON for route, finalize, or query."
+    required: false
+    default: ""
+  adapter-acknowledgment:
+    description: "Canonical v1 external-adapter acknowledgment JSON for finalize."
+    required: false
+    default: ""
+  cheap-backend:
+    description: "Canonical v1 external backend descriptor JSON used when durable routing selects cheap."
+    required: false
+    default: ""
+  deep-backend:
+    description: "Canonical v1 external backend descriptor JSON used when durable routing selects deep."
+    required: false
+    default: ""
+  workflow-url:
+    description: "Optional HTTPS workflow URL stored in the durable receipt; inferred from GitHub run metadata when omitted."
+    required: false
+    default: ""
+  rerequest-authorized:
+    description: "Whether repository policy authorizes the request's validated same-head rerequest."
+    required: false
+    default: "false"
+  allow-bookkeeping-none:
+    description: "Allow trusted bookkeeping-only successor evidence to lower automatic routing to none."
+    required: false
+    default: "false"
+  bookkeeping-paths:
+    description: "Comma- or newline-separated trusted bookkeeping globs used only for GitHub successor comparison."
+    required: false
+    default: |-
+      .trellis/**
+      .obsidian-kb/**
+  independent-review-floor:
+    description: "Minimum durable automatic route: none, cheap, deep, or copilot."
+    required: false
+    default: none
+  local-confidence-threshold:
+    description: "Minimum 0-100 exact-head local confidence allowed to reduce an automatic route."
+    required: false
+    default: "80"
+  local-evidence-route:
+    description: "Strongest reduction target for eligible exact-head local evidence."
+    required: false
+    default: cheap
   mode:
     description: Routing mode. One of auto, cheap, deep, copilot, or none.
     required: false
@@ -67,6 +117,8 @@ inputs:
     default: "false"
 
 outputs:
+  operation:
+    description: "Executed operation: standalone, route, finalize, or query."
   route:
     description: "Selected route: cheap, deep, copilot, or none."
   reason:
@@ -83,6 +135,50 @@ outputs:
     description: true when the caller should run PR-Agent, Gito, or another external reviewer.
   copilot-requested:
     description: true when this invocation requested Copilot through the GitHub API.
+  receipt:
+    description: Canonical durable v1 receipt JSON, or empty when query found no receipt.
+  receipt-verified:
+    description: true when the receipt output was re-read from the durable Check Run after the latest mutation.
+  receipt-id:
+    description: Durable receipt identifier.
+  logical-dispatch-id:
+    description: Exact repository, pull request, head, and attempt dispatch identity.
+  request-fingerprint:
+    description: Canonical request intent fingerprint.
+  durable-state:
+    description: Durable operation result state, including not-found or reconciliation-required.
+  dispatch-status:
+    description: Durable receipt dispatch status.
+  dispatch-phase:
+    description: Last proven durable dispatch phase.
+  dispatch-allowed:
+    description: true only when this invocation is authorized to perform the first logical dispatch.
+  reconciliation-required:
+    description: true when an uncertain side effect forbids fallback dispatch.
+  reconciliation-error:
+    description: Bounded diagnostic explaining why reconciliation is required.
+  backend:
+    description: Canonical selected backend descriptor JSON.
+  backend-id:
+    description: Selected backend identifier.
+  backend-kind:
+    description: Selected backend kind, copilot or external.
+  cost-tier:
+    description: Selected backend configured cost tier.
+  quality-tier:
+    description: Selected backend configured quality tier.
+  finding-channels:
+    description: JSON array of declared GitHub-observable finding channels.
+  limitations:
+    description: JSON array of material backend limitations.
+  workflow-url:
+    description: Durable receipt workflow URL when available.
+  latency-ms:
+    description: Bounded observed dispatch latency in milliseconds when available.
+  adapter-request:
+    description: One canonical external adapter request JSON only when a new cheap or deep dispatch is authorized.
+  sensitive-file-count:
+    description: Count of sensitive files considered by durable automatic routing; durable mode never emits their paths.
 
 runs:
   using: node24
