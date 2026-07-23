@@ -393,6 +393,35 @@ test("automatic routing never mirrors sensitive paths into durable outputs", asy
   assert.equal(JSON.stringify(harness.summaries).includes("src/auth/session.js"), false);
 });
 
+test("durable operations accept only credential-free HTTPS workflow URLs", async () => {
+  const request = clone(requestByName.get("explicit none"));
+  const client = new FakeGitHubClient(request.headSha);
+  const harness = createHarness(client);
+
+  for (const value of [
+    "not-a-url",
+    "http://github.example/actions/runs/1",
+    "https://user:secret@github.example/actions/runs/1",
+  ]) {
+    await assert.rejects(
+      harness.run("route", request, { "INPUT_WORKFLOW-URL": value }),
+      /workflow-url must/u,
+    );
+  }
+  assert.equal(client.calls.filter(([name]) => name === "createCheckRun").length, 0);
+
+  const externalRequest = clone(requestByName.get("explicit cheap"));
+  client.headSha = externalRequest.headSha;
+  const routed = await harness.run("route", externalRequest, {
+    "INPUT_WORKFLOW-URL": "https://github.example/actions/runs/1",
+    "INPUT_CHEAP-BACKEND": JSON.stringify(backendByName.get("external comment backend")),
+  });
+  assert.equal(
+    routed.receipt.dispatch.workflowUrl,
+    "https://github.example/actions/runs/1",
+  );
+});
+
 test("trusted bookkeeping-only successor creates a distinct current-head none receipt", async () => {
   const priorRequest = clone(requestByName.get("explicit none"));
   const client = new FakeGitHubClient(priorRequest.headSha);

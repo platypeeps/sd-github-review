@@ -178,7 +178,7 @@ outputs:
   adapter-request:
     description: One canonical external adapter request JSON only when a new cheap or deep dispatch is authorized.
   sensitive-file-count:
-    description: Count of sensitive files considered by durable automatic routing; durable mode never emits their paths.
+    description: Count of sensitive files considered by durable automatic routing; durable consumers must use this count because sensitive-files is always an empty array in durable mode.
 
 runs:
   using: node24

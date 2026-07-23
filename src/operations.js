@@ -61,9 +61,26 @@ function liveHead(pullRequest) {
 
 function workflowUrl(env) {
   const explicit = input("workflow-url", "", env).trim();
-  if (explicit) return explicit;
-  if (!env.GITHUB_SERVER_URL || !env.GITHUB_REPOSITORY || !env.GITHUB_RUN_ID) return undefined;
-  return `${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`;
+  const value = explicit || (
+    env.GITHUB_SERVER_URL && env.GITHUB_REPOSITORY && env.GITHUB_RUN_ID
+      ? `${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`
+      : ""
+  );
+  if (!value) return undefined;
+
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("workflow-url must be a valid HTTPS URL");
+  }
+  if (url.protocol !== "https:") {
+    throw new Error("workflow-url must be a valid HTTPS URL");
+  }
+  if (url.username || url.password) {
+    throw new Error("workflow-url must not include credentials");
+  }
+  return url.toString();
 }
 
 function timestamp(now) {
