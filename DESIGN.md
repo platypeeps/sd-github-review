@@ -64,6 +64,23 @@ Irrelevant events and explicit routes are resolved before pull-request file
 enumeration. This allows manual routing to work even for a pull request beyond
 GitHub's 3,000-file listing window and avoids unnecessary API use.
 
+### GitHub transport retry policy
+
+The REST transport retries only `GET` requests, at most three total attempts.
+Transport failures and HTTP 408/429/500/502/503/504 use deterministic bounded
+backoff; HTTP 403 is eligible only when GitHub supplies primary- or
+secondary-rate-limit evidence. `retry-after` takes precedence, followed by a
+zero-remaining `x-ratelimit-reset`; a secondary limit without either waits 60
+seconds. No individual wait exceeds 60 seconds. A longer GitHub directive
+fails with bounded rate-limit context instead of retrying early.
+
+Mutating requests are never retried. An interrupted reviewer request, Check
+Run create, or Check Run update therefore stays within the existing
+fail-closed reconciliation boundary and cannot be duplicated by transport
+recovery. Terminal API errors preserve the GitHub message and append only
+allow-listed rate-limit fields; authorization and arbitrary response headers
+are never logged.
+
 ## Durable On-Demand Workflow
 
 `operation=standalone` preserves the event-driven behavior above. A trusted

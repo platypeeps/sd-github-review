@@ -21,7 +21,13 @@ does not define a custom error hierarchy.
   Missing acknowledgments fail; uncertain create/update or post-dispatch head
   changes return reconciliation required with fallback dispatch forbidden.
 - `GitHubClient#request()` includes the HTTP method, path, and GitHub response
-  message when a request fails.
+  message when a request fails. It retries eligible `GET` failures at most
+  three total attempts through an injected sleeper, but never retries a
+  mutation.
+- Rate-limit errors use numeric `retry-after`, then a zero-remaining
+  `x-ratelimit-reset`, then the documented 60-second secondary-limit fallback.
+  A directive beyond the 60-second local cap fails without retrying early and
+  reports only bounded rate-limit fields.
 - The executable entrypoint catches once, emits an escaped GitHub
   `::error::` annotation, and sets `process.exitCode = 1`.
 - Tests inject `fetch`, file appenders, and clients rather than mutating global
@@ -35,6 +41,11 @@ does not define a custom error hierarchy.
 | Missing PR number | Throw before constructing the GitHub client |
 | Conflicting route labels | Throw; do not choose an arbitrary route |
 | GitHub non-2xx response | Throw with method, path, and API message |
+| Read transport failure or HTTP 408/429/500/502/503/504 | Retry at most three total attempts with bounded deterministic delay |
+| HTTP 403 without rate-limit evidence | Throw immediately; do not classify every permission failure as transient |
+| Primary/secondary rate-limit delay at or below 60 seconds | Honor the GitHub-directed wait before a safe read retry |
+| GitHub-directed delay above 60 seconds | Throw with bounded limit context; never retry sooner than directed |
+| Reviewer or Check Run mutation transport failure | Make one attempt and let the caller reconcile or fail closed |
 | More than 3,000 files in automatic mode | Throw and require an explicit route |
 | Unrelated event | Emit a successful `none` decision, not an error |
 | Unsupported protocol schema major or malformed identity | Throw a field-specific error before hashing or future dispatch |
