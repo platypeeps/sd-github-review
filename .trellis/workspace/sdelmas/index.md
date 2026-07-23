@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 6
+- **Total Sessions**: 7
 - **Last Active**: 2026-07-22
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~243 | Active |
+| `journal-1.md` | ~283 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 7 | 2026-07-22 | Consolidate roadmap into Trellis backlog | `cef1651`, `eb89c28` | `codex/consolidate-project-roadmap` |
 | 6 | 2026-07-22 | Finalize routed-review receipt contract PR | `b0717e1` | `codex/publish-routed-review-receipt-contract` |
 | 5 | 2026-07-22 | Publish routed-review receipt contract plan | `4b922f4`, `01b0d7b`, `157b031`, `0e1982c`, `a4b743e` | `codex/publish-routed-review-receipt-contract` |
 | 4 | 2026-07-22 | Close tracked workspace review loop | `5171df4`, `87be303` | `codex/enforce-housekeeping-finish-work` |

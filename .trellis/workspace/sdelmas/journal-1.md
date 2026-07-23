@@ -244,3 +244,44 @@ Reused PR #6, refreshed repository knowledge, validated the synchronized bookkee
 ### Next Steps
 
 - None - task complete
+
+
+## Session 7: Consolidate roadmap into Trellis backlog
+
+**Date**: 2026-07-22
+**Task**: Consolidate roadmap into Trellis backlog
+**Branch**: `codex/consolidate-project-roadmap`
+
+### Summary
+
+Converted all open roadmap phases and issues into six Trellis tasks, removed duplicate planning documents, and completed PR review remediation.
+
+### Main Changes
+
+- Created six prioritized Trellis backlog tasks and preserved the migration mapping in an archived parent task.
+- Removed the obsolete standalone project plan and consolidated README, design, and Trellis planning ownership guidance.
+- Clarified deliberate priority promotions and historical archived-path semantics after Copilot review.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cef1651` | chore: consolidate roadmap into Trellis backlog |
+| `eb89c28` | docs: clarify roadmap migration priorities |
+
+### Testing
+
+- [OK] npm test: 32 tests passed
+- [OK] npm run check and npm run validate:metadata passed
+- [OK] All seven Trellis task validations passed
+- [OK] SD review full-check passed with Prism and Gito disabled
+- [OK] GitHub CI passed and Copilot round 2 produced no new comments
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
