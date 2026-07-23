@@ -57,6 +57,7 @@ test("canonical JSON recursively sorts object keys", () => {
     stableProtocolJson({ z: 1, a: { y: 2, b: 3 }, list: [{ d: 4, c: 5 }] }),
     '{"a":{"b":3,"y":2},"list":[{"c":5,"d":4}],"z":1}',
   );
+  assert.equal(stableProtocolJson({ "ä": 1, z: 2, A: 3 }), '{"A":3,"z":2,"ä":1}');
 });
 
 test("equivalent raw casing and provider ordering produce one canonical fingerprint", () => {
@@ -154,6 +155,16 @@ test("requires exact scalar and container types before normalization", () => {
     () => decodeReviewRequest({ ...clone(base), extension: { future: undefined } }),
     /JSON values only/u,
   );
+  for (const nonPlainObject of [new Date(), new Map([["prompt", "fixture"]]), new (class {
+    toJSON() {
+      return { prompt: "fixture" };
+    }
+  })()]) {
+    assert.throws(
+      () => decodeReviewRequest({ ...clone(base), extension: nonPlainObject }),
+      /plain JSON objects only/u,
+    );
+  }
 });
 
 test("enforces whole-request and bounded-string limits without echoing values", () => {

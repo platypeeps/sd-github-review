@@ -132,6 +132,9 @@ function rejectForbiddenFields(value, field = "value", seen = new WeakSet()) {
     value.forEach((item, index) => rejectForbiddenFields(item, `${field}[${index}]`, seen));
     return;
   }
+  if (!isPlainObject(value)) {
+    throw new Error(`${field} must contain plain JSON objects only`);
+  }
   for (const [key, item] of Object.entries(value)) {
     const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/gu, "");
     if (FORBIDDEN_FIELD_NAMES.has(normalizedKey)) {
@@ -299,7 +302,7 @@ function canonicalize(value) {
   return Object.fromEntries(
     Object.keys(value)
       .filter((key) => value[key] !== undefined)
-      .sort((left, right) => left.localeCompare(right))
+      .sort((left, right) => (left < right ? -1 : left > right ? 1 : 0))
       .map((key) => [key, canonicalize(value[key])]),
   );
 }
