@@ -58,9 +58,9 @@ the existing release checklist.
 
 ## Acceptance Criteria
 
-- [ ] The candidate SHA and exact successful source CI run are recorded before
+- [x] The candidate SHA and exact successful source CI run are recorded before
   pilot execution.
-- [ ] Every standalone and durable provider-free scenario has bounded,
+- [x] Every standalone and durable provider-free scenario has bounded,
   sanitized evidence against the candidate; replay, new-head, and fail-closed
   behavior match `docs/RELEASE_CHECKLIST.md`.
 - [ ] The final pilot scenario is followed by a completed 24-hour observation
