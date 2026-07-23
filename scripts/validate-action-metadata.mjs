@@ -1,9 +1,143 @@
+import { execFile } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 import { parseDocument } from "yaml";
 
 const immutableActionReference = /^[^/@\s]+\/[^/@\s]+(?:\/[^@\s]+)?@[0-9a-f]{40}$/u;
+const execFileAsync = promisify(execFile);
+const localPlatformRoots = new Set([
+  ".agent",
+  ".agents",
+  ".claude",
+  ".codebuddy",
+  ".codex",
+  ".cursor",
+  ".devin",
+  ".factory",
+  ".gemini",
+  ".gito",
+  ".kiro",
+  ".kilocode",
+  ".opencode",
+  ".pi",
+  ".qoder",
+  ".reasonix",
+  ".trae",
+  ".zcode",
+]);
+const localPlatformDirectories = new Set([
+  ".cache",
+  "cache",
+  "logs",
+  "sessions",
+  "tmp",
+]);
+
+function normalizeRepositoryPath(filePath) {
+  return filePath.replaceAll("\\", "/").replace(/^\.\/+/, "");
+}
+
+export function prohibitedPublishedMetadataReason(filePath) {
+  const normalized = normalizeRepositoryPath(filePath);
+  if (
+    normalized === ".env" ||
+    (/^\.env\./u.test(normalized) && !/^\.env\.(?:ci|example|test)$/u.test(normalized))
+  ) {
+    return "local environment files must not be published";
+  }
+
+  if (
+    /^\.trellis\/(?:\.developer|\.current-task|\.ralph-state\.json|\.agent-log|\.session-id|\.template-hashes\.json)$/u.test(
+      normalized,
+    )
+  ) {
+    return "Trellis developer or runtime identity is local-only";
+  }
+  if (/^\.trellis\/(?:\.runtime|\.cache|\.agents|worktrees)(?:\/|$)/u.test(normalized)) {
+    return "Trellis runtime, cache, agent, and worktree state is local-only";
+  }
+  if (/^\.trellis\/\.backup-[^/]*(?:\/|$)/u.test(normalized)) {
+    return "Trellis update backups are local-only";
+  }
+  if (
+    /^\.trellis\/(?:.*\/)?(?:\.plan-log|[^/]+\.(?:new|pyc|tmp))$/u.test(normalized) ||
+    /^\.trellis\/(?:.*\/)?__pycache__(?:\/|$)/u.test(normalized)
+  ) {
+    return "Trellis temporary and interpreter artifacts are local-only";
+  }
+  if (
+    normalized.startsWith(".trellis/workspace/") &&
+    !/^\.trellis\/workspace\/(?:index\.md|[^/]+\/(?:index\.md|journal-[1-9][0-9]*\.md))$/u.test(
+      normalized,
+    )
+  ) {
+    return "Trellis workspace publication is limited to developer indexes and journals";
+  }
+
+  const segments = normalized.split("/");
+  if (localPlatformRoots.has(segments[0])) {
+    const platformSegments = segments.slice(1);
+    const localName = platformSegments.find(
+      (segment) =>
+        localPlatformDirectories.has(segment) ||
+        segment.includes(".local.") ||
+        segment.endsWith(".log"),
+    );
+    if (localName) return `AI-tool local state segment ${localName} must not be published`;
+    if (
+      segments[0] === ".opencode" &&
+      platformSegments.some((segment) => segment === "node_modules" || segment === "state")
+    ) {
+      return "OpenCode dependency and state directories are local-only";
+    }
+  }
+
+  if (
+    /^\.github\/copilot\/(?:.*\/)?(?:\.cache|cache|logs|sessions|tmp)(?:\/|$)/u.test(
+      normalized,
+    )
+  ) {
+    return "GitHub Copilot local state is not a shared repository adapter";
+  }
+  return null;
+}
+
+async function trackedRepositoryPaths(repositoryRoot) {
+  try {
+    const { stdout } = await execFileAsync("git", ["-C", repositoryRoot, "ls-files", "-z"], {
+      encoding: "utf8",
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    return stdout.split("\0").filter(Boolean).map(normalizeRepositoryPath);
+  } catch (error) {
+    const detail =
+      typeof error.stderr === "string" && error.stderr.trim()
+        ? error.stderr.trim()
+        : error.message;
+    throw new Error(
+      `${repositoryRoot}: could not inspect tracked public metadata with git ls-files: ${detail}`,
+    );
+  }
+}
+
+async function validatePublishedMetadata(repositoryRoot) {
+  const trackedPaths = await trackedRepositoryPaths(repositoryRoot);
+  const prohibited = trackedPaths
+    .map((filePath) => ({ filePath, reason: prohibitedPublishedMetadataReason(filePath) }))
+    .filter(({ reason }) => reason);
+  if (prohibited.length > 0) {
+    const details = prohibited
+      .map(({ filePath, reason }) => `- ${filePath}: ${reason}`)
+      .join("\n");
+    throw new Error(
+      `${repositoryRoot}: prohibited local/session metadata is tracked:\n${details}\n` +
+        "Untrack these paths or revise docs/PUBLIC_METADATA_POLICY.md deliberately.",
+    );
+  }
+  return trackedPaths.length;
+}
 
 function parseYaml(source, filePath) {
   const document = parseDocument(source, { prettyErrors: true, uniqueKeys: true });
@@ -89,19 +223,22 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
     assertObject(example.jobs, examplePath, "jobs");
   }
 
+  const trackedPathCount = await validatePublishedMetadata(repositoryRoot);
+
   return {
     actionPath,
     workflowCount: workflowNames.length,
     exampleCount: exampleNames.length,
+    trackedPathCount,
   };
 }
 
 const isEntrypoint = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isEntrypoint) {
   validateMetadata()
-    .then(({ workflowCount, exampleCount }) =>
+    .then(({ workflowCount, exampleCount, trackedPathCount }) =>
       console.log(
-        `Validated action.yml, ${workflowCount} workflow(s), and ${exampleCount} example(s).`,
+        `Validated action.yml, ${workflowCount} workflow(s), ${exampleCount} example(s), and ${trackedPathCount} tracked public path(s).`,
       ),
     )
     .catch((error) => {

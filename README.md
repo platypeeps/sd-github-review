@@ -104,7 +104,9 @@ digest or publish an internally controlled wrapper.
 
 The action has no runtime dependencies and uses Node.js 24's built-in test
 runner. The development-only YAML parser validates the action and workflow
-metadata.
+metadata. AI-agent and Trellis files in this public repository follow the
+documented [public metadata policy](docs/PUBLIC_METADATA_POLICY.md); the same
+metadata gate rejects tracked local/session paths.
 
 ```sh
 npm ci
