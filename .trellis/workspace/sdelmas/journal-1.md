@@ -327,3 +327,41 @@ Converted all open roadmap phases and issues into six Trellis tasks, removed dup
 ### Next Steps
 
 - None - task complete
+
+
+## Session 9: Reconcile roadmap PR with current main
+
+**Date**: 2026-07-23
+**Task**: Reconcile roadmap PR with current main
+**Branch**: `codex/consolidate-project-roadmap`
+
+### Summary
+
+Integrated the merged task-metadata stream into the roadmap branch, preserved append-only session history, and added reciprocal topology links required by the current preflight.
+
+### Main Changes
+
+- Merged current main into the published roadmap branch without rewriting its reviewed history.
+- Preserved main session 7 byte-for-byte and appended the roadmap record as session 8.
+- Linked all six planning tasks reciprocally to the archived roadmap-migration parent.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f5623e4` | Merge branch 'main' into codex/consolidate-project-roadmap |
+| `0871b80` | fix: reconcile roadmap task history |
+
+### Testing
+
+- [OK] npm test passed 32 tests; npm run check and npm run validate:metadata passed.
+- [OK] The current SD full check passed with all task metadata, topology, context, journal, provenance, and documentation gates.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Push the exact finish-work head, complete final CI/review polling, and merge PR #7 through housekeeping.
