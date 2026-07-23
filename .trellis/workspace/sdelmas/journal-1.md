@@ -402,3 +402,41 @@ Defined and enforced the public Trellis and AI-tool metadata boundary without re
 ### Next Steps
 
 - None - task complete
+
+
+## Session 11: Decompose routed-review runtime delivery
+
+**Date**: 2026-07-23
+**Task**: Decompose routed-review runtime delivery
+**Branch**: `codex/decompose-routed-review-runtime`
+
+### Summary
+
+Split the oversized routed-review runtime contract into four ordered, independently reviewable Trellis implementation tasks and completed the parent planning lifecycle.
+
+### Main Changes
+
+- Mapped all routed-review runtime requirements into protocol core, durable receipt, on-demand dispatch, and pilot/handoff child tasks.
+- Preserved reciprocal task dependencies and isolated private-pilot and upstream handoff authority boundaries.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `88c2ee3555ab8d48d3d8538feb9ff8a25a0d0a2a` | docs: split routed review runtime delivery |
+
+### Testing
+
+- [OK] npm test (34 tests passed)
+- [OK] npm run check
+- [OK] action metadata, review preflight, and all five Trellis task contexts validated
+- [OK] Copilot reviewed PR #10 with no comments; CI passed and review threads were empty
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
