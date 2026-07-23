@@ -460,7 +460,9 @@ const failures = trackedPaths.filter(prohibitedPublishedMetadataReason);
 
 - Do not check out or execute pull-request-authored code in a secret-bearing
   `issue_comment` workflow.
-- Do not use floating third-party Action references in checked-in workflows.
+- Do not use floating third-party Action references in checked-in workflows or
+  examples. Examples may use an explicit `@<...>` substitution placeholder;
+  every non-placeholder reference must use a 40-character commit SHA.
 - Do not use floating `docker://` image references in workflows or examples;
   pin the manifest digest with `@sha256:<64 hex characters>`.
 - Do not fetch pull-request files before event gating or when an explicit route

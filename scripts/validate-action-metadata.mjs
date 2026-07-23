@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { parseDocument } from "yaml";
 
 const immutableActionReference = /^[^/@\s]+\/[^/@\s]+(?:\/[^@\s]+)?@[0-9a-f]{40}$/u;
+const placeholderActionReference = /^[^/@\s]+\/[^/@\s]+(?:\/[^@\s]+)?@<[^<>\s]+>$/u;
 const immutableDockerReference = /^docker:\/\/[^@\s]+@sha256:[0-9a-f]{64}$/u;
 const execFileAsync = promisify(execFile);
 const localPlatformRoots = new Set([
@@ -170,7 +171,11 @@ function assertObject(value, filePath, key) {
   }
 }
 
-function validateUsesReferences(document, filePath, { requireActionSha }) {
+function validateUsesReferences(
+  document,
+  filePath,
+  { allowActionPlaceholder = false },
+) {
   for (const { reference, location } of collectUses(document)) {
     if (reference.startsWith("./")) continue;
     if (reference.startsWith("docker://")) {
@@ -181,7 +186,9 @@ function validateUsesReferences(document, filePath, { requireActionSha }) {
       }
       continue;
     }
-    if (requireActionSha && !immutableActionReference.test(reference)) {
+    const allowedPlaceholder =
+      allowActionPlaceholder && placeholderActionReference.test(reference);
+    if (!immutableActionReference.test(reference) && !allowedPlaceholder) {
       throw new Error(
         `${filePath}: ${location} must pin third-party action ${reference} to a 40-character commit SHA`,
       );
@@ -221,7 +228,7 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
     assertObject(workflow, workflowPath, "document");
     assertObject(workflow.on, workflowPath, "on");
     assertObject(workflow.jobs, workflowPath, "jobs");
-    validateUsesReferences(workflow, workflowPath, { requireActionSha: true });
+    validateUsesReferences(workflow, workflowPath, {});
   }
 
   const examplesDirectory = path.join(repositoryRoot, "examples");
@@ -234,7 +241,7 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
     assertObject(example, examplePath, "document");
     assertObject(example.on, examplePath, "on");
     assertObject(example.jobs, examplePath, "jobs");
-    validateUsesReferences(example, examplePath, { requireActionSha: false });
+    validateUsesReferences(example, examplePath, { allowActionPlaceholder: true });
   }
 
   const trackedPathCount = await validatePublishedMetadata(repositoryRoot);

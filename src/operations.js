@@ -252,7 +252,7 @@ export function buildAdapterAcknowledgment(adapterRequestValue, outcomeValue, ac
   });
 }
 
-async function runAcknowledgmentAction({ env, outputWriter, logger, now }) {
+async function runAcknowledgmentAction({ env, outputWriter, summaryWriter, logger, now }) {
   const acknowledgment = buildAdapterAcknowledgment(
     jsonInput("adapter-request", env),
     input("adapter-outcome", "", env),
@@ -265,6 +265,15 @@ async function runAcknowledgmentAction({ env, outputWriter, logger, now }) {
   for (const [name, value] of Object.entries(outputs)) {
     await outputWriter(name, value);
   }
+  await summaryWriter({
+    operation: "acknowledge",
+    state: acknowledgment.status,
+    receipt: null,
+    dispatchAllowed: false,
+    reconciliationRequired: false,
+    changedLines: 0,
+    sensitiveCount: 0,
+  });
   logger(
     `Built ${acknowledgment.status} adapter acknowledgment for ${acknowledgment.backendId}`,
   );
@@ -510,7 +519,7 @@ export async function runDurableAction({
     throw new Error("runDurableAction requires route, acknowledge, finalize, or query");
   }
   if (normalizedOperation === "acknowledge") {
-    return runAcknowledgmentAction({ env, outputWriter, logger, now });
+    return runAcknowledgmentAction({ env, outputWriter, summaryWriter, logger, now });
   }
   const request = decodeReviewRequest(jsonInput("review-request", env));
   const client = clientFactory({

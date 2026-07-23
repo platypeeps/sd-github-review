@@ -222,6 +222,7 @@ test("builds canonical adapter acknowledgments from bounded step outcomes", asyn
 test("acknowledge operation does not construct a GitHub client", async () => {
   const request = adapterRequestByName.get("PR-Agent cheap dispatch");
   const outputs = new Map();
+  const summaries = [];
   let factories = 0;
   const result = await runAction({
     event: {},
@@ -236,6 +237,7 @@ test("acknowledge operation does not construct a GitHub client", async () => {
       throw new Error("acknowledge must not construct a GitHub client");
     },
     outputWriter: (name, value) => outputs.set(name, value),
+    summaryWriter: (summary) => summaries.push(summary),
     logger() {},
     now: () => "2026-07-23T12:30:10Z",
   });
@@ -244,6 +246,17 @@ test("acknowledge operation does not construct a GitHub client", async () => {
   assert.equal(result.acknowledgment.status, "acknowledged");
   assert.equal(outputs.get("operation"), "acknowledge");
   assert.deepEqual(JSON.parse(outputs.get("adapter-acknowledgment")), result.acknowledgment);
+  assert.deepEqual(summaries, [
+    {
+      operation: "acknowledge",
+      state: "acknowledged",
+      receipt: null,
+      dispatchAllowed: false,
+      reconciliationRequired: false,
+      changedLines: 0,
+      sensitiveCount: 0,
+    },
+  ]);
 });
 
 test("conflicting retries fail while policy-authorized rerequests use a new attempt", async () => {

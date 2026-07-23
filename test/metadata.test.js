@@ -48,6 +48,24 @@ async function writeMetadataFixture(root, actionReference) {
   );
 }
 
+async function writeExampleFixture(root, actionReference) {
+  await writeFile(
+    path.join(root, "examples", "fixture.yml"),
+    [
+      "name: Example",
+      "on:",
+      "  workflow_dispatch:",
+      "jobs:",
+      "  test:",
+      "    runs-on: ubuntu-latest",
+      "    steps:",
+      `      - uses: ${actionReference}`,
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+}
+
 test("validates the repository action metadata, pinned workflows, and examples", async () => {
   const result = await validateMetadata(path.resolve(import.meta.dirname, ".."));
   assert.equal(result.workflowCount, 1);
@@ -329,6 +347,26 @@ test("rejects floating third-party Action references", async () => {
     validateMetadata(root),
     /must pin third-party action actions\/checkout@v4 to a 40-character commit SHA/u,
   );
+});
+
+test("rejects floating example Actions while allowing documented placeholders", async () => {
+  const pinnedAction = "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c";
+  const floatingRoot = await mkdtemp(path.join(os.tmpdir(), "sd-review-example-floating-"));
+  await writeMetadataFixture(floatingRoot, pinnedAction);
+  await writeExampleFixture(floatingRoot, "actions/checkout@v4");
+  await assert.rejects(
+    validateMetadata(floatingRoot),
+    /must pin third-party action actions\/checkout@v4 to a 40-character commit SHA/u,
+  );
+
+  const placeholderRoot = await mkdtemp(
+    path.join(os.tmpdir(), "sd-review-example-placeholder-"),
+  );
+  await writeMetadataFixture(placeholderRoot, pinnedAction);
+  await writeExampleFixture(placeholderRoot, "your-org/review-action@<commit-sha>");
+  await execFileAsync("git", ["init", "-q", placeholderRoot]);
+  await execFileAsync("git", ["-C", placeholderRoot, "add", "."]);
+  await assert.doesNotReject(validateMetadata(placeholderRoot));
 });
 
 test("rejects floating Docker references and accepts digest pins", async () => {
