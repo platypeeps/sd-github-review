@@ -21,6 +21,6 @@
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "Upstream PR platypeeps/sd-ai-command-pack#229 merged; reviewed payload commit fbb6a82 is published as v0.32.0 at release commit a447143. Consumer install is verified at target against that release.",
+  "notes": "Upstream PR platypeeps/sd-ai-command-pack#229 delivered the priority-provenance contract. Consumer review then exposed a regressed test/ path classifier; corrective upstream PR #230 merged and v0.32.1 is published at release commit d0aba8c. Consumer install is verified at target against that release.",
   "meta": {}
 }

@@ -1,6 +1,6 @@
 {
   "pack": "sd-ai-command-pack",
-  "version": "0.32.0",
+  "version": "0.32.1",
   "files": {
     ".agents/skills/sd-audit-repo/SKILL.md": "sha256:8e423c69d3be1dc345084d3f6f75a71652f96b2ba970ac9f0daa5a26db2bceb2",
     ".agents/skills/sd-audit-repo/charters/accessibility-i18n.md": "sha256:15e5ffe2866b628b020e6d30978fffbef04da714ca465c2479d4b869df9c6ba6",
@@ -24,7 +24,7 @@
     ".agents/skills/sd-fix-ci/SKILL.md": "sha256:1def728d58c6e19e46c42f358be66467fcb0919feb94e858a1a244b0843574b0",
     ".agents/skills/sd-full-check/SKILL.md": "sha256:c8b1c8d7e9136678f88f3494efe2538d88512d9a7660ab397f3595ddfaed2f59",
     ".agents/skills/sd-help/SKILL.md": "sha256:5aaa049bdb8bf64fe1d4f5b5475c97dac270c72d5a20132589b957a89180174b",
-    ".agents/skills/sd-help/references/command-catalog.md": "sha256:8c36032a76aef15ca9f957cc9ab05d03cf93d58a966f34a37bfb078b4c85eaba",
+    ".agents/skills/sd-help/references/command-catalog.md": "sha256:d12bb05c95c3b085e20dc10413760612b7ce972e6952bc39002a936522aaab65",
     ".agents/skills/sd-help/references/examples.md": "sha256:17e0514891c2752f2473c93872f04152724c356a07356530ef8df6be24c00878",
     ".agents/skills/sd-housekeeping/SKILL.md": "sha256:e8ff932fea0e6c93ec3d3d56f188c9ea652da9a9d9c8578ad52e8a3d511aaf9b",
     ".agents/skills/sd-retro/SKILL.md": "sha256:d6790d170c9d227c168245b26adea608888a4c7b7ca82f8fc9a61aa6c35a0038",
@@ -134,7 +134,7 @@
     "scripts/sd-ai-command-pack-pr-body-scope.py": "sha256:850416370be7772d0a475468d7250eb33266d4207767638d0612e1a2ece4872e",
     "scripts/sd-ai-command-pack-record-session.py": "sha256:8571c423a1aad5b87452e02900e731e9fd6c267f7a779cc179df06444714b0ae",
     "scripts/sd-ai-command-pack-review-full-check.sh": "sha256:a3fe844054c8ce8a275197a7e5b338a11e38ebba0b178d4b157dc42501f9592b",
-    "scripts/sd-ai-command-pack-review-learnings.py": "sha256:bda242072f7f6ca148b540ba0eabb131c6b9e0ba350c84c152ed4b6f74176d5a",
+    "scripts/sd-ai-command-pack-review-learnings.py": "sha256:c60e8472d69f3f6b9aa094dd174c4983dfa0a49f6c5a497b832efc7ea60ecb72",
     "scripts/sd-ai-command-pack-review-local.sh": "sha256:ce9e9f580b6af0c23f7fd27580122129d1480001a5952b55e1cd0f332d77aed6",
     "scripts/sd-ai-command-pack-review-preflight.mjs": "sha256:924115df130a8a66deb4fe44e8907b3cfa71b60214e28334894c3f98ea46c92c",
     "scripts/sd-ai-command-pack-review-scope.sh": "sha256:4f3f686a99bef4c7a4af5dc5a2b129fd1b5a2a3545cb6c07f3b5973e1b0d9a5a",

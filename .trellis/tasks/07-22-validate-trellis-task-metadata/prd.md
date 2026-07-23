@@ -56,8 +56,11 @@ preserved in archived Trellis evidence.
 - The reviewed payload commit is `fbb6a82`; finish-work archived the upstream
   task and recorded its session at head `13d02f4` without changing payload
   bytes.
-- Main CI published `v0.32.0` at release commit `a447143`. Local and remote tag
-  refs, the payload digest, and candidate ledger passed the release-identity
-  preflight.
-- This consumer's installed `0.32.0` payload is source-current and fleet
-  preflight reports it at the published target version.
+- Consumer PR #8 exposed that the 0.32.0 refresh regressed this repository's
+  top-level `test/` review-learning classification. Corrective upstream PR
+  #230 restored portable support for both `test/` and `tests/`, added focused
+  coverage, passed all eight fleet candidates, and merged at `d0aba8c`.
+- `v0.32.1` points to release commit `d0aba8c`; local and remote tag refs, the
+  payload digest, and candidate ledger passed the release-identity preflight.
+- This consumer's installed `0.32.1` payload is source-current and retains the
+  singular-directory classifier under upstream provenance.
