@@ -9,10 +9,10 @@
 - Cover native Copilot, external comment/check adapters, `none`, automatic and
   explicit routes, and bounded optional cost/latency observations.
 - Cover accepted exact-head local-clean/fully-dispositioned summaries plus
-  unavailable, failed, cancelled, explicit-none skipped,
-  bookkeeping-successor skipped, stale, dirty-worktree, malformed, oversized,
-  and forbidden-field local evidence. Skipped evidence receives zero positive
-  confidence.
+  unavailable, failed, cancelled, `skipped:explicit-none`,
+  `skipped:bookkeeping-successor`, stale, dirty-worktree, malformed,
+  oversized, and forbidden-field local evidence. Skipped evidence receives
+  zero positive confidence.
 - Add negative fixtures for malformed, unsupported, stale, conflicting,
   unacknowledged, duplicate, and contradictory evidence.
 - Add successor-head fixtures for a valid prior receipt, bookkeeping-only

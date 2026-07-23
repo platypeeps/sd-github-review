@@ -158,10 +158,10 @@ or receives their raw findings.
 - [ ] Automatic selection reports its deterministic reason and configured cost
   tier; explicit overrides win and remain visible.
 - [ ] Fixtures cover clean, fully dispositioned, unavailable, failed,
-  cancelled, explicitly skipped, bookkeeping-successor skipped, stale-head,
-  dirty-worktree, malformed, oversized, and forbidden-field local summaries.
-  The Action accepts only the documented bounded shape and gives skipped
-  evidence zero positive confidence.
+  cancelled, `skipped:explicit-none`, `skipped:bookkeeping-successor`,
+  stale-head, dirty-worktree, malformed, oversized, and forbidden-field local
+  summaries. The Action accepts only the documented bounded shape and gives
+  skipped evidence zero positive confidence.
 - [ ] Policy tests prove that eligible local-clean evidence can reduce an
   automatic remote tier, while missing/failed evidence cannot boost confidence
   and sensitive/large-change floors cannot be bypassed.
