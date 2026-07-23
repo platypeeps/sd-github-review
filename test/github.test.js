@@ -72,7 +72,7 @@ test("fails explicitly when automatic routing exceeds GitHub's 3,000-file window
 
 test("surfaces GitHub API error messages with method and path", async () => {
   const client = createClient(async () =>
-    jsonResponse({ message: "secondary rate limit" }, {
+    jsonResponse({ message: "Validation Failed" }, {
       status: 422,
       statusText: "Unprocessable Content",
     }),
@@ -80,7 +80,7 @@ test("surfaces GitHub API error messages with method and path", async () => {
 
   await assert.rejects(
     client.getPullRequest(4),
-    /GitHub API GET \/repos\/platypeeps\/example\/pulls\/4 failed: secondary rate limit/u,
+    /GitHub API GET \/repos\/platypeeps\/example\/pulls\/4 failed: Validation Failed/u,
   );
 });
 
@@ -335,6 +335,26 @@ test("fails closed on malformed rate-limit headers and suppresses unsafe resourc
   });
   assert.equal(callCount, 1);
   assert.deepEqual(sleeps, []);
+
+  const retryAfterSleeps = [];
+  let retryAfterCalls = 0;
+  const malformedRetryAfter = createClient(
+    async () => {
+      retryAfterCalls += 1;
+      return jsonResponse({ message: "secondary rate limit" }, {
+        status: 429,
+        statusText: "Too Many Requests",
+        headers: { "retry-after": "later" },
+      });
+    },
+    { sleepImpl: async (milliseconds) => retryAfterSleeps.push(milliseconds) },
+  );
+  await assert.rejects(
+    malformedRetryAfter.getPullRequest(30),
+    /rate-limit type=secondary retry-after=invalid-or-overflow; required retry delay exceeds 60000ms cap/u,
+  );
+  assert.equal(retryAfterCalls, 1);
+  assert.deepEqual(retryAfterSleeps, []);
 });
 
 test("never retries an interrupted reviewer request", async () => {

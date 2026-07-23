@@ -52,8 +52,10 @@ function rateLimitContext(response, result) {
 
 function directedDelay(response, context, now) {
   const retryAfter = numericHeader(response, "retry-after");
-  if (Number.isFinite(retryAfter.value)) return retryAfter.value * 1_000;
-  if (retryAfter.value === Number.POSITIVE_INFINITY) return Number.POSITIVE_INFINITY;
+  if (retryAfter.present) {
+    if (Number.isFinite(retryAfter.value)) return retryAfter.value * 1_000;
+    return Number.POSITIVE_INFINITY;
+  }
 
   if (context?.remaining.value === 0) {
     if (!Number.isFinite(context.reset.value)) return Number.POSITIVE_INFINITY;
