@@ -1,6 +1,6 @@
 # v0.1.0 Provider-Free Pilot Evidence
 
-## Current Candidate Restart
+## Current Candidate Pilot
 
 - Source candidate:
   `8636a3983d18de17c49907a4c48170a61b1bb713`
@@ -10,10 +10,79 @@
 - Restart reason: PR `#15` added runtime PR-Agent support after the previous
   pilot, so the candidate-bound evidence and observation window must restart.
 - Private pilot repository: `platypeeps/sd-github-review-pilot`
-- Current smoke PR: `https://github.com/platypeeps/sd-github-review-pilot/pull/3`
-- Provider-free scenario evidence: pending the replacement-candidate run.
-- Observation window: not started; it begins after the final successful
-  replacement-candidate scenario.
+- Workflow pin PR: `https://github.com/platypeeps/sd-github-review-pilot/pull/4`
+- Smoke PR: `https://github.com/platypeeps/sd-github-review-pilot/pull/3`
+- Pilot heads:
+  - routine: `c2542e32468046c0d401c0c1821fbc9ba507a4b6`
+  - sensitive: `085b70f6604b953a26beab6bda879a850cf3dfd4`
+  - successor: `bd53cf5c183a8972a19f3c57db025f549806f661`
+
+Pilot PR `#4` merged at `2026-07-23T19:52:38Z` and pins both pilot
+workflows to the full candidate SHA. The standalone workflow has only
+`contents: read` and `pull-requests: write`; the durable workflow additionally
+has `checks: write`. Neither checks out pull-request code or reads a provider
+secret.
+
+At the observation checkpoint the private repository had zero Actions
+secrets, zero rulesets, no route label on PR `#3`, and all three workflows were
+active. Public evidence below contains only immutable identifiers, workflow
+URLs, bounded route state, and rollback state.
+
+### Standalone Scenario Matrix
+
+| Scenario | Head | Evidence | Sanitized result |
+| --- | --- | --- | --- |
+| Automatic cheap | `c2542e3...` | [run 30039872323](https://github.com/platypeeps/sd-github-review-pilot/actions/runs/30039872323) | `route=cheap`, `model=pilot-cheap`, external flag true |
+| Label cheap | `c2542e3...` | [run 30039925445](https://github.com/platypeeps/sd-github-review-pilot/actions/runs/30039925445) | explicit cheap, external flag true |
+| Label deep | `c2542e3...` | [run 30039950533](https://github.com/platypeeps/sd-github-review-pilot/actions/runs/30039950533) | explicit deep, `model=pilot-deep`, external flag true |
+| Label none | `c2542e3...` | [run 30039985903](https://github.com/platypeeps/sd-github-review-pilot/actions/runs/30039985903) | explicit none, external flag false |
+| Trusted command | `c2542e3...` | [run 30040016187](https://github.com/platypeeps/sd-github-review-pilot/actions/runs/30040016187) | `/review deep` selected deep |
+| Unrelated comment | `c2542e3...` | [run 30040050100](https://github.com/platypeeps/sd-github-review-pilot/actions/runs/30040050100) | none; no reviewer side effect |
+| Automatic Copilot | `085b70f...` | [router 30040166783](https://github.com/platypeeps/sd-github-review-pilot/actions/runs/30040166783), [Copilot 30040182472](https://github.com/platypeeps/sd-github-review-pilot/actions/runs/30040182472) | one sensitive file; new exact-head review recorded |
+| Copilot deduplication | `085b70f...` | [run 30040412634](https://github.com/platypeeps/sd-github-review-pilot/actions/runs/30040412634) | explicit Copilot; `copilot-requested=false` |
+| New-head Copilot | `bd53cf5...` | [router 30040454008](https://github.com/platypeeps/sd-github-review-pilot/actions/runs/30040454008), [Copilot 30040470868](https://github.com/platypeeps/sd-github-review-pilot/actions/runs/30040470868) | successor head received one new exact-head review |
+
+Both current-candidate Copilot reviews are bound to their exact head commits.
+No raw review body or pull-request content is copied into this record.
+
+### Durable Scenario Matrix
+
+| Scenario | Request head | Evidence | Sanitized result |
+| --- | --- | --- | --- |
+| Route, replay, synthetic finalize, query | `c2542e3...` | [run 30040088747](https://github.com/platypeeps/sd-github-review-pilot/actions/runs/30040088747), [check 89317632636](https://github.com/platypeeps/sd-github-review-pilot/runs/89317632636) | replay emitted no adapter request; receipt `receipt-v1-3ec4964...` observed |
+| Route only for changed-head setup | `085b70f...` | [run 30040360073](https://github.com/platypeeps/sd-github-review-pilot/actions/runs/30040360073), [check 89318547367](https://github.com/platypeeps/sd-github-review-pilot/runs/89318547367) | one started receipt and one adapter request; logical dispatch `7ff3e52f...` |
+| Changed-head finalize | `085b70f...` after live head became `bd53cf5...` | [run 30040469229](https://github.com/platypeeps/sd-github-review-pilot/actions/runs/30040469229) | reconciliation required; dispatch forbidden; stale receipt unchanged |
+| Successor lifecycle | `bd53cf5...` | [run 30040512477](https://github.com/platypeeps/sd-github-review-pilot/actions/runs/30040512477), [check 89319024456](https://github.com/platypeeps/sd-github-review-pilot/runs/89319024456) | distinct receipt `receipt-v1-987d920...`; replay suppressed and receipt observed |
+
+The synthetic acknowledgment proves protocol finalization and idempotency; it
+does not invoke a provider or claim a real finding. Ambiguous transport
+mutation remains covered by the candidate's exact-checkout unit suite, while
+the live pilot exercised changed-head reconciliation.
+
+### Rollback Evidence
+
+Workflow `319050197` (`Durable routed-review pilot`) was changed from `active`
+to `disabled_manually` and restored to `active`. No workflow history, candidate
+pin, or credential changed.
+
+### Observation Window
+
+- Start: `2026-07-23T20:05:58Z`
+- Earliest completion: `2026-07-24T20:05:58Z`
+- Baseline: 15 candidate-bound runs completed successfully after the workflow
+  pin merged: 9 standalone/router runs, 4 durable runs, and 2 GitHub-managed
+  Copilot runs.
+- Initial failures, false positives, API errors, unexplained duplicates, or
+  credential leaks: none observed.
+- Operator friction: the local sandbox blocked GitHub CLI's default run-log
+  cache, so evidence collection used the direct job-log API. Pilot behavior
+  was unaffected.
+
+Keep PR `#3` open and the candidate frozen through the window. At or after the
+earliest completion time, re-query workflow history, receipt checks, exact-head
+Copilot review state, secrets/rulesets, source `main`, and rollback state. Any
+unexplained failure, duplicate trigger, permission error, candidate change, or
+source behavior change blocks release and restarts the window.
 
 ## Superseded Candidate Baseline
 

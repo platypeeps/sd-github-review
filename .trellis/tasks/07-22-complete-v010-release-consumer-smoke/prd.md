@@ -18,8 +18,8 @@ the existing release checklist.
   afterward in PR `#15`. That source behavior change superseded the candidate
   and invalidated its observation window for release qualification.
 - `platypeeps/sd-github-review-pilot` is private, has no Actions secrets or
-  repository rulesets, and retains current smoke PR `#3`. Before the restarted
-  pilot, its workflows remain pinned to the superseded candidate.
+  repository rulesets, and retains current smoke PR `#3`. Pilot PR `#4` pinned
+  both workflows to the replacement candidate; all workflows are active.
 - The existing runnable examples intentionally contain commit-SHA
   placeholders. A source commit cannot contain its own full SHA, so examples
   can be pinned only in a post-release documentation commit or in the consumer
@@ -61,7 +61,7 @@ the existing release checklist.
 
 - [x] The candidate SHA and exact successful source CI run are recorded before
   pilot execution.
-- [ ] Every standalone and durable provider-free scenario has bounded,
+- [x] Every standalone and durable provider-free scenario has bounded,
   sanitized evidence against the candidate; replay, new-head, and fail-closed
   behavior match `docs/RELEASE_CHECKLIST.md`.
 - [ ] The final pilot scenario is followed by a completed 24-hour observation
