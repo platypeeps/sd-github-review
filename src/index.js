@@ -1,6 +1,7 @@
 import { appendFile, readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { GitHubClient } from "./github.js";
+import { normalizeOperation, runDurableAction, writeDurableSummary } from "./operations.js";
 import {
   findSensitiveFiles,
   ignoredEventDecision,
@@ -80,6 +81,7 @@ async function emitResult({
   logger,
 }) {
   const outputs = {
+    operation: "standalone",
     route: decision.route,
     reason: decision.reason,
     model,
@@ -105,8 +107,23 @@ export async function runAction({
   outputWriter,
   summaryWriter,
   logger = (message) => console.log(message),
+  now,
+  receiptStoreFactory,
 }) {
   const emitOutput = outputWriter ?? ((name, value) => writeOutput(name, value, { env }));
+  const operation = normalizeOperation(input("operation", "standalone", env));
+  if (operation !== "standalone") {
+    return runDurableAction({
+      operation,
+      env,
+      clientFactory,
+      outputWriter: emitOutput,
+      summaryWriter: summaryWriter ?? ((summary) => writeDurableSummary(summary, { env })),
+      logger,
+      ...(now ? { now } : {}),
+      receiptStoreFactory,
+    });
+  }
   const emitSummary = summaryWriter ?? ((summary) => writeSummary(summary, { env }));
   const configuredMode = normalizeMode(input("mode", "auto", env));
   const confidence = normalizeConfidence(input("confidence", "unknown", env));

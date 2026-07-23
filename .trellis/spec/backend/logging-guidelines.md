@@ -19,6 +19,8 @@ validation scripts may print progress and diagnostics to stdout/stderr.
 - PR number, selected route, and human-readable reason;
 - changed-line and sensitive-file counts in the step summary;
 - whether this invocation newly requested Copilot;
+- durable operation/state, exact head, dispatch phase, backend channels, and
+  reconciliation status;
 - validation failures with the file or API boundary that caused them.
 
 ## What Not to Log
@@ -39,6 +41,8 @@ The `sd-github-review/receipt` Check Run stores only the v1 marker and canonical
 normalized receipt. Successor comparison may inspect GitHub filenames in
 memory, but persists only a path-sensitive digest, bounded counts, and the
 normalized comparison class; raw filenames and patches are discarded.
+Durable summaries expose only the sensitive-file count; the matching paths do
+not enter outputs, summaries, logs, adapter requests, or receipts.
 
 ## Example
 

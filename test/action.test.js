@@ -82,6 +82,7 @@ test("ignores unrelated comments without constructing a GitHub client", async ()
 
   assert.equal(result.decision.route, "none");
   assert.equal(harness.calls.factories, 0);
+  assert.equal(harness.outputs.get("operation"), "standalone");
   assert.equal(harness.outputs.get("changed-lines"), "0");
   assert.equal(harness.outputs.get("run-external-reviewer"), "false");
 });

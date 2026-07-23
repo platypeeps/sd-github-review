@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "name": "ready",
+      "declarationPresent": true,
+      "metadata": {
+        "readable": true,
+        "workflowPresent": true,
+        "workflowState": "active",
+        "contractMajor": 1
+      },
+      "expectedState": "ready"
+    },
+    {
+      "name": "absent",
+      "declarationPresent": false,
+      "metadata": null,
+      "expectedState": "absent"
+    },
+    {
+      "name": "declared workflow missing",
+      "declarationPresent": true,
+      "metadata": {
+        "readable": true,
+        "workflowPresent": false,
+        "workflowState": null,
+        "contractMajor": null
+      },
+      "expectedState": "invalid"
+    },
+    {
+      "name": "declared workflow disabled",
+      "declarationPresent": true,
+      "metadata": {
+        "readable": true,
+        "workflowPresent": true,
+        "workflowState": "disabled_manually",
+        "contractMajor": 1
+      },
+      "expectedState": "invalid"
+    },
+    {
+      "name": "incompatible contract",
+      "declarationPresent": true,
+      "metadata": {
+        "readable": true,
+        "workflowPresent": true,
+        "workflowState": "active",
+        "contractMajor": 2
+      },
+      "expectedState": "incompatible"
+    },
+    {
+      "name": "metadata unavailable",
+      "declarationPresent": true,
+      "metadata": {
+        "readable": false,
+        "workflowPresent": null,
+        "workflowState": null,
+        "contractMajor": null
+      },
+      "expectedState": "unavailable"
+    }
+  ]
+}

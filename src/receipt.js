@@ -157,12 +157,13 @@ function receiptState(receipt) {
   return "existing";
 }
 
-function mutationFailure(receipt, error) {
+function mutationFailure(receipt, error, { receiptVerified = false } = {}) {
   return {
     state: "reconciliation-required",
     receipt,
     dispatchAllowed: false,
     reconciliationRequired: true,
+    receiptVerified,
     error: error instanceof Error ? error.message : String(error),
   };
 }
@@ -365,7 +366,11 @@ export class ReceiptStore {
   }
 
   async #updateRecord(record, receipt) {
-    await this.#assertLiveHead(receipt);
+    try {
+      await this.#assertLiveHead(receipt);
+    } catch (error) {
+      return mutationFailure(record.receipt, error, { receiptVerified: true });
+    }
     try {
       await this.client.updateCheckRun(record.checkId, checkRunPayload(receipt, { update: true }));
     } catch (error) {
@@ -519,7 +524,7 @@ export class ReceiptStore {
     try {
       await this.#assertLiveHead(request);
     } catch (error) {
-      return mutationFailure(record.receipt, error);
+      return mutationFailure(record.receipt, error, { receiptVerified: true });
     }
     if (!Number.isInteger(created?.id) || created.id !== record.checkId) {
       return mutationFailure(record.receipt, new Error("created receipt identity is ambiguous"));
@@ -553,9 +558,21 @@ export class ReceiptStore {
       throw new Error("acknowledgment findingChannels must match the durable receipt backend");
     }
     if (record.receipt.dispatch.phase === "observed") {
-      throw new Error("acknowledgment cannot follow an observed receipt");
+      if (decoded.status !== "acknowledged") {
+        throw new Error("failed acknowledgment cannot follow an observed receipt");
+      }
+      return {
+        state: "observed",
+        receipt: record.receipt,
+        dispatchAllowed: false,
+        reconciliationRequired: false,
+      };
     }
     if (record.receipt.dispatch.phase === "acknowledged") {
+      const storedStatus = record.receipt.dispatch.status === "failed" ? "failed" : "acknowledged";
+      if (decoded.status !== storedStatus) {
+        throw new Error("acknowledgment status conflicts with the durable receipt");
+      }
       return {
         state: record.receipt.dispatch.status === "failed" ? "failed" : "acknowledged",
         receipt: record.receipt,

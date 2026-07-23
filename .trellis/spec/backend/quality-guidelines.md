@@ -6,8 +6,9 @@
 
 Production code is modern ECMAScript modules running on the Node version
 declared by `action.yml`. Keep routing policy pure in `src/router.js`, GitHub
-transport in `src/github.js`, event orchestration in `src/index.js`, and the
-versioned routed-review protocol in `src/protocol.js`.
+transport in `src/github.js`, standalone orchestration in `src/index.js`,
+durable operations in `src/operations.js`, and the versioned routed-review
+protocol in `src/protocol.js`.
 Prefer injected boundaries over process-wide mocks so behavior can be tested
 with Node's built-in test runner.
 
@@ -187,6 +188,63 @@ await dispatchFallback();
 // Correct: durable identity ambiguity always stops dispatch.
 return { reconciliationRequired: true, dispatchAllowed: false };
 ```
+
+## Scenario: Run An On-Demand Routed Review
+
+### 1. Scope / Trigger
+
+Use this contract for `operation=route|finalize|query` and for the published
+setup descriptor/on-demand workflow.
+
+### 2. Signatures
+
+- `runDurableAction(options) -> operationResult`
+- `normalizeOperation(value) -> standalone|route|finalize|query`
+- `writeDurableSummary(result, sinks) -> Promise<void>`
+
+### 3. Contracts
+
+- Every durable operation accepts one decoded v1 `review-request` and uses its
+  protocol-derived identity; no output or adapter request derives another ID.
+- `route` re-reads the live head, calculates trusted routing context, calls
+  `ReceiptStore.begin()`, and performs a side effect only when
+  `dispatchAllowed=true`.
+- Copilot checks pending/current-head review state before one request. External
+  routes emit exactly one bounded canonical adapter request and no credentials.
+- `finalize` requires a matching v1 acknowledgment, revalidates the head, and
+  advances the same receipt to failed or observed. Replays are idempotent.
+- `query` is read-only. A started receipt is reconciliation-required; absence
+  is `not-found`, never permission to dispatch.
+- Same-workflow `receipt` output is byte-for-byte canonical protocol JSON from
+  the persisted Check Run. Durable outputs include only bounded normalized
+  fields and never sensitive paths. Ambiguous writes set
+  `receipt-verified=false`, leave the canonical receipt and phase outputs
+  empty, and retain only the known logical identity for reconciliation.
+- The setup descriptor and workflow agree on contract major, identity,
+  intents, operations, permissions, no-checkout, and noninteractive behavior.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required behavior |
+| --- | --- |
+| First external route | Emit one adapter request and started receipt |
+| Matching route replay | Emit no adapter request; return existing/reconciliation state |
+| Current-head Copilot pending/reviewed | Mark already present; do not request again |
+| Valid external acknowledgment | Finalize the same receipt as observed |
+| Failed external acknowledgment | Complete the same receipt as failed |
+| Changed head during finalization | Require reconciliation; do not mutate or fall back |
+| Trusted bookkeeping-only successor | Create a distinct current-head receipt; select none only when policy permits |
+| Query misses exact identity | Return not-found and dispatch forbidden |
+
+### 5. Tests Required
+
+- Keep every standalone event test green.
+- Cover native Copilot, external comment/check, none, replay, conflicting
+  retry, rerequest, successor head, missing/failed acknowledgment, changed
+  head, ambiguous mutations, canonical output mirroring, and privacy bounds.
+- Parse the setup descriptor, discovery cases, and workflow; assert durable
+  permissions, immutable placeholders, no checkout, and no PR-controlled run
+  step.
 
 ## Scenario: Route and Request a GitHub Review
 

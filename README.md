@@ -100,6 +100,43 @@ its current Docker runtime because the upstream action builds from the floating
 immutability should review and fork the action, then pin the base image by
 digest or publish an internally controlled wrapper.
 
+### Durable on-demand integration
+
+Use [`examples/on-demand-review-router.yml`](examples/on-demand-review-router.yml)
+when `sd-review` or another trusted caller needs an exact-head, cross-run
+receipt instead of the standalone event outputs.
+
+1. Copy the example into the consuming repository at the workflow path
+   declared by the setup descriptor, and replace every action placeholder
+   with a reviewed full commit SHA.
+2. Keep the workflow's `contents: read`, `pull-requests: write`, and
+   `checks: write` permissions. Only this durable workflow needs Check Run
+   write access.
+3. Configure `SD_REVIEW_CHEAP_BACKEND_V1` and
+   `SD_REVIEW_DEEP_BACKEND_V1` as canonical backend descriptor JSON. The
+   supported shapes are demonstrated in
+   [`fixtures/protocol/v1/supporting.valid.json`](fixtures/protocol/v1/supporting.valid.json).
+4. Replace the external-adapter placeholder with the consumer-owned PR-Agent,
+   Gito, or internal adapter. Keep its provider secret on that step. The
+   adapter accepts `adapter-request` and returns one versioned
+   `adapter-acknowledgment`; the following router invocation finalizes the
+   same receipt.
+5. Publish [`config/routed-review-setup-v1.json`](config/routed-review-setup-v1.json)
+   with the workflow so clients can perform read-only setup discovery before
+   dispatch.
+
+The Action operations are `route`, `finalize`, and `query`. Every durable call
+accepts the canonical `review-request` JSON. `route` performs at most one
+native Copilot request or emits exactly one external adapter request;
+`finalize` requires the matching external acknowledgment; `query` reads the
+head-bound receipt without dispatching. If a side effect is uncertain, the
+receipt reports `reconciliation-required` and never authorizes a fallback.
+
+The example performs no checkout and runs no pull-request-controlled command.
+The setup descriptor distinguishes a truly absent declaration from missing,
+disabled, incompatible, and metadata-unavailable integrations; only a
+compatible enabled workflow is ready.
+
 ## Development
 
 The action has no runtime dependencies and uses Node.js 24's built-in test

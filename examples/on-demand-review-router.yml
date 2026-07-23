@@ -1,0 +1,57 @@
+name: SD routed review
+
+on:
+  workflow_dispatch:
+    inputs:
+      review-request:
+        description: Canonical sd-github-review v1 request JSON
+        required: true
+        type: string
+      operation:
+        description: Route a review or query an existing exact-head receipt
+        required: true
+        default: route
+        type: choice
+        options: [route, query]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Route or query the exact-head review
+        id: review
+        # Replace with the full SHA of an approved sd-github-review release.
+        uses: platypeeps/sd-github-review@<sd-github-review-commit-sha>
+        with:
+          github-token: ${{ github.token }}
+          operation: ${{ inputs.operation }}
+          review-request: ${{ inputs.review-request }}
+          cheap-backend: ${{ vars.SD_REVIEW_CHEAP_BACKEND_V1 }}
+          deep-backend: ${{ vars.SD_REVIEW_DEEP_BACKEND_V1 }}
+          allow-bookkeeping-none: ${{ vars.SD_REVIEW_ALLOW_BOOKKEEPING_NONE || 'false' }}
+
+      # This placeholder represents a consumer-owned action that accepts the
+      # canonical adapter request, writes findings to its declared GitHub
+      # channels, and returns one canonical v1 acknowledgment. It must not
+      # check out or execute pull-request-controlled code with provider secrets.
+      - name: Run the selected external reviewer
+        id: adapter
+        if: steps.review.outputs.adapter-request != ''
+        uses: your-org/routed-review-adapter@<adapter-commit-sha>
+        with:
+          adapter-request: ${{ steps.review.outputs.adapter-request }}
+          provider-token: ${{ secrets.REVIEW_PROVIDER_TOKEN }}
+
+      - name: Finalize the external receipt
+        if: steps.review.outputs.adapter-request != '' && always()
+        uses: platypeeps/sd-github-review@<sd-github-review-commit-sha>
+        with:
+          github-token: ${{ github.token }}
+          operation: finalize
+          review-request: ${{ inputs.review-request }}
+          adapter-acknowledgment: ${{ steps.adapter.outputs.adapter-acknowledgment }}
