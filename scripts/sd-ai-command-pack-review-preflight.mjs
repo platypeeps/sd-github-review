@@ -21,8 +21,10 @@ const MIN_NODE_VERSION = { major: 16, minor: 9, label: '16.9.0' };
 const GIT_MAX_BUFFER_BYTES = 64 * 1024 * 1024;
 const MAX_TRELLIS_TASK_LINKS = 100;
 const MAX_TRELLIS_TASK_REFERENCE_LENGTH = 255;
+const MAX_TRELLIS_PRIORITY_RATIONALE_LENGTH = 1000;
 const TRELLIS_TASK_STATUSES = new Set(['planning', 'in_progress', 'review', 'completed']);
 const ACTIVE_TRELLIS_TASK_STATUSES = new Set(['planning', 'in_progress', 'review']);
+const TRELLIS_TASK_PRIORITIES = new Set(['P0', 'P1', 'P2', 'P3']);
 const REVIEW_CODE_PATH_PATTERN = /\.(?:cjs|js|mjs|py|sh|ts|tsx)$/;
 const REVIEW_WORKFLOW_PATH_PATTERN = /^\.github\/workflows\/[^/]+\.ya?ml$/;
 const NON_PRODUCTION_CODE_DIRECTORY_SEGMENTS = new Set([
@@ -163,8 +165,9 @@ export function runReviewPreflight(options = {}) {
   runCheck('documentation path hygiene', checkDocumentationPathHygiene);
   runCheck('documentation path references', checkDocumentationPathReferences);
   runCheck('changed Trellis task metadata integrity', checkChangedTrellisTaskMetadata);
+  runCheck('changed Trellis task topology semantics', checkChangedTrellisTaskTopologySemantics);
   runCheck('completed Trellis task location', checkCompletedTrellisTaskLocation);
-  runCheck('Trellis task context seeds', checkTrellisTaskContextSeeds);
+  runCheck('Trellis task context manifests', checkTrellisTaskContextManifests);
   runCheck('Trellis journal records', checkTrellisJournalRecords);
   runCheck('first-review risk sweep', checkReviewRiskSweep);
   runCheck('diff size warning', checkDiffSize);
@@ -626,7 +629,7 @@ function checkChangedTrellisTaskMetadata() {
     if (!artifact) {
       fail(
         `${file} is not in a supported Trellis task layout; use ` +
-          '.trellis/tasks/MM-DD-name/task.json or .trellis/tasks/archive/YYYY-MM/MM-DD-name/task.json.',
+          '.trellis/tasks/MM-DD-name/task.json or .trellis/tasks/archive/YYYY-MM/name/task.json.',
       );
       continue;
     }
@@ -665,6 +668,214 @@ function checkChangedTrellisTaskMetadata() {
   }
 }
 
+function checkChangedTrellisTaskTopologySemantics() {
+  const failureStart = failures.length;
+  const diff = currentChangedPaths();
+  if (diff === null) {
+    warn('could not inspect current diff for changed Trellis task topology semantics.');
+    return;
+  }
+
+  const changedTaskFiles = new Set();
+  const changedTaskDirectories = new Set();
+  for (const path of diff.paths) {
+    const artifact = parseActiveTrellisTaskTopologyPath(path);
+    if (!artifact) {
+      continue;
+    }
+    changedTaskDirectories.add(artifact.taskDir);
+    if (artifact.artifact === 'task.json') {
+      changedTaskFiles.add(`${artifact.taskDir}/task.json`);
+    }
+  }
+
+  let inspectedPlanningBases = 0;
+  for (const file of [...changedTaskFiles].sort()) {
+    const loaded = loadTrellisTaskMetadataFile(file, { deletedIsMissing: true });
+    if (loaded.status !== 'loaded') {
+      // The structural metadata check owns deleted move sources and unsafe or
+      // unreadable changed task records.
+      continue;
+    }
+
+    let record;
+    try {
+      record = JSON.parse(loaded.text);
+    } catch {
+      continue;
+    }
+    if (
+      !isPlainObject(record) ||
+      record.status !== 'planning' ||
+      record.branch !== null ||
+      !isTrellisTaskDirectoryName(record.parent)
+    ) {
+      continue;
+    }
+
+    inspectedPlanningBases += 1;
+    const parent = loadReferencedTrellisTaskRecord(file, 'parent', record.parent, {
+      reportFailures: false,
+    });
+    if (!parent) {
+      // The structural metadata check already emitted the authoritative linked
+      // record diagnostic.
+      continue;
+    }
+    for (const issue of validateTrellisPlanningBaseInheritance(record, parent)) {
+      fail(`${file} field ${issue}.`);
+    }
+  }
+
+  let inspectedParentPrds = 0;
+  for (const taskDir of [...changedTaskDirectories].sort()) {
+    const taskFile = `${taskDir}/task.json`;
+    const taskLoaded = loadTrellisTaskMetadataFile(taskFile, { deletedIsMissing: true });
+    if (taskLoaded.status !== 'loaded') {
+      if (!changedTaskFiles.has(taskFile)) {
+        fail(`${taskFile} ${taskLoaded.message} while checking active parent PRD child representation.`);
+      }
+      continue;
+    }
+
+    let record;
+    try {
+      record = JSON.parse(taskLoaded.text);
+    } catch (error) {
+      if (!changedTaskFiles.has(taskFile)) {
+        fail(
+          `${taskFile} could not be parsed as JSON while checking active parent PRD child representation: ` +
+            thrownValueMessage(error),
+        );
+      }
+      continue;
+    }
+    if (!isPlainObject(record)) {
+      if (!changedTaskFiles.has(taskFile)) {
+        fail(`${taskFile} must contain a JSON object while checking active parent PRD child representation.`);
+      }
+      continue;
+    }
+    if (!ACTIVE_TRELLIS_TASK_STATUSES.has(record.status)) {
+      continue;
+    }
+    if (record.children === undefined || (Array.isArray(record.children) && record.children.length === 0)) {
+      continue;
+    }
+    if (!Array.isArray(record.children)) {
+      if (!changedTaskFiles.has(taskFile)) {
+        fail(`${taskFile} field children must be an array while checking active parent PRD child representation.`);
+      }
+      continue;
+    }
+    if (
+      record.children.length > MAX_TRELLIS_TASK_LINKS ||
+      record.children.some((child) => !isTrellisTaskDirectoryName(child))
+    ) {
+      if (!changedTaskFiles.has(taskFile)) {
+        fail(`${taskFile} field children cannot be verified while checking active parent PRD child representation.`);
+      }
+      continue;
+    }
+
+    inspectedParentPrds += 1;
+    const prdFile = `${taskDir}/prd.md`;
+    const prdLoaded = loadTrellisTaskPrdFile(prdFile, { deletedIsMissing: true });
+    if (prdLoaded.status !== 'loaded') {
+      fail(`${prdFile} ${prdLoaded.message}; the active task declares child metadata that must be represented in its PRD.`);
+      continue;
+    }
+
+    const missingChildren = findMissingTrellisChildReferences(prdLoaded.text, record.children);
+    if (missingChildren.length === 1) {
+      fail(
+        `${prdFile} does not reference declared child ${missingChildren[0]}; ` +
+          'add the exact task ID or remove stale children metadata.',
+      );
+    } else if (missingChildren.length > 1) {
+      fail(
+        `${prdFile} does not reference declared children ${missingChildren.join(', ')}; ` +
+          'add every exact task ID or remove stale children metadata.',
+      );
+    }
+  }
+
+  if (failures.length !== failureStart) {
+    return;
+  }
+  if (inspectedPlanningBases === 0 && inspectedParentPrds === 0) {
+    pass('no changed Trellis task topology requires semantic validation.');
+    return;
+  }
+  pass(
+    `checked ${inspectedPlanningBases} deferred planning child base(s) and ` +
+      `${inspectedParentPrds} active parent PRD child map(s) for topology semantics.`,
+  );
+}
+
+function parseActiveTrellisTaskTopologyPath(path) {
+  const normalized = normalizePathSeparators(path).replace(/^\.\//, '');
+  const match = /^\.trellis\/tasks\/(\d{2}-\d{2}-[^/]+)\/(task\.json|prd\.md)$/.exec(normalized);
+  if (!match) {
+    return null;
+  }
+  return {
+    taskDir: `.trellis/tasks/${match[1]}`,
+    artifact: match[2],
+  };
+}
+
+export function validateTrellisPlanningBaseInheritance(record, parentRecord) {
+  if (
+    !isPlainObject(record) ||
+    !isPlainObject(parentRecord) ||
+    record.status !== 'planning' ||
+    record.branch !== null ||
+    !isTrellisTaskDirectoryName(record.parent) ||
+    typeof record.base_branch !== 'string' ||
+    record.base_branch.trim().length === 0
+  ) {
+    return [];
+  }
+
+  const allowedTargets = [];
+  if (typeof parentRecord.base_branch === 'string' && parentRecord.base_branch.trim().length > 0) {
+    allowedTargets.push(parentRecord.base_branch.trim());
+  }
+  if (
+    ACTIVE_TRELLIS_TASK_STATUSES.has(parentRecord.status) &&
+    typeof parentRecord.branch === 'string' &&
+    parentRecord.branch.trim().length > 0
+  ) {
+    allowedTargets.push(parentRecord.branch.trim());
+  }
+  const uniqueAllowedTargets = [...new Set(allowedTargets)];
+  if (uniqueAllowedTargets.length === 0) {
+    return ['base_branch cannot be verified because the parent has no non-empty base_branch or active branch'];
+  }
+  if (uniqueAllowedTargets.includes(record.base_branch.trim())) {
+    return [];
+  }
+  return [
+    `base_branch ${JSON.stringify(record.base_branch.trim())} must equal parent base_branch or active branch (` +
+      `${uniqueAllowedTargets.map((target) => JSON.stringify(target)).join(', ')})`,
+  ];
+}
+
+export function findMissingTrellisChildReferences(text, children) {
+  if (typeof text !== 'string' || !Array.isArray(children)) {
+    return [];
+  }
+  const uniqueChildren = [...new Set(children.filter(isTrellisTaskDirectoryName))].sort();
+  return uniqueChildren.filter((child) => {
+    const pattern = new RegExp(
+      `(^|[^A-Za-z0-9._-])${escapeRegExp(child)}(?=$|[^A-Za-z0-9._-])`,
+      'm',
+    );
+    return !pattern.test(text);
+  });
+}
+
 export function validateTrellisTaskMetadata(record, taskDir, archived) {
   const issues = [];
   const idValid = typeof record.id === 'string' && record.id.trim().length > 0;
@@ -682,9 +893,9 @@ export function validateTrellisTaskMetadata(record, taskDir, archived) {
 
   const taskDirectoryName = taskDir.slice(taskDir.lastIndexOf('/') + 1);
   const directoryMatch = /^\d{2}-\d{2}-(.+)$/.exec(taskDirectoryName);
-  if (!directoryMatch) {
+  if (!directoryMatch && !archived) {
     issues.push('name cannot be verified because the task directory must use the MM-DD-name form');
-  } else if (nameValid && record.name !== directoryMatch[1]) {
+  } else if (directoryMatch && nameValid && record.name !== directoryMatch[1]) {
     issues.push(`name must match the dated task directory suffix "${directoryMatch[1]}"`);
   }
 
@@ -738,6 +949,60 @@ export function validateTrellisTaskMetadata(record, taskDir, archived) {
     }
   }
 
+  issues.push(...validateTrellisTaskPriorityProvenance(record));
+
+  return issues;
+}
+
+function validateTrellisTaskPriorityProvenance(record) {
+  if (
+    !isPlainObject(record) ||
+    !isPlainObject(record.meta) ||
+    !Object.prototype.hasOwnProperty.call(record.meta, 'priorityProvenance')
+  ) {
+    return [];
+  }
+
+  const provenance = record.meta.priorityProvenance;
+  if (!isPlainObject(provenance)) {
+    return ['meta.priorityProvenance must be an object'];
+  }
+
+  const issues = [];
+  const priorityValid = TRELLIS_TASK_PRIORITIES.has(record.priority);
+  const sourcePriorityValid = TRELLIS_TASK_PRIORITIES.has(provenance.sourcePriority);
+  if (!priorityValid) {
+    issues.push(
+      'priority must be one of P0, P1, P2, P3 when meta.priorityProvenance is declared',
+    );
+  }
+  if (!sourcePriorityValid) {
+    issues.push('meta.priorityProvenance.sourcePriority must be one of P0, P1, P2, P3');
+  }
+  if (
+    priorityValid &&
+    sourcePriorityValid &&
+    record.priority === provenance.sourcePriority
+  ) {
+    issues.push(
+      'meta.priorityProvenance.sourcePriority must differ from priority; ' +
+        'remove provenance when priority is unchanged',
+    );
+  }
+
+  if (
+    typeof provenance.rationale !== 'string' ||
+    provenance.rationale.trim().length === 0
+  ) {
+    issues.push('meta.priorityProvenance.rationale must be a non-empty string');
+  } else if (
+    provenance.rationale.trim().length > MAX_TRELLIS_PRIORITY_RATIONALE_LENGTH
+  ) {
+    issues.push(
+      `meta.priorityProvenance.rationale must be at most ${MAX_TRELLIS_PRIORITY_RATIONALE_LENGTH} characters`,
+    );
+  }
+
   return issues;
 }
 
@@ -769,18 +1034,24 @@ function validateTrellisTaskMetadataLinks(file, taskDir, record) {
   }
 }
 
-function loadReferencedTrellisTaskRecord(sourceFile, field, taskDirectoryName) {
+function loadReferencedTrellisTaskRecord(sourceFile, field, taskDirectoryName, options = {}) {
+  const reportFailures = options.reportFailures !== false;
+  const reportFailure = (message) => {
+    if (reportFailures) {
+      fail(message);
+    }
+  };
   const located = locateTrellisTaskRecord(taskDirectoryName);
   if (located.error) {
-    fail(`${sourceFile} field ${field} references ${taskDirectoryName}, but the record cannot be verified: ${located.error}.`);
+    reportFailure(`${sourceFile} field ${field} references ${taskDirectoryName}, but the record cannot be verified: ${located.error}.`);
     return null;
   }
   if (located.paths.length === 0) {
-    fail(`${sourceFile} field ${field} references missing task ${taskDirectoryName}.`);
+    reportFailure(`${sourceFile} field ${field} references missing task ${taskDirectoryName}.`);
     return null;
   }
   if (located.paths.length > 1) {
-    fail(
+    reportFailure(
       `${sourceFile} field ${field} references ambiguous task ${taskDirectoryName}: ${located.paths.join(', ')}.`,
     );
     return null;
@@ -789,7 +1060,7 @@ function loadReferencedTrellisTaskRecord(sourceFile, field, taskDirectoryName) {
   const referencedFile = located.paths[0];
   const loaded = loadTrellisTaskMetadataFile(referencedFile);
   if (loaded.status !== 'loaded') {
-    fail(
+    reportFailure(
       `${sourceFile} field ${field} references ${taskDirectoryName}, but ${referencedFile} ${loaded.message}.`,
     );
     return null;
@@ -799,14 +1070,14 @@ function loadReferencedTrellisTaskRecord(sourceFile, field, taskDirectoryName) {
   try {
     record = JSON.parse(loaded.text);
   } catch (error) {
-    fail(
+    reportFailure(
       `${sourceFile} field ${field} references ${taskDirectoryName}, but ${referencedFile} could not be parsed as JSON: ` +
         thrownValueMessage(error),
     );
     return null;
   }
   if (!isPlainObject(record)) {
-    fail(`${sourceFile} field ${field} references ${taskDirectoryName}, but ${referencedFile} does not contain a JSON object.`);
+    reportFailure(`${sourceFile} field ${field} references ${taskDirectoryName}, but ${referencedFile} does not contain a JSON object.`);
     return null;
   }
   return record;
@@ -886,6 +1157,14 @@ function trellisTaskRecordCandidate(taskDir) {
 }
 
 function loadTrellisTaskMetadataFile(file, options = {}) {
+  return loadBoundedTrellisTaskArtifact(file, 'task metadata', options);
+}
+
+function loadTrellisTaskPrdFile(file, options = {}) {
+  return loadBoundedTrellisTaskArtifact(file, 'task PRD', options);
+}
+
+function loadBoundedTrellisTaskArtifact(file, artifactLabel, options = {}) {
   const absoluteFile = resolve(rootDir, file);
   let pathEntry;
   try {
@@ -897,15 +1176,15 @@ function loadTrellisTaskMetadataFile(file, options = {}) {
     return { status: 'unreadable', message: `could not be inspected: ${thrownValueMessage(error)}` };
   }
   if (pathEntry.isSymbolicLink()) {
-    return { status: 'unsafe', message: 'is a symlink; task metadata must be a regular file' };
+    return { status: 'unsafe', message: `is a symlink; ${artifactLabel} must be a regular file` };
   }
   if (!pathEntry.isFile()) {
-    return { status: 'unsafe', message: 'is not a regular file; task metadata must be a regular file' };
+    return { status: 'unsafe', message: `is not a regular file; ${artifactLabel} must be a regular file` };
   }
   if (pathEntry.size > config.untrackedFileReadLimitBytes) {
     return {
       status: 'oversized',
-      message: `exceeds the bounded task metadata read limit of ${config.untrackedFileReadLimitBytes} bytes`,
+      message: `exceeds the bounded ${artifactLabel} read limit of ${config.untrackedFileReadLimitBytes} bytes`,
     };
   }
 
@@ -916,7 +1195,7 @@ function loadTrellisTaskMetadataFile(file, options = {}) {
   if (content.status === 'oversized') {
     return {
       status: 'oversized',
-      message: `exceeds the bounded task metadata read limit of ${config.untrackedFileReadLimitBytes} bytes`,
+      message: `exceeds the bounded ${artifactLabel} read limit of ${config.untrackedFileReadLimitBytes} bytes`,
     };
   }
   return { status: 'loaded', text: content.text, message: '' };
@@ -930,11 +1209,11 @@ function isTrellisTaskDirectoryName(value) {
   );
 }
 
-function checkTrellisTaskContextSeeds() {
+function checkTrellisTaskContextManifests() {
   const failureStart = failures.length;
   const diff = currentChangedPaths();
   if (diff === null) {
-    warn('could not inspect current diff for Trellis task context seeds.');
+    warn('could not inspect current diff for Trellis task context manifests.');
     return;
   }
 
@@ -956,7 +1235,7 @@ function checkTrellisTaskContextSeeds() {
         fail(
           `${normalized} is not in a supported Trellis task layout; use ` +
             '.trellis/tasks/MM-DD-name/{implement,check}.jsonl or ' +
-            '.trellis/tasks/archive/YYYY-MM/MM-DD-name/{implement,check}.jsonl.',
+            '.trellis/tasks/archive/YYYY-MM/name/{implement,check}.jsonl.',
         );
       }
       continue;
@@ -994,23 +1273,32 @@ function checkTrellisTaskContextSeeds() {
     }
 
     inspectedFiles += 1;
-    for (const seed of findTrellisTaskContextSeedRows(file, readText(file))) {
+    for (const issue of findTrellisTaskContextIssues(file, readText(file))) {
+      if (issue.kind === 'seed') {
+        fail(
+          `${issue.file}:${issue.line} still contains a generated _example scaffold row; ` +
+            'replace it with grounded {"file": "<path>", "reason": "<why>"} context or leave the file empty.',
+        );
+        continue;
+      }
       fail(
-        `${seed.file}:${seed.line} still contains a generated _example scaffold row; ` +
-          'replace it with grounded {"file": "<path>", "reason": "<why>"} context or leave the file empty.',
+        `${issue.file}:${issue.line} contains a task context reference outside the allowed spec/research roots; ` +
+          'use .trellis/spec/** or .trellis/tasks/**/research/** only, never code or test paths.',
       );
     }
   }
 
   if (inspectedFiles === 0) {
     if (failures.length === failureStart) {
-      pass('no changed Trellis task context files require scaffold checks.');
+      pass('no changed Trellis task context manifests require validation.');
     }
     return;
   }
 
   if (failures.length === failureStart) {
-    pass(`checked ${inspectedFiles} changed Trellis task context file(s) for generated _example scaffold rows.`);
+    pass(
+      `checked ${inspectedFiles} changed Trellis task context file(s) for generated _example scaffold rows and spec/research-only references.`,
+    );
   }
 }
 
@@ -1072,7 +1360,7 @@ function checkCompletedTrellisTaskLocation() {
 
 export function parseTrellisTaskArtifactPath(path) {
   const normalized = normalizePathSeparators(path).replace(/^\.\//, '');
-  const match = /^\.trellis\/tasks\/((?:archive\/\d{4}-\d{2}\/\d{2}-\d{2}-[^/]+)|\d{2}-\d{2}-[^/]+)\/(task\.json|implement\.jsonl|check\.jsonl)$/.exec(normalized);
+  const match = /^\.trellis\/tasks\/((?:archive\/\d{4}-\d{2}\/[^/]+)|\d{2}-\d{2}-[^/]+)\/(task\.json|implement\.jsonl|check\.jsonl)$/.exec(normalized);
   if (!match || match[1] === 'archive') {
     return null;
   }
@@ -1085,7 +1373,36 @@ export function parseTrellisTaskArtifactPath(path) {
 }
 
 export function findTrellisTaskContextSeedRows(file, text) {
-  const seeds = [];
+  return findTrellisTaskContextIssues(file, text)
+    .filter((issue) => issue.kind === 'seed')
+    .map(({ file: issueFile, line }) => ({ file: issueFile, line }));
+}
+
+export function isTrellisTaskContextReference(value) {
+  if (typeof value !== 'string' || value.length === 0 || value !== value.trim()) {
+    return false;
+  }
+
+  const normalized = normalizePathSeparators(value).replace(/^\.\//, '');
+  const pathWithoutTrailingSlash = normalized.endsWith('/') ? normalized.slice(0, -1) : normalized;
+  const segments = pathWithoutTrailingSlash.split('/');
+  if (
+    URI_SCHEME_PATTERN.test(value) ||
+    normalized.startsWith('/') ||
+    segments.some((segment) => segment === '' || segment === '.' || segment === '..')
+  ) {
+    return false;
+  }
+
+  return (
+    pathWithoutTrailingSlash === '.trellis/spec' ||
+    pathWithoutTrailingSlash.startsWith('.trellis/spec/') ||
+    /^\.trellis\/tasks\/(?:archive\/\d{4}-\d{2}\/)?[^/]+\/research(?:\/.+)?$/.test(pathWithoutTrailingSlash)
+  );
+}
+
+export function findTrellisTaskContextIssues(file, text) {
+  const issues = [];
 
   for (const [index, line] of text.split(/\r?\n/).entries()) {
     if (!line.trim()) {
@@ -1100,11 +1417,19 @@ export function findTrellisTaskContextSeedRows(file, text) {
     }
 
     if (isPlainObject(record) && Object.prototype.hasOwnProperty.call(record, '_example')) {
-      seeds.push({ file, line: index + 1 });
+      issues.push({ file, line: index + 1, kind: 'seed' });
+      continue;
+    }
+    if (
+      isPlainObject(record) &&
+      Object.prototype.hasOwnProperty.call(record, 'file') &&
+      !isTrellisTaskContextReference(record.file)
+    ) {
+      issues.push({ file, line: index + 1, kind: 'reference' });
     }
   }
 
-  return seeds;
+  return issues;
 }
 
 function checkTrellisJournalRecords() {
