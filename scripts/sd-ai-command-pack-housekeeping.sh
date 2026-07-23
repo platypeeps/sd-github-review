@@ -621,6 +621,7 @@ maybe_merge_ready_open_pr() {
   local pr_merge_state
   local blocking_check_count
   local successful_check_count
+  local branch_ref_arg
   local local_head_oid
   local remote_head_oid
   local unresolved_count
@@ -672,7 +673,8 @@ maybe_merge_ready_open_pr() {
 
   local_head_oid="$(git rev-parse --verify "refs/heads/$branch^{commit}")"
   if [ -z "$FINISH_WORK_HEAD" ]; then
-    add_anomaly "SD finish-work completion was not attested for PR #$pr_number; run the sd-finish-work flow, push any resulting commits, wait for required checks, then rerun housekeeping with --finish-work-head \"\$(git rev-parse HEAD)\"; skipped auto-merge"
+    printf -v branch_ref_arg '%q' "refs/heads/$branch"
+    add_anomaly "SD finish-work completion was not attested for PR #$pr_number; run the sd-finish-work flow, push any resulting commits, wait for required checks, then rerun housekeeping with --finish-work-head \"\$(git rev-parse --verify $branch_ref_arg)\"; skipped auto-merge"
     return 0
   fi
   if [ "$FINISH_WORK_HEAD" != "$local_head_oid" ]; then
@@ -1027,7 +1029,7 @@ run_self_test() {
   local failures=0
 
   self_test_scenario "finish-work head required" refuse false CLEAN 0 2 0 main https://example.test/pr/153 1 1 "" || failures=$((failures + 1))
-  self_test_scenario "stale finish-work head refuses" refuse false CLEAN 0 2 0 main https://example.test/pr/153 1 1 0000000000000000000000000000000000000000 || failures=$((failures + 1))
+  self_test_scenario "stale finish-work head refuses" refuse false CLEAN 0 2 0 main https://example.test/pr/153 1 1 staleoid || failures=$((failures + 1))
   self_test_scenario "green executed checks merge" merge false CLEAN 0 2 0 || failures=$((failures + 1))
   # A single executed success is enough: SKIPPED/NEUTRAL conclusions are
   # pre-aggregated out of the counts by the readiness query, whose
