@@ -10,9 +10,10 @@ the existing release checklist.
 
 ## Confirmed Facts
 
-- Source `main` is currently `8636a3983d18de17c49907a4c48170a61b1bb713`.
-  GitHub Actions run `30036609751` completed successfully for that exact SHA.
-- The source repository currently has no tag or GitHub release.
+- At candidate selection on 2026-07-23, source `main` was
+  `8636a3983d18de17c49907a4c48170a61b1bb713`. GitHub Actions run
+  `30036609751` completed successfully for that exact SHA.
+- At candidate selection, the source repository had no tag or GitHub release.
 - A complete provider-free pilot passed against
   `32fc23d4a59aee4e84d25d44861e7e5e7b8d6483`, but PR-Agent support merged
   afterward in PR `#15`. That source behavior change superseded the candidate
