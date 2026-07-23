@@ -44,8 +44,7 @@ router remains the only owner of backend selection and dispatch.
 
 Schema v1 contains:
 
-- correlation ID, stable logical dispatch identity, normalized request
-  fingerprint, attempt, and schema version;
+- correlation ID, attempt, and schema version;
 - owner/repository, PR number, and full head SHA;
 - route intent: `auto`, `cheap`, `deep`, `copilot`, or `none`;
 - optional trusted confidence and policy/config reference;
@@ -58,6 +57,13 @@ Schema v1 contains:
   capability/cost/quality tiers, normalized outcome/disposition counts,
   bounded confidence, and timing;
 - caller identity metadata sufficient for diagnostics, never credentials.
+
+The router derives the stable logical dispatch identity from the canonical
+repository, PR, full live head, and attempt after live-head validation. It also
+derives the normalized request fingerprint from the allow-listed canonical
+request fields, excluding correlation aliases. Neither value is caller-trusted;
+if a compatibility envelope carries either value, the router recomputes it and
+rejects any mismatch before dispatch.
 
 The Action re-reads the PR and rejects a stale or mismatched head before any
 dispatch side effect. A local summary is usable only when it describes the same
@@ -81,7 +87,8 @@ closed before dispatch.
 
 The final receipt contains:
 
-- the exact request identity and live head;
+- the router-derived logical dispatch identity and normalized request
+  fingerprint, plus the exact live head;
 - selected route, backend ID/label, model or cost tier, policy version, and
   human-readable reason;
 - dispatch status (`requested`, `already-present`, `skipped`, or `failed`) and

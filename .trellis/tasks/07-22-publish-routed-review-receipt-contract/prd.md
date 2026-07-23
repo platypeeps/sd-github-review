@@ -47,13 +47,15 @@ or receives their raw findings.
   version, material capabilities, review authors, check identities, finding
   channels, and rerequest support in the receipt.
 - R5: Coordinate exactly one logical dispatch for each
-  repository/PR/head/attempt identity. Store a normalized request fingerprint
-  and reject conflicting retries for the same identity. Correlation IDs are
-  trace aliases, not permission to dispatch again. Native Copilot and external
-  adapters must share one idempotency model and distinguish requested,
-  already-present, skipped, delegated, and failed states. A same-head rerequest
-  requires an explicit prior-receipt identity, the next attempt, supported
-  backend capability, and policy authorization.
+  repository/PR/head/attempt identity. Derive that identity and the normalized
+  request fingerprint from canonical validated request fields; never trust
+  caller-provided identity or fingerprint values. Reject compatibility values
+  that do not match recomputation and reject conflicting retries for the same
+  identity. Correlation IDs are trace aliases, not permission to dispatch
+  again. Native Copilot and external adapters must share one idempotency model
+  and distinguish requested, already-present, skipped, delegated, and failed
+  states. A same-head rerequest requires an explicit prior-receipt identity,
+  the next attempt, supported backend capability, and policy authorization.
 - R6: Publish a durable receipt that a local command-pack client can query after
   the GitHub workflow step has ended. Same-workflow Action outputs must mirror
   the durable receipt rather than define a second contract.
@@ -143,6 +145,9 @@ or receives their raw findings.
   or reconciles the existing dispatch instead of spending again. A same-head
   rerequest is rejected unless its explicit prior receipt, attempt, capability,
   and policy checks pass.
+- [ ] The router derives logical dispatch identity and normalized request
+  fingerprint from canonical validated fields; spoofed or mismatched
+  caller-provided values fail before dispatch.
 - [ ] Native and external paths produce the same receipt envelope and declare
   the correct backend-specific observation channels and limitations.
 - [ ] The durable receipt is queryable by owner/repository, PR, head, logical
