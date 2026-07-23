@@ -276,6 +276,13 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 - `GITHUB_REPOSITORY` and `GITHUB_API_URL` configure REST calls;
   `GITHUB_OUTPUT` and `GITHUB_STEP_SUMMARY` are optional output sinks.
 - `github-token` is required only once a route needs GitHub API access.
+- `GitHubClient#request()` retries only `GET`, at most three total attempts.
+  Its injected sleeper and clock make exponential and rate-limit delays fully
+  deterministic in tests. Mutating methods remain one attempt.
+- Safe read retries cover transport failures, HTTP 408/429/500/502/503/504,
+  and only evidence-backed rate-limit HTTP 403 responses. Directed waits use
+  `retry-after`, then zero-remaining `x-ratelimit-reset`, then the 60-second
+  secondary fallback; over-cap directives fail rather than being shortened.
 
 ### 4. Validation & Error Matrix
 
@@ -287,6 +294,11 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 | Conflicting review labels | Throw and fail the Action |
 | Automatic route over 3,000 files | Throw and require an explicit route |
 | Non-success GitHub response | Include method, path, and API message in the error |
+| Eligible transient `GET` succeeds on retry | Return the successful response after a bounded injected delay |
+| Eligible `GET` exhausts three attempts | Throw the original GitHub message with attempt context |
+| Permission/validation response without transient evidence | Throw after one request |
+| Rate-limit directive exceeds 60 seconds | Throw with allow-listed limit context and make no early retry |
+| Interrupted reviewer request or Check Run mutation | Make exactly one mutation attempt; reconcile/fail closed in the owning layer |
 | Existing Copilot request/review for current HEAD | Do not request again; emit `copilot-requested=false` |
 
 ### 5. Good/Base/Bad Cases
@@ -304,7 +316,8 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 - Orchestration tests inject a client and assert both outputs and forbidden
   calls such as `listPullRequestFiles()` or `requestReviewer()`.
 - Transport tests assert the API-version/auth headers, pagination termination,
-  request payload, and surfaced error text.
+  request payload, safe retry/status matrix, injected delay sequence,
+  primary/secondary limit context, mutation non-retry, and surfaced error text.
 - Metadata tests parse every checked-in workflow/example and reject floating
   third-party Action references.
 
@@ -399,7 +412,8 @@ const failures = trackedPaths.filter(prohibitedPublishedMetadataReason);
   invalid values.
 - Escape workflow-command annotations and use delimiter-form GitHub outputs so
   multiline values cannot alter workflow syntax.
-- Keep GitHub API calls in `GitHubClient` and inject `fetch` for contract tests.
+- Keep GitHub API calls in `GitHubClient`; inject `fetch`, retry sleep, and the
+  clock for transport contract tests.
 - Keep routing precedence centralized in `routeReview()` and add regression
   coverage whenever precedence or event gating changes.
 - Pin consumer examples to reviewed full commit SHAs before use; placeholders
