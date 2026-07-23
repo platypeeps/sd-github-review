@@ -31,6 +31,13 @@ The unresolved work collapses into six independent outcomes:
 | Phase 3 PR-Agent, Gito, internal adapters, examples, and model defaults | `07-22-validate-external-reviewer-adapters` |
 | Phase 3 optional setup tooling | `07-22-evaluate-adoption-setup-automation` |
 
+Child-task priorities are the current backlog ranking, not a copy of each
+source issue's historical priority. The retry task is promoted from P3 to P2
+because it owns the broader mutation-safety and bounded-failure policy, not
+only rate-limit diagnostics. The routed-review receipt task is promoted from
+P3 to P1 because it implements an already approved contract and is the shared
+dependency for cross-run idempotency and external-adapter convergence.
+
 Every potential-issue row has one disposition:
 
 | Priority / issue | Disposition |
@@ -50,7 +57,9 @@ Every potential-issue row has one disposition:
 ## Requirements
 
 - R1: Preserve completed roadmap evidence in archived Trellis tasks and Git
-  history; do not recreate completed work as planned tasks.
+  history, including historical references to paths that later move or are
+  deleted; do not rewrite those records or recreate completed work as planned
+  tasks.
 - R2: Give each unresolved outcome exactly one owning child task with a clear
   priority, requirements, acceptance criteria, and parent relationship.
 - R3: Map the unresolved potential issues into those child tasks without
@@ -76,7 +85,8 @@ Every potential-issue row has one disposition:
 - [x] Every new task passes `task.py validate` and contains no `_example`
   context row or code/test path in its context manifests.
 - [x] The obsolete standalone project-plan document is deleted and no live
-  document links to it.
+  document links to it; archived task metadata may retain the deleted path as
+  historical evidence.
 - [x] `DESIGN.md` describes current architecture and limitations without
   duplicating future task plans.
 - [x] `README.md` describes supported adapter behavior without claiming that
