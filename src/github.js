@@ -48,6 +48,105 @@ export class GitHubClient {
     throw new Error("pull request contains more than 3,000 files; route it explicitly");
   }
 
+  async compareCommits(base, head, { maximumPages = 30 } = {}) {
+    const files = [];
+    let comparison = null;
+    let commitCount = 0;
+    for (let page = 1; page <= maximumPages; page += 1) {
+      const result = await this.request(
+        `/repos/${this.owner}/${this.repo}/compare/${encodeURIComponent(base)}...${encodeURIComponent(head)}?per_page=100&page=${page}`,
+      );
+      const commits = Array.isArray(result?.commits) ? result.commits : [];
+      const pageFiles = Array.isArray(result?.files) ? result.files : [];
+      const current = {
+        status: result?.status ?? null,
+        aheadBy: result?.ahead_by ?? null,
+        behindBy: result?.behind_by ?? null,
+        totalCommits: result?.total_commits ?? null,
+        mergeBaseSha: result?.merge_base_commit?.sha ?? null,
+      };
+      if (comparison === null) {
+        comparison = current;
+      } else if (JSON.stringify(comparison) !== JSON.stringify(current)) {
+        return {
+          ...comparison,
+          files,
+          commitCount,
+          truncated: files.length >= 300,
+          incomplete: true,
+          inconsistent: true,
+        };
+      }
+      // GitHub exposes changed files only on the first compare page and caps
+      // that list at 300, even while commit pagination continues.
+      if (page === 1) files.push(...pageFiles);
+      else if (pageFiles.length > 0) {
+        return {
+          ...comparison,
+          files,
+          commitCount,
+          truncated: files.length >= 300,
+          incomplete: true,
+          inconsistent: true,
+        };
+      }
+      commitCount += commits.length;
+      const allCommitsObserved = Number.isInteger(comparison.totalCommits)
+        && commitCount >= comparison.totalCommits;
+      if (allCommitsObserved || commits.length < 100) {
+        return {
+          ...comparison,
+          files,
+          commitCount,
+          truncated: files.length >= 300,
+          incomplete: Number.isInteger(comparison.totalCommits)
+            && commitCount < comparison.totalCommits,
+          inconsistent: false,
+        };
+      }
+    }
+    return {
+      ...comparison,
+      files,
+      commitCount,
+      truncated: files.length >= 300,
+      incomplete: true,
+      inconsistent: false,
+    };
+  }
+
+  async listCheckRuns(head, name) {
+    const checkRuns = [];
+    for (let page = 1; ; page += 1) {
+      const query = new URLSearchParams({
+        check_name: name,
+        filter: "all",
+        per_page: "100",
+        page: String(page),
+      });
+      const result = await this.request(
+        `/repos/${this.owner}/${this.repo}/commits/${encodeURIComponent(head)}/check-runs?${query}`,
+      );
+      const batch = Array.isArray(result?.check_runs) ? result.check_runs : [];
+      checkRuns.push(...batch);
+      if (batch.length < 100) return checkRuns;
+    }
+  }
+
+  createCheckRun(payload) {
+    return this.request(`/repos/${this.owner}/${this.repo}/check-runs`, {
+      method: "POST",
+      body: payload,
+    });
+  }
+
+  updateCheckRun(id, payload) {
+    return this.request(`/repos/${this.owner}/${this.repo}/check-runs/${id}`, {
+      method: "PATCH",
+      body: payload,
+    });
+  }
+
   getRequestedReviewers(number) {
     return this.request(`/repos/${this.owner}/${this.repo}/pulls/${number}/requested_reviewers`);
   }

@@ -40,6 +40,10 @@ does not define a custom error hierarchy.
 | Local outcome is failed/cancelled/skipped with positive confidence | Throw; non-positive outcomes must use zero confidence |
 | Trusted successor evidence does not match `supersedes` and current head | Throw before applying successor policy |
 | Receipt route/backend/dispatch state is contradictory | Throw; do not publish a partial receipt |
+| Receipt Check Run is malformed, noncanonical, wrong-head, or duplicated | Throw; never authorize another dispatch |
+| Check Run create/update result is ambiguous | Return `reconciliationRequired: true` and `dispatchAllowed: false` |
+| Live PR head changes before or during receipt creation | Fail closed; do not authorize dispatch for the stale head |
+| GitHub comparison is rewritten, truncated, incomplete, or changes head | Emit an ineligible bounded successor class; never infer bookkeeping-only |
 
 ## Example
 

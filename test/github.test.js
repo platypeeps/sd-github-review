@@ -104,3 +104,96 @@ test("reads requested and completed reviews and sends the documented request pay
     reviewers: ["copilot-pull-request-reviewer[bot]"],
   });
 });
+
+test("paginates compare metadata and fails closed on inconsistent pages", async () => {
+  const calls = [];
+  const client = createClient(async (url) => {
+    calls.push(url);
+    const page = Number(new URL(url).searchParams.get("page"));
+    return jsonResponse({
+      status: page === 1 ? "ahead" : "diverged",
+      ahead_by: 2,
+      behind_by: 0,
+      total_commits: 101,
+      merge_base_commit: { sha: "a".repeat(40) },
+      commits: Array.from({ length: page === 1 ? 100 : 1 }, (_, index) => ({
+        sha: `${page}-${index}`,
+      })),
+      files: Array.from({ length: page === 1 ? 1 : 0 }, (_, index) => ({
+        filename: `page-${page}/file-${index}.md`,
+      })),
+    });
+  });
+
+  const comparison = await client.compareCommits("a".repeat(40), "b".repeat(40));
+
+  assert.equal(comparison.incomplete, true);
+  assert.equal(comparison.inconsistent, true);
+  assert.equal(comparison.files.length, 1);
+  assert.match(calls[0], /compare\/a{40}\.\.\.b{40}\?per_page=100&page=1$/u);
+});
+
+test("compare pagination reads commits while bounding files to the first page", async () => {
+  const client = createClient(async (url) => {
+    const page = Number(new URL(url).searchParams.get("page"));
+    return jsonResponse({
+      status: "ahead",
+      ahead_by: 101,
+      behind_by: 0,
+      total_commits: 101,
+      merge_base_commit: { sha: "a".repeat(40) },
+      commits: Array.from({ length: page === 1 ? 100 : 1 }, (_, index) => ({
+        sha: `${page}-${index}`,
+      })),
+      files: page === 1
+        ? Array.from({ length: 300 }, (_, index) => ({ filename: `file-${index}.md` }))
+        : undefined,
+    });
+  });
+
+  const comparison = await client.compareCommits("a".repeat(40), "b".repeat(40));
+
+  assert.equal(comparison.commitCount, 101);
+  assert.equal(comparison.files.length, 300);
+  assert.equal(comparison.truncated, true);
+  assert.equal(comparison.incomplete, false);
+});
+
+test("lists named check runs across pages", async () => {
+  const calls = [];
+  const client = createClient(async (url) => {
+    calls.push(url);
+    const page = Number(new URL(url).searchParams.get("page"));
+    return jsonResponse({
+      check_runs: Array.from({ length: page === 1 ? 100 : 2 }, (_, index) => ({
+        id: page * 1000 + index,
+      })),
+    });
+  });
+
+  const checks = await client.listCheckRuns("c".repeat(40), "sd-github-review/receipt");
+
+  assert.equal(checks.length, 102);
+  assert.equal(calls.length, 2);
+  assert.match(calls[0], /check_name=sd-github-review%2Freceipt/u);
+  assert.match(calls[0], /filter=all/u);
+});
+
+test("creates and updates check runs with documented HTTP methods", async () => {
+  const calls = [];
+  const client = createClient(async (url, options) => {
+    calls.push({ url, options });
+    return jsonResponse({ id: 41 });
+  });
+  const createPayload = { name: "sd-github-review/receipt", head_sha: "d".repeat(40) };
+  const updatePayload = { status: "completed", conclusion: "success" };
+
+  await client.createCheckRun(createPayload);
+  await client.updateCheckRun(41, updatePayload);
+
+  assert.equal(calls[0].options.method, "POST");
+  assert.deepEqual(JSON.parse(calls[0].options.body), createPayload);
+  assert.equal(calls[1].options.method, "PATCH");
+  assert.deepEqual(JSON.parse(calls[1].options.body), updatePayload);
+  assert.match(calls[1].url, /\/check-runs\/41$/u);
+});

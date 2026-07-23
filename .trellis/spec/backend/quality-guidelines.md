@@ -99,6 +99,95 @@ const request = decodeReviewRequest(input);
 const id = request.logicalDispatchId;
 ```
 
+## Scenario: Persist And Reconcile A Routed-Review Receipt
+
+### 1. Scope / Trigger
+
+Use this contract when creating, querying, or advancing the durable
+`sd-github-review/receipt` Check Run, or when deriving trusted successor
+evidence from GitHub compare metadata.
+
+### 2. Signatures
+
+- `GitHubClient.compareCommits(base, head) -> comparison`
+- `GitHubClient.listCheckRuns(head, name) -> checkRuns`
+- `GitHubClient.createCheckRun(payload) -> checkRun`
+- `GitHubClient.updateCheckRun(id, payload) -> checkRun`
+- `ReceiptStore.begin(request, options) -> { state, receipt, dispatchAllowed, reconciliationRequired }`
+- `ReceiptStore.query(identity) -> receipt|null`
+- `ReceiptStore.acknowledge(input) -> transitionResult`
+- `ReceiptStore.observe(input) -> transitionResult`
+- `ReceiptStore.compareSuccessor(request) -> { evidence, counts, truncated }`
+
+### 3. Contracts
+
+- The Check Run name is `sd-github-review/receipt`, `head_sha` is the full
+  request head, and `external_id` is the protocol-derived logical dispatch ID.
+- Check output text is exactly one v1 marker plus canonical normalized receipt
+  JSON. Noncanonical, malformed, wrong-head, contradictory, or duplicate
+  evidence fails closed.
+- `begin()` re-reads the live PR head before lookup, immediately before create,
+  and after create before it returns dispatch authorization.
+- A matching retry reuses the receipt and may append correlation aliases. A
+  conflicting fingerprint throws before another dispatch is possible.
+- `started`, `acknowledged`, and `observed` are monotonic. Interrupted
+  `started` mutations and ambiguous GitHub writes return reconciliation
+  required and never recommend fallback dispatch.
+- Same-head rerequest requires the next attempt, exact prior receipt and
+  logical identity, unchanged policy/route/backend, backend rerequest support,
+  and explicit repository-policy authorization.
+- Compare pagination follows commit pages. GitHub exposes changed files only
+  on page one and caps them at 300, so the cap is treated as truncated.
+- Successor normalization hashes path-sensitive metadata and returns only a
+  bounded class, digest, counts, and truncation flag; raw paths and patches do
+  not leave the receipt boundary.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required behavior |
+| --- | --- |
+| Matching identity and fingerprint | Return existing receipt; never dispatch twice |
+| Matching retry with new correlation | Append the alias through the same Check Run |
+| Conflicting fingerprint or duplicate Check Runs | Throw before dispatch |
+| Check mutation response is uncertain | Return reconciliation required with dispatch forbidden |
+| Live head differs before/after create | Return no dispatch authorization |
+| Valid acknowledgment then observation | Advance one Check Run monotonically |
+| Rewritten or non-ancestral compare | Classify `non-comparable` |
+| Incomplete/inconsistent compare | Classify `ambiguous` |
+| 300-file cap or configured maximum exceeded | Classify `oversized` |
+| Mixed bookkeeping and source files | Classify `mixed` |
+
+### 5. Good/Base/Bad Cases
+
+- Good: one exact-head receipt is created, re-read, and returned as the same
+  canonical envelope written into the Check Run.
+- Base: a matching retry reads the existing receipt and returns no new dispatch
+  authorization.
+- Bad: a failed create response causes the caller to try another backend
+  without first reconciling the durable logical identity.
+
+### 6. Tests Required
+
+- Assert Check Run and compare endpoint methods, paths, headers, pagination,
+  payloads, and errors through injected fetch.
+- Cover create/query/update, alias retry, fingerprint conflict, malformed and
+  duplicate checks, head changes, ambiguous mutations, phase transitions, and
+  same-head rerequest gates.
+- Cover bookkeeping-only, mixed, content-changing, oversized, rewritten,
+  incomplete, and changed-head successor comparisons.
+- Assert serialized receipt and successor results contain no raw paths,
+  findings, prompts, credentials, configuration values, or pricing data.
+
+### 7. Wrong vs Correct
+
+```js
+// Wrong: absence after an uncertain create authorizes a fallback provider.
+await dispatchFallback();
+
+// Correct: durable identity ambiguity always stops dispatch.
+return { reconciliationRequired: true, dispatchAllowed: false };
+```
+
 ## Scenario: Route and Request a GitHub Review
 
 ### 1. Scope / Trigger

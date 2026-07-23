@@ -30,19 +30,19 @@ or a duplicate-dispatch path.
 
 ## Acceptance Criteria
 
-- [ ] Receipt create, query, update, alias-retry, conflict, malformed-check,
+- [x] Receipt create, query, update, alias-retry, conflict, malformed-check,
   duplicate-check, and changed-head tests pass.
-- [ ] Same exact request cannot produce a second dispatch authorization; a new
+- [x] Same exact request cannot produce a second dispatch authorization; a new
   head or valid next attempt has a distinct identity.
-- [ ] Receipt lookup works after the original Action step and mirrors the
+- [x] Receipt lookup works after the original Action step and mirrors the
   protocol core envelope byte-for-byte after normalization.
-- [ ] Interrupted `started` and unacknowledged states return structured
+- [x] Interrupted `started` and unacknowledged states return structured
   reconciliation-required outcomes, never a fallback recommendation.
-- [ ] Compare tests cover bookkeeping-only, mixed, oversized, rewritten,
+- [x] Compare tests cover bookkeeping-only, mixed, oversized, rewritten,
   non-comparable, incomplete pagination, and head-changed cases.
-- [ ] Check output contains no raw paths, source, findings, prompts,
+- [x] Check output contains no raw paths, source, findings, prompts,
   credentials, configuration values, or sensitive pricing data.
-- [ ] Existing GitHub client and standalone routing tests remain green.
+- [x] Existing GitHub client and standalone routing tests remain green.
 
 ## Dependencies
 
