@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Require dry-run, idempotency, permissions, and rollback coverage for any automation."}

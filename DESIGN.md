@@ -24,20 +24,6 @@ Copilot is the only reviewer backend invoked directly by the action. The
 workflow owns the reviewer runtime, credentials, prompt, and model-provider
 configuration.
 
-### Planned Backends
-
-The planned integration order is:
-
-1. Live contract validation for the documented PR-Agent reference workflow.
-2. A runnable Gito adapter example consuming the generic output contract.
-3. A documented command or HTTP adapter pattern for internal review services.
-
-Direct OpenAI, Anthropic, Google, or other model-provider SDK integrations are
-not planned for the core action. Those providers can be used behind Gito,
-PR-Agent, or an internal adapter without turning the router into a credential
-broker. A backend is considered natively supported only after its adapter has
-contract tests and a documented credential boundary.
-
 ## Architecture
 
 The implementation has four boundaries:
@@ -197,9 +183,8 @@ suppresses a repeat request. The route remains `copilot`, while
 - Run deterministic checks before AI routing and retain human approval where
   required.
 
-The action currently has no bounded retry/backoff policy, and generic external
-reviewers have no cross-run deduplication contract. Those remain operational
-roadmap items to address from adoption evidence.
+The action currently has no bounded retry/backoff policy or cross-run
+deduplication contract for generic external reviewers.
 
 ## Related Documents
 
@@ -210,7 +195,5 @@ roadmap items to address from adoption evidence.
   reference adapter
 - [`examples/pilot-router.yml`](examples/pilot-router.yml) — provider-free
   routing smoke workflow
-- [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) — roadmap, risks, and success
-  measures
 - [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) — candidate, pilot,
   and release gates

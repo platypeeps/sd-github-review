@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Require deterministic retry, mutation-safety, and negative-side-effect tests."}

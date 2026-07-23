@@ -19,6 +19,31 @@ docs/                # project and release operations
 `action.yml` is the public runtime manifest. `DESIGN.md` owns architecture and
 routing semantics; `README.md` owns consumer installation.
 
+## Planning Ownership
+
+Unfinished phases, risks, and follow-up work belong in independently valid
+`.trellis/tasks/<task>/` records. Keep `README.md`, `DESIGN.md`, and `docs/`
+focused on current behavior and operating procedures so they do not become a
+second backlog that can drift from Trellis.
+
+When retiring a standalone roadmap, first classify every entry as completed or
+open. Record completion evidence in the migration task, create one Trellis task
+for each independently deliverable open outcome, and only then delete the
+roadmap and remove forward-looking references from live documentation.
+
+```text
+# Wrong: the same future work is tracked in two places
+DESIGN.md: "Planned backend: ..."
+docs/<standalone-roadmap>.md: "Phase 4: ..."
+
+# Correct: current contract in docs, remaining work in Trellis
+DESIGN.md: "Supported backend contract: ..."
+.trellis/tasks/<task>/prd.md: acceptance criteria for the open outcome
+```
+
+This convention prevents completed work from being recreated and preserves a
+single queryable source for priority, ownership, dependencies, and status.
+
 ## Module Organization
 
 - Put deterministic policy, parsing, trust, and glob behavior in
