@@ -35,6 +35,11 @@ They must not echo the rejected value. Durable receipts may carry only bounded
 normalized observation metadata; native finding bodies remain on their
 declared GitHub surfaces.
 
+The `sd-github-review/receipt` Check Run stores only the v1 marker and canonical
+normalized receipt. Successor comparison may inspect GitHub filenames in
+memory, but persists only a path-sensitive digest, bounded counts, and the
+normalized comparison class; raw filenames and patches are discarded.
+
 ## Example
 
 Prefer a single concise line:

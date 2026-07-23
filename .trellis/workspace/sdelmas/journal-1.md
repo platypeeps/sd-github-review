@@ -486,3 +486,46 @@ Added the dependency-free routed-review protocol boundary, deterministic identit
 ### Next Steps
 
 - Proceed to the dependent durable routed-review receipt task.
+
+
+## Session 13: Implement durable routed-review receipts
+
+**Date**: 2026-07-23
+**Task**: Implement durable routed-review receipts
+**Branch**: `codex/implement-durable-routed-review-receipts`
+
+### Summary
+
+Added exact-head GitHub Check Run receipt persistence, strict fail-closed reconciliation, bounded successor comparison evidence, and transport support for the routed-review protocol.
+
+### Main Changes
+
+- Added canonical exact-head receipt Check Run encoding, lookup, creation, updates, idempotency, phase transitions, and policy-authorized rerequests.
+- Added bounded GitHub compare normalization that stores digests and counts without raw paths, with ambiguous and oversized fail-closed classifications.
+- Hardened post-mutation reconciliation and compare pagination validation from Copilot review findings.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9b9fd9bcd6294dc6f8223e100010140f22fa9170` | feat: add durable routed review receipts |
+| `4f16606c36b7138962d7bbf747c5d1f1dde63bcf` | fix: fail closed on ambiguous receipt mutations |
+
+### Testing
+
+- [OK] npm test: 85 tests passed
+- [OK] npm run check
+- [OK] npm run validate:metadata
+- [OK] git diff --check
+- [OK] sd-ai-command-pack review full-check: 0 failures
+- [OK] GitHub CI passed on exact head 4f16606c36b7138962d7bbf747c5d1f1dde63bcf
+- [OK] Copilot review: 2 rounds, 2 findings fixed, 0 unresolved threads
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Merge PR #12 and continue with the on-demand routed-review dispatch task.
