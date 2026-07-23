@@ -1,0 +1,130 @@
+[
+  {
+    "name": "clean",
+    "value": {
+      "schemaVersion": 1,
+      "receiptId": "local-clean",
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "scopeDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "configurationDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "providers": [{ "id": "prism", "capabilityTier": "advanced", "costTier": "low", "qualityTier": "advanced" }],
+      "outcome": "clean",
+      "dispositionCounts": { "total": 0, "unresolved": 0, "fixed": 0, "rebutted": 0 },
+      "confidence": 95,
+      "latencyMs": 1450,
+      "costTier": "low"
+    }
+  },
+  {
+    "name": "fully dispositioned",
+    "value": {
+      "schemaVersion": 1,
+      "receiptId": "local-dispositioned",
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "scopeDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "configurationDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "providers": [{ "id": "prism", "capabilityTier": "advanced", "costTier": "low", "qualityTier": "advanced" }],
+      "outcome": "fully-dispositioned",
+      "dispositionCounts": { "total": 3, "unresolved": 0, "fixed": 2, "rebutted": 1 },
+      "confidence": 90,
+      "latencyMs": 1800,
+      "costTier": "low"
+    }
+  },
+  {
+    "name": "unavailable",
+    "value": {
+      "schemaVersion": 1,
+      "receiptId": "local-unavailable",
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "scopeDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "configurationDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "providers": [{ "id": "prism", "capabilityTier": "advanced", "costTier": "low", "qualityTier": "advanced" }],
+      "outcome": "unavailable",
+      "dispositionCounts": { "total": 0, "unresolved": 0, "fixed": 0, "rebutted": 0 },
+      "confidence": 0,
+      "latencyMs": 0,
+      "costTier": "unknown"
+    }
+  },
+  {
+    "name": "failed",
+    "value": {
+      "schemaVersion": 1,
+      "receiptId": "local-failed",
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "scopeDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "configurationDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "providers": [{ "id": "prism", "capabilityTier": "advanced", "costTier": "low", "qualityTier": "advanced" }],
+      "outcome": "failed",
+      "dispositionCounts": { "total": 0, "unresolved": 0, "fixed": 0, "rebutted": 0 },
+      "confidence": 0,
+      "latencyMs": 900,
+      "costTier": "low"
+    }
+  },
+  {
+    "name": "cancelled",
+    "value": {
+      "schemaVersion": 1,
+      "receiptId": "local-cancelled",
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "scopeDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "configurationDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "providers": [{ "id": "prism", "capabilityTier": "advanced", "costTier": "low", "qualityTier": "advanced" }],
+      "outcome": "cancelled",
+      "dispositionCounts": { "total": 0, "unresolved": 0, "fixed": 0, "rebutted": 0 },
+      "confidence": 0,
+      "latencyMs": 400,
+      "costTier": "low"
+    }
+  },
+  {
+    "name": "skipped explicit none",
+    "value": {
+      "schemaVersion": 1,
+      "receiptId": "local-skipped-none",
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "scopeDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "configurationDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "providers": [{ "id": "prism", "capabilityTier": "advanced", "costTier": "low", "qualityTier": "advanced" }],
+      "outcome": "skipped",
+      "skipReason": "explicit-none",
+      "dispositionCounts": { "total": 0, "unresolved": 0, "fixed": 0, "rebutted": 0 },
+      "confidence": 0,
+      "latencyMs": 0,
+      "costTier": "unknown"
+    }
+  },
+  {
+    "name": "skipped bookkeeping successor",
+    "value": {
+      "schemaVersion": 1,
+      "receiptId": "local-skipped-successor",
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "scopeDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "configurationDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "providers": [{ "id": "prism", "capabilityTier": "advanced", "costTier": "low", "qualityTier": "advanced" }],
+      "outcome": "skipped",
+      "skipReason": "bookkeeping-successor",
+      "dispositionCounts": { "total": 0, "unresolved": 0, "fixed": 0, "rebutted": 0 },
+      "confidence": 0,
+      "latencyMs": 0,
+      "costTier": "unknown"
+    }
+  }
+]

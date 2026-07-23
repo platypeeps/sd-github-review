@@ -1,0 +1,58 @@
+[
+  {
+    "name": "unresolved auto route",
+    "error": "resolved route",
+    "value": {
+      "schemaVersion": 1,
+      "receiptId": "receipt-invalid",
+      "logicalDispatchId": "0000000000000000000000000000000000000000000000000000000000000000",
+      "requestFingerprint": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "dddddddddddddddddddddddddddddddddddddddd",
+      "attempt": 1,
+      "selectedRoute": "auto",
+      "backend": null,
+      "reason": "invalid unresolved route",
+      "policyVersion": "policy-v1",
+      "dispatch": {
+        "status": "skipped",
+        "phase": "not-started",
+        "idempotencyKey": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "correlationIds": ["corr-invalid"]
+    }
+  },
+  {
+    "name": "spoofed receipt identity",
+    "error": "does not match",
+    "value": {
+      "schemaVersion": 1,
+      "receiptId": "receipt-invalid",
+      "logicalDispatchId": "0000000000000000000000000000000000000000000000000000000000000000",
+      "requestFingerprint": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "dddddddddddddddddddddddddddddddddddddddd",
+      "attempt": 1,
+      "selectedRoute": "none",
+      "backend": null,
+      "reason": "invalid identity",
+      "policyVersion": "policy-v1",
+      "dispatch": {
+        "status": "skipped",
+        "phase": "not-started",
+        "idempotencyKey": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "correlationIds": ["corr-invalid"]
+    }
+  },
+  {
+    "name": "forbidden prompt field",
+    "error": "privacy boundary",
+    "value": {
+      "schemaVersion": 1,
+      "prompt": "forbidden-fixture-value"
+    }
+  }
+]

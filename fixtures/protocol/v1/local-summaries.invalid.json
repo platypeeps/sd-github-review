@@ -1,0 +1,72 @@
+[
+  {
+    "name": "dirty worktree outcome",
+    "error": "outcome must be one of",
+    "value": {
+      "schemaVersion": 1,
+      "receiptId": "local-dirty",
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "scopeDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "configurationDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "providers": [{ "id": "prism", "capabilityTier": "advanced", "costTier": "low", "qualityTier": "advanced" }],
+      "outcome": "dirty-worktree",
+      "dispositionCounts": { "total": 0, "unresolved": 0, "fixed": 0, "rebutted": 0 },
+      "confidence": 0,
+      "latencyMs": 0,
+      "costTier": "unknown"
+    }
+  },
+  {
+    "name": "stale head",
+    "error": "must match the request headSha",
+    "expectedIdentity": {
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "value": {
+      "schemaVersion": 1,
+      "receiptId": "local-stale",
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "scopeDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "configurationDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "providers": [{ "id": "prism", "capabilityTier": "advanced", "costTier": "low", "qualityTier": "advanced" }],
+      "outcome": "clean",
+      "dispositionCounts": { "total": 0, "unresolved": 0, "fixed": 0, "rebutted": 0 },
+      "confidence": 95,
+      "latencyMs": 1450,
+      "costTier": "low"
+    }
+  },
+  {
+    "name": "malformed providers",
+    "error": "providers must be an array",
+    "value": {
+      "schemaVersion": 1,
+      "receiptId": "local-malformed",
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "scopeDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "configurationDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "providers": { "id": "prism" },
+      "outcome": "clean",
+      "dispositionCounts": { "total": 0, "unresolved": 0, "fixed": 0, "rebutted": 0 },
+      "confidence": 95,
+      "latencyMs": 1450,
+      "costTier": "low"
+    }
+  },
+  {
+    "name": "forbidden paths",
+    "error": "privacy boundary",
+    "value": {
+      "schemaVersion": 1,
+      "paths": ["forbidden-fixture-value"]
+    }
+  }
+]

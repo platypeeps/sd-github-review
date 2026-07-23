@@ -1,0 +1,216 @@
+[
+  {
+    "name": "Copilot receipt",
+    "value": {
+      "schemaVersion": 1,
+      "receiptId": "receipt-copilot",
+      "logicalDispatchId": "2db741d4716f7b2dcf3ee5264ffeb09883e414afc4f6419bbb73656aaef9d0f5",
+      "requestFingerprint": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "dddddddddddddddddddddddddddddddddddddddd",
+      "attempt": 1,
+      "selectedRoute": "copilot",
+      "backend": {
+        "id": "github-copilot",
+        "label": "GitHub Copilot",
+        "kind": "copilot",
+        "costTier": "medium",
+        "qualityTier": "advanced",
+        "capabilities": ["review", "inline-comments"],
+        "reviewAuthors": ["copilot-pull-request-reviewer[bot]"],
+        "checkNames": [],
+        "findingChannels": ["review", "inline-comment"],
+        "supportsRerequest": true,
+        "limitations": ["GitHub-managed model selection"]
+      },
+      "reason": "explicit copilot route selected",
+      "policyVersion": "policy-v1",
+      "dispatch": {
+        "status": "requested",
+        "phase": "observed",
+        "idempotencyKey": "2db741d4716f7b2dcf3ee5264ffeb09883e414afc4f6419bbb73656aaef9d0f5",
+        "startedAt": "2026-07-23T10:00:00Z",
+        "completedAt": "2026-07-23T10:00:02Z",
+        "workflowUrl": "https://github.com/platypeeps/sd-github-review/actions/runs/1"
+      },
+      "correlationIds": ["corr-copilot"],
+      "observations": { "latencyMs": 2000, "costTier": "medium" }
+    }
+  },
+  {
+    "name": "external comment receipt",
+    "value": {
+      "schemaVersion": 1,
+      "receiptId": "receipt-cheap",
+      "logicalDispatchId": "d087591617d08651855c000a5f3db32e36e185778eabcf6da52a3f8ce359581f",
+      "requestFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "attempt": 1,
+      "selectedRoute": "cheap",
+      "backend": {
+        "id": "pr-agent",
+        "label": "PR-Agent",
+        "kind": "external",
+        "model": "adapter-default",
+        "costTier": "low",
+        "qualityTier": "standard",
+        "capabilities": ["review", "conversation-comments"],
+        "reviewAuthors": ["pr-agent[bot]"],
+        "checkNames": [],
+        "findingChannels": ["conversation-comment"],
+        "supportsRerequest": true,
+        "limitations": ["Inline comments depend on adapter configuration"]
+      },
+      "reason": "explicit cheap route selected",
+      "policyVersion": "policy-v1",
+      "dispatch": {
+        "status": "requested",
+        "phase": "acknowledged",
+        "idempotencyKey": "d087591617d08651855c000a5f3db32e36e185778eabcf6da52a3f8ce359581f",
+        "startedAt": "2026-07-23T10:01:00Z",
+        "completedAt": "2026-07-23T10:01:03Z"
+      },
+      "correlationIds": ["corr-cheap"],
+      "observations": { "latencyMs": 3000, "costTier": "low" }
+    }
+  },
+  {
+    "name": "external check receipt",
+    "value": {
+      "schemaVersion": 1,
+      "receiptId": "receipt-deep",
+      "logicalDispatchId": "f08357c9ea44c1fedf200210d86502556ab61e3e520ccac25511978eccf5ef0f",
+      "requestFingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "cccccccccccccccccccccccccccccccccccccccc",
+      "attempt": 1,
+      "selectedRoute": "deep",
+      "backend": {
+        "id": "internal-check-reviewer",
+        "label": "Internal Check Reviewer",
+        "kind": "external",
+        "costTier": "high",
+        "qualityTier": "advanced",
+        "capabilities": ["checks"],
+        "reviewAuthors": [],
+        "checkNames": ["internal-review/findings"],
+        "findingChannels": ["check"],
+        "supportsRerequest": false,
+        "limitations": ["Findings are exposed as a check only"]
+      },
+      "reason": "explicit deep route selected",
+      "policyVersion": "policy-v1",
+      "dispatch": {
+        "status": "requested",
+        "phase": "acknowledged",
+        "idempotencyKey": "f08357c9ea44c1fedf200210d86502556ab61e3e520ccac25511978eccf5ef0f",
+        "startedAt": "2026-07-23T10:02:00Z",
+        "completedAt": "2026-07-23T10:02:05Z"
+      },
+      "correlationIds": ["corr-deep"],
+      "observations": { "latencyMs": 5000, "costTier": "high" }
+    }
+  },
+  {
+    "name": "none receipt",
+    "value": {
+      "schemaVersion": 1,
+      "receiptId": "receipt-none",
+      "logicalDispatchId": "545dd079b0abba3bf7a16d15df73e5ddd7026cae590e57dcfffadc9e929134fe",
+      "requestFingerprint": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "attempt": 1,
+      "selectedRoute": "none",
+      "backend": null,
+      "reason": "explicit none route selected",
+      "policyVersion": "policy-v1",
+      "dispatch": {
+        "status": "skipped",
+        "phase": "not-started",
+        "idempotencyKey": "545dd079b0abba3bf7a16d15df73e5ddd7026cae590e57dcfffadc9e929134fe",
+        "completedAt": "2026-07-23T10:03:00Z"
+      },
+      "correlationIds": ["corr-none"]
+    }
+  },
+  {
+    "name": "already-present Copilot receipt",
+    "value": {
+      "schemaVersion": 1,
+      "receiptId": "receipt-copilot-existing",
+      "logicalDispatchId": "2db741d4716f7b2dcf3ee5264ffeb09883e414afc4f6419bbb73656aaef9d0f5",
+      "requestFingerprint": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "dddddddddddddddddddddddddddddddddddddddd",
+      "attempt": 1,
+      "selectedRoute": "copilot",
+      "backend": {
+        "id": "github-copilot",
+        "label": "GitHub Copilot",
+        "kind": "copilot",
+        "costTier": "medium",
+        "qualityTier": "advanced",
+        "capabilities": ["review", "inline-comments"],
+        "reviewAuthors": ["copilot-pull-request-reviewer[bot]"],
+        "checkNames": [],
+        "findingChannels": ["review", "inline-comment"],
+        "supportsRerequest": true,
+        "limitations": ["GitHub-managed model selection"]
+      },
+      "reason": "current-head Copilot review already exists",
+      "policyVersion": "policy-v1",
+      "dispatch": {
+        "status": "already-present",
+        "phase": "observed",
+        "idempotencyKey": "2db741d4716f7b2dcf3ee5264ffeb09883e414afc4f6419bbb73656aaef9d0f5",
+        "completedAt": "2026-07-23T10:04:00Z"
+      },
+      "correlationIds": ["corr-copilot", "corr-copilot-retry"]
+    }
+  },
+  {
+    "name": "failed external receipt",
+    "value": {
+      "schemaVersion": 1,
+      "receiptId": "receipt-cheap-failed",
+      "logicalDispatchId": "d087591617d08651855c000a5f3db32e36e185778eabcf6da52a3f8ce359581f",
+      "requestFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "attempt": 1,
+      "selectedRoute": "cheap",
+      "backend": {
+        "id": "pr-agent",
+        "label": "PR-Agent",
+        "kind": "external",
+        "model": "adapter-default",
+        "costTier": "low",
+        "qualityTier": "standard",
+        "capabilities": ["review", "conversation-comments"],
+        "reviewAuthors": ["pr-agent[bot]"],
+        "checkNames": [],
+        "findingChannels": ["conversation-comment"],
+        "supportsRerequest": true,
+        "limitations": ["Inline comments depend on adapter configuration"]
+      },
+      "reason": "external adapter failed before acknowledgment",
+      "policyVersion": "policy-v1",
+      "dispatch": {
+        "status": "failed",
+        "phase": "started",
+        "idempotencyKey": "d087591617d08651855c000a5f3db32e36e185778eabcf6da52a3f8ce359581f",
+        "startedAt": "2026-07-23T10:05:00Z",
+        "completedAt": "2026-07-23T10:05:30Z"
+      },
+      "correlationIds": ["corr-cheap-failed"]
+    }
+  }
+]

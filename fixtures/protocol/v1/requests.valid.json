@@ -1,0 +1,111 @@
+[
+  {
+    "name": "automatic with exact-head local evidence",
+    "value": {
+      "schemaVersion": 1,
+      "correlationId": "corr-auto",
+      "attempt": 1,
+      "repository": { "owner": "Platypeeps", "name": "SD-GitHub-Review" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "route": "auto",
+      "policyVersion": "policy-v1",
+      "policyReference": "repository-default",
+      "caller": { "id": "sd-review", "type": "automation" },
+      "localReview": {
+        "schemaVersion": 1,
+        "receiptId": "local-42-a",
+        "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+        "pullRequestNumber": 42,
+        "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "scopeDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        "configurationDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+        "providers": [
+          {
+            "id": "prism",
+            "capabilityTier": "advanced",
+            "costTier": "low",
+            "qualityTier": "advanced"
+          }
+        ],
+        "outcome": "clean",
+        "dispositionCounts": { "total": 0, "unresolved": 0, "fixed": 0, "rebutted": 0 },
+        "confidence": 95,
+        "latencyMs": 1450,
+        "costTier": "low"
+      }
+    }
+  },
+  {
+    "name": "explicit cheap",
+    "value": {
+      "schemaVersion": 1,
+      "correlationId": "corr-cheap",
+      "attempt": 1,
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "route": "cheap",
+      "policyVersion": "policy-v1"
+    }
+  },
+  {
+    "name": "explicit deep",
+    "value": {
+      "schemaVersion": 1,
+      "correlationId": "corr-deep",
+      "attempt": 1,
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "cccccccccccccccccccccccccccccccccccccccc",
+      "route": "deep",
+      "policyVersion": "policy-v1"
+    }
+  },
+  {
+    "name": "explicit copilot",
+    "value": {
+      "schemaVersion": 1,
+      "correlationId": "corr-copilot",
+      "attempt": 1,
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "dddddddddddddddddddddddddddddddddddddddd",
+      "route": "copilot",
+      "policyVersion": "policy-v1"
+    }
+  },
+  {
+    "name": "explicit none",
+    "value": {
+      "schemaVersion": 1,
+      "correlationId": "corr-none",
+      "attempt": 1,
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "route": "none",
+      "policyVersion": "policy-v1"
+    }
+  },
+  {
+    "name": "automatic successor",
+    "value": {
+      "schemaVersion": 1,
+      "correlationId": "corr-successor",
+      "correlationAliases": ["corr-prior"],
+      "attempt": 1,
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "ffffffffffffffffffffffffffffffffffffffff",
+      "route": "auto",
+      "policyVersion": "policy-v1",
+      "supersedes": {
+        "priorReceiptId": "receipt-prior",
+        "priorLogicalDispatchId": "3333333333333333333333333333333333333333333333333333333333333333",
+        "priorHeadSha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "correlationId": "corr-prior"
+      }
+    }
+  }
+]

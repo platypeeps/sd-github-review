@@ -6,9 +6,98 @@
 
 Production code is modern ECMAScript modules running on the Node version
 declared by `action.yml`. Keep routing policy pure in `src/router.js`, GitHub
-transport in `src/github.js`, and event orchestration in `src/index.js`.
+transport in `src/github.js`, event orchestration in `src/index.js`, and the
+versioned routed-review protocol in `src/protocol.js`.
 Prefer injected boundaries over process-wide mocks so behavior can be tested
 with Node's built-in test runner.
+
+## Scenario: Decode And Select A Routed Review
+
+### 1. Scope / Trigger
+
+Use this contract for the v1 request/receipt protocol consumed by later durable
+receipt and on-demand dispatch work. The protocol layer is pure: it validates
+and canonicalizes caller data but never reads GitHub, the checkout, process
+state, or output files.
+
+### 2. Signatures
+
+- `decodeReviewRequest(value) -> normalizedRequest`
+- `deriveLogicalDispatchId(request) -> 64-character SHA-256 digest`
+- `deriveRequestFingerprint(request) -> 64-character SHA-256 digest`
+- `decodeLocalReviewSummary(value, expectedIdentity?) -> normalizedSummary`
+- `decodeBackend(value) -> normalizedBackend`
+- `decodeAdapterAcknowledgment(value) -> normalizedAcknowledgment`
+- `decodeSuccessorEvidence(value) -> normalizedEvidence`
+- `decodeReceipt(value) -> normalizedReceipt`
+- `selectProtocolRoute({ request, routingContext, policy }) -> decision`
+
+### 3. Contracts
+
+- Schema major is the numeric value `1`; scalar and container types are exact.
+- Repository owner/name and full 40- or 64-character head OIDs normalize to
+  lowercase before identity or fingerprint derivation.
+- Logical dispatch identity hashes only schema, repository, PR, head, and
+  attempt. The request fingerprint hashes every normalized dispatch-relevant
+  field but excludes primary, alias, and superseded correlation IDs.
+- Compatibility identity/fingerprint fields are recomputed and must match.
+- Requests are at most 16 KiB, local/supporting envelopes 8 KiB, and receipts
+  32 KiB. Field, collection, and 32-level JSON nesting bounds are enforced
+  before later side effects.
+- Paths, source, prompts, findings, transcripts, credentials, configuration
+  values, and local artifact contents are recursively rejected even inside
+  otherwise unknown additive v1 fields.
+- Exact-head clean or fully dispositioned local evidence may lower only
+  `auto`; failed, cancelled, skipped, stale, dirty, malformed, or
+  low-confidence evidence contributes no positive confidence.
+- Only normalized GitHub-compare successor evidence matching the declared
+  prior receipt and current head may take the bookkeeping-only `none` path.
+- Sensitive/large-change and configured independent-review floors apply after
+  automatic reductions. Explicit route intent retains precedence.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required behavior |
+| --- | --- |
+| Reordered equivalent allow-listed input | Produce the same canonical digest |
+| New head or attempt | Produce a new logical identity and fingerprint |
+| New correlation alias | Preserve identity and fingerprint |
+| New route, policy reference, or validated evidence | Preserve logical identity; change fingerprint |
+| Spoofed compatibility digest | Throw before future dispatch |
+| Non-positive local outcome with positive confidence | Throw |
+| Sensitive/large change plus local-clean reduction | Retain the Copilot floor |
+| Bookkeeping successor plus required remote floor | Emit the floor, not `none` |
+| Receipt/backend/finding-channel mismatch | Throw before publication |
+
+### 5. Good/Base/Bad Cases
+
+- Good: exact-head, fully dispositioned local evidence lowers a low-confidence
+  automatic `deep` route to configured `cheap`, then a configured floor is
+  applied if present.
+- Base: no local or successor evidence leaves existing automatic router policy
+  unchanged.
+- Bad: a caller changes correlation ID and supplies a conflicting fingerprint,
+  or uses `skipped:bookkeeping-successor` as trusted comparison evidence.
+
+### 6. Tests Required
+
+- Load every canonical valid/invalid fixture from `fixtures/protocol/v1/`.
+- Assert stable identity/fingerprint invariants and compatibility rejection.
+- Cover strict types, malformed identity, privacy fields, size limits, local
+  outcomes, successor classes, explicit routes, and independent-review floors.
+- Keep the existing router suite green to prove standalone behavior is
+  unchanged.
+
+### 7. Wrong vs Correct
+
+```js
+// Wrong: correlation is treated as a side-effect identity.
+const id = sha256(request.correlationId);
+
+// Correct: derive after validation from exact repository/PR/head/attempt.
+const request = decodeReviewRequest(input);
+const id = request.logicalDispatchId;
+```
 
 ## Scenario: Route and Request a GitHub Review
 
