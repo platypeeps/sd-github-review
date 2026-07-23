@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 14
+- **Total Sessions**: 15
 - **Last Active**: 2026-07-23
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~568 | Active |
+| `journal-1.md` | ~608 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 15 | 2026-07-23 | Add bounded GitHub API retry policy | `522f87361a6a96adc75e0867a78290fe4156eaf8`, `8b7c2c4608eb27899dfac63de85abe6af1b39b33`, `a902681aa3a6f9513816e5e2bf0f1e0a0563f10c` | `codex/add-github-api-retry-policy` |
 | 14 | 2026-07-23 | Implement on-demand routed-review dispatch | `013f78256f0a3c5f01be15cef768f5da06fd8f23`, `10a5729bcc4989923891dcff65501129823b9b18` | `codex/implement-on-demand-routed-review-dispatch` |
 | 13 | 2026-07-23 | Implement durable routed-review receipts | `9b9fd9bcd6294dc6f8223e100010140f22fa9170`, `4f16606c36b7138962d7bbf747c5d1f1dde63bcf` | `codex/implement-durable-routed-review-receipts` |
 | 12 | 2026-07-23 | Implement routed-review protocol core | `4d29fe3ec9e3005e2fe76e32f31f945bac7f2c8c`, `a28ce2a812dd831cefb30dc0737157d11940ef6a`, `6e907f46d24e9c4e593983212ace489c7228542b`, `ecd283897aa1ad57586c94e08e358b8b33dee9f9`, `be126cb84fd1de5c47fef0d48a4bff0ed15df3f9`, `f7657e7d13febec04afd1a0b464f4f774e02c7f7` | `codex/implement-routed-review-protocol-core` |

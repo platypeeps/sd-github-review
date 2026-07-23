@@ -568,3 +568,43 @@ Added explicit durable route, finalize, and query operations with exact-head dis
 ### Next Steps
 
 - None - task complete
+
+
+## Session 15: Add bounded GitHub API retry policy
+
+**Date**: 2026-07-23
+**Task**: Add bounded GitHub API retry policy
+**Branch**: `codex/add-github-api-retry-policy`
+
+### Summary
+
+Added safe, bounded GitHub REST read retries with rate-limit-aware delays while preserving one-attempt mutation reconciliation.
+
+### Main Changes
+
+- Added a three-attempt GET-only retry policy for transient transport and GitHub response failures.
+- Honored bounded retry-after, primary reset, and secondary fallback delays with allow-listed diagnostics.
+- Kept reviewer and Check Run mutations single-attempt and documented the fail-closed boundary.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `522f87361a6a96adc75e0867a78290fe4156eaf8` | feat: add bounded GitHub API retries |
+| `8b7c2c4608eb27899dfac63de85abe6af1b39b33` | chore: link retry-policy task PR |
+| `a902681aa3a6f9513816e5e2bf0f1e0a0563f10c` | fix: fail closed on malformed retry delays |
+
+### Testing
+
+- [OK] npm test: 109 tests passed
+- [OK] Focused GitHub transport suite: 20 tests; 93.39% line and 84.17% branch coverage
+- [OK] Syntax, metadata, task validation, full review gate, CI, and two Copilot rounds passed
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Remaining tasks require maintainer approval, private-pilot or external-adapter credentials, or three-consumer adoption evidence; resume only when the relevant gate is satisfied.
