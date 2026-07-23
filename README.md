@@ -16,7 +16,7 @@ Copilot is integrated directly. The `cheap` and `deep` routes emit a generic
 adapter contract for PR-Agent, Gito, or an internal service; the router does
 not own provider credentials or a reviewer runtime. See [`DESIGN.md`](DESIGN.md)
 for the architecture, automatic and manual selection rules, outputs, security
-boundaries, and planned backends.
+boundaries, and current backend contract.
 
 ## Installation on GitHub
 

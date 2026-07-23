@@ -286,3 +286,82 @@ Adopted the verified SD command-pack task metadata contract, moved two consumer-
 ### Next Steps
 
 - Merge PR #8 through exact-head housekeeping and verify clean synchronized main.
+
+
+## Session 8: Consolidate roadmap into Trellis backlog
+
+**Date**: 2026-07-22
+**Task**: Consolidate roadmap into Trellis backlog
+**Branch**: `codex/consolidate-project-roadmap`
+
+### Summary
+
+Converted all open roadmap phases and issues into six Trellis tasks, removed duplicate planning documents, and completed PR review remediation.
+
+### Main Changes
+
+- Created six prioritized Trellis backlog tasks and preserved the migration mapping in an archived parent task.
+- Removed the obsolete standalone project plan and consolidated README, design, and Trellis planning ownership guidance.
+- Clarified deliberate priority promotions and historical archived-path semantics after Copilot review.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cef1651` | chore: consolidate roadmap into Trellis backlog |
+| `eb89c28` | docs: clarify roadmap migration priorities |
+
+### Testing
+
+- [OK] npm test: 32 tests passed
+- [OK] npm run check and npm run validate:metadata passed
+- [OK] All seven Trellis task validations passed
+- [OK] SD review full-check passed with Prism and Gito disabled
+- [OK] GitHub CI passed and Copilot round 2 produced no new comments
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 9: Reconcile roadmap PR with current main
+
+**Date**: 2026-07-23
+**Task**: Reconcile roadmap PR with current main
+**Branch**: `codex/consolidate-project-roadmap`
+
+### Summary
+
+Integrated the merged task-metadata stream into the roadmap branch, preserved append-only session history, and added reciprocal topology links required by the current preflight.
+
+### Main Changes
+
+- Merged current main into the published roadmap branch without rewriting its reviewed history.
+- Preserved main session 7 byte-for-byte and appended the roadmap record as session 8.
+- Linked all six planning tasks reciprocally to the archived roadmap-migration parent.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f5623e4` | Merge branch 'main' into codex/consolidate-project-roadmap |
+| `0871b80` | fix: reconcile roadmap task history |
+
+### Testing
+
+- [OK] npm test passed 32 tests; npm run check and npm run validate:metadata passed.
+- [OK] The current SD full check passed with all task metadata, topology, context, journal, provenance, and documentation gates.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Push the exact finish-work head, complete final CI/review polling, and merge PR #7 through housekeeping.

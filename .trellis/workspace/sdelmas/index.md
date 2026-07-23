@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 7
+- **Total Sessions**: 9
 - **Last Active**: 2026-07-23
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~285 | Active |
+| `journal-1.md` | ~366 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,8 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 9 | 2026-07-23 | Reconcile roadmap PR with current main | `f5623e4`, `0871b80` | `codex/consolidate-project-roadmap` |
+| 8 | 2026-07-22 | Consolidate roadmap into Trellis backlog | `cef1651`, `eb89c28` | `codex/consolidate-project-roadmap` |
 | 7 | 2026-07-23 | Validate Trellis task metadata consistency | `0e2f57a`, `59afe99`, `9a690ea`, `8face3a` | `codex/validate-trellis-task-metadata` |
 | 6 | 2026-07-22 | Finalize routed-review receipt contract PR | `b0717e1` | `codex/publish-routed-review-receipt-contract` |
 | 5 | 2026-07-22 | Publish routed-review receipt contract plan | `4b922f4`, `01b0d7b`, `157b031`, `0e1982c`, `a4b743e` | `codex/publish-routed-review-receipt-contract` |

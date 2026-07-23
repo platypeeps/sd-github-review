@@ -1,0 +1,33 @@
+{
+  "id": "consolidate-project-roadmap",
+  "name": "consolidate-project-roadmap",
+  "title": "Consolidate project roadmap into Trellis backlog",
+  "description": "Convert every unresolved project-plan phase and potential issue into adoptable Trellis tasks, remove duplicate roadmap references, and delete obsolete planning files once coverage is verified.",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "sdelmas",
+  "assignee": "sdelmas",
+  "createdAt": "2026-07-22",
+  "completedAt": "2026-07-22",
+  "branch": "codex/consolidate-project-roadmap",
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "07-22-define-public-trellis-metadata-policy",
+    "07-22-complete-v010-release-consumer-smoke",
+    "07-22-add-github-api-retry-policy",
+    "07-22-implement-routed-review-receipt-runtime",
+    "07-22-validate-external-reviewer-adapters",
+    "07-22-evaluate-adoption-setup-automation"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
