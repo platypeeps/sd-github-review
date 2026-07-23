@@ -1,0 +1,5 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": "test/router.test.js", "reason": "Cover local-summary policy influence explicit overrides and minimum remote tiers."}
+{"file": "test/action.test.js", "reason": "Cover schema validation dispatch states and durable receipt mirroring."}
+{"file": "test/github.test.js", "reason": "Cover exact-head identity idempotency and durable receipt publication."}
+{"file": "test/metadata.test.js", "reason": "Keep public Action metadata synchronized with the versioned protocol."}

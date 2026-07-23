@@ -1,0 +1,5 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": "src/router.js", "reason": "Apply bounded exact-head local evidence within deterministic remote routing floors."}
+{"file": "src/index.js", "reason": "Validate routed requests and coordinate exactly-once native or delegated dispatch."}
+{"file": "src/github.js", "reason": "Publish and query the exact-head durable receipt through GitHub APIs."}
+{"file": "action.yml", "reason": "Expose the versioned request and receipt contract through stable Action inputs and outputs."}
