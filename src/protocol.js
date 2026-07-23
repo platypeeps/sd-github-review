@@ -9,6 +9,7 @@ const RECEIPT_MAX_BYTES = 32 * 1024;
 const SHORT_TEXT_MAX_BYTES = 128;
 const REASON_MAX_BYTES = 512;
 const MAX_COLLECTION_ITEMS = 16;
+const MAX_NESTING_DEPTH = 32;
 
 const ROUTES = new Set(["auto", "cheap", "deep", "copilot", "none"]);
 const REMOTE_ROUTES = new Set(["cheap", "deep", "copilot"]);
@@ -113,34 +114,54 @@ function objectValue(value, field) {
   return value;
 }
 
-function rejectForbiddenFields(value, field = "value", seen = new WeakSet()) {
-  if (value === null) return;
-  if (typeof value !== "object") {
-    if (
-      !["string", "number", "boolean"].includes(typeof value)
-      || (typeof value === "number" && !Number.isFinite(value))
-    ) {
-      throw new Error(`${field} must contain JSON values only`);
+function rejectForbiddenFields(value, field = "value") {
+  const seen = new WeakSet();
+  const pending = [{ value, field, depth: 0 }];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (current.depth > MAX_NESTING_DEPTH) {
+      throw new Error(`${current.field} exceeds the ${MAX_NESTING_DEPTH}-level nesting limit`);
     }
-    return;
-  }
-  if (seen.has(value)) {
-    throw new Error(`${field} must not contain circular data`);
-  }
-  seen.add(value);
-  if (Array.isArray(value)) {
-    value.forEach((item, index) => rejectForbiddenFields(item, `${field}[${index}]`, seen));
-    return;
-  }
-  if (!isPlainObject(value)) {
-    throw new Error(`${field} must contain plain JSON objects only`);
-  }
-  for (const [key, item] of Object.entries(value)) {
-    const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/gu, "");
-    if (FORBIDDEN_FIELD_NAMES.has(normalizedKey)) {
-      throw new Error(`${field}.${key} is forbidden by the protocol privacy boundary`);
+    if (current.value === null) continue;
+    if (typeof current.value !== "object") {
+      if (
+        !["string", "number", "boolean"].includes(typeof current.value)
+        || (typeof current.value === "number" && !Number.isFinite(current.value))
+      ) {
+        throw new Error(`${current.field} must contain JSON values only`);
+      }
+      continue;
     }
-    rejectForbiddenFields(item, `${field}.${key}`, seen);
+    if (seen.has(current.value)) {
+      throw new Error(`${current.field} must not contain circular data`);
+    }
+    seen.add(current.value);
+    if (Array.isArray(current.value)) {
+      for (let index = current.value.length - 1; index >= 0; index -= 1) {
+        pending.push({
+          value: current.value[index],
+          field: `${current.field}[${index}]`,
+          depth: current.depth + 1,
+        });
+      }
+      continue;
+    }
+    if (!isPlainObject(current.value)) {
+      throw new Error(`${current.field} must contain plain JSON objects only`);
+    }
+    const entries = Object.entries(current.value);
+    for (let index = entries.length - 1; index >= 0; index -= 1) {
+      const [key, item] = entries[index];
+      const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/gu, "");
+      if (FORBIDDEN_FIELD_NAMES.has(normalizedKey)) {
+        throw new Error(`${current.field}.${key} is forbidden by the protocol privacy boundary`);
+      }
+      pending.push({
+        value: item,
+        field: `${current.field}.${key}`,
+        depth: current.depth + 1,
+      });
+    }
   }
 }
 

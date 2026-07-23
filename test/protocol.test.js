@@ -179,6 +179,28 @@ test("enforces whole-request and bounded-string limits without echoing values", 
   );
 });
 
+test("bounds nested JSON iteratively before canonicalization", () => {
+  const base = requestByName.get("explicit cheap");
+  const nested = {};
+  let current = nested;
+  for (let depth = 0; depth < 40; depth += 1) {
+    current.next = {};
+    current = current.next;
+  }
+  assert.throws(
+    () => decodeReviewRequest({ ...clone(base), extension: nested }),
+    /exceeds the 32-level nesting limit/u,
+  );
+
+  const bounded = {};
+  current = bounded;
+  for (let depth = 0; depth < 20; depth += 1) {
+    current.next = {};
+    current = current.next;
+  }
+  assert.doesNotThrow(() => decodeReviewRequest({ ...clone(base), extension: bounded }));
+});
+
 test("rejects every canonical forbidden privacy field even when nested", () => {
   const base = requestByName.get("explicit cheap");
   for (const field of forbiddenPrivacyFields) {

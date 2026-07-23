@@ -42,7 +42,8 @@ state, or output files.
   field but excludes primary, alias, and superseded correlation IDs.
 - Compatibility identity/fingerprint fields are recomputed and must match.
 - Requests are at most 16 KiB, local/supporting envelopes 8 KiB, and receipts
-  32 KiB. Field and collection bounds are enforced before later side effects.
+  32 KiB. Field, collection, and 32-level JSON nesting bounds are enforced
+  before later side effects.
 - Paths, source, prompts, findings, transcripts, credentials, configuration
   values, and local artifact contents are recursively rejected even inside
   otherwise unknown additive v1 fields.
