@@ -26,7 +26,7 @@
         "costTier": "low",
         "qualityTier": "standard",
         "capabilities": ["review", "conversation-comments"],
-        "reviewAuthors": ["pr-agent[bot]"],
+        "reviewAuthors": ["github-actions[bot]"],
         "checkNames": [],
         "findingChannels": ["conversation-comment"],
         "supportsRerequest": true,
@@ -47,6 +47,41 @@
         "findingChannels": ["check"],
         "supportsRerequest": false,
         "limitations": ["Findings are exposed as a check only"]
+      }
+    }
+  ],
+  "adapterRequests": [
+    {
+      "name": "PR-Agent cheap dispatch",
+      "value": {
+        "schemaVersion": 1,
+        "requestType": "routed-review-dispatch",
+        "logicalDispatchId": "d087591617d08651855c000a5f3db32e36e185778eabcf6da52a3f8ce359581f",
+        "requestFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "repository": {
+          "owner": "platypeeps",
+          "name": "sd-github-review"
+        },
+        "pullRequestNumber": 42,
+        "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "attempt": 1,
+        "selectedRoute": "cheap",
+        "backend": {
+          "id": "pr-agent",
+          "label": "PR-Agent",
+          "kind": "external",
+          "model": "adapter-default",
+          "costTier": "low",
+          "qualityTier": "standard",
+          "capabilities": ["review", "conversation-comments"],
+          "reviewAuthors": ["github-actions[bot]"],
+          "checkNames": [],
+          "findingChannels": ["conversation-comment"],
+          "supportsRerequest": true,
+          "limitations": ["Inline comments depend on adapter configuration"]
+        },
+        "policyVersion": "policy-v1",
+        "correlationIds": ["corr-cheap"]
       }
     }
   ],

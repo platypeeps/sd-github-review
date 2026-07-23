@@ -13,33 +13,41 @@ tier for a pull request:
 - `none` when AI review is explicitly disabled
 
 Copilot is integrated directly. The `cheap` and `deep` routes emit a generic
-adapter contract for PR-Agent, Gito, or an internal service; the router does
+adapter contract for PR-Agent or an internal service; the router does
 not own provider credentials or a reviewer runtime. See [`DESIGN.md`](DESIGN.md)
 for the architecture, automatic and manual selection rules, outputs, security
 boundaries, and current backend contract.
 
 ## Installation on GitHub
 
-### 1. Add the routing workflow
+This repository supplies reusable workflows and routing logic; it does not
+provision another repository's workflows, secrets, variables, labels, Copilot
+access, or branch rules.
+
+### 1. Choose a backend and workflow
+
+- **GitHub Copilot:** follow [`SETUP-COPILOT.md`](SETUP-COPILOT.md). The router
+  requests Copilot directly when it selects `copilot`; no provider secret is
+  required. GitHub owns model selection, and review effort is a GitHub
+  repository setting rather than a per-request action input.
+- **PR-Agent plus Copilot escalation:** follow
+  [`SETUP-PR-AGENT.md`](SETUP-PR-AGENT.md). PR-Agent handles `cheap` and `deep`,
+  supports the documented single-key provider mappings, and retains the native
+  Copilot route.
+- **Another external reviewer:** start from
+  [`examples/review-router.yml`](examples/review-router.yml) and replace its
+  adapter placeholder with the organization's internal review service.
 
 For a provider-free evaluation, start with
 [`examples/pilot-router.yml`](examples/pilot-router.yml). It exercises routing
 and Copilot without checking out pull-request code or using LLM provider
 credentials. Replace `<commit-sha>` with the full SHA of a green candidate.
 
-For a production integration, copy
-[`examples/review-router.yml`](examples/review-router.yml) into the consuming
-repository and replace both placeholders:
+Pin this action to a reviewed full commit SHA in every installed workflow. Keep
+deterministic test, lint, type-check, CodeQL, or Semgrep jobs ahead of routing
+with normal `needs` dependencies.
 
-1. Pin this action to a released commit SHA.
-2. Replace the example external-reviewer command with the organization's
-   PR-Agent, Gito, or review-service adapter.
-
-The workflow needs `pull-requests: write` only because the Copilot route creates
-a review request. Keep deterministic test, lint, type-check, CodeQL, or Semgrep
-jobs ahead of routing with normal `needs` dependencies.
-
-### 2. Configure repository labels and variables
+### 2. Configure shared routing controls
 
 Create the labels used for manual routing:
 
@@ -49,9 +57,9 @@ Create the labels used for manual routing:
 - `review:none`
 - `review:auto`
 
-Set `CHEAP_REVIEW_MODEL` and `DEEP_REVIEW_MODEL` under **Settings → Secrets and
-variables → Actions → Variables** when an external adapter needs explicit model
-identifiers. Copilot routing does not require either variable.
+Authorized maintainers can also use exact `/review cheap`, `/review deep`,
+`/review copilot`, `/review none`, or `/review auto` comments. Backend-specific
+variables, secrets, and permissions are documented in the two setup guides.
 
 ### 3. Protect the default branch
 
@@ -59,78 +67,27 @@ Require the repository's deterministic CI and human-approval policy before
 merge. AI review should remain supplemental. Open a smoke pull request and
 confirm the selected route, reason, and side effect in the workflow summary.
 
-### PR-Agent adapter
-
-Use [`examples/pr-agent-router.yml`](examples/pr-agent-router.yml) when
-`cheap` and `deep` should run the open-source PR-Agent GitHub Action.
-
-1. Copy the example into the consuming repository's workflow directory.
-2. Replace both action placeholders with reviewed, full 40-character commit
-   SHAs. Do not use a floating branch such as `@main` in production.
-3. Add `PR_AGENT_OPENAI_KEY` under **Settings → Secrets and variables → Actions
-   → Secrets**. For another supported model provider, replace `OPENAI_KEY` with
-   PR-Agent's provider-specific secret and use matching model identifiers.
-4. Set `CHEAP_REVIEW_MODEL` and `DEEP_REVIEW_MODEL` to model identifiers PR-Agent
-   accepts. The router passes the selected value as `config.model`.
-5. Keep `config.restricted_mode=true`. The example grants `contents: read`,
-   `issues: write`, and `pull-requests: write`; it does not grant contents write
-   or check out pull-request code.
-
-The PR-Agent step runs only for `cheap` or `deep`. Its automatic describe and
-improve tools are disabled, while review is enabled for the router's open,
-reopen, ready, label, synchronize, and trusted comment paths. Pull-request
-workflows from forks do not receive repository secrets, so the example skips
-the PR-Agent step for fork-originated `pull_request` events. A trusted
-`issue_comment` invocation can still run from the base workflow without
-checking out contributor code.
-
-PR-Agent can also read settings from a repository-root `.pr_agent.toml`. See
-its [GitHub installation guide](https://github.com/The-PR-Agent/pr-agent/blob/main/docs/docs/installation/github.md)
-and [automation/configuration guide](https://github.com/The-PR-Agent/pr-agent/blob/main/docs/docs/usage-guide/automations_and_usage.md)
-for provider-specific variables and review settings.
-
-PR-Agent currently describes its open-source project as community-maintained
-legacy software and distributes it under AGPL-3.0. Review that dependency's
-maintenance and license fit independently; this repository's MIT license does
-not relicense PR-Agent.
-
-Supply-chain note: pinning PR-Agent's repository revision does not fully pin
-its current Docker runtime because the upstream action builds from the floating
-`pragent/pr-agent:github_action` image tag. Environments requiring complete
-immutability should review and fork the action, then pin the base image by
-digest or publish an internally controlled wrapper.
-
 ### Durable on-demand integration
 
 Use [`examples/on-demand-review-router.yml`](examples/on-demand-review-router.yml)
 when `sd-review` or another trusted caller needs an exact-head, cross-run
 receipt instead of the standalone event outputs.
 
-1. Copy the example into the consuming repository at the workflow path
-   declared by the setup descriptor, and replace every action placeholder
-   with a reviewed full commit SHA.
-2. Keep the workflow's `contents: read`, `pull-requests: write`, and
-   `checks: write` permissions. Only this durable workflow needs Check Run
-   write access.
-3. Configure `SD_REVIEW_CHEAP_BACKEND_V1` and
-   `SD_REVIEW_DEEP_BACKEND_V1` as canonical backend descriptor JSON. The
-   supported shapes are demonstrated in
-   [`fixtures/protocol/v1/supporting.valid.json`](fixtures/protocol/v1/supporting.valid.json).
-4. Replace the external-adapter placeholder with the consumer-owned PR-Agent,
-   Gito, or internal adapter. Keep its provider secret on that step. The
-   adapter accepts `adapter-request` and returns one versioned
-   `adapter-acknowledgment`; the following router invocation finalizes the
-   same receipt.
-5. Publish [`config/routed-review-setup-v1.json`](config/routed-review-setup-v1.json)
-   with the workflow so clients can perform read-only setup discovery before
-   dispatch.
+The Copilot and PR-Agent setup guides contain their respective durable
+installation steps. Other adapters should replace the generic workflow's
+adapter placeholder, keep provider secrets only on that step, and publish
+[`config/routed-review-setup-v1.json`](config/routed-review-setup-v1.json) so
+clients can perform read-only setup discovery before dispatch.
 
-The Action operations are `route`, `finalize`, and `query`. Every durable call
-accepts the canonical `review-request` JSON. `route` performs at most one
-native Copilot request or emits exactly one external adapter request;
+The durable receipt operations are `route`, `finalize`, and `query`. Every
+durable call accepts the canonical `review-request` JSON. `route` performs at
+most one native Copilot request or emits exactly one external adapter request;
 `finalize` requires the matching external acknowledgment; `query` reads the
-head-bound receipt without dispatching. If a side effect is uncertain, the
-receipt reports `reconciliation-required` and never authorizes a fallback.
+head-bound receipt without dispatching. The additive `acknowledge` helper
+converts a bounded GitHub adapter-step outcome into that canonical
+acknowledgment without contacting GitHub or a model provider. If a side effect
+is uncertain, the receipt reports `reconciliation-required` and never
+authorizes a fallback.
 
 The example performs no checkout and runs no pull-request-controlled command.
 The setup descriptor distinguishes a truly absent declaration from missing,
