@@ -371,7 +371,12 @@ export class ReceiptStore {
     } catch (error) {
       return mutationFailure(receipt, error);
     }
-    const updated = await this.#rereadRecord(receipt);
+    let updated;
+    try {
+      updated = await this.#rereadRecord(receipt);
+    } catch (error) {
+      return mutationFailure(receipt, error);
+    }
     return {
       state: receiptState(updated.receipt),
       receipt: updated.receipt,
@@ -505,7 +510,12 @@ export class ReceiptStore {
     } catch (error) {
       return mutationFailure(receipt, error);
     }
-    const record = await this.#rereadRecord(receipt);
+    let record;
+    try {
+      record = await this.#rereadRecord(receipt);
+    } catch (error) {
+      return mutationFailure(receipt, error);
+    }
     try {
       await this.#assertLiveHead(request);
     } catch (error) {

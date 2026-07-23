@@ -49,6 +49,9 @@ export class GitHubClient {
   }
 
   async compareCommits(base, head, { maximumPages = 30 } = {}) {
+    if (!Number.isInteger(maximumPages) || maximumPages < 1) {
+      throw new TypeError("maximumPages must be a positive integer");
+    }
     const files = [];
     let comparison = null;
     let commitCount = 0;

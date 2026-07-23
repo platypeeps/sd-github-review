@@ -159,6 +159,22 @@ test("compare pagination reads commits while bounding files to the first page", 
   assert.equal(comparison.incomplete, false);
 });
 
+test("rejects invalid compare pagination limits before transport", async () => {
+  let called = false;
+  const client = createClient(async () => {
+    called = true;
+    return jsonResponse({});
+  });
+
+  for (const maximumPages of [0, -1, 1.5, "1", null]) {
+    await assert.rejects(
+      client.compareCommits("a".repeat(40), "b".repeat(40), { maximumPages }),
+      /maximumPages must be a positive integer/u,
+    );
+  }
+  assert.equal(called, false);
+});
+
 test("lists named check runs across pages", async () => {
   const calls = [];
   const client = createClient(async (url) => {

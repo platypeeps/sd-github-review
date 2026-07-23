@@ -55,6 +55,7 @@ class FakeGitHubClient {
     this.createError = null;
     this.updateError = null;
     this.onCreate = null;
+    this.onUpdate = null;
     this.onCompare = null;
   }
 
@@ -90,6 +91,7 @@ class FakeGitHubClient {
         head_sha: head,
         name: checks[index].name,
       };
+      if (this.onUpdate) this.onUpdate();
       return clone(checks[index]);
     }
     throw new Error("missing fake check");
@@ -260,6 +262,16 @@ test("changed heads and ambiguous create failures never authorize dispatch", asy
   assert.equal(raced.state, "reconciliation-required");
   assert.equal(raced.dispatchAllowed, false);
   assert.match(raced.error, /live pull request head must match/u);
+
+  const missingClient = new FakeGitHubClient({ headSha: request.headSha });
+  missingClient.onCreate = () => {
+    missingClient.checks.delete(request.headSha);
+  };
+  const missing = await makeStore(missingClient).begin(request, cheapBeginOptions());
+  assert.equal(missing.state, "reconciliation-required");
+  assert.equal(missing.dispatchAllowed, false);
+  assert.equal(missing.reconciliationRequired, true);
+  assert.match(missing.error, /not observable after mutation/u);
 });
 
 test("acknowledgment and observation advance phases monotonically", async () => {
@@ -361,6 +373,21 @@ test("contradictory acknowledgments fail and ambiguous updates require reconcili
   assert.equal(ambiguous.dispatchAllowed, false);
   assert.equal(ambiguous.reconciliationRequired, true);
   assert.match(ambiguous.error, /connection closed after update/u);
+
+  client.updateError = null;
+  client.onUpdate = () => {
+    client.checks.delete(request.headSha);
+  };
+  const missing = await store.acknowledge({
+    pullRequestNumber: request.pullRequestNumber,
+    headSha: request.headSha,
+    logicalDispatchId: started.receipt.logicalDispatchId,
+    acknowledgment,
+  });
+  assert.equal(missing.state, "reconciliation-required");
+  assert.equal(missing.dispatchAllowed, false);
+  assert.equal(missing.reconciliationRequired, true);
+  assert.match(missing.error, /not observable after mutation/u);
 });
 
 test("native Copilot receipts can advance directly from started to observed", async () => {
