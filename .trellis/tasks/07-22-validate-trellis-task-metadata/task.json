@@ -21,6 +21,6 @@
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "Upstream implementation: platypeeps/sd-ai-command-pack#229 at reviewed payload commit fbb6a82; consumer installed from finish-work head 13d02f4.",
+  "notes": "Upstream PR platypeeps/sd-ai-command-pack#229 merged; reviewed payload commit fbb6a82 is published as v0.32.0 at release commit a447143. Consumer install is verified at target against that release.",
   "meta": {}
 }
