@@ -285,3 +285,45 @@ Converted all open roadmap phases and issues into six Trellis tasks, removed dup
 ### Next Steps
 
 - None - task complete
+
+
+## Session 8: Validate Trellis task metadata consistency
+
+**Date**: 2026-07-23
+**Task**: Validate Trellis task metadata consistency
+**Branch**: `codex/validate-trellis-task-metadata`
+
+### Summary
+
+Adopted the verified SD command-pack task metadata contract, moved two consumer-discovered regressions upstream, and refreshed the consumer through v0.32.2 with clean review evidence.
+
+### Main Changes
+
+- Installed the upstream priority-provenance and task-context validation contract across Claude, Gemini, GitHub, and OpenCode surfaces.
+- Restored portable test-directory review signals through upstream PR #230 and fail-closed malformed-context parsing through upstream PR #231.
+- Verified immutable release v0.32.2 at 8293d0e and refreshed consumer provenance to its exact payload.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0e2f57a` | chore: refresh sd command pack to 0.32.0 |
+| `59afe99` | docs: record published pack release |
+| `9a690ea` | fix: retain test directory review signals |
+| `8face3a` | fix: adopt fail-closed task context parsing |
+
+### Testing
+
+- [OK] Source-authoritative install audit passed for all 151 targets with zero changes required.
+- [OK] npm test passed 32 tests; npm run check and npm run validate:metadata passed.
+- [OK] Consumer full-check and exact-head review-full-check passed.
+- [OK] CI passed on 8face3a; Copilot review completed and direct delayed polling found zero unresolved threads.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Merge PR #8 through exact-head housekeeping and verify clean synchronized main.
