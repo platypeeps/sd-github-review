@@ -440,3 +440,49 @@ Split the oversized routed-review runtime contract into four ordered, independen
 ### Next Steps
 
 - None - task complete
+
+
+## Session 12: Implement routed-review protocol core
+
+**Date**: 2026-07-23
+**Task**: Implement routed-review protocol core
+**Branch**: `codex/implement-routed-review-protocol-core`
+
+### Summary
+
+Added the dependency-free routed-review protocol boundary, deterministic identities, strict privacy validation, canonical fixtures, and pure policy routing; completed five Copilot review rounds with every actionable thread resolved.
+
+### Main Changes
+
+- Added v1 request, receipt, backend, acknowledgment, local-review, and successor-evidence decoders with deterministic canonical hashing.
+- Added pure route selection with explicit-route precedence, local-evidence reductions, successor handling, and independent-review floors.
+- Hardened external boundaries for non-plain objects, nesting, encoded size, embedded URL credentials, repeated references, field-specific confidence errors, and ignored successor evidence.
+- Added canonical fixture matrices and focused regression coverage, and updated executable Trellis backend specifications.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4d29fe3ec9e3005e2fe76e32f31f945bac7f2c8c` | feat: add routed review protocol core |
+| `a28ce2a812dd831cefb30dc0737157d11940ef6a` | fix: harden canonical protocol input |
+| `6e907f46d24e9c4e593983212ace489c7228542b` | fix: bound protocol input nesting |
+| `ecd283897aa1ad57586c94e08e358b8b33dee9f9` | fix: enforce protocol envelope consistency |
+| `be126cb84fd1de5c47fef0d48a4bff0ed15df3f9` | fix: tighten protocol boundary validation |
+| `f7657e7d13febec04afd1a0b464f4f774e02c7f7` | fix: validate ignored successor evidence |
+
+### Testing
+
+- [OK] npm test: 68 tests passed
+- [OK] npm run check: JavaScript syntax checks passed
+- [OK] sd-ai-command-pack-review-full-check.sh: passed with two documented preflight warnings and no failures
+- [OK] GitHub Actions CI: success on f7657e7d13febec04afd1a0b464f4f774e02c7f7
+- [OK] Copilot review: five rounds, nine actionable comments fixed, replied to, and resolved; zero unresolved threads
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Proceed to the dependent durable routed-review receipt task.
