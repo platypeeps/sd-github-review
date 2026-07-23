@@ -7,7 +7,7 @@
 ```text
 src/                 # dependency-free Action runtime
   index.js           # standalone/durable entrypoint and GitHub outputs
-  operations.js      # on-demand route/finalize/query orchestration
+  operations.js      # on-demand route/acknowledge/finalize/query orchestration
   router.js          # pure routing policy
   protocol.js        # versioned request/receipt decoding and canonical identity
   receipt.js         # exact-head Check Run receipt storage and reconciliation

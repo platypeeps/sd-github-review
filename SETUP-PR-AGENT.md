@@ -1,0 +1,229 @@
+# Set up PR-Agent review
+
+This guide configures PR-Agent as the external reviewer for the router's
+`cheap` and `deep` routes. The native `copilot` route remains available for
+sensitive, unusually large, or explicitly escalated changes.
+
+The supplied workflows automate routing and PR-Agent execution after they are
+installed. This repository does not copy workflows into another repository or
+create its secrets, variables, labels, or branch rules.
+
+## How this integration runs
+
+The workflows invoke only PR-Agent's `review` CLI command against the selected
+pull request. They run the PR-Agent v0.39.0 container by immutable
+multi-platform digest, do not check out pull-request code, disable fallback
+models, and keep restricted mode enabled.
+
+This is a direct GitHub Actions integration. Do not install the PR-Agent GitHub
+App for these workflows. PR-Agent posts through the workflow's
+`github.token`, normally as `github-actions[bot]`.
+
+PR-Agent is a consumer-owned external backend: the provider credential exists
+only on the PR-Agent step and is never passed to `sd-github-review`.
+
+## Choose an operating mode
+
+| Mode | Workflow | Use when |
+| --- | --- | --- |
+| Event-driven | [`examples/pr-agent-router.yml`](examples/pr-agent-router.yml) | Pull-request events, labels, and trusted `/review` comments should trigger routing directly |
+| Durable on demand | [`examples/pr-agent-on-demand-review-router.yml`](examples/pr-agent-on-demand-review-router.yml) | A trusted caller needs exact-head dispatch deduplication and a persistent receipt |
+
+Install only the workflow that owns a given trigger path. Running multiple
+event-driven review workflows for the same pull request can create duplicate
+provider calls and comments.
+
+## Configure the provider
+
+The checked-in examples use a provider-neutral secret and explicitly support
+these single-key provider mappings:
+
+1. In the consuming repository, open **Settings → Secrets and variables →
+   Actions → Secrets**.
+2. Create `PR_AGENT_MODEL_API_KEY` with the selected provider's API key.
+3. Under **Actions → Variables**, create `PR_AGENT_MODEL_PROVIDER` with one of
+   these lowercase values:
+
+   | Value | PR-Agent credential setting | Model format |
+   | --- | --- | --- |
+   | `openai` | `OPENAI__KEY` | A PR-Agent-supported OpenAI model ID |
+   | `gemini` | `GOOGLE_AI_STUDIO__GEMINI_API_KEY` | `gemini/<model-id>` |
+   | `openrouter` | `OPENROUTER__KEY` | `openrouter/<model-id>` |
+   | `anthropic` | `ANTHROPIC__KEY` | `anthropic/<model-id>` |
+   | `cohere` | `COHERE__KEY` | `cohere/<model-id>` |
+   | `replicate` | `REPLICATE__KEY` | `replicate/<model-id>` |
+   | `groq` | `GROQ__KEY` | `groq/<model-id>` |
+   | `sambanova` | `SAMBANOVA__KEY` | `sambanova/<model-id>` |
+   | `xai` | `XAI__KEY` | `xai/<model-id>` |
+   | `deepseek` | `DEEPSEEK__KEY` | `deepseek/<model-id>` |
+   | `deepinfra` | `DEEPINFRA__KEY` | `deepinfra/<model-id>` |
+   | `mistral` | `MISTRAL__KEY` | `mistral/<model-id>` |
+   | `codestral` | `CODESTRAL__KEY` | `codestral/<model-id>` |
+
+   The workflow maps the generic secret to only the selected provider setting.
+   Except for OpenAI, the checked-in preflight requires the explicit
+   `<provider>/<model-id>` form, even if an upstream alias also works without
+   the provider prefix.
+4. Never store the key in a repository variable, workflow file, PR-Agent
+   configuration file, or router input.
+
+The two model tiers may use different model IDs from the selected provider.
+One installed workflow uses one provider credential for both tiers. To add a
+provider that needs more than one credential or an endpoint setting, extend
+the workflow contract deliberately; do not construct secret names dynamically
+or pass keys through the router. Consult PR-Agent's
+[GitHub installation guide](https://github.com/The-PR-Agent/pr-agent/blob/v0.39.0/docs/docs/installation/github.md)
+for provider-specific configuration.
+
+### Gemini example
+
+To use Gemini, set `PR_AGENT_MODEL_PROVIDER=gemini`, store a Google AI Studio
+key in `PR_AGENT_MODEL_API_KEY`, and use PR-Agent model IDs in the
+`gemini/<model-id>` form for both tiers. Choose model IDs that are currently
+available to the configured Google account; the workflow deliberately does not
+embed a default model.
+
+### OpenRouter example
+
+To use OpenRouter, set `PR_AGENT_MODEL_PROVIDER=openrouter`, store the
+OpenRouter key in `PR_AGENT_MODEL_API_KEY`, and prefix the OpenRouter model ID
+with `openrouter/`. For example, an OpenRouter model ID shaped as
+`provider/model` becomes `openrouter/provider/model` for PR-Agent. Some models
+also require `custom_model_max_tokens` in `.pr_agent.toml`; the workflow does
+not guess that value.
+
+### Other upstream providers
+
+PR-Agent v0.39.0 also documents or implements configuration for Azure OpenAI,
+Amazon Bedrock, Vertex AI, Ollama and vLLM, Hugging Face, Databricks,
+OpenAI-compatible endpoints, and additional LiteLLM providers. These are
+upstream capabilities, not mappings enabled by the checked-in workflows: they
+require an endpoint, cloud identity, local runtime, or multiple configuration
+values rather than the single-key interface used here.
+See PR-Agent's
+[model configuration guide](https://github.com/The-PR-Agent/pr-agent/blob/v0.39.0/docs/docs/usage-guide/changing_a_model.md)
+and
+[secret template](https://github.com/The-PR-Agent/pr-agent/blob/v0.39.0/pr_agent/settings/.secrets_template.toml).
+
+## Install the event-driven workflow
+
+1. Copy [`examples/pr-agent-router.yml`](examples/pr-agent-router.yml) to the
+   consuming repository, for example as
+   `.github/workflows/ai-review-router.yml`.
+2. Replace `<sd-github-review-commit-sha>` with the full 40-character SHA of an
+   approved release. The PR-Agent container reference is already pinned by
+   digest.
+3. Under **Settings → Secrets and variables → Actions → Variables**, create:
+
+   - `CHEAP_REVIEW_MODEL` with the PR-Agent model ID for routine reviews.
+   - `DEEP_REVIEW_MODEL` with the PR-Agent model ID for more capable reviews.
+
+   Both values must be nonempty. The workflow passes the selected value as
+   `CONFIG__MODEL` and fails before PR-Agent starts when it is empty.
+4. Keep these workflow permissions:
+
+   ```yaml
+   permissions:
+     contents: read
+     issues: write
+     pull-requests: write
+   ```
+
+   `issues: write` and `pull-requests: write` allow PR-Agent to publish its
+   conversation comment and allow the router to request Copilot when that
+   route is selected. The workflow does not need contents write access.
+5. Add the shared manual-routing labels described in
+   [`README.md`](README.md#2-configure-shared-routing-controls).
+6. Adjust the action's `sensitive-paths`, thresholds, command trust settings,
+   or draft policy as needed. The default automatic-selection rules are in
+   [`DESIGN.md`](DESIGN.md#automatic-selection).
+
+Repository secrets are not supplied to ordinary `pull_request` workflows from
+forks, so the example skips PR-Agent for fork-originated pull-request events.
+A trusted `/review cheap` or `/review deep` comment runs from the base
+repository's `issue_comment` workflow without checking out contributor code.
+
+## Install the durable on-demand workflow
+
+1. Copy
+   [`examples/pr-agent-on-demand-review-router.yml`](examples/pr-agent-on-demand-review-router.yml)
+   to `.github/workflows/sd-review.yml`.
+2. Replace every `<sd-github-review-commit-sha>` placeholder with the same
+   approved full commit SHA.
+3. Configure `PR_AGENT_MODEL_PROVIDER` and `PR_AGENT_MODEL_API_KEY` as
+   described above.
+4. Keep `contents: read`, `issues: write`, `pull-requests: write`, and
+   `checks: write`. Check Run write access stores the exact-head receipt.
+5. Create `SD_REVIEW_CHEAP_BACKEND_V1` and
+   `SD_REVIEW_DEEP_BACKEND_V1` under **Actions → Variables**. Each value is a
+   compact canonical backend JSON object. Start from this shape and set the
+   model and policy metadata separately for each tier:
+
+   ```json
+   {
+     "id": "pr-agent",
+     "label": "PR-Agent",
+     "kind": "external",
+     "model": "replace-with-model-id",
+     "costTier": "low",
+     "qualityTier": "standard",
+     "capabilities": ["review", "conversation-comments"],
+     "reviewAuthors": ["github-actions[bot]"],
+     "checkNames": [],
+     "findingChannels": ["conversation-comment"],
+     "supportsRerequest": true,
+     "limitations": ["Inline comments depend on adapter configuration"]
+   }
+   ```
+
+   The adapter requires `id` to be `pr-agent` and `model` to be nonempty.
+   `costTier` and `qualityTier` are declared policy metadata; make them match
+   the selected model. The complete supported shapes are demonstrated in
+   [`fixtures/protocol/v1/supporting.valid.json`](fixtures/protocol/v1/supporting.valid.json).
+6. Publish [`config/routed-review-setup-v1.json`](config/routed-review-setup-v1.json)
+   with the workflow and replace its action-reference placeholder with the
+   same full commit SHA.
+
+The durable workflow performs `route → PR-Agent → acknowledge → finalize`.
+PR-Agent runs only for a newly authorized external dispatch. The workflow
+turns the step outcome into a bounded canonical acknowledgment and finalizes
+the same receipt even after failure; it never dispatches a fallback reviewer.
+
+## Optional PR-Agent configuration
+
+PR-Agent can read a repository-root `.pr_agent.toml`. Use it for review
+behavior that is not already fixed at the workflow boundary. Keep these
+workflow-owned safety settings unchanged unless the integration is reviewed:
+
+- `CONFIG__MODEL` comes from the selected router tier.
+- `CONFIG__FALLBACK_MODELS` remains an empty list to prevent an unplanned
+  provider or model change.
+- `CONFIG__RESTRICTED_MODE` remains `true`.
+
+See PR-Agent's
+[automation and configuration guide](https://github.com/The-PR-Agent/pr-agent/blob/v0.39.0/docs/docs/usage-guide/automations_and_usage.md).
+
+PR-Agent v0.39.0 is MIT-licensed and described upstream as
+community-maintained legacy software. Review its maintenance fit independently.
+The supplied workflow uses the released CLI image by digest instead of the
+upstream GitHub Action, whose Dockerfile inherits a floating image tag.
+
+## Verify the installation
+
+1. Open a same-repository smoke pull request with a routine change.
+2. Apply `review:cheap` or post `/review cheap` as an authorized user.
+3. Confirm the workflow summary selects `cheap` and the configured model.
+4. Confirm PR-Agent publishes a conversation comment as
+   `github-actions[bot]`.
+5. Repeat with `review:deep` and confirm the deep model is selected.
+6. Exercise a `copilot` route separately if the installation will use native
+   escalation.
+7. For durable mode, query the exact-head receipt and confirm it is finalized
+   as observed or failed rather than left in a dispatching state.
+
+## Uninstall or roll back
+
+Disable or remove the installed workflow, then remove
+`PR_AGENT_MODEL_API_KEY`, `PR_AGENT_MODEL_PROVIDER`, and the backend/model
+variables if nothing else uses them. Existing PR-Agent comments and durable
+Check Run receipts remain as historical GitHub records.

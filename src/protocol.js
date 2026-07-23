@@ -13,6 +13,7 @@ const MAX_NESTING_DEPTH = 32;
 
 const ROUTES = new Set(["auto", "cheap", "deep", "copilot", "none"]);
 const REMOTE_ROUTES = new Set(["cheap", "deep", "copilot"]);
+const EXTERNAL_ROUTES = new Set(["cheap", "deep"]);
 const CONFIDENCE_LEVELS = new Set(["unknown", "high", "medium", "low"]);
 const LOCAL_OUTCOMES = new Set([
   "clean",
@@ -661,6 +662,73 @@ export function decodeBackend(value, field = "backend") {
       maximumItems: 8,
       maximumBytes: REASON_MAX_BYTES,
     }),
+  };
+}
+
+export function decodeAdapterRequest(value) {
+  rejectForbiddenFields(value, "adapterRequest");
+  assertEncodedSize(value, "adapterRequest", REQUEST_MAX_BYTES);
+  const request = objectValue(value, "adapterRequest");
+  schemaVersion(request.schemaVersion, "adapterRequest.schemaVersion");
+  const requestType = stringValue(request.requestType, "adapterRequest.requestType");
+  if (requestType !== "routed-review-dispatch") {
+    throw new Error("adapterRequest.requestType must be routed-review-dispatch");
+  }
+  const repository = repositoryValue(request.repository, "adapterRequest.repository");
+  const pullRequestNumber = integerValue(
+    request.pullRequestNumber,
+    "adapterRequest.pullRequestNumber",
+    { minimum: 1 },
+  );
+  const headSha = headShaValue(request.headSha, "adapterRequest.headSha");
+  const attempt = integerValue(request.attempt, "adapterRequest.attempt", {
+    minimum: 1,
+    maximum: 100,
+  });
+  const logicalDispatchId = digestValue(
+    request.logicalDispatchId,
+    "adapterRequest.logicalDispatchId",
+  );
+  const expectedLogicalDispatchId = deriveLogicalDispatchIdFromFields({
+    repository,
+    pullRequestNumber,
+    headSha,
+    attempt,
+  });
+  if (logicalDispatchId !== expectedLogicalDispatchId) {
+    throw new Error("adapterRequest.logicalDispatchId does not match the adapter request identity");
+  }
+  const selectedRoute = enumValue(
+    request.selectedRoute,
+    "adapterRequest.selectedRoute",
+    EXTERNAL_ROUTES,
+  );
+  const backend = decodeBackend(request.backend, "adapterRequest.backend");
+  if (backend.kind !== "external") {
+    throw new Error("adapterRequest.backend.kind must be external");
+  }
+  return {
+    schemaVersion: PROTOCOL_SCHEMA_MAJOR,
+    requestType,
+    logicalDispatchId,
+    requestFingerprint: digestValue(
+      request.requestFingerprint,
+      "adapterRequest.requestFingerprint",
+    ),
+    repository,
+    pullRequestNumber,
+    headSha,
+    attempt,
+    selectedRoute,
+    backend,
+    policyVersion: stringValue(request.policyVersion, "adapterRequest.policyVersion", {
+      maximum: 64,
+    }),
+    correlationIds: stringArray(
+      request.correlationIds,
+      "adapterRequest.correlationIds",
+      { maximumItems: 16, allowEmpty: false },
+    ),
   };
 }
 

@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   decodeAdapterAcknowledgment,
+  decodeAdapterRequest,
   decodeBackend,
   decodeLocalReviewSummary,
   decodeReceipt,
@@ -63,7 +64,7 @@ test("canonical JSON recursively sorts object keys", () => {
 test("equivalent raw casing and provider ordering produce one canonical fingerprint", () => {
   const automatic = clone(requestByName.get("automatic with exact-head local evidence"));
   const secondProvider = {
-    id: "gito",
+    id: "second-reviewer",
     capabilityTier: "standard",
     costTier: "medium",
     qualityTier: "standard",
@@ -291,9 +292,16 @@ test("rerequests require the next attempt and cannot combine with successor inte
   );
 });
 
-test("decodes canonical backend, acknowledgment, and successor fixtures", () => {
+test("decodes canonical backend, adapter request, acknowledgment, and successor fixtures", () => {
   for (const entry of supporting.backends) {
     assert.equal(decodeBackend(entry.value).id, entry.value.id, entry.name);
+  }
+  for (const entry of supporting.adapterRequests) {
+    assert.equal(
+      decodeAdapterRequest(entry.value).logicalDispatchId,
+      entry.value.logicalDispatchId,
+      entry.name,
+    );
   }
   for (const entry of supporting.acknowledgments) {
     assert.equal(
@@ -309,6 +317,20 @@ test("decodes canonical backend, acknowledgment, and successor fixtures", () => 
       entry.name,
     );
   }
+});
+
+test("adapter requests require a valid external exact-head identity", () => {
+  const request = clone(supporting.adapterRequests[0].value);
+  request.logicalDispatchId = "f".repeat(64);
+  assert.throws(() => decodeAdapterRequest(request), /does not match the adapter request identity/u);
+
+  const native = clone(supporting.adapterRequests[0].value);
+  native.backend.kind = "copilot";
+  assert.throws(() => decodeAdapterRequest(native), /backend.kind must be external/u);
+
+  const invalidRoute = clone(supporting.adapterRequests[0].value);
+  invalidRoute.selectedRoute = "copilot";
+  assert.throws(() => decodeAdapterRequest(invalidRoute), /selectedRoute must be one of/u);
 });
 
 test("adapter failure acknowledgments require a bounded code only on failure", () => {

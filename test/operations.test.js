@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { runAction } from "../src/index.js";
-import { writeDurableSummary } from "../src/operations.js";
+import { buildAdapterAcknowledgment, writeDurableSummary } from "../src/operations.js";
 import { stableProtocolJson } from "../src/protocol.js";
 import { RECEIPT_CHECK_NAME } from "../src/receipt.js";
 
@@ -15,6 +15,9 @@ const requests = await fixture("requests.valid.json");
 const supporting = await fixture("supporting.valid.json");
 const requestByName = new Map(requests.map((entry) => [entry.name, entry.value]));
 const backendByName = new Map(supporting.backends.map((entry) => [entry.name, entry.value]));
+const adapterRequestByName = new Map(
+  supporting.adapterRequests.map((entry) => [entry.name, entry.value]),
+);
 
 function clone(value) {
   return structuredClone(value);
@@ -177,6 +180,70 @@ test("durable external route emits one canonical adapter request and replay emit
   assert.equal(harness.outputs.get("run-external-reviewer"), "false");
   assert.equal(client.calls.filter(([name]) => name === "createCheckRun").length, 1);
   assert.deepEqual(replay.receipt.correlationIds, ["corr-cheap", "corr-cheap-replay"]);
+});
+
+test("builds canonical adapter acknowledgments from bounded step outcomes", async () => {
+  const request = adapterRequestByName.get("PR-Agent cheap dispatch");
+  const acknowledged = buildAdapterAcknowledgment(
+    request,
+    "success",
+    "2026-07-23T12:30:10Z",
+  );
+  assert.deepEqual(acknowledged, {
+    schemaVersion: 1,
+    logicalDispatchId: request.logicalDispatchId,
+    backendId: "pr-agent",
+    status: "acknowledged",
+    acknowledgedAt: "2026-07-23T12:30:10Z",
+    findingChannels: ["conversation-comment"],
+  });
+
+  const errorCodes = new Map([
+    ["failure", "adapter-failed"],
+    ["cancelled", "adapter-cancelled"],
+    ["skipped", "adapter-skipped"],
+  ]);
+  for (const [outcome, errorCode] of errorCodes) {
+    const failed = buildAdapterAcknowledgment(
+      request,
+      outcome,
+      "2026-07-23T12:30:10Z",
+    );
+    assert.equal(failed.status, "failed", outcome);
+    assert.equal(failed.errorCode, errorCode, outcome);
+  }
+
+  assert.throws(
+    () => buildAdapterAcknowledgment(request, "unknown", "2026-07-23T12:30:10Z"),
+    /adapter-outcome must be one of/u,
+  );
+});
+
+test("acknowledge operation does not construct a GitHub client", async () => {
+  const request = adapterRequestByName.get("PR-Agent cheap dispatch");
+  const outputs = new Map();
+  let factories = 0;
+  const result = await runAction({
+    event: {},
+    eventName: "workflow_dispatch",
+    env: {
+      "INPUT_OPERATION": "acknowledge",
+      "INPUT_ADAPTER-REQUEST": JSON.stringify(request),
+      "INPUT_ADAPTER-OUTCOME": "success",
+    },
+    clientFactory() {
+      factories += 1;
+      throw new Error("acknowledge must not construct a GitHub client");
+    },
+    outputWriter: (name, value) => outputs.set(name, value),
+    logger() {},
+    now: () => "2026-07-23T12:30:10Z",
+  });
+
+  assert.equal(factories, 0);
+  assert.equal(result.acknowledgment.status, "acknowledged");
+  assert.equal(outputs.get("operation"), "acknowledge");
+  assert.deepEqual(JSON.parse(outputs.get("adapter-acknowledgment")), result.acknowledgment);
 });
 
 test("conflicting retries fail while policy-authorized rerequests use a new attempt", async () => {
