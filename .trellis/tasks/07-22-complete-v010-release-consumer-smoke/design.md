@@ -20,8 +20,8 @@ change, discard the candidate, select a new SHA, repeat source validation, and
 restart the pilot observation window.
 
 The current candidate proposal is
-`32fc23d4a59aee4e84d25d44861e7e5e7b8d6483`, backed by successful CI run
-`30013641301`. Planning records and post-release documentation are bookkeeping;
+`8636a3983d18de17c49907a4c48170a61b1bb713`, backed by successful CI run
+`30036609751`. Planning records and post-release documentation are bookkeeping;
 they do not silently replace the frozen runtime candidate.
 
 ## Pilot Boundary And Data Flow
@@ -88,7 +88,7 @@ provider integrations.
   provides only one consumer environment. Broader adoption evidence remains a
   separate task.
 - A synthetic durable acknowledgment proves protocol and receipt behavior, not
-  live adapter quality. Live PR-Agent/Gito validation remains explicitly out of
-  scope.
+  live adapter quality. Live external-provider validation remains explicitly
+  out of scope.
 - Post-release documentation pinning adds a bookkeeping commit but avoids an
   impossible self-referential SHA inside the release candidate.

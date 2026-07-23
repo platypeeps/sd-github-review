@@ -1,6 +1,27 @@
 # v0.1.0 Provider-Free Pilot Evidence
 
-## Scope And Boundary
+## Current Candidate Restart
+
+- Source candidate:
+  `8636a3983d18de17c49907a4c48170a61b1bb713`
+- Source CI:
+  `https://github.com/platypeeps/sd-github-review/actions/runs/30036609751`
+- Exact-checkout validation completed at `2026-07-23T19:49:23Z`.
+- Restart reason: PR `#15` added runtime PR-Agent support after the previous
+  pilot, so the candidate-bound evidence and observation window must restart.
+- Private pilot repository: `platypeeps/sd-github-review-pilot`
+- Current smoke PR: `https://github.com/platypeeps/sd-github-review-pilot/pull/3`
+- Provider-free scenario evidence: pending the replacement-candidate run.
+- Observation window: not started; it begins after the final successful
+  replacement-candidate scenario.
+
+## Superseded Candidate Baseline
+
+The remaining evidence in this document is retained as a historical baseline
+for candidate `32fc23d4a59aee4e84d25d44861e7e5e7b8d6483`. It was successful but
+does not qualify candidate `8636a3983d18de17c49907a4c48170a61b1bb713`.
+
+### Scope And Boundary
 
 - Source candidate:
   `32fc23d4a59aee4e84d25d44861e7e5e7b8d6483`
@@ -22,7 +43,7 @@ At the observation checkpoint the repository had zero Actions secrets, zero
 rulesets, and the durable workflow was active. Public evidence below contains
 only route results, immutable identities, run/check URLs, and bounded state.
 
-## Standalone Scenario Matrix
+### Standalone Scenario Matrix
 
 | Scenario | Head | Evidence | Sanitized result |
 | --- | --- | --- | --- |
@@ -40,7 +61,7 @@ only route results, immutable identities, run/check URLs, and bounded state.
 The two Copilot reviews are bound to different exact head commits. No raw
 review body or pull-request content is copied into this evidence record.
 
-## Durable Scenario Matrix
+### Durable Scenario Matrix
 
 | Scenario | Request head | Evidence | Sanitized result |
 | --- | --- | --- | --- |
@@ -60,13 +81,13 @@ finalization and idempotency but does not invoke a provider or claim a real
 finding. Ambiguous transport mutation remains covered by the source candidate's
 unit suite; the live pilot exercised the changed-head reconciliation branch.
 
-## Rollback Evidence
+### Rollback Evidence
 
 Workflow `319050197` (`Durable routed-review pilot`) was changed from `active`
 to `disabled_manually` and then restored to `active`. The operation did not
 delete workflow history, change the source candidate, or add credentials.
 
-## Observation Window
+### Superseded Observation Window
 
 - Start: `2026-07-23T16:47:46Z`
 - Earliest completion: `2026-07-24T16:47:46Z`
@@ -79,8 +100,6 @@ delete workflow history, change the source candidate, or add credentials.
   not support `--json`; the rollback state was verified through the GitHub API
   instead. No pilot behavior was affected.
 
-Keep PR `#3` open and the candidate frozen through the window. At or after the
-earliest completion time, re-query workflow history, receipt checks, exact-head
-Copilot review state, secrets/rulesets, and rollback state. Any unexplained
-failure, duplicate trigger, permission error, candidate change, or source
-behavior change blocks release and restarts the window.
+PR `#15` changed source behavior before this window completed. The window is
+therefore closed as superseded evidence rather than carried forward. PR `#3`
+remains the replacement-candidate scenario target.

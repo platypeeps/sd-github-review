@@ -10,15 +10,16 @@ the existing release checklist.
 
 ## Confirmed Facts
 
-- Source `main` is currently `32fc23d4a59aee4e84d25d44861e7e5e7b8d6483`.
-  GitHub Actions run `30013641301` completed successfully for that exact SHA.
+- Source `main` is currently `8636a3983d18de17c49907a4c48170a61b1bb713`.
+  GitHub Actions run `30036609751` completed successfully for that exact SHA.
 - The source repository currently has no tag or GitHub release.
-- The earlier provider-free pilot passed against
-  `9d10ac126d014e56763d7740d694c9a50f32212d`, but that predates the durable
-  routed-review runtime and cannot qualify the current candidate.
+- A complete provider-free pilot passed against
+  `32fc23d4a59aee4e84d25d44861e7e5e7b8d6483`, but PR-Agent support merged
+  afterward in PR `#15`. That source behavior change superseded the candidate
+  and invalidated its observation window for release qualification.
 - `platypeeps/sd-github-review-pilot` is private, has no Actions secrets or
-  repository rulesets, and retains open smoke PR `#1`. Its current workflow is
-  still pinned to the earlier candidate.
+  repository rulesets, and retains current smoke PR `#3`. Before the restarted
+  pilot, its workflows remain pinned to the superseded candidate.
 - The existing runnable examples intentionally contain commit-SHA
   placeholders. A source commit cannot contain its own full SHA, so examples
   can be pinned only in a post-release documentation commit or in the consumer
@@ -60,7 +61,7 @@ the existing release checklist.
 
 - [x] The candidate SHA and exact successful source CI run are recorded before
   pilot execution.
-- [x] Every standalone and durable provider-free scenario has bounded,
+- [ ] Every standalone and durable provider-free scenario has bounded,
   sanitized evidence against the candidate; replay, new-head, and fail-closed
   behavior match `docs/RELEASE_CHECKLIST.md`.
 - [ ] The final pilot scenario is followed by a completed 24-hour observation
