@@ -934,6 +934,9 @@ export function selectProtocolRoute({ request: requestValue, routingContext = {}
   );
   const draft = booleanValue(context.draft ?? false, "routingContext.draft");
   const reviewDrafts = booleanValue(context.reviewDrafts ?? false, "routingContext.reviewDrafts");
+  const decodedSuccessorEvidence = context.successorEvidence === undefined
+    ? undefined
+    : decodeSuccessorEvidence(context.successorEvidence);
 
   const baseDecision = routeReview({
     configuredMode: request.route,
@@ -956,7 +959,7 @@ export function selectProtocolRoute({ request: requestValue, routingContext = {}
       policyVersion: request.policyVersion,
       floorApplied: null,
       localEvidence: request.localReview ? "ignored-explicit" : "absent",
-      successorEvidence: context.successorEvidence ? "ignored-explicit" : "absent",
+      successorEvidence: decodedSuccessorEvidence ? "ignored-explicit" : "absent",
     };
   }
 
@@ -971,7 +974,7 @@ export function selectProtocolRoute({ request: requestValue, routingContext = {}
   let route = baseDecision.route;
   const reasons = [baseDecision.reason];
   let localEvidence = request.localReview ? "ineligible" : "absent";
-  let successorEvidence = context.successorEvidence ? "ineligible" : "absent";
+  let successorEvidence = decodedSuccessorEvidence ? "ineligible" : "absent";
 
   if (request.localReview) {
     const threshold = integerValue(
@@ -1000,10 +1003,9 @@ export function selectProtocolRoute({ request: requestValue, routingContext = {}
     }
   }
 
-  if (context.successorEvidence !== undefined) {
-    const evidence = decodeSuccessorEvidence(context.successorEvidence);
-    successorMatchesRequest(evidence, request);
-    if (evidence.comparison === "bookkeeping-only" && allowBookkeepingNone) {
+  if (decodedSuccessorEvidence) {
+    successorMatchesRequest(decodedSuccessorEvidence, request);
+    if (decodedSuccessorEvidence.comparison === "bookkeeping-only" && allowBookkeepingNone) {
       route = weakerRoute(route, "none");
       successorEvidence = "lowered";
       reasons.push("trusted bookkeeping-only successor evidence selected none");

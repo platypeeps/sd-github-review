@@ -396,6 +396,26 @@ test("explicit protocol routes retain precedence over local evidence and risk fl
   assert.equal(decision.floorApplied, null);
 });
 
+test("explicit routes still validate ignored successor evidence", () => {
+  const explicit = requestByName.get("explicit cheap");
+  const validEvidence = successorByName.get("trusted bookkeeping-only successor");
+  const decision = selectProtocolRoute({
+    request: explicit,
+    routingContext: { successorEvidence: validEvidence },
+  });
+  assert.equal(decision.route, "cheap");
+  assert.equal(decision.successorEvidence, "ignored-explicit");
+
+  const forbiddenEvidence = { ...clone(validEvidence), extension: { prompt: "fixture" } };
+  assert.throws(
+    () => selectProtocolRoute({
+      request: explicit,
+      routingContext: { successorEvidence: forbiddenEvidence },
+    }),
+    /successorEvidence\.extension\.prompt is forbidden by the protocol privacy boundary/u,
+  );
+});
+
 test("confidence validation identifies the exact protocol field", () => {
   const request = requestByName.get("explicit cheap");
   assert.throws(
