@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify transport payloads, pagination, exact-head behavior, and regression tests."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify ambiguous mutations and contradictory evidence fail closed."}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Verify receipts and diagnostics exclude raw paths and secrets."}
+{"file": ".trellis/tasks/07-23-implement-durable-routed-review-receipts/research/contract-mapping.md", "reason": "Verify child scope covers all durable transport requirements."}
