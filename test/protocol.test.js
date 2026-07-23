@@ -167,6 +167,18 @@ test("requires exact scalar and container types before normalization", () => {
   }
 });
 
+test("rejects repeated object references with an accurate JSON-tree error", () => {
+  const base = requestByName.get("explicit cheap");
+  const shared = { harmlessMarker: "shared" };
+  assert.throws(
+    () => decodeReviewRequest({
+      ...clone(base),
+      extension: { first: shared, second: shared },
+    }),
+    /repeated object references or circular data/u,
+  );
+});
+
 test("enforces whole-request and bounded-string limits without echoing values", () => {
   const base = requestByName.get("explicit cheap");
   assert.throws(
@@ -360,6 +372,10 @@ test("receipt route, backend kind, and dispatch state must agree", () => {
   reversedTime.dispatch.completedAt = "2026-07-23T10:04:59Z";
   assert.throws(() => decodeReceipt(reversedTime), /must not precede/u);
 
+  const credentialUrl = clone(receipts.find((entry) => entry.name === "Copilot receipt").value);
+  credentialUrl.dispatch.workflowUrl = "https://user:pass@github.com/actions/runs/1";
+  assert.throws(() => decodeReceipt(credentialUrl), /workflowUrl must not include credentials/u);
+
   const oversized = clone(receipts.find((entry) => entry.name === "none receipt").value);
   oversized.extension = { futureMetadata: "x".repeat(33 * 1024) };
   assert.throws(() => decodeReceipt(oversized), /receipt exceeds the 32768-byte limit/u);
@@ -378,6 +394,18 @@ test("explicit protocol routes retain precedence over local evidence and risk fl
   });
   assert.equal(decision.route, "none");
   assert.equal(decision.floorApplied, null);
+});
+
+test("confidence validation identifies the exact protocol field", () => {
+  const request = requestByName.get("explicit cheap");
+  assert.throws(
+    () => decodeReviewRequest({ ...clone(request), trustedConfidence: "impossible" }),
+    /request\.trustedConfidence must be one of/u,
+  );
+  assert.throws(
+    () => selectProtocolRoute({ request, routingContext: { confidence: "impossible" } }),
+    /routingContext\.confidence must be one of/u,
+  );
 });
 
 test("eligible local evidence can lower automatic cost without selecting a stronger route", () => {

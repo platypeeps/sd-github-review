@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { normalizeConfidence, normalizeMode, routeReview } from "./router.js";
+import { normalizeMode, routeReview } from "./router.js";
 
 export const PROTOCOL_SCHEMA_MAJOR = 1;
 
@@ -133,7 +133,7 @@ function rejectForbiddenFields(value, field = "value") {
       continue;
     }
     if (seen.has(current.value)) {
-      throw new Error(`${current.field} must not contain circular data`);
+      throw new Error(`${current.field} must not contain repeated object references or circular data`);
     }
     seen.add(current.value);
     if (Array.isArray(current.value)) {
@@ -263,6 +263,9 @@ function httpsUrlValue(value, field) {
   }
   if (url.protocol !== "https:") {
     throw new Error(`${field} must be a valid HTTPS URL`);
+  }
+  if (url.username || url.password) {
+    throw new Error(`${field} must not include credentials`);
   }
   return url.toString();
 }
@@ -510,15 +513,11 @@ function normalizeReviewRequest(value, { verifyCompatibility = true } = {}) {
   }
   const trustedConfidence = request.trustedConfidence === undefined
     ? undefined
-    : (() => {
-        if (typeof request.trustedConfidence !== "string") {
-          throw new Error("request.trustedConfidence must be a string");
-        }
-        return normalizeConfidence(request.trustedConfidence);
-      })();
-  if (trustedConfidence !== undefined && !CONFIDENCE_LEVELS.has(trustedConfidence)) {
-    throw new Error(`request.trustedConfidence must be one of: ${[...CONFIDENCE_LEVELS].join(", ")}`);
-  }
+    : enumValue(
+        request.trustedConfidence,
+        "request.trustedConfidence",
+        CONFIDENCE_LEVELS,
+      );
 
   const repository = repositoryValue(request.repository);
   const pullRequestNumber = integerValue(request.pullRequestNumber, "request.pullRequestNumber", {
@@ -924,10 +923,11 @@ export function selectProtocolRoute({ request: requestValue, routingContext = {}
     "routingContext.changedLineThreshold",
     { minimum: 1 },
   );
-  if (typeof (context.confidence ?? "unknown") !== "string") {
-    throw new Error("routingContext.confidence must be a string");
-  }
-  const confidence = normalizeConfidence(context.confidence ?? "unknown");
+  const confidence = enumValue(
+    context.confidence ?? "unknown",
+    "routingContext.confidence",
+    CONFIDENCE_LEVELS,
+  );
   const lowConfidenceRoute = resolvedRoute(
     context.lowConfidenceRoute ?? "deep",
     "routingContext.lowConfidenceRoute",
