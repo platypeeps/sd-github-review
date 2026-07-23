@@ -617,6 +617,7 @@ export function deriveRequestFingerprint(value) {
 
 export function decodeBackend(value, field = "backend") {
   rejectForbiddenFields(value, field);
+  assertEncodedSize(value, field, LOCAL_SUMMARY_MAX_BYTES);
   const backend = objectValue(value, field);
   const kind = enumValue(backend.kind, `${field}.kind`, BACKEND_KINDS);
   const findingChannels = stringArray(backend.findingChannels, `${field}.findingChannels`, {
@@ -816,6 +817,9 @@ export function decodeReceipt(value) {
   }
   if (selectedRoute === "none" && dispatch.status !== "skipped") {
     throw new Error("receipt.dispatch.status must be skipped for the none route");
+  }
+  if (REMOTE_ROUTES.has(selectedRoute) && dispatch.status === "skipped") {
+    throw new Error("receipt.dispatch.status skipped is valid only for the none route");
   }
 
   const normalized = {

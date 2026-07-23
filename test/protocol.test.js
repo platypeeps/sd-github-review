@@ -315,6 +315,12 @@ test("backend descriptors require observable identity for every finding channel"
   const backend = clone(supporting.backends.find((entry) => entry.name === "external check backend").value);
   backend.checkNames = [];
   assert.throws(() => decodeBackend(backend), /checkNames must identify/u);
+
+  const oversized = clone(
+    supporting.backends.find((entry) => entry.name === "external check backend").value,
+  );
+  oversized.futureMetadata = "x".repeat(9 * 1024);
+  assert.throws(() => decodeBackend(oversized), /backend exceeds the 8192-byte limit/u);
 });
 
 test("decodes canonical receipts for Copilot, external comments, external checks, and none", () => {
@@ -344,6 +350,11 @@ test("receipt route, backend kind, and dispatch state must agree", () => {
   const copilot = clone(receipts.find((entry) => entry.name === "Copilot receipt").value);
   copilot.backend.kind = "external";
   assert.throws(() => decodeReceipt(copilot), /kind must be copilot/u);
+
+  const skippedRemote = clone(receipts.find((entry) => entry.name === "external comment receipt").value);
+  skippedRemote.dispatch.status = "skipped";
+  skippedRemote.dispatch.phase = "not-started";
+  assert.throws(() => decodeReceipt(skippedRemote), /skipped is valid only for the none route/u);
 
   const reversedTime = clone(receipts.find((entry) => entry.name === "failed external receipt").value);
   reversedTime.dispatch.completedAt = "2026-07-23T10:04:59Z";
