@@ -19,7 +19,7 @@
   "pr_url": null,
   "subtasks": [],
   "children": [],
-  "parent": "07-22-implement-routed-review-receipt-runtime",
+  "parent": null,
   "relatedFiles": [
     "src/github.js",
     "src/receipt.js",
