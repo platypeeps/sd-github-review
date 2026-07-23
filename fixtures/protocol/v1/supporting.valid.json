@@ -1,0 +1,145 @@
+{
+  "backends": [
+    {
+      "name": "native Copilot",
+      "value": {
+        "id": "github-copilot",
+        "label": "GitHub Copilot",
+        "kind": "copilot",
+        "costTier": "medium",
+        "qualityTier": "advanced",
+        "capabilities": ["review", "inline-comments"],
+        "reviewAuthors": ["copilot-pull-request-reviewer[bot]"],
+        "checkNames": [],
+        "findingChannels": ["review", "inline-comment"],
+        "supportsRerequest": true,
+        "limitations": ["GitHub-managed model selection"]
+      }
+    },
+    {
+      "name": "external comment backend",
+      "value": {
+        "id": "pr-agent",
+        "label": "PR-Agent",
+        "kind": "external",
+        "model": "adapter-default",
+        "costTier": "low",
+        "qualityTier": "standard",
+        "capabilities": ["review", "conversation-comments"],
+        "reviewAuthors": ["pr-agent[bot]"],
+        "checkNames": [],
+        "findingChannels": ["conversation-comment"],
+        "supportsRerequest": true,
+        "limitations": ["Inline comments depend on adapter configuration"]
+      }
+    },
+    {
+      "name": "external check backend",
+      "value": {
+        "id": "internal-check-reviewer",
+        "label": "Internal Check Reviewer",
+        "kind": "external",
+        "costTier": "high",
+        "qualityTier": "advanced",
+        "capabilities": ["checks"],
+        "reviewAuthors": [],
+        "checkNames": ["internal-review/findings"],
+        "findingChannels": ["check"],
+        "supportsRerequest": false,
+        "limitations": ["Findings are exposed as a check only"]
+      }
+    }
+  ],
+  "acknowledgments": [
+    {
+      "name": "external check acknowledged",
+      "value": {
+        "schemaVersion": 1,
+        "logicalDispatchId": "3333333333333333333333333333333333333333333333333333333333333333",
+        "backendId": "internal-check-reviewer",
+        "status": "acknowledged",
+        "acknowledgedAt": "2026-07-23T10:00:00Z",
+        "findingChannels": ["check"]
+      }
+    },
+    {
+      "name": "external adapter failed",
+      "value": {
+        "schemaVersion": 1,
+        "logicalDispatchId": "3333333333333333333333333333333333333333333333333333333333333333",
+        "backendId": "internal-check-reviewer",
+        "status": "failed",
+        "errorCode": "adapter-timeout",
+        "acknowledgedAt": "2026-07-23T10:00:30Z",
+        "findingChannels": ["check"]
+      }
+    }
+  ],
+  "successorEvidence": [
+    {
+      "name": "trusted bookkeeping-only successor",
+      "value": {
+        "schemaVersion": 1,
+        "evidenceType": "github-compare",
+        "priorReceiptId": "receipt-prior",
+        "priorLogicalDispatchId": "3333333333333333333333333333333333333333333333333333333333333333",
+        "priorHeadSha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "currentHeadSha": "ffffffffffffffffffffffffffffffffffffffff",
+        "comparison": "bookkeeping-only",
+        "deltaDigest": "4444444444444444444444444444444444444444444444444444444444444444"
+      }
+    },
+    {
+      "name": "trusted mixed successor",
+      "value": {
+        "schemaVersion": 1,
+        "evidenceType": "github-compare",
+        "priorReceiptId": "receipt-prior",
+        "priorLogicalDispatchId": "3333333333333333333333333333333333333333333333333333333333333333",
+        "priorHeadSha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "currentHeadSha": "ffffffffffffffffffffffffffffffffffffffff",
+        "comparison": "mixed",
+        "deltaDigest": "5555555555555555555555555555555555555555555555555555555555555555"
+      }
+    },
+    {
+      "name": "content-changing successor",
+      "value": {
+        "schemaVersion": 1,
+        "evidenceType": "github-compare",
+        "priorReceiptId": "receipt-prior",
+        "priorLogicalDispatchId": "3333333333333333333333333333333333333333333333333333333333333333",
+        "priorHeadSha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "currentHeadSha": "ffffffffffffffffffffffffffffffffffffffff",
+        "comparison": "content-changing",
+        "deltaDigest": "8888888888888888888888888888888888888888888888888888888888888888"
+      }
+    },
+    {
+      "name": "non-comparable successor",
+      "value": {
+        "schemaVersion": 1,
+        "evidenceType": "github-compare",
+        "priorReceiptId": "receipt-prior",
+        "priorLogicalDispatchId": "3333333333333333333333333333333333333333333333333333333333333333",
+        "priorHeadSha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "currentHeadSha": "ffffffffffffffffffffffffffffffffffffffff",
+        "comparison": "non-comparable",
+        "deltaDigest": "6666666666666666666666666666666666666666666666666666666666666666"
+      }
+    },
+    {
+      "name": "changed-head successor",
+      "value": {
+        "schemaVersion": 1,
+        "evidenceType": "github-compare",
+        "priorReceiptId": "receipt-prior",
+        "priorLogicalDispatchId": "3333333333333333333333333333333333333333333333333333333333333333",
+        "priorHeadSha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "currentHeadSha": "ffffffffffffffffffffffffffffffffffffffff",
+        "comparison": "changed-head",
+        "deltaDigest": "7777777777777777777777777777777777777777777777777777777777777777"
+      }
+    }
+  ]
+}

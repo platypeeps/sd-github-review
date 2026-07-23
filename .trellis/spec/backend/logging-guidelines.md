@@ -26,7 +26,14 @@ validation scripts may print progress and diagnostics to stdout/stderr.
 - GitHub or provider tokens;
 - provider credentials, raw authorization headers, or full environment dumps;
 - pull-request source contents;
+- paths, prompts, raw findings, provider transcripts, configuration values, or
+  local artifact contents from routed-review protocol data;
 - unnecessary event payloads or personally identifying account data.
+
+Protocol validation errors name only the field and violated bound or contract.
+They must not echo the rejected value. Durable receipts may carry only bounded
+normalized observation metadata; native finding bodies remain on their
+declared GitHub surfaces.
 
 ## Example
 

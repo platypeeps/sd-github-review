@@ -1,0 +1,97 @@
+[
+  {
+    "name": "unsupported schema major",
+    "error": "schema major 1",
+    "value": {
+      "schemaVersion": 2,
+      "correlationId": "corr-invalid",
+      "attempt": 1,
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "route": "auto",
+      "policyVersion": "policy-v1"
+    }
+  },
+  {
+    "name": "wrong pull request scalar type",
+    "error": "pullRequestNumber must be an integer",
+    "value": {
+      "schemaVersion": 1,
+      "correlationId": "corr-invalid",
+      "attempt": 1,
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": "42",
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "route": "auto",
+      "policyVersion": "policy-v1"
+    }
+  },
+  {
+    "name": "forbidden nested path field",
+    "error": "privacy boundary",
+    "value": {
+      "schemaVersion": 1,
+      "correlationId": "corr-invalid",
+      "attempt": 1,
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "route": "auto",
+      "policyVersion": "policy-v1",
+      "extension": { "path": "forbidden-fixture-value" }
+    }
+  },
+  {
+    "name": "spoofed logical dispatch ID",
+    "error": "does not match",
+    "value": {
+      "schemaVersion": 1,
+      "correlationId": "corr-invalid",
+      "attempt": 1,
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "route": "auto",
+      "policyVersion": "policy-v1",
+      "logicalDispatchId": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "nonzero skipped confidence",
+    "error": "confidence must be 0",
+    "value": {
+      "schemaVersion": 1,
+      "correlationId": "corr-invalid",
+      "attempt": 1,
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "route": "auto",
+      "policyVersion": "policy-v1",
+      "localReview": {
+        "schemaVersion": 1,
+        "receiptId": "local-invalid",
+        "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+        "pullRequestNumber": 42,
+        "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "scopeDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        "configurationDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+        "providers": [
+          {
+            "id": "prism",
+            "capabilityTier": "advanced",
+            "costTier": "low",
+            "qualityTier": "advanced"
+          }
+        ],
+        "outcome": "skipped",
+        "skipReason": "explicit-none",
+        "dispositionCounts": { "total": 0, "unresolved": 0, "fixed": 0, "rebutted": 0 },
+        "confidence": 1,
+        "latencyMs": 0,
+        "costTier": "low"
+      }
+    }
+  }
+]

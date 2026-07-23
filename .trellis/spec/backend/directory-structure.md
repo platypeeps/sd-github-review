@@ -8,8 +8,10 @@
 src/                 # dependency-free Action runtime
   index.js           # input/event orchestration and GitHub outputs
   router.js          # pure routing policy
+  protocol.js        # versioned request/receipt decoding and canonical identity
   github.js          # GitHub REST transport
 test/                # node:test suites mirroring runtime boundaries
+fixtures/protocol/   # canonical versioned protocol behavior fixtures
 scripts/             # repository validation and SD pack helpers
 examples/            # consumer-owned workflow templates
 docs/                # project and release operations
@@ -48,11 +50,15 @@ single queryable source for priority, ownership, dependencies, and status.
 
 - Put deterministic policy, parsing, trust, and glob behavior in
   `src/router.js`.
+- Put versioned routed-review decoding, privacy validation, stable hashing,
+  receipt envelopes, and pure local/successor policy inputs in
+  `src/protocol.js`. It must not access the network, filesystem, environment,
+  or GitHub output surfaces.
 - Put HTTP mechanics and GitHub endpoint methods in `src/github.js`.
 - Put environment input decoding, event staging, side effects, outputs, and
   summaries in `src/index.js`.
-- Mirror each boundary in `test/router.test.js`, `test/github.test.js`, and
-  `test/action.test.js`.
+- Mirror each boundary in `test/router.test.js`, `test/protocol.test.js`,
+  `test/github.test.js`, and `test/action.test.js`.
 - Put repository-only validation in `scripts/`; it must not become part of the
   shipped Action runtime.
 

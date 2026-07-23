@@ -28,21 +28,21 @@ that every later durable-storage and dispatch path must consume.
 
 ## Acceptance Criteria
 
-- [ ] Valid fixtures cover `auto`, every explicit route, Copilot, external
+- [x] Valid fixtures cover `auto`, every explicit route, Copilot, external
   comment/check backends, `none`, and bounded cost/latency observations.
-- [ ] Same request/head yields one identity and fingerprint; new head, attempt,
+- [x] Same request/head yields one identity and fingerprint; new head, attempt,
   or dispatch-relevant intent changes the correct derived value.
-- [ ] A new correlation alias does not change the fingerprint or identity;
+- [x] A new correlation alias does not change the fingerprint or identity;
   spoofed compatibility values fail before any future dispatch.
-- [ ] Local clean/fully-dispositioned evidence can reduce `auto` only within
+- [x] Local clean/fully-dispositioned evidence can reduce `auto` only within
   policy, while unavailable/failed/cancelled/skipped/stale/dirty/malformed or
   low-confidence evidence supplies no positive confidence.
-- [ ] Sensitive/large-change or configured independent-review floors cannot be
+- [x] Sensitive/large-change or configured independent-review floors cannot be
   bypassed by local evidence or bookkeeping-successor input.
-- [ ] Successor fixtures distinguish trusted bookkeeping-only, mixed,
+- [x] Successor fixtures distinguish trusted bookkeeping-only, mixed,
   non-comparable, changed-head, explicit-remote, and required-floor cases.
-- [ ] Privacy fixtures reject every forbidden field and enforce size limits.
-- [ ] Existing router and full repository tests remain green.
+- [x] Privacy fixtures reject every forbidden field and enforce size limits.
+- [x] Existing router and full repository tests remain green.
 
 ## Dependencies
 
