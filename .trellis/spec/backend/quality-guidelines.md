@@ -85,6 +85,66 @@ const explicitMode = resolveExplicitMode({ configuredMode, commandMode, labelMod
 const files = explicitMode ? [] : await client.listPullRequestFiles(number);
 ```
 
+## Scenario: Validate Public Repository Metadata
+
+### 1. Scope / Trigger
+
+Use this contract when adding or changing Trellis, AI-tool, workspace, install
+receipt, environment-template, or other repository metadata paths.
+
+### 2. Signatures
+
+- `prohibitedPublishedMetadataReason(filePath) -> string|null`
+- `validateMetadata(repositoryRoot) -> Promise<{ workflowCount,
+  exampleCount, trackedPathCount, ... }>`
+- CLI: `npm run validate:metadata`
+
+### 3. Contracts
+
+- Classify normalized POSIX-style paths from `git ls-files -z`; ignore rules
+  are not evidence that an already tracked path is safe.
+- Keep shared Trellis workflow/spec/task data, bounded workspace Markdown,
+  platform adapters, and command-pack receipts public.
+- Reject environment secrets, Trellis runtime/identity/temp state, workspace
+  transcripts or attachments, and AI-tool cache/log/session/local state.
+- `docs/PUBLIC_METADATA_POLICY.md` owns the complete human allow/deny policy
+  and existing-history decision.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required behavior |
+| --- | --- |
+| Tracked path matches a prohibited family | Fail and list the path plus reason |
+| `git ls-files` fails | Fail closed with repository and Git context |
+| Shared adapter or task/spec path | Accept |
+| Workspace `index.md` or `journal-N.md` | Accept as public project history |
+| Other tracked workspace file | Fail as an unsupported publication surface |
+
+### 5. Good/Base/Bad Cases
+
+- Good: a generated shared skill is tracked and its cache remains ignored.
+- Base: a reviewed Trellis journal records commits and test outcomes only.
+- Bad: `.trellis/.developer` is force-added and validation silently passes.
+
+### 6. Tests Required
+
+- Table-test representative prohibited and public paths.
+- Force-add a prohibited fixture path to a temporary Git index and assert the
+  full validator rejects it.
+- Run the validator against the repository and assert tracked-path inspection
+  succeeds.
+
+### 7. Wrong vs Correct
+
+```js
+// Wrong: ignored files are assumed to be untracked.
+if (isIgnored(filePath)) return;
+
+// Correct: validate the authoritative tracked-file set.
+const trackedPaths = await gitLsFiles(repositoryRoot);
+const failures = trackedPaths.filter(prohibitedPublishedMetadataReason);
+```
+
 ## Forbidden Patterns
 
 - Do not check out or execute pull-request-authored code in a secret-bearing
