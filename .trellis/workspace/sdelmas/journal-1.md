@@ -163,3 +163,84 @@ Aligned tracked Trellis records with the final pack provenance and corrected the
 ### Next Steps
 
 - None - task complete
+
+
+## Session 5: Publish routed-review receipt contract plan
+
+**Date**: 2026-07-22
+**Task**: Publish routed-review receipt contract plan
+**Branch**: `codex/publish-routed-review-receipt-contract`
+
+### Summary
+
+Published and reviewed the versioned routed-review receipt planning package, grounding Trellis context and tightening identity, terminology, and normalized outcome contracts through four Copilot rounds.
+
+### Main Changes
+
+- Published the P1 PRD, design, implementation plan, task metadata, and grounded Trellis context for the exact-head routed-review receipt protocol.
+- Made idempotency identities router-derived, normalized cost/quality and skipped-outcome terminology, and resolved all review feedback.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4b922f4` | docs: plan routed review receipt contract |
+| `01b0d7b` | fix: ground Trellis review context |
+| `157b031` | fix: derive routed review idempotency identity |
+| `0e1982c` | docs: normalize routed review policy terminology |
+| `a4b743e` | docs: normalize skipped review outcomes |
+
+### Testing
+
+- [OK] Deterministic PR full-check passed with Prism and Gito disabled.
+- [OK] Review preflight passed with zero failures and zero advisories; installation audit verified 151 targets.
+- [OK] GitHub CI passed on the reviewed head.
+- [OK] Four Copilot rounds completed; all five review threads are resolved.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- After PR #6 merges, start the still-planned routed-review receipt implementation task.
+
+
+## Session 6: Finalize routed-review receipt contract PR
+
+**Date**: 2026-07-22
+**Task**: Finalize routed-review receipt contract PR
+**Branch**: `codex/publish-routed-review-receipt-contract`
+
+### Summary
+
+Reused PR #6, refreshed repository knowledge, validated the synchronized bookkeeping head, completed an exact-head Copilot pass with no findings, and archived the reviewed planning task.
+
+### Main Changes
+
+- Refreshed the generated Obsidian knowledge base without tracked spec or architecture changes.
+- Validated the current PR head with the deterministic review gate, passing CI, and zero unresolved review threads.
+- Archived the completed routed-review receipt contract planning task after the clean review loop.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b0717e1` | chore: sync workspace session count |
+
+### Testing
+
+- [OK] Deterministic PR full-check passed with Prism and Gito disabled
+- [OK] GitHub CI passed on exact head b0717e1
+- [OK] Copilot reviewed 9 of 9 files with no new comments
+- [OK] Delayed GraphQL poll found zero unresolved review threads
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
