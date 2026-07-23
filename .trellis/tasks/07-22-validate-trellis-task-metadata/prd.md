@@ -62,5 +62,13 @@ preserved in archived Trellis evidence.
   coverage, passed all eight fleet candidates, and merged at `d0aba8c`.
 - `v0.32.1` points to release commit `d0aba8c`; local and remote tag refs, the
   payload digest, and candidate ledger passed the release-identity preflight.
-- This consumer's installed `0.32.1` payload is source-current and retains the
-  singular-directory classifier under upstream provenance.
+- Consumer review round 2 then exposed a fail-open parser path for malformed
+  non-empty task-context JSONL. Corrective upstream PR #231 added bounded
+  file-and-line diagnostics, focused regression coverage, and passed all eight
+  fleet candidates before merging at `8293d0e`.
+- `v0.32.2` points to release commit `8293d0e`; automatic main CI, the local and
+  remote tag refs, payload digest, and candidate ledger passed the
+  release-identity preflight.
+- This consumer's installed `0.32.2` payload is source-current, retains the
+  singular-directory classifier, and rejects malformed task-context JSONL
+  under upstream provenance.

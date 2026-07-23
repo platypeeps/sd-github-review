@@ -15,12 +15,12 @@
   "branch": "codex/validate-trellis-task-metadata",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
-  "pr_url": null,
+  "commit": "0e2f57a",
+  "pr_url": "https://github.com/platypeeps/sd-github-review/pull/8",
   "subtasks": [],
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "Upstream PR platypeeps/sd-ai-command-pack#229 delivered the priority-provenance contract. Consumer review then exposed a regressed test/ path classifier; corrective upstream PR #230 merged and v0.32.1 is published at release commit d0aba8c. Consumer install is verified at target against that release.",
+  "notes": "Upstream PR #229 delivered priority provenance. Consumer review findings moved upstream through PRs #230 and #231; v0.32.2 is published at release commit 8293d0e and the installed consumer payload is verified against that release.",
   "meta": {}
 }
