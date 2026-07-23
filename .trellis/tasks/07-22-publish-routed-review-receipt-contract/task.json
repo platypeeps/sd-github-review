@@ -2,7 +2,7 @@
   "id": "publish-routed-review-receipt-contract",
   "name": "publish-routed-review-receipt-contract",
   "title": "Publish routed review receipt contract",
-  "description": "Publish a versioned, exact-head remote review routing contract for the command pack's unified sd-review surface that accepts a privacy-bounded local summary, enforces independent-review floors, and dispatches Copilot or external backends by explainable cost-quality policy.",
+  "description": "Publish a versioned, exact-head remote review routing contract for the command pack's unified sd-review surface that accepts a privacy-bounded local summary, enforces independent-review floors, and dispatches Copilot or external backends by explainable cost/quality policy.",
   "status": "planning",
   "dev_type": null,
   "scope": null,
