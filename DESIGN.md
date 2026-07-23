@@ -14,8 +14,8 @@ authoritative. AI review is supplemental.
 
 | Route | Intended use | Action behavior | Backend status |
 | --- | --- | --- | --- |
-| `cheap` | Routine, lower-risk changes | Emits the configured cheap model and `run-external-reviewer=true` | Generic adapter contract supported |
-| `deep` | Changes that need a more capable external review | Emits the configured deep model and `run-external-reviewer=true` | Generic adapter contract supported |
+| `cheap` | Routine, lower-risk changes | Emits the configured cheap model and `run-external-reviewer=true` | Generic adapter plus executable PR-Agent workflow supported |
+| `deep` | Changes that need a more capable external review | Emits the configured deep model and `run-external-reviewer=true` | Generic adapter plus executable PR-Agent workflow supported |
 | `copilot` | Sensitive, unusually large, or explicitly escalated changes | Requests `copilot-pull-request-reviewer[bot]` through GitHub | Native integration supported |
 | `none` | Review intentionally disabled or event is irrelevant | Emits routing evidence without requesting a reviewer | Supported |
 
@@ -24,18 +24,36 @@ Copilot is the only reviewer backend invoked directly by the action. The
 workflow owns the reviewer runtime, credentials, prompt, and model-provider
 configuration.
 
+The PR-Agent examples preserve that boundary with one provider selector, one
+provider-neutral API-key secret, and separate cheap/deep model IDs. They map
+the secret to one allow-listed single-key PR-Agent credential setting only on
+the container step. Provider expansion is an explicit workflow allowlist
+change; the router never receives a provider credential or constructs a
+secret name. Providers that also need endpoints, cloud identity, or additional
+configuration are outside this generic mapping contract.
+
+The `copilot` route is not a named-model selection. GitHub chooses Copilot code
+review's model and does not expose model switching. GitHub separately offers
+Low and Medium review effort, but the review-request API used by this action
+has no effort parameter. Consequently, effort is neither selected per route
+nor represented in action outputs or durable receipts. A repository that uses
+GitHub automatic reviews for the same high-risk intent should normally choose
+Medium at the repository level; router-initiated requests must treat model and
+effort as GitHub-managed.
+
 ## Architecture
 
 The implementation has six boundaries:
 
 1. `src/router.js` contains pure routing policy, command parsing, label parsing,
    trust checks, and sensitive-path matching.
-2. `src/protocol.js` validates and canonicalizes the versioned request,
-   backend, acknowledgment, successor, and receipt envelopes.
+2. `src/protocol.js` validates and canonicalizes the versioned review request,
+   adapter request, backend, acknowledgment, successor, and receipt envelopes.
 3. `src/receipt.js` persists and reconciles exact-head receipts in GitHub Check
    Runs.
 4. `src/operations.js` coordinates explicit `route`, `finalize`, and `query`
-   operations and emits bounded durable outputs.
+   receipt operations plus the side-effect-free `acknowledge` adapter helper,
+   and emits bounded outputs.
 5. `src/index.js` selects standalone or durable orchestration and owns GitHub
    output/error surfaces.
 6. `src/github.js` owns GitHub REST requests, pagination, reviewer requests,
@@ -89,6 +107,7 @@ caller can instead provide one canonical v1 `review-request` and choose:
 | Operation | Behavior |
 | --- | --- |
 | `route` | Revalidates the live PR head, selects policy, creates or reconciles one Check Run receipt, and performs at most one authorized dispatch |
+| `acknowledge` | Validates one adapter request and maps a bounded GitHub step outcome to canonical acknowledgment JSON; it performs no GitHub or provider call |
 | `finalize` | Validates one external adapter acknowledgment, revalidates the head, and advances that same receipt to failed or observed |
 | `query` | Reads one exact repository/PR/head/logical identity and never dispatches |
 
@@ -97,6 +116,11 @@ and attempt. Correlation IDs are aliases, not permission to dispatch again. A
 matching retry returns the existing receipt; a conflicting fingerprint fails;
 an uncertain mutation leaves the receipt in `reconciliation-required` with
 dispatch forbidden.
+
+`acknowledge` is a workflow helper rather than a receipt operation exposed by
+setup discovery. It lets adapters such as PR-Agent record `success`, `failure`,
+`cancelled`, or `skipped` without accepting provider output or unbounded error
+text.
 
 For Copilot, `route` checks both pending requests and non-dismissed reviews on
 the exact head before requesting. For `cheap` and `deep`, it emits one bounded
@@ -141,7 +165,8 @@ Only `low` changes routing, and the configured escalation may be `deep` or
 This makes automatic routing a risk policy rather than a general model
 ranking: known structural risk or scale goes to the native Copilot path,
 uncertainty reported by an upstream reviewer goes to `deep` by default, and
-ordinary work stays on `cheap`.
+ordinary work stays on `cheap`. Selecting `copilot` does not dynamically raise
+GitHub's review-effort setting.
 
 Sensitive paths accept comma- or newline-separated glob patterns. `*` stays
 within one path segment, `**` crosses directories, and `?` matches one
@@ -217,7 +242,9 @@ Every handled invocation writes a step summary and stable outputs:
 
 An explicit or disabled-draft route skips sensitive-path evaluation and emits
 `sensitive-files=[]`. Empty cheap/deep model inputs are valid and delegate the
-default-model decision to the consumer adapter.
+default-model decision to the consumer adapter. The PR-Agent examples are
+stricter: their preflight requires a nonempty selected model before the
+container starts.
 
 A typical external adapter runs only when
 `run-external-reviewer == 'true'`, then receives `route`, `model`, and
@@ -234,11 +261,13 @@ Durable operations retain the compatible route outputs and add the canonical
 `durable-state`, `receipt-verified`, dispatch status/phase, selected backend and tiers, finding
 channels, limitations, workflow URL, latency, and reconciliation flags.
 `adapter-request` is nonempty only for the first authorized external dispatch.
+`adapter-acknowledgment` is emitted only by `operation=acknowledge`.
 Durable mode exposes a sensitive-file count but never emits the paths.
 
 ## Security and Operational Boundaries
 
-- Pin this action and external reviewer actions to full commit SHAs.
+- Pin this action and external reviewer actions to full commit SHAs; pin direct
+  container adapters to SHA-256 image digests.
 - Grant `contents: read`; add `pull-requests: write` only when Copilot requests
   are enabled, and add `checks: write` only to a durable receipt workflow.
 - Do not check out or execute pull-request-authored code with secrets in an
@@ -260,10 +289,15 @@ lifecycle is owned entirely by the consumer workflow.
 ## Related Documents
 
 - [`README.md`](README.md) — installation and development quick start
+- [`SETUP-COPILOT.md`](SETUP-COPILOT.md) — native GitHub Copilot setup
+- [`SETUP-PR-AGENT.md`](SETUP-PR-AGENT.md) — standalone and durable PR-Agent
+  setup
 - [`examples/review-router.yml`](examples/review-router.yml) — production
   adapter skeleton
 - [`examples/pr-agent-router.yml`](examples/pr-agent-router.yml) — PR-Agent
-  reference adapter
+  standalone adapter
+- [`examples/pr-agent-on-demand-review-router.yml`](examples/pr-agent-on-demand-review-router.yml)
+  — PR-Agent durable adapter and acknowledgment flow
 - [`examples/pilot-router.yml`](examples/pilot-router.yml) — provider-free
   routing smoke workflow
 - [`examples/on-demand-review-router.yml`](examples/on-demand-review-router.yml)

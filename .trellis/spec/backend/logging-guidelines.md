@@ -21,6 +21,8 @@ validation scripts may print progress and diagnostics to stdout/stderr.
 - whether this invocation newly requested Copilot;
 - durable operation/state, exact head, dispatch phase, backend channels, and
   reconciliation status;
+- adapter acknowledgment status and backend ID, without provider output or
+  unbounded error detail;
 - validation failures with the file or API boundary that caused them.
 
 ## What Not to Log

@@ -6,6 +6,8 @@ import { promisify } from "node:util";
 import { parseDocument } from "yaml";
 
 const immutableActionReference = /^[^/@\s]+\/[^/@\s]+(?:\/[^@\s]+)?@[0-9a-f]{40}$/u;
+const placeholderActionReference = /^[^/@\s]+\/[^/@\s]+(?:\/[^@\s]+)?@<[^<>\s]+>$/u;
+const immutableDockerReference = /^docker:\/\/[^@\s]+@sha256:[0-9a-f]{64}$/u;
 const execFileAsync = promisify(execFile);
 const localPlatformRoots = new Set([
   ".agent",
@@ -169,6 +171,31 @@ function assertObject(value, filePath, key) {
   }
 }
 
+function validateUsesReferences(
+  document,
+  filePath,
+  { allowActionPlaceholder = false },
+) {
+  for (const { reference, location } of collectUses(document)) {
+    if (reference.startsWith("./")) continue;
+    if (reference.startsWith("docker://")) {
+      if (!immutableDockerReference.test(reference)) {
+        throw new Error(
+          `${filePath}: ${location} must pin Docker image ${reference} to a sha256 digest`,
+        );
+      }
+      continue;
+    }
+    const allowedPlaceholder =
+      allowActionPlaceholder && placeholderActionReference.test(reference);
+    if (!immutableActionReference.test(reference) && !allowedPlaceholder) {
+      throw new Error(
+        `${filePath}: ${location} must pin third-party action ${reference} to a 40-character commit SHA`,
+      );
+    }
+  }
+}
+
 export async function validateMetadata(repositoryRoot = process.cwd()) {
   const actionPath = path.join(repositoryRoot, "action.yml");
   const action = parseYaml(await readFile(actionPath, "utf8"), actionPath);
@@ -201,14 +228,7 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
     assertObject(workflow, workflowPath, "document");
     assertObject(workflow.on, workflowPath, "on");
     assertObject(workflow.jobs, workflowPath, "jobs");
-    for (const { reference, location } of collectUses(workflow)) {
-      const exempt = reference.startsWith("./") || reference.startsWith("docker://");
-      if (!exempt && !immutableActionReference.test(reference)) {
-        throw new Error(
-          `${workflowPath}: ${location} must pin third-party action ${reference} to a 40-character commit SHA`,
-        );
-      }
-    }
+    validateUsesReferences(workflow, workflowPath, {});
   }
 
   const examplesDirectory = path.join(repositoryRoot, "examples");
@@ -221,6 +241,7 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
     assertObject(example, examplePath, "document");
     assertObject(example.on, examplePath, "on");
     assertObject(example.jobs, examplePath, "jobs");
+    validateUsesReferences(example, examplePath, { allowActionPlaceholder: true });
   }
 
   const trackedPathCount = await validatePublishedMetadata(repositoryRoot);

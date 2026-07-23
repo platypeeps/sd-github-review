@@ -20,6 +20,10 @@ does not define a custom error hierarchy.
 - Durable operations parse bounded JSON before constructing side effects.
   Missing acknowledgments fail; uncertain create/update or post-dispatch head
   changes return reconciliation required with fallback dispatch forbidden.
+- Adapter acknowledgment construction validates the canonical adapter request
+  and accepts only `success`, `failure`, `cancelled`, or `skipped`. It maps
+  non-success outcomes to bounded error codes and never accepts provider error
+  text.
 - `GitHubClient#request()` includes the HTTP method, path, and GitHub response
   message when a request fails. It retries eligible `GET` failures at most
   three total attempts through an injected sleeper, but never retries a
@@ -59,6 +63,7 @@ does not define a custom error hierarchy.
 | Live PR head changes before or during receipt creation | Fail closed; do not authorize dispatch for the stale head |
 | GitHub comparison is rewritten, truncated, incomplete, or changes head | Emit an ineligible bounded successor class; never infer bookkeeping-only |
 | Missing/mismatched external acknowledgment | Throw or retain started receipt; never finalize or dispatch a fallback |
+| Malformed adapter request or unsupported adapter outcome | Throw before emitting acknowledgment JSON |
 | Changed head during finalization | Return reconciliation required without updating the old-head receipt |
 | Query has no exact receipt | Emit `not-found` with no dispatch authorization |
 

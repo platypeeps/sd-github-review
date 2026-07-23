@@ -7,7 +7,7 @@ inputs:
     description: "Token used to inspect the pull request, request Copilot, and manage durable receipts. Durable operations require checks: write."
     required: true
   operation:
-    description: "Operation mode: standalone, route, finalize, or query."
+    description: "Operation mode: standalone, route, acknowledge, finalize, or query."
     required: false
     default: standalone
   review-request:
@@ -16,6 +16,14 @@ inputs:
     default: ""
   adapter-acknowledgment:
     description: "Canonical v1 external-adapter acknowledgment JSON for finalize."
+    required: false
+    default: ""
+  adapter-request:
+    description: "Canonical v1 external-adapter request JSON for acknowledge."
+    required: false
+    default: ""
+  adapter-outcome:
+    description: "GitHub adapter step outcome for acknowledge: success, failure, cancelled, or skipped."
     required: false
     default: ""
   cheap-backend:
@@ -118,7 +126,7 @@ inputs:
 
 outputs:
   operation:
-    description: "Executed operation: standalone, route, finalize, or query."
+    description: "Executed operation: standalone, route, acknowledge, finalize, or query."
   route:
     description: "Selected route: cheap, deep, copilot, or none."
   reason:
@@ -132,7 +140,7 @@ outputs:
   sensitive-files:
     description: JSON array of files matching sensitive-path patterns.
   run-external-reviewer:
-    description: true when the caller should run PR-Agent, Gito, or another external reviewer.
+    description: true when the caller should run PR-Agent or another external reviewer.
   copilot-requested:
     description: true when this invocation requested Copilot through the GitHub API.
   receipt:
@@ -177,6 +185,8 @@ outputs:
     description: Bounded observed dispatch latency in milliseconds when available.
   adapter-request:
     description: One canonical external adapter request JSON only when a new cheap or deep dispatch is authorized.
+  adapter-acknowledgment:
+    description: Canonical v1 acknowledgment produced by the acknowledge operation.
   sensitive-file-count:
     description: Count of sensitive files considered by durable automatic routing; durable consumers must use this count because sensitive-files is always an empty array in durable mode.
 

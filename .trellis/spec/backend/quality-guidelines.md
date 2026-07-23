@@ -28,6 +28,7 @@ state, or output files.
 - `deriveRequestFingerprint(request) -> 64-character SHA-256 digest`
 - `decodeLocalReviewSummary(value, expectedIdentity?) -> normalizedSummary`
 - `decodeBackend(value) -> normalizedBackend`
+- `decodeAdapterRequest(value) -> normalizedAdapterRequest`
 - `decodeAdapterAcknowledgment(value) -> normalizedAcknowledgment`
 - `decodeSuccessorEvidence(value) -> normalizedEvidence`
 - `decodeReceipt(value) -> normalizedReceipt`
@@ -193,13 +194,14 @@ return { reconciliationRequired: true, dispatchAllowed: false };
 
 ### 1. Scope / Trigger
 
-Use this contract for `operation=route|finalize|query` and for the published
-setup descriptor/on-demand workflow.
+Use this contract for `operation=route|acknowledge|finalize|query` and for the
+published setup descriptor/on-demand workflows.
 
 ### 2. Signatures
 
 - `runDurableAction(options) -> operationResult`
-- `normalizeOperation(value) -> standalone|route|finalize|query`
+- `normalizeOperation(value) -> standalone|route|acknowledge|finalize|query`
+- `buildAdapterAcknowledgment(adapterRequest, outcome, acknowledgedAt) -> normalizedAcknowledgment`
 - `writeDurableSummary(result, sinks) -> Promise<void>`
 
 ### 3. Contracts
@@ -211,6 +213,24 @@ setup descriptor/on-demand workflow.
   `dispatchAllowed=true`.
 - Copilot checks pending/current-head review state before one request. External
   routes emit exactly one bounded canonical adapter request and no credentials.
+- PR-Agent workflow examples require one explicit model-provider selector and
+  a nonempty routed model. Their provider-neutral API-key secret is referenced
+  only by the PR-Agent container step and conditionally mapped to an allow-listed
+  single-key credential setting; it never enters a router input, output,
+  preflight step, summary, or receipt. Except for OpenAI, enabled mappings
+  require an explicit `<provider>/<model-id>` value.
+  `PR_AGENT_MODEL_PROVIDER` accepts `openai`, `gemini`, `openrouter`,
+  `anthropic`, `cohere`, `replicate`, `groq`, `sambanova`, `xai`, `deepseek`,
+  `deepinfra`, `mistral`, or `codestral`. The fixed credential mappings are
+  `OPENAI__KEY`, `GOOGLE_AI_STUDIO__GEMINI_API_KEY`, `OPENROUTER__KEY`,
+  `ANTHROPIC__KEY`, `COHERE__KEY`, `REPLICATE__KEY`, `GROQ__KEY`,
+  `SAMBANOVA__KEY`, `XAI__KEY`, `DEEPSEEK__KEY`, `DEEPINFRA__KEY`,
+  `MISTRAL__KEY`, and `CODESTRAL__KEY`, respectively. Exactly one receives
+  `PR_AGENT_MODEL_API_KEY`; all unselected mappings receive an empty value.
+- `acknowledge` performs no GitHub or provider call. It validates the adapter
+  request identity, backend, route, and declared finding channels, then maps
+  only `success|failure|cancelled|skipped` to canonical acknowledgment JSON.
+  It copies no provider output and accepts no raw error text.
 - `finalize` requires a matching v1 acknowledgment, revalidates the head, and
   advances the same receipt to failed or observed. Replays are idempotent.
 - `query` is read-only. A started receipt is reconciliation-required; absence
@@ -230,21 +250,63 @@ setup descriptor/on-demand workflow.
 | First external route | Emit one adapter request and started receipt |
 | Matching route replay | Emit no adapter request; return existing/reconciliation state |
 | Current-head Copilot pending/reviewed | Mark already present; do not request again |
+| Valid adapter request plus success outcome | Emit acknowledged JSON with the same logical ID, backend ID, and finding channels; construct no GitHub client |
+| Failure/cancelled/skipped adapter outcome | Emit failed JSON with `adapter-failed`, `adapter-cancelled`, or `adapter-skipped` |
+| Malformed request or unsupported outcome | Throw before emitting an acknowledgment |
+| Missing or unknown PR-Agent provider | Fail preflight before the container runs |
+| Empty PR-Agent model | Fail preflight before the container runs |
+| Non-OpenAI model without the selected provider prefix | Fail with the required `<provider>/<model-id>` format |
+| Valid allow-listed provider and compatible model | Populate only its fixed credential environment key and run PR-Agent |
 | Valid external acknowledgment | Finalize the same receipt as observed |
 | Failed external acknowledgment | Complete the same receipt as failed |
 | Changed head during finalization | Require reconciliation; do not mutate or fall back |
 | Trusted bookkeeping-only successor | Create a distinct current-head receipt; select none only when policy permits |
 | Query misses exact identity | Return not-found and dispatch forbidden |
 
-### 5. Tests Required
+### 5. Good/Base/Bad Cases
+
+- Good: `gemini` plus `gemini/<model-id>` maps the neutral API key only to
+  `GOOGLE_AI_STUDIO__GEMINI_API_KEY` and dispatches the pinned container.
+- Base: `openai` plus a supported unqualified OpenAI model maps the neutral API
+  key only to `OPENAI__KEY`.
+- Bad: an unknown provider, empty model, or mismatched provider prefix fails
+  before PR-Agent starts and exposes no secret to the preflight step.
+
+### 6. Tests Required
 
 - Keep every standalone event test green.
 - Cover native Copilot, external comment/check, none, replay, conflicting
   retry, rerequest, successor head, missing/failed acknowledgment, changed
   head, ambiguous mutations, canonical output mirroring, and privacy bounds.
+- Cover acknowledgment success and every failure outcome, malformed exact-head
+  identity, wrong backend kind, and the no-GitHub-client boundary.
 - Parse the setup descriptor, discovery cases, and workflow; assert durable
   permissions, immutable placeholders, no checkout, and no PR-controlled run
   step.
+- Parse both PR-Agent workflows and assert every fixed provider/credential
+  mapping, valid provider-qualified models, rejection of unknown providers and
+  incompatible model prefixes, and exclusive secret placement on the
+  container step.
+
+### 7. Wrong vs Correct
+
+```js
+// Wrong: an adapter copies provider output into a receipt acknowledgment.
+const acknowledgment = { ...adapterRequest, findings, error: providerError };
+
+// Wrong: provider selection dynamically constructs a secret name.
+const apiKey = secrets[`PR_AGENT_${provider.toUpperCase()}_KEY`];
+
+// Correct: decode once and project only bounded protocol identity and outcome.
+const acknowledgment = buildAdapterAcknowledgment(
+  adapterRequest,
+  stepOutcome,
+  acknowledgedAt,
+);
+
+// Correct: the workflow conditionally maps one neutral secret to fixed keys.
+const credentialKey = allowedProviderMappings[provider];
+```
 
 ## Scenario: Route and Request a GitHub Review
 
@@ -319,7 +381,7 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
   request payload, safe retry/status matrix, injected delay sequence,
   primary/secondary limit context, mutation non-retry, and surfaced error text.
 - Metadata tests parse every checked-in workflow/example and reject floating
-  third-party Action references.
+  third-party Action and Docker references.
 
 ### 7. Wrong vs Correct
 
@@ -398,7 +460,11 @@ const failures = trackedPaths.filter(prohibitedPublishedMetadataReason);
 
 - Do not check out or execute pull-request-authored code in a secret-bearing
   `issue_comment` workflow.
-- Do not use floating third-party Action references in checked-in workflows.
+- Do not use floating third-party Action references in checked-in workflows or
+  examples. Examples may use an explicit `@<...>` substitution placeholder;
+  every non-placeholder reference must use a 40-character commit SHA.
+- Do not use floating `docker://` image references in workflows or examples;
+  pin the manifest digest with `@sha256:<64 hex characters>`.
 - Do not fetch pull-request files before event gating or when an explicit route
   makes automatic path evaluation irrelevant.
 - Do not add a runtime dependency when a small standard-library solution is
@@ -418,6 +484,9 @@ const failures = trackedPaths.filter(prohibitedPublishedMetadataReason);
   coverage whenever precedence or event gating changes.
 - Pin consumer examples to reviewed full commit SHAs before use; placeholders
   in templates must be called out in the accompanying documentation.
+- Keep PR-Agent provider expansion explicit: extend the preflight allowlist,
+  container-step credential mapping, documentation, and metadata tests
+  together. Never construct a GitHub secret name from router or PR data.
 
 ## Testing Requirements
 

@@ -9,7 +9,6 @@ without moving provider credentials or reviewer runtimes into the router.
 
 - Live-test the documented PR-Agent workflow and record its credential,
   licensing, supply-chain, fork, and finding-surface limits.
-- Add a runnable Gito adapter example using the same route/model contract.
 - Define a minimal command or HTTP acknowledgment contract for internal review
   services.
 - Replace non-runnable placeholder commands in production-oriented examples or
@@ -20,7 +19,7 @@ without moving provider credentials or reviewer runtimes into the router.
 
 ## Acceptance Criteria
 
-- [ ] PR-Agent and Gito paths have contract tests and bounded pilot evidence.
+- [ ] The PR-Agent path has contract tests and bounded pilot evidence.
 - [ ] The internal adapter contract defines request, acknowledgment, failure,
   timeout, observability, and secret boundaries.
 - [ ] Production-oriented examples are executable after documented secret and
@@ -34,3 +33,7 @@ without moving provider credentials or reviewer runtimes into the router.
 Coordinate final receipt acknowledgment with
 `07-22-implement-routed-review-receipt-runtime`; do not invent a parallel
 receipt contract.
+
+Executable PR-Agent support is tracked by child task
+`07-23-add-pr-agent-adapter-support`; the credentialed pilot remains in this
+parent task.

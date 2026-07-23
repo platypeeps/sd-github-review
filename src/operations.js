@@ -1,5 +1,6 @@
 import { appendFile } from "node:fs/promises";
 import {
+  decodeAdapterRequest,
   decodeAdapterAcknowledgment,
   decodeBackend,
   decodeReviewRequest,
@@ -9,7 +10,13 @@ import {
 import { ReceiptStore } from "./receipt.js";
 import { findSensitiveFiles, normalizeConfidence, normalizeMode, parseList } from "./router.js";
 
-const OPERATIONS = new Set(["route", "finalize", "query"]);
+const OPERATIONS = new Set(["route", "acknowledge", "finalize", "query"]);
+const ADAPTER_OUTCOMES = new Set(["success", "failure", "cancelled", "skipped"]);
+const FAILED_OUTCOME_CODES = new Map([
+  ["failure", "adapter-failed"],
+  ["cancelled", "adapter-cancelled"],
+  ["skipped", "adapter-skipped"],
+]);
 const MAX_JSON_INPUT_BYTES = 32 * 1024;
 const MAX_ADAPTER_REQUEST_BYTES = 16 * 1024;
 
@@ -221,9 +228,56 @@ export function normalizeOperation(value) {
   const operation = String(value ?? "standalone").trim().toLowerCase();
   if (operation === "standalone") return operation;
   if (!OPERATIONS.has(operation)) {
-    throw new Error("operation must be one of: standalone, route, finalize, query");
+    throw new Error("operation must be one of: standalone, route, acknowledge, finalize, query");
   }
   return operation;
+}
+
+export function buildAdapterAcknowledgment(adapterRequestValue, outcomeValue, acknowledgedAt) {
+  const adapterRequest = decodeAdapterRequest(adapterRequestValue);
+  const outcome = String(outcomeValue ?? "").trim().toLowerCase();
+  if (!ADAPTER_OUTCOMES.has(outcome)) {
+    throw new Error(
+      "adapter-outcome must be one of: success, failure, cancelled, skipped",
+    );
+  }
+  return decodeAdapterAcknowledgment({
+    schemaVersion: 1,
+    logicalDispatchId: adapterRequest.logicalDispatchId,
+    backendId: adapterRequest.backend.id,
+    status: outcome === "success" ? "acknowledged" : "failed",
+    acknowledgedAt: timestamp(acknowledgedAt),
+    findingChannels: adapterRequest.backend.findingChannels,
+    ...(outcome === "success" ? {} : { errorCode: FAILED_OUTCOME_CODES.get(outcome) }),
+  });
+}
+
+async function runAcknowledgmentAction({ env, outputWriter, summaryWriter, logger, now }) {
+  const acknowledgment = buildAdapterAcknowledgment(
+    jsonInput("adapter-request", env),
+    input("adapter-outcome", "", env),
+    now,
+  );
+  const outputs = {
+    operation: "acknowledge",
+    "adapter-acknowledgment": stableProtocolJson(acknowledgment),
+  };
+  for (const [name, value] of Object.entries(outputs)) {
+    await outputWriter(name, value);
+  }
+  await summaryWriter({
+    operation: "acknowledge",
+    state: acknowledgment.status,
+    receipt: null,
+    dispatchAllowed: false,
+    reconciliationRequired: false,
+    changedLines: 0,
+    sensitiveCount: 0,
+  });
+  logger(
+    `Built ${acknowledgment.status} adapter acknowledgment for ${acknowledgment.backendId}`,
+  );
+  return { acknowledgment, outputs };
 }
 
 export async function writeDurableSummary(
@@ -462,7 +516,10 @@ export async function runDurableAction({
 }) {
   const normalizedOperation = normalizeOperation(operation);
   if (normalizedOperation === "standalone") {
-    throw new Error("runDurableAction requires route, finalize, or query");
+    throw new Error("runDurableAction requires route, acknowledge, finalize, or query");
+  }
+  if (normalizedOperation === "acknowledge") {
+    return runAcknowledgmentAction({ env, outputWriter, summaryWriter, logger, now });
   }
   const request = decodeReviewRequest(jsonInput("review-request", env));
   const client = clientFactory({

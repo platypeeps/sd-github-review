@@ -1,39 +1,55 @@
-name: AI review router with PR-Agent
+name: SD routed review with PR-Agent
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, labeled]
-  issue_comment:
-    types: [created]
+  workflow_dispatch:
+    inputs:
+      review-request:
+        description: Canonical sd-github-review v1 request JSON
+        required: true
+        type: string
+      operation:
+        description: Route a review or query an existing exact-head receipt
+        required: true
+        default: route
+        type: choice
+        options: [route, query]
 
 permissions:
   contents: read
   issues: write
   pull-requests: write
+  checks: write
 
 jobs:
-  route:
-    if: github.event.sender.type != 'Bot' && (github.event_name == 'pull_request' || github.event.issue.pull_request != null)
+  review:
     runs-on: ubuntu-latest
     steps:
-      - name: Choose reviewer
+      - name: Route or query the exact-head review
         id: review
         # Replace with the full SHA of an approved sd-github-review release.
         uses: platypeeps/sd-github-review@<sd-github-review-commit-sha>
         with:
           github-token: ${{ github.token }}
-          cheap-model: ${{ vars.CHEAP_REVIEW_MODEL }}
-          deep-model: ${{ vars.DEEP_REVIEW_MODEL }}
+          operation: ${{ inputs.operation }}
+          review-request: ${{ inputs.review-request }}
+          cheap-backend: ${{ vars.SD_REVIEW_CHEAP_BACKEND_V1 }}
+          deep-backend: ${{ vars.SD_REVIEW_DEEP_BACKEND_V1 }}
+          allow-bookkeeping-none: ${{ vars.SD_REVIEW_ALLOW_BOOKKEEPING_NONE || 'false' }}
 
       - name: Validate PR-Agent configuration
         id: pr-agent-config
-        if: steps.review.outputs.run-external-reviewer == 'true' && (github.event_name == 'issue_comment' || github.event.pull_request.head.repo.fork == false)
+        if: steps.review.outputs.adapter-request != ''
         env:
+          REVIEW_BACKEND_ID: ${{ steps.review.outputs.backend-id }}
           REVIEW_MODEL_PROVIDER: ${{ vars.PR_AGENT_MODEL_PROVIDER }}
           REVIEW_MODEL: ${{ steps.review.outputs.model }}
         run: |
+          if [ "$REVIEW_BACKEND_ID" != "pr-agent" ]; then
+            echo "The selected external backend must use id pr-agent." >&2
+            exit 1
+          fi
           if [ -z "$REVIEW_MODEL" ]; then
-            echo "CHEAP_REVIEW_MODEL and DEEP_REVIEW_MODEL must select a PR-Agent model." >&2
+            echo "The selected PR-Agent backend must declare a model." >&2
             exit 1
           fi
           case "$REVIEW_MODEL_PROVIDER" in
@@ -59,6 +75,7 @@ jobs:
           fi
 
       - name: Run PR-Agent review
+        id: pr-agent
         if: steps.pr-agent-config.outcome == 'success'
         uses: docker://pragent/pr-agent@sha256:cae31b51b65b5c978a3b2a978d96e89e6a4c5bcd81cb2553fd8dad0251c3a23e
         with:
@@ -83,3 +100,22 @@ jobs:
           CONFIG__MODEL: ${{ steps.review.outputs.model }}
           CONFIG__FALLBACK_MODELS: '[]'
           CONFIG__RESTRICTED_MODE: "true"
+
+      - name: Build the PR-Agent acknowledgment
+        id: acknowledge
+        if: steps.review.outputs.adapter-request != '' && always()
+        uses: platypeeps/sd-github-review@<sd-github-review-commit-sha>
+        with:
+          github-token: ${{ github.token }}
+          operation: acknowledge
+          adapter-request: ${{ steps.review.outputs.adapter-request }}
+          adapter-outcome: ${{ steps.pr-agent.outcome }}
+
+      - name: Finalize the external receipt
+        if: steps.review.outputs.adapter-request != '' && always()
+        uses: platypeeps/sd-github-review@<sd-github-review-commit-sha>
+        with:
+          github-token: ${{ github.token }}
+          operation: finalize
+          review-request: ${{ inputs.review-request }}
+          adapter-acknowledgment: ${{ steps.acknowledge.outputs.adapter-acknowledgment }}
