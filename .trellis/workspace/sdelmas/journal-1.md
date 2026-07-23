@@ -365,3 +365,40 @@ Integrated the merged task-metadata stream into the roadmap branch, preserved ap
 ### Next Steps
 
 - Push the exact finish-work head, complete final CI/review polling, and merge PR #7 through housekeeping.
+
+
+## Session 10: Enforce public repository metadata policy
+
+**Date**: 2026-07-23
+**Task**: Enforce public repository metadata policy
+**Branch**: `codex/define-public-trellis-metadata-policy`
+
+### Summary
+
+Defined and enforced the public Trellis and AI-tool metadata boundary without rewriting history.
+
+### Main Changes
+
+- Published the public metadata allow/deny policy and retained bounded workspace journals as deliberate public project history.
+- Added Git-backed tracked-path validation, ignore rules, force-add regression coverage, and the backend quality contract.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9a49c8aedc4564892a303ffaa8794f3ceb9313c1` | feat: enforce public metadata policy |
+
+### Testing
+
+- [OK] npm test passed 34 tests; npm run check and npm run validate:metadata passed.
+- [OK] Command-pack installation audit and deterministic review full-check passed.
+- [OK] GitHub CI passed; Copilot reviewed the exact head with no comments and GraphQL found zero unresolved threads.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
