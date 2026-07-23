@@ -1,0 +1,38 @@
+{
+  "id": "implement-on-demand-routed-review-dispatch",
+  "name": "implement-on-demand-routed-review-dispatch",
+  "title": "Implement on-demand routed-review dispatch",
+  "description": "Add explicit on-demand request, dispatch and external acknowledgment/finalization operations with setup discovery and mirrored receipt outputs.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": "on-demand routed-review dispatch",
+  "package": null,
+  "priority": "P1",
+  "creator": "sdelmas",
+  "assignee": "sdelmas",
+  "createdAt": "2026-07-23",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "07-22-implement-routed-review-receipt-runtime",
+  "relatedFiles": [
+    "src/index.js",
+    "action.yml",
+    "examples",
+    "DESIGN.md",
+    "README.md"
+  ],
+  "notes": "",
+  "meta": {
+    "order": 3,
+    "depends_on": [
+      "07-23-implement-routed-review-protocol-core",
+      "07-23-implement-durable-routed-review-receipts"
+    ]
+  }
+}

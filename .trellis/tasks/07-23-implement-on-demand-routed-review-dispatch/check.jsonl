@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify standalone compatibility, orchestration, outputs, permissions, and tests."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify stale, conflicting, unacknowledged, and ambiguous states fail closed."}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Verify request, receipt, summary, and diagnostics remain non-secret."}
+{"file": ".trellis/tasks/07-23-implement-on-demand-routed-review-dispatch/research/contract-mapping.md", "reason": "Verify scope covers all on-demand and setup contract requirements."}

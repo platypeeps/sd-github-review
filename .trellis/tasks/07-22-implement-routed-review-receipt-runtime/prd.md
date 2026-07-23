@@ -1,38 +1,48 @@
-# Implement routed-review receipt runtime
+# Decompose routed-review receipt runtime delivery
 
 ## Goal
 
-Implement the versioned, exact-head routed-review request and durable receipt
-contract published by archived task
-`07-22-publish-routed-review-receipt-contract`.
+Convert the approved versioned routed-review contract into ordered Trellis
+tasks that each fit one coherent pull request without losing any runtime,
+security, compatibility, or pilot requirement.
 
 ## Requirements
 
-- Implement canonical request/receipt schemas, fixtures, validation, and
-  exact-head identity.
-- Derive logical dispatch identity and normalized request fingerprint from
-  validated fields; reject spoofed or conflicting evidence.
-- Coordinate one native or delegated dispatch per repository/PR/head/attempt
-  and reconcile ambiguous retries without a second reviewer request.
-- Publish/query the head-bound durable receipt and mirror it to Action outputs.
-- Enforce local-summary privacy bounds, independent-review floors, successor
-  comparison, and noninteractive fail-closed behavior.
-- Preserve current standalone event routing and provider credential ownership.
+- Preserve the archived PRD, design, and implementation plan as the approved
+  source contract.
+- Separate pure protocol/policy, durable GitHub transport, on-demand dispatch,
+  and cross-repository pilot/handoff work at natural ownership boundaries.
+- Give every child concrete requirements, acceptance criteria, dependencies,
+  affected files, risks, validation, and rollback points.
+- Keep the existing external-adapter validation task independent and make the
+  final pilot consume its evidence instead of duplicating adapter work.
+- Record dependency order explicitly; parent/child links alone are not a
+  dependency system.
 
 ## Acceptance Criteria
 
-- [ ] All acceptance criteria from the archived contract PRD are implemented
-  or explicitly superseded with evidence.
-- [ ] Native Copilot and delegated backends share one idempotency/receipt
-  envelope with observable finding channels.
-- [ ] Same-head, new-head, rerequest, successor, ambiguity, and privacy fixtures
-  pass without duplicate dispatch.
-- [ ] The command-pack consumer receives a versioned setup/receipt contract and
-  an immutable release or commit identity.
-- [ ] Full repository checks and a private end-to-end pilot pass.
+- [x] Four ordered child tasks cover protocol core, durable receipts, on-demand
+  dispatch, and pilot/handoff work.
+- [x] Every R1-R23 requirement and archived acceptance criterion maps to at
+  least one child task.
+- [x] Each child is independently actionable and sized for one pull request.
+- [x] Private-pilot and command-pack handoff mutations are isolated from
+  repo-local implementation and remain approval/evidence gated.
+- [x] Task metadata and context validation pass.
 
 ## Dependency
 
 Use the archived PRD, design, and implementation plan under
 `.trellis/tasks/archive/2026-07/07-22-publish-routed-review-receipt-contract/`
 as the approved source contract.
+
+## Child Order
+
+1. `07-23-implement-routed-review-protocol-core`
+2. `07-23-implement-durable-routed-review-receipts`
+3. `07-23-implement-on-demand-routed-review-dispatch`
+4. `07-23-pilot-routed-review-runtime-handoff`
+
+The final pilot also depends on
+`07-22-validate-external-reviewer-adapters`; it consumes that task's live
+adapter evidence rather than implementing a parallel adapter contract.

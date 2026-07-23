@@ -1,0 +1,36 @@
+{
+  "id": "implement-durable-routed-review-receipts",
+  "name": "implement-durable-routed-review-receipts",
+  "title": "Implement durable routed-review receipts",
+  "description": "Add exact-head GitHub Check Run receipt storage, lookup, idempotency reconciliation, and trusted successor comparison transport.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": "durable routed-review receipts",
+  "package": null,
+  "priority": "P1",
+  "creator": "sdelmas",
+  "assignee": "sdelmas",
+  "createdAt": "2026-07-23",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "07-22-implement-routed-review-receipt-runtime",
+  "relatedFiles": [
+    "src/github.js",
+    "src/receipt.js",
+    "test/github.test.js",
+    "test/receipt.test.js"
+  ],
+  "notes": "",
+  "meta": {
+    "order": 2,
+    "depends_on": [
+      "07-23-implement-routed-review-protocol-core"
+    ]
+  }
+}

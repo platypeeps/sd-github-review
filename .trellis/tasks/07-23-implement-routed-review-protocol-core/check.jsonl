@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify pure-policy boundaries, full regression coverage, and dependency constraints."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify every malformed/contradictory case fails before side effects."}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Verify fixtures and diagnostics exclude sensitive values."}
+{"file": ".trellis/tasks/07-23-implement-routed-review-protocol-core/research/contract-mapping.md", "reason": "Verify requirement coverage and later-child exclusions."}

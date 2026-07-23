@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify scenario coverage, exact-head identity, no-checkout safety, and source checks."}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Verify public evidence excludes secrets, raw findings, paths, prompts, and transcripts."}
+{"file": ".trellis/tasks/07-23-pilot-routed-review-runtime-handoff/research/contract-mapping.md", "reason": "Verify the pilot and immutable handoff cover the approved contract."}
