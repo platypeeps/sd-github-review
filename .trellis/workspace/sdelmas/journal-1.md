@@ -608,3 +608,43 @@ Added safe, bounded GitHub REST read retries with rate-limit-aware delays while 
 ### Next Steps
 
 - Remaining tasks require maintainer approval, private-pilot or external-adapter credentials, or three-consumer adoption evidence; resume only when the relevant gate is satisfied.
+
+
+## Session 16: Add PR-Agent adapter support
+
+**Date**: 2026-07-23
+**Task**: Add PR-Agent adapter support
+**Branch**: `codex/add-pr-agent-support`
+
+### Summary
+
+Published and reviewed executable standalone and durable PR-Agent adapters with generic single-key provider configuration and bounded acknowledgments.
+
+### Main Changes
+
+- Added strict adapter-request decoding and a side-effect-free acknowledgment operation with durable summaries.
+- Added digest-pinned standalone and durable PR-Agent workflows, setup guides, and thirteen single-key provider mappings.
+- Fixed review findings by enforcing immutable Action refs in examples while allowing explicit substitution placeholders.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b2bf702` | feat: add PR-Agent adapter support |
+| `000210b` | fix: address PR review feedback |
+
+### Testing
+
+- [OK] npm test (115 tests)
+- [OK] npm run check and npm run validate:metadata
+- [OK] deterministic review full-check with Prism and Gito disabled
+- [OK] GitHub CI green and Copilot round two produced no new comments
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
