@@ -1,5 +1,4 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
-{"file": "src/router.js", "reason": "Apply bounded exact-head local evidence within deterministic remote routing floors."}
-{"file": "src/index.js", "reason": "Validate routed requests and coordinate exactly-once native or delegated dispatch."}
-{"file": "src/github.js", "reason": "Publish and query the exact-head durable receipt through GitHub APIs."}
-{"file": "action.yml", "reason": "Expose the versioned request and receipt contract through stable Action inputs and outputs."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Defines the executable routing, Action orchestration, GitHub transport, and regression-test contracts this protocol must extend."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Defines fail-closed input, policy, and GitHub transport behavior for malformed, stale, conflicting, or ambiguous requests."}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Defines bounded operator output and the credential-redaction boundary for routing receipts, diagnostics, and workflow summaries."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Guides propagation of the versioned request and receipt contract across runtime, metadata, workflow examples, durable GitHub state, and tests."}
