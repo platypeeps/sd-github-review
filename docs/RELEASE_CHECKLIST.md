@@ -1,21 +1,21 @@
 # Release and Pilot Checklist
 
-This checklist gates the first public release. A green source repository is
-necessary but not sufficient: `v0.1.0` remains blocked until the isolated pilot
-passes and the maintainer explicitly approves publication.
+This checklist gated the first public release. `v0.1.0` was published on
+2026-07-24 only after the green source candidate, isolated pilot, 24-hour
+observation window, and explicit maintainer approval were verified.
 
 ## 1. Prepare the Candidate
 
-- [ ] Work from a focused candidate branch based on current `main`.
-- [ ] Run `npm ci`, `npm test`, `npm run check`, and
+- [x] Freeze the candidate from current `main`.
+- [x] Run `npm ci`, `npm test`, `npm run check`, and
   `npm run validate:metadata`.
-- [ ] Run `python3 scripts/sd-ai-command-pack-install-audit.py` and
+- [x] Run `python3 scripts/sd-ai-command-pack-install-audit.py` and
   `git diff --check`.
-- [ ] Validate the v1 setup descriptor and no-checkout on-demand workflow;
+- [x] Validate the v1 setup descriptor and no-checkout on-demand workflow;
   confirm only the durable example grants `checks: write`.
-- [ ] Confirm the GitHub Actions job named `test` is green for the exact
+- [x] Confirm the GitHub Actions job named `test` is green for the exact
   candidate commit.
-- [ ] Record the candidate's full 40-character commit SHA. Never pilot or
+- [x] Record the candidate's full 40-character commit SHA. Never pilot or
   document a floating branch, tag, or major-version reference.
 
 ## 2. Configure the Isolated Pilot
@@ -23,8 +23,8 @@ passes and the maintainer explicitly approves publication.
 Use the private repository `platypeeps/sd-github-review-pilot`. It must not
 contain production code, provider credentials, or an automatic Copilot review
 ruleset. Copy `examples/pilot-router.yml` into the pilot repository's workflow
-directory as `review-router.yml`, replace `<commit-sha>`, and create these
-labels:
+directory as `review-router.yml`. For a future candidate pilot, replace the
+released SHA only with the exact green candidate SHA. Create these labels:
 
 - `review:cheap`
 - `review:deep`
@@ -69,11 +69,11 @@ ambiguous finalization requires reconciliation without fallback.
 
 ## 5. Publish Only After Approval
 
-- [ ] Confirm the candidate SHA and pilot evidence still match.
-- [ ] Obtain explicit maintainer approval to publish `v0.1.0`.
-- [ ] Create annotated tag `v0.1.0` at the approved candidate SHA and publish a
+- [x] Confirm the candidate SHA and pilot evidence still match.
+- [x] Obtain explicit maintainer approval to publish `v0.1.0`.
+- [x] Create annotated tag `v0.1.0` at the approved candidate SHA and publish a
   GitHub release with routing, permission, and consumer-adapter notes.
-- [ ] Update consumer examples to the released full commit SHA. The tag is for
+- [x] Update consumer examples to the released full commit SHA. The tag is for
   discovery; the SHA is the immutable installation reference.
 
 ## Rollback

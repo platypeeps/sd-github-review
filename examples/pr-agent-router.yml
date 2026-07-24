@@ -18,8 +18,8 @@ jobs:
     steps:
       - name: Choose reviewer
         id: review
-        # Replace with the full SHA of an approved sd-github-review release.
-        uses: platypeeps/sd-github-review@<sd-github-review-commit-sha>
+        # v0.1.0; upgrade only to another reviewed full release SHA.
+        uses: platypeeps/sd-github-review@8636a3983d18de17c49907a4c48170a61b1bb713
         with:
           github-token: ${{ github.token }}
           cheap-model: ${{ vars.CHEAP_REVIEW_MODEL }}
