@@ -65,7 +65,7 @@ the existing release checklist.
 - [x] Every standalone and durable provider-free scenario has bounded,
   sanitized evidence against the candidate; replay, new-head, and fail-closed
   behavior match `docs/RELEASE_CHECKLIST.md`.
-- [ ] The final pilot scenario is followed by a completed 24-hour observation
+- [x] The final pilot scenario is followed by a completed 24-hour observation
   window with no unresolved release blocker.
 - [ ] The specific publication approval is recorded after pilot evidence is
   complete.

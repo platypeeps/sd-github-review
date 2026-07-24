@@ -78,11 +78,38 @@ pin, or credential changed.
   cache, so evidence collection used the direct job-log API. Pilot behavior
   was unaffected.
 
-Keep PR `#3` open and the candidate frozen through the window. At or after the
-earliest completion time, re-query workflow history, receipt checks, exact-head
+### Final Observation Checkpoint
+
+- Checkpoint: `2026-07-24T22:42:36Z`, after the earliest completion time.
+- Source `main` remained
+  `8636a3983d18de17c49907a4c48170a61b1bb713`; source CI run
+  `30036609751` remained completed successfully for that exact SHA.
+- The candidate-bound run set remained the same 15 successful runs. No run
+  started after the observation window began, and no candidate-bound run was
+  pending or unsuccessful.
+- Pilot PR `#3` remained open at
+  `bd53cf5c183a8972a19f3c57db025f549806f661` with no route label. Its
+  current-head route and receipt checks remained successful, and its exact-head
+  Copilot review reported no new comments.
+- Both pilot workflows remained pinned to the full candidate SHA, contained no
+  checkout or secret reference, and all three repository workflows remained
+  active. The repository still had zero Actions secrets and zero rulesets.
+- The older-head receipt intentionally remained in `started` state after the
+  changed-head finalization test failed closed. It did not authorize fallback
+  dispatch and is retained as expected historical evidence.
+- The one outdated Copilot fixture-location advisory was dispositioned as an
+  intentional `src/auth/` release-checklist stimulus and resolved without a
+  code or pilot-head change. No review thread remains unresolved.
+- Result: the 24-hour observation gate passed with no unresolved release
+  blocker, unexplained duplicate, permission error, candidate change, source
+  behavior change, or credential-boundary violation. The window does not need
+  to restart.
+
+PR `#3` remained open and the candidate remained frozen through the window.
+The final checkpoint re-queried workflow history, receipt checks, exact-head
 Copilot review state, secrets/rulesets, source `main`, and rollback state. Any
-unexplained failure, duplicate trigger, permission error, candidate change, or
-source behavior change blocks release and restarts the window.
+later source behavior change before publication still invalidates this
+candidate and requires a new pilot window.
 
 ## Superseded Candidate Baseline
 

@@ -37,8 +37,8 @@ placeholder policy, and absence of floating third-party Action references.
 
 - No local or remote `v0.1.0` tag existed at candidate freeze.
 - No GitHub release existed at candidate freeze.
-- Publication remains unauthorized until the private pilot and 24-hour
-  observation gate pass and the maintainer gives a separate explicit approval.
+- The private pilot and 24-hour observation gate passed. Publication remains
+  unauthorized until the maintainer gives a separate explicit approval.
 
 ## Authority Boundary
 
