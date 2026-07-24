@@ -23,10 +23,11 @@ the existing release checklist.
 - `platypeeps/sd-github-review-pilot` is private, has no Actions secrets or
   repository rulesets, and retains current smoke PR `#3`. Pilot PR `#4` pinned
   both workflows to the replacement candidate; all workflows are active.
-- The existing runnable examples intentionally contain commit-SHA
-  placeholders. A source commit cannot contain its own full SHA, so examples
-  can be pinned only in a post-release documentation commit or in the consumer
-  repository.
+- At candidate selection, the runnable examples intentionally contained
+  commit-SHA placeholders because a source commit cannot contain its own full
+  SHA. The post-release documentation commit now pins those examples to the
+  released full SHA; only template-owned consumer adapter placeholders remain
+  parameterized.
 - On 2026-07-23 the maintainer explicitly authorized updating and exercising
   `platypeeps/sd-github-review-pilot` against the frozen candidate. On
   2026-07-24 the maintainer separately approved publishing `v0.1.0`. Neither
