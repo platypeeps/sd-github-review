@@ -54,4 +54,3 @@ defines no runtime command or data contract.
 - Verify the evidence record matches the bounded GitHub search result.
 - Validate Trellis task metadata and public-metadata policy.
 - Run repository syntax, test, metadata, install-audit, and whitespace gates.
-

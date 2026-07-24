@@ -42,4 +42,3 @@ met; it should not rewrite this dated evidence.
 
 None now. Create a new implementation task only after three independent
 consumer installations or upgrades identify the same repeatable setup step.
-
