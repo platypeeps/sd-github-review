@@ -14,6 +14,8 @@ the existing release checklist.
   `8636a3983d18de17c49907a4c48170a61b1bb713`. GitHub Actions run
   `30036609751` completed successfully for that exact SHA.
 - At candidate selection, the source repository had no tag or GitHub release.
+  After the completed observation gate and explicit publication approval,
+  `v0.1.0` was published at that candidate on 2026-07-24.
 - A complete provider-free pilot passed against
   `32fc23d4a59aee4e84d25d44861e7e5e7b8d6483`, but PR-Agent support merged
   afterward in PR `#15`. That source behavior change superseded the candidate
@@ -26,9 +28,9 @@ the existing release checklist.
   can be pinned only in a post-release documentation commit or in the consumer
   repository.
 - On 2026-07-23 the maintainer explicitly authorized updating and exercising
-  `platypeeps/sd-github-review-pilot` against the frozen candidate. This
-  authorization does not include publishing `v0.1.0` or making an upstream
-  command-pack change.
+  `platypeeps/sd-github-review-pilot` against the frozen candidate. On
+  2026-07-24 the maintainer separately approved publishing `v0.1.0`. Neither
+  authorization includes making an upstream command-pack change.
 
 ## Requirements
 
@@ -67,14 +69,14 @@ the existing release checklist.
   behavior match `docs/RELEASE_CHECKLIST.md`.
 - [x] The final pilot scenario is followed by a completed 24-hour observation
   window with no unresolved release blocker.
-- [ ] The specific publication approval is recorded after pilot evidence is
+- [x] The specific publication approval is recorded after pilot evidence is
   complete.
-- [ ] `v0.1.0` and its GitHub release point to the approved immutable commit.
-- [ ] The provider-free consumer smoke completes while pinned to the released
+- [x] `v0.1.0` and its GitHub release point to the approved immutable commit.
+- [x] The provider-free consumer smoke completes while pinned to the released
   full SHA, with documented route output and disable/rollback evidence.
-- [ ] Runnable installation guidance uses the released full SHA; retained
+- [x] Runnable installation guidance uses the released full SHA; retained
   placeholders are clearly template-only.
-- [ ] No provider secret, raw private payload, or PR-controlled checkout crosses
+- [x] No provider secret, raw private payload, or PR-controlled checkout crosses
   the pilot or public evidence boundary.
 
 ## Out of Scope

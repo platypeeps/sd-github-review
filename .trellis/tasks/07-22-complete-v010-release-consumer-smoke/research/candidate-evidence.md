@@ -37,13 +37,24 @@ placeholder policy, and absence of floating third-party Action references.
 
 - No local or remote `v0.1.0` tag existed at candidate freeze.
 - No GitHub release existed at candidate freeze.
-- The private pilot and 24-hour observation gate passed. Publication remains
-  unauthorized until the maintainer gives a separate explicit approval.
+- The private pilot and 24-hour observation gate passed.
+- At `2026-07-24T22:53:41Z`, immediately before publication, source `main`
+  still resolved to the candidate SHA, source Actions run `30036609751` was
+  successful for that exact SHA, and no local tag, remote tag, or GitHub
+  release named `v0.1.0` existed.
+
+## Publication Approval
+
+On 2026-07-24, after the final pilot observation evidence was complete and the
+candidate identity and limitations were presented, the maintainer explicitly
+approved publishing `v0.1.0`. The approved immutable commit is
+`8636a3983d18de17c49907a4c48170a61b1bb713`.
 
 ## Authority Boundary
 
 On 2026-07-23 the maintainer authorized bounded mutations in
 `platypeeps/sd-github-review-pilot` and selected the recommendation to restart
-the pilot against this replacement candidate. The authority does not include
-publishing `v0.1.0`, invoking a live external provider, or changing the
+the pilot against this replacement candidate. On 2026-07-24 the maintainer
+separately authorized publishing `v0.1.0` at the approved candidate. Neither
+authorization includes invoking a live external provider or changing the
 command-pack repository.
