@@ -1,21 +1,21 @@
 # Release and Pilot Checklist
 
-This checklist gated the first public release. `v0.1.0` was published on
-2026-07-24 only after the green source candidate, isolated pilot, 24-hour
-observation window, and explicit maintainer approval were verified.
+This checklist gates a public release. A green source repository is necessary
+but not sufficient: publication remains blocked until the isolated pilot passes
+and the maintainer explicitly approves the proposed release.
 
 ## 1. Prepare the Candidate
 
-- [x] Freeze the candidate from current `main`.
-- [x] Run `npm ci`, `npm test`, `npm run check`, and
+- [ ] Freeze the candidate from current `main`.
+- [ ] Run `npm ci`, `npm test`, `npm run check`, and
   `npm run validate:metadata`.
-- [x] Run `python3 scripts/sd-ai-command-pack-install-audit.py` and
+- [ ] Run `python3 scripts/sd-ai-command-pack-install-audit.py` and
   `git diff --check`.
-- [x] Validate the v1 setup descriptor and no-checkout on-demand workflow;
+- [ ] Validate the v1 setup descriptor and no-checkout on-demand workflow;
   confirm only the durable example grants `checks: write`.
-- [x] Confirm the GitHub Actions job named `test` is green for the exact
+- [ ] Confirm the GitHub Actions job named `test` is green for the exact
   candidate commit.
-- [x] Record the candidate's full 40-character commit SHA. Never pilot or
+- [ ] Record the candidate's full 40-character commit SHA. Never pilot or
   document a floating branch, tag, or major-version reference.
 
 ## 2. Configure the Isolated Pilot
@@ -69,11 +69,11 @@ ambiguous finalization requires reconciliation without fallback.
 
 ## 5. Publish Only After Approval
 
-- [x] Confirm the candidate SHA and pilot evidence still match.
-- [x] Obtain explicit maintainer approval to publish `v0.1.0`.
-- [x] Create annotated tag `v0.1.0` at the approved candidate SHA and publish a
-  GitHub release with routing, permission, and consumer-adapter notes.
-- [x] Update consumer examples to the released full commit SHA. The tag is for
+- [ ] Confirm the candidate SHA and pilot evidence still match.
+- [ ] Obtain explicit maintainer approval to publish the proposed version.
+- [ ] Create an annotated version tag at the approved candidate SHA and publish
+  a GitHub release with routing, permission, and consumer-adapter notes.
+- [ ] Update consumer examples to the released full commit SHA. The tag is for
   discovery; the SHA is the immutable installation reference.
 
 ## Rollback
@@ -82,4 +82,4 @@ If the candidate fails before release, disable the pilot workflow and revert or
 supersede the candidate branch; do not move a published tag. If a released
 version fails, disable affected consumer workflows, publish a corrected patch
 from a reviewed commit, and update consumers to that new full SHA. Never repair
-a release by force-moving `v0.1.0`.
+a release by force-moving its published tag.
