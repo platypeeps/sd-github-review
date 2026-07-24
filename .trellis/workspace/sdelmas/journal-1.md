@@ -648,3 +648,55 @@ Published and reviewed executable standalone and durable PR-Agent adapters with 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 17: Publish v0.1.0 and complete consumer smoke
+
+**Date**: 2026-07-24
+**Task**: Publish v0.1.0 and complete consumer smoke
+**Branch**: `codex/complete-v010-release-consumer-smoke`
+
+### Summary
+
+Published the approved immutable v0.1.0 release after the private pilot gate, verified the released SHA in a provider-free consumer smoke, documented rollback, and converged PR review.
+
+### Main Changes
+
+- Froze and validated the release candidate, completed the replacement private pilot and 24-hour observation window, and recorded explicit publication approval.
+- Published annotated tag and GitHub release v0.1.0 at the approved immutable commit.
+- Ran the released-SHA consumer smoke, verified deep routing output, exercised workflow disable and restore, and preserved the public evidence boundary.
+- Pinned all runnable first-party installation examples and setup metadata to the v0.1.0 commit while retaining only explicit template-owned adapter placeholders.
+- Addressed and resolved Copilot documentation-drift feedback, then archived the completed Trellis task.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d6cbb69` | docs: plan v0.1.0 pilot and release gates |
+| `87f519a` | docs: record v0.1.0 candidate evidence |
+| `178e71a` | docs: record v0.1.0 pilot evidence |
+| `938ab6d` | docs: restart v0.1.0 pilot candidate |
+| `b4dc415` | docs: record replacement candidate pilot |
+| `b977696` | docs: anchor candidate facts to selection time |
+| `73a71b6` | docs: record completed v0.1.0 observation gate |
+| `b803bc3` | docs: pin installation guidance to v0.1.0 |
+| `f95c39e` | chore(task): record v0.1.0 release evidence |
+| `b652b2b` | fix: address review feedback round 1 |
+| `0216228` | fix: address review feedback round 2 |
+
+### Testing
+
+- [OK] Source CI run 30036609751 passed at the released commit.
+- [OK] Provider-free pilot run 30132372458 selected deep with pilot-deep and external-adapter flag true.
+- [OK] npm test passed 115 tests; npm run check and npm run validate:metadata passed.
+- [OK] Deterministic SD full-check passed with zero preflight failures or warnings.
+- [OK] PR #16 CI passed and Copilot round 3 reported no new comments; zero unresolved review threads.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
