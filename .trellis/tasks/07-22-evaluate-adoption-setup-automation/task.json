@@ -3,7 +3,7 @@
   "name": "evaluate-adoption-setup-automation",
   "title": "Evaluate adoption-driven setup automation",
   "description": "Collect adoption friction and add setup tooling only when repeated evidence justifies its maintenance and permission surface.",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
