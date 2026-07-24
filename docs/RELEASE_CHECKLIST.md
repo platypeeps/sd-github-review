@@ -1,12 +1,12 @@
 # Release and Pilot Checklist
 
-This checklist gates the first public release. A green source repository is
-necessary but not sufficient: `v0.1.0` remains blocked until the isolated pilot
-passes and the maintainer explicitly approves publication.
+This checklist gates a public release. A green source repository is necessary
+but not sufficient: publication remains blocked until the isolated pilot passes
+and the maintainer explicitly approves the proposed release.
 
 ## 1. Prepare the Candidate
 
-- [ ] Work from a focused candidate branch based on current `main`.
+- [ ] Freeze the candidate from current `main`.
 - [ ] Run `npm ci`, `npm test`, `npm run check`, and
   `npm run validate:metadata`.
 - [ ] Run `python3 scripts/sd-ai-command-pack-install-audit.py` and
@@ -23,8 +23,8 @@ passes and the maintainer explicitly approves publication.
 Use the private repository `platypeeps/sd-github-review-pilot`. It must not
 contain production code, provider credentials, or an automatic Copilot review
 ruleset. Copy `examples/pilot-router.yml` into the pilot repository's workflow
-directory as `review-router.yml`, replace `<commit-sha>`, and create these
-labels:
+directory as `review-router.yml`. For a future candidate pilot, replace the
+released SHA only with the exact green candidate SHA. Create these labels:
 
 - `review:cheap`
 - `review:deep`
@@ -70,9 +70,9 @@ ambiguous finalization requires reconciliation without fallback.
 ## 5. Publish Only After Approval
 
 - [ ] Confirm the candidate SHA and pilot evidence still match.
-- [ ] Obtain explicit maintainer approval to publish `v0.1.0`.
-- [ ] Create annotated tag `v0.1.0` at the approved candidate SHA and publish a
-  GitHub release with routing, permission, and consumer-adapter notes.
+- [ ] Obtain explicit maintainer approval to publish the proposed version.
+- [ ] Create an annotated version tag at the approved candidate SHA and publish
+  a GitHub release with routing, permission, and consumer-adapter notes.
 - [ ] Update consumer examples to the released full commit SHA. The tag is for
   discovery; the SHA is the immutable installation reference.
 
@@ -82,4 +82,4 @@ If the candidate fails before release, disable the pilot workflow and revert or
 supersede the candidate branch; do not move a published tag. If a released
 version fails, disable affected consumer workflows, publish a corrected patch
 from a reviewed commit, and update consumers to that new full SHA. Never repair
-a release by force-moving `v0.1.0`.
+a release by force-moving its published tag.

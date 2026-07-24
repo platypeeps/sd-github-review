@@ -17,8 +17,8 @@ jobs:
     steps:
       - name: Choose reviewer
         id: review
-        # Replace with the full SHA of a green release candidate.
-        uses: platypeeps/sd-github-review@<commit-sha>
+        # v0.1.0; upgrade only to another reviewed full release SHA.
+        uses: platypeeps/sd-github-review@8636a3983d18de17c49907a4c48170a61b1bb713
         with:
           github-token: ${{ github.token }}
           cheap-model: pilot-cheap

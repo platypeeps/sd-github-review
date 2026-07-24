@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 16
-- **Last Active**: 2026-07-23
+- **Total Sessions**: 17
+- **Last Active**: 2026-07-24
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~647 | Active |
+| `journal-1.md` | ~698 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 17 | 2026-07-24 | Publish v0.1.0 and complete consumer smoke | `d6cbb69`, `87f519a`, `178e71a`, `938ab6d`, `b4dc415`, `b977696`, `73a71b6`, `b803bc3`, `f95c39e`, `b652b2b`, `0216228` | `codex/complete-v010-release-consumer-smoke` |
 | 16 | 2026-07-23 | Add PR-Agent adapter support | `b2bf702`, `000210b` | `codex/add-pr-agent-support` |
 | 15 | 2026-07-23 | Add bounded GitHub API retry policy | `522f87361a6a96adc75e0867a78290fe4156eaf8`, `8b7c2c4608eb27899dfac63de85abe6af1b39b33`, `a902681aa3a6f9513816e5e2bf0f1e0a0563f10c` | `codex/add-github-api-retry-policy` |
 | 14 | 2026-07-23 | Implement on-demand routed-review dispatch | `013f78256f0a3c5f01be15cef768f5da06fd8f23`, `10a5729bcc4989923891dcff65501129823b9b18` | `codex/implement-on-demand-routed-review-dispatch` |

@@ -1,6 +1,7 @@
 # SD GitHub review router
 
 [![CI](https://github.com/platypeeps/sd-github-review/actions/workflows/ci.yml/badge.svg)](https://github.com/platypeeps/sd-github-review/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/platypeeps/sd-github-review)](https://github.com/platypeeps/sd-github-review/releases/latest)
 [![Node.js 24](https://img.shields.io/badge/Node.js-24-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -41,9 +42,13 @@ access, or branch rules.
 For a provider-free evaluation, start with
 [`examples/pilot-router.yml`](examples/pilot-router.yml). It exercises routing
 and Copilot without checking out pull-request code or using LLM provider
-credentials. Replace `<commit-sha>` with the full SHA of a green candidate.
+credentials. The checked-in example is pinned to the immutable `v0.1.0`
+release commit,
+`8636a3983d18de17c49907a4c48170a61b1bb713`.
 
-Pin this action to a reviewed full commit SHA in every installed workflow. Keep
+Every checked-in first-party example uses that same released full SHA. When
+upgrading, replace all first-party Action references with the reviewed full SHA
+of the newer release; use tags for discovery, not installation. Keep
 deterministic test, lint, type-check, CodeQL, or Semgrep jobs ahead of routing
 with normal `needs` dependencies.
 

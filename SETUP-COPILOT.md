@@ -54,9 +54,10 @@ and
 1. Copy [`examples/pilot-router.yml`](examples/pilot-router.yml) into the
    consuming repository, for example as
    `.github/workflows/ai-review-router.yml`.
-2. Replace `<commit-sha>` with the full 40-character SHA of an approved
-   `sd-github-review` release. Do not use a floating branch or tag in
-   production.
+2. The checked-in workflow is pinned to the `v0.1.0` release commit,
+   `8636a3983d18de17c49907a4c48170a61b1bb713`. Keep that exact pin or replace
+   it with the reviewed full 40-character SHA of a later approved release. Do
+   not use a floating branch or tag in production.
 3. Keep these workflow permissions:
 
    ```yaml
@@ -102,14 +103,14 @@ Use [`examples/on-demand-review-router.yml`](examples/on-demand-review-router.ym
 when a trusted caller needs an exact-head receipt rather than event-local
 outputs.
 
-1. Copy the workflow to `.github/workflows/sd-review.yml` and replace every
-   `<sd-github-review-commit-sha>` placeholder with an approved full commit
-   SHA.
+1. Copy the workflow to `.github/workflows/sd-review.yml`. It is pinned to the
+   immutable `v0.1.0` commit; update every first-party Action reference
+   together only when adopting the reviewed full SHA of a later release.
 2. Keep `contents: read`, `pull-requests: write`, and `checks: write`.
    Check Run write access is used only for durable receipts.
 3. Publish [`config/routed-review-setup-v1.json`](config/routed-review-setup-v1.json)
-   with the workflow and replace its action-reference placeholder with the
-   same full commit SHA.
+   with the workflow. Its `actionReference` is pinned to the same release SHA;
+   keep the descriptor and workflow references identical when upgrading.
 4. A request whose intent or automatic policy selects `copilot` uses the
    built-in native backend. If automatic policy can select `cheap` or `deep`,
    configure those external backend descriptors and adapter steps as well.

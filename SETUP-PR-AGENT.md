@@ -110,9 +110,10 @@ and
 1. Copy [`examples/pr-agent-router.yml`](examples/pr-agent-router.yml) to the
    consuming repository, for example as
    `.github/workflows/ai-review-router.yml`.
-2. Replace `<sd-github-review-commit-sha>` with the full 40-character SHA of an
-   approved release. The PR-Agent container reference is already pinned by
-   digest.
+2. The checked-in workflow is pinned to the `v0.1.0` release commit,
+   `8636a3983d18de17c49907a4c48170a61b1bb713`. Keep that exact pin or update
+   it to the reviewed full 40-character SHA of a later approved release. The
+   PR-Agent container reference is independently pinned by digest.
 3. Under **Settings → Secrets and variables → Actions → Variables**, create:
 
    - `CHEAP_REVIEW_MODEL` with the PR-Agent model ID for routine reviews.
@@ -148,8 +149,9 @@ repository's `issue_comment` workflow without checking out contributor code.
 1. Copy
    [`examples/pr-agent-on-demand-review-router.yml`](examples/pr-agent-on-demand-review-router.yml)
    to `.github/workflows/sd-review.yml`.
-2. Replace every `<sd-github-review-commit-sha>` placeholder with the same
-   approved full commit SHA.
+2. Keep every first-party Action reference on the checked-in immutable
+   `v0.1.0` SHA, or update all of them together to the reviewed full SHA of a
+   later approved release.
 3. Configure `PR_AGENT_MODEL_PROVIDER` and `PR_AGENT_MODEL_API_KEY` as
    described above.
 4. Keep `contents: read`, `issues: write`, `pull-requests: write`, and

@@ -18,7 +18,7 @@
     "pull-requests": "write",
     "checks": "write"
   },
-  "actionReference": "platypeeps/sd-github-review@<40-character-commit-sha>",
+  "actionReference": "platypeeps/sd-github-review@8636a3983d18de17c49907a4c48170a61b1bb713",
   "noninteractive": true,
   "checkoutRequired": false
 }
