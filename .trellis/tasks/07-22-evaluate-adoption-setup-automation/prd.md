@@ -27,8 +27,10 @@ supported path.
 
 ## Acceptance Criteria
 
-- [x] Evidence identifies repeated setup pain across at least three consumers,
-  or the task records a no-build decision and closes.
+- [x] One of these evaluation outcomes is recorded:
+  - repeated setup pain is evidenced across at least three consumers; or
+  - the evidence does not meet that threshold, so the task records a no-build
+    decision and closes.
 - [x] No tool is proposed, so no new command, permission, idempotency, or
   rollback contract is introduced.
 - [x] No automation stores provider credentials or executes PR code.
