@@ -904,3 +904,43 @@ Closed the published workflow-control gap, proved the durable PR-Agent and Copil
 ### Next Steps
 
 - None - task complete
+
+
+## Session 23: Use Qwen for cheap PR-Agent reviews
+
+**Date**: 2026-07-24
+**Task**: Use Qwen for cheap PR-Agent reviews
+**Branch**: `main`
+
+### Summary
+
+Made Qwen3-Coder 30B A3B the default cheap PR-Agent model, retained Kimi K2.6 for deep reviews, and updated the private pilot configuration.
+
+### Main Changes
+
+- Changed fresh consumer installs to use Qwen3-Coder 30B A3B for the cheap review tier while preserving Kimi K2.6 for deep reviews.
+- Updated installer regression coverage, setup documentation, and the consumer-installer contract.
+- Applied and verified the same cheap-model mapping in the private pilot without modifying its provider secret.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `24915bd` | feat: use Qwen for cheap PR-Agent reviews |
+
+### Testing
+
+- [OK] npm test (130 passing)
+- [OK] npm run check
+- [OK] npm run validate:metadata
+- [OK] python3 scripts/sd-ai-command-pack-install-audit.py (151 targets)
+- [OK] git diff --check
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
