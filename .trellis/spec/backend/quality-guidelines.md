@@ -227,6 +227,11 @@ published setup descriptor/on-demand workflows.
   `SAMBANOVA__KEY`, `XAI__KEY`, `DEEPSEEK__KEY`, `DEEPINFRA__KEY`,
   `MISTRAL__KEY`, and `CODESTRAL__KEY`, respectively. Exactly one receives
   `PR_AGENT_MODEL_API_KEY`; all unselected mappings receive an empty value.
+- PR-Agent runs through a direct `docker run` of the immutable CLI-image digest
+  so the image retains its `/app` working directory. The command passes only
+  allow-listed environment-variable names, mounts no repository workspace,
+  and invokes exactly the `review` CLI command. Do not use `uses: docker://`
+  with the CLI image because GitHub overrides its working directory.
 - `acknowledge` performs no GitHub or provider call. It validates the adapter
   request identity, backend, route, and declared finding channels, then maps
   only `success|failure|cancelled|skipped` to canonical acknowledgment JSON.
@@ -465,6 +470,9 @@ const failures = trackedPaths.filter(prohibitedPublishedMetadataReason);
   every non-placeholder reference must use a 40-character commit SHA.
 - Do not use floating `docker://` image references in workflows or examples;
   pin the manifest digest with `@sha256:<64 hex characters>`.
+- Do not use floating images in direct `docker run` adapter steps, mount the
+  Actions workspace into a provider-credentialed container, or replace the
+  tested CLI invocation with a Docker Action form that changes its workdir.
 - Do not fetch pull-request files before event gating or when an explicit route
   makes automatic path evaluation irrelevant.
 - Do not add a runtime dependency when a small standard-library solution is

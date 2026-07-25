@@ -27,10 +27,13 @@ configuration.
 The PR-Agent examples preserve that boundary with one provider selector, one
 provider-neutral API-key secret, and separate cheap/deep model IDs. They map
 the secret to one allow-listed single-key PR-Agent credential setting only on
-the container step. Provider expansion is an explicit workflow allowlist
-change; the router never receives a provider credential or constructs a
-secret name. Providers that also need endpoints, cloud identity, or additional
-configuration are outside this generic mapping contract.
+the container step. The step invokes the digest-pinned CLI image with
+`docker run` so the image retains its `/app` working directory; it passes
+credentials by environment-variable name and mounts no repository workspace.
+Provider expansion is an explicit workflow allowlist change; the router never
+receives a provider credential or constructs a secret name. Providers that
+also need endpoints, cloud identity, or additional configuration are outside
+this generic mapping contract.
 
 The `copilot` route is not a named-model selection. GitHub chooses Copilot code
 review's model and does not expose model switching. GitHub separately offers

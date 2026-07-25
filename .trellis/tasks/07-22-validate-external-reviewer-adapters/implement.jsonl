@@ -1,1 +1,3 @@
 {"file": ".trellis/spec/backend/directory-structure.md", "reason": "Keep router runtime and consumer-owned adapter boundaries separate."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Preserve PR-Agent provider, credential, no-checkout, acknowledgment, and no-fallback contracts."}
+{"file": ".trellis/tasks/07-22-validate-external-reviewer-adapters/research/implementation-sources.md", "reason": "Use the task-scoped source map for the setup, release-gate, workflow, installer, and test surfaces."}

@@ -85,7 +85,7 @@ test("publishes pinned standalone and durable PR-Agent workflows", async () => {
   const standalone = await loadWorkflow("pr-agent-router.yml");
   const durable = await loadWorkflow("pr-agent-on-demand-review-router.yml");
   const digestReference =
-    "docker://pragent/pr-agent@sha256:cae31b51b65b5c978a3b2a978d96e89e6a4c5bcd81cb2553fd8dad0251c3a23e";
+    "pragent/pr-agent@sha256:cae31b51b65b5c978a3b2a978d96e89e6a4c5bcd81cb2553fd8dad0251c3a23e";
   const providerMappings = [
     {
       provider: "openai",
@@ -166,16 +166,27 @@ test("publishes pinned standalone and durable PR-Agent workflows", async () => {
     const steps = Object.values(workflow.jobs).flatMap((job) => job.steps ?? []);
     const prAgent = steps.find((step) => step.name === "Run PR-Agent review");
     const preflight = steps.find((step) => step.id === "pr-agent-config");
-    assert.equal(prAgent.uses, digestReference);
+    assert.equal(prAgent.uses, undefined);
+    assert.match(prAgent.run, /docker run --rm/u);
+    await assert.doesNotReject(execFileAsync("bash", ["-n", "-c", prAgent.run]));
+    assert.ok(prAgent.run.includes(digestReference));
+    assert.equal(/(?:^|\s)(?:-v|--volume)(?:\s|=)/u.test(prAgent.run), false);
+    assert.equal(prAgent.run.includes("/github/workspace"), false);
     for (const { provider, credential } of providerMappings) {
       assert.equal(
         prAgent.env[credential],
         `\${{ vars.PR_AGENT_MODEL_PROVIDER == '${provider}' && secrets.PR_AGENT_MODEL_API_KEY || '' }}`,
       );
+      assert.ok(prAgent.run.includes(`--env ${credential}`));
     }
     assert.equal(prAgent.env.CONFIG__MODEL, "${{ steps.review.outputs.model }}");
     assert.equal(prAgent.env.CONFIG__FALLBACK_MODELS, "[]");
     assert.equal(prAgent.env.CONFIG__RESTRICTED_MODE, "true");
+    assert.equal(
+      prAgent.env.REVIEW_PULL_REQUEST_NUMBER,
+      "${{ steps.review.outputs.pull-request-number }}",
+    );
+    assert.match(prAgent.run, /--pr_url=.*REVIEW_PULL_REQUEST_NUMBER/u);
     assert.equal(
       preflight.env.REVIEW_MODEL_PROVIDER,
       "${{ vars.PR_AGENT_MODEL_PROVIDER }}",

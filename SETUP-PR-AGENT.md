@@ -16,6 +16,12 @@ pull request. They run the PR-Agent v0.39.0 container by immutable
 multi-platform digest, do not check out pull-request code, disable fallback
 models, and keep restricted mode enabled.
 
+The workflows launch the pinned CLI image with a direct `docker run` step and
+pass credentials by environment-variable name. Do not replace that step with
+`uses: docker://`: GitHub changes a Docker action's working directory to the
+workspace, while the upstream CLI image entrypoint expects its `/app` working
+directory. No repository workspace is mounted into the review container.
+
 This is a direct GitHub Actions integration. Do not install the PR-Agent GitHub
 App for these workflows. PR-Agent posts through the workflow's
 `github.token`, normally as `github-actions[bot]`.
