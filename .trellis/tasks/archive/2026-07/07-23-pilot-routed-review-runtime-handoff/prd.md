@@ -46,19 +46,19 @@ consumer without broadening repo-local implementation authority.
 
 ## Acceptance Criteria
 
-- [ ] Copilot and one external adapter complete selection, dispatch,
+- [x] Copilot and one external adapter complete selection, dispatch,
   acknowledgment, durable receipt, observable finding, and new-head
   invalidation scenarios.
-- [ ] Replay, rerequest, conflict, ambiguity, local evidence, review-floor, and
+- [x] Replay, rerequest, conflict, ambiguity, local evidence, review-floor, and
   successor matrices pass with no duplicate reviewer request.
-- [ ] Setup discovery produces the documented state taxonomy without dispatch
+- [x] Setup discovery produces the documented state taxonomy without dispatch
   or provider secrets.
-- [ ] The isolated pilot executes no PR-controlled code with credentials.
-- [ ] Candidate SHA, source CI, pilot evidence, limitations, rollback, and
+- [x] The isolated pilot executes no PR-controlled code with credentials.
+- [x] Candidate SHA, source CI, pilot evidence, limitations, rollback, and
   maintainer approvals are recorded.
-- [ ] A command-pack handoff names the immutable router identity and exact
+- [x] A command-pack handoff names the immutable router identity and exact
   versioned contract; any upstream PR has separate explicit approval.
-- [ ] Repository checks and post-pilot source task records are green.
+- [x] Repository checks and post-pilot source task records are green.
 
 ## Dependencies
 
