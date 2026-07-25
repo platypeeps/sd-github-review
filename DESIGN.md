@@ -99,6 +99,23 @@ recovery. Terminal API errors preserve the GitHub message and append only
 allow-listed rate-limit fields; authorization and arbitrary response headers
 are never logged.
 
+### Consumer installation lifecycle
+
+Repository-only tooling under `scripts/` can provision the supported
+event-driven PR-Agent workflow in a separate consumer checkout. The installer
+copies the reviewed workflow unchanged, reconciles the bounded GitHub
+variables and routing labels, and passes the provider credential only through
+the `gh secret set` prompt or standard input. It never imports into the Action
+runtime, commits consumer changes, or stores a secret value.
+
+`.github/sd-github-review.json` is the consumer-side ownership boundary. It
+records exact workflow/source hashes, provider/model configuration, and which
+GitHub resources the installer created. `pending`, `active`, and
+`uninstalling` states make interrupted GitHub mutations resumable. Updates and
+uninstalls refuse to overwrite a workflow whose current hash differs from the
+manifest; secrets and labels are preserved by default during removal because
+they may have other consumers.
+
 ## Durable On-Demand Workflow
 
 `operation=standalone` preserves the event-driven behavior above. A trusted
@@ -291,7 +308,9 @@ lifecycle is owned entirely by the consumer workflow.
 - [`README.md`](README.md) — installation and development quick start
 - [`SETUP-COPILOT.md`](SETUP-COPILOT.md) — native GitHub Copilot setup
 - [`SETUP-PR-AGENT.md`](SETUP-PR-AGENT.md) — standalone and durable PR-Agent
-  setup
+  setup, including the event-driven lifecycle installer
+- [`scripts/install-consumer.mjs`](scripts/install-consumer.mjs) — safe
+  install, update, check, and uninstall entrypoint for event-driven PR-Agent
 - [`examples/review-router.yml`](examples/review-router.yml) — production
   adapter skeleton
 - [`examples/pr-agent-router.yml`](examples/pr-agent-router.yml) — PR-Agent

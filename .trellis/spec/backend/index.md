@@ -20,6 +20,7 @@ GitHub Action runtime and repository tooling.
 | [Error Handling](./error-handling.md) | Input, API, and workflow failure contracts | Current |
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, tests, and Action safety | Current |
 | [Logging Guidelines](./logging-guidelines.md) | Console, outputs, summaries, and secret safety | Current |
+| [Consumer Installer](./consumer-installer.md) | Event-driven PR-Agent install, update, check, and uninstall contract | Current |
 
 ---
 

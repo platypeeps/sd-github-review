@@ -21,9 +21,39 @@ boundaries, and current backend contract.
 
 ## Installation on GitHub
 
-This repository supplies reusable workflows and routing logic; it does not
-provision another repository's workflows, secrets, variables, labels, Copilot
-access, or branch rules.
+This repository supplies reusable workflows, routing logic, and a lifecycle
+installer for the supported event-driven PR-Agent setup. The installer does
+not enable Copilot, configure branch rules, or commit and push changes in the
+consumer repository.
+
+### Automated event-driven PR-Agent setup
+
+From this repository checkout, use Node.js 24, Git, and an authenticated
+GitHub CLI with administration access to the consumer repository. Preview the
+default OpenRouter/Kimi K2.6 setup, then install it and enter the provider key
+through GitHub CLI's secret prompt:
+
+```sh
+node scripts/install-consumer.mjs install --target /path/to/consumer --set-secret --dry-run
+node scripts/install-consumer.mjs install --target /path/to/consumer --set-secret
+```
+
+The command copies the reviewed workflow, creates the routing variables and
+missing labels, and records ownership in a consumer-side sd-github-review.json
+manifest under the repository's GitHub metadata directory.
+It never puts the provider key in an argument, manifest, or log. It also
+supports `update`, read-only `check`, and guarded `uninstall`:
+
+```sh
+node scripts/install-consumer.mjs check --target /path/to/consumer
+node scripts/install-consumer.mjs update --target /path/to/consumer
+node scripts/install-consumer.mjs uninstall --target /path/to/consumer --yes
+```
+
+Review and commit the resulting consumer-repository files yourself. See
+[`SETUP-PR-AGENT.md`](SETUP-PR-AGENT.md#automated-event-driven-lifecycle) for
+provider overrides, non-interactive secret input, ownership behavior, partial
+failure recovery, and optional cleanup.
 
 ### 1. Choose a backend and workflow
 
@@ -54,7 +84,8 @@ with normal `needs` dependencies.
 
 ### 2. Configure shared routing controls
 
-Create the labels used for manual routing:
+The automated PR-Agent installer creates missing labels. For Copilot-only,
+durable, or manual installations, create the labels used for manual routing:
 
 - `review:cheap`
 - `review:deep`
