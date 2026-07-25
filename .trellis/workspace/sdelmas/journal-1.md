@@ -700,3 +700,45 @@ Published the approved immutable v0.1.0 release after the private pilot gate, ve
 ### Next Steps
 
 - None - task complete
+
+
+## Session 18: Close setup automation evaluation
+
+**Date**: 2026-07-24
+**Task**: Close setup automation evaluation
+**Branch**: `codex/close-setup-automation-no-build`
+
+### Summary
+
+Documented the bounded adoption evidence, recorded the no-build decision, completed remote review, and prepared the task for merge.
+
+### Main Changes
+
+- Recorded bounded organization-level adoption evidence and its limitations.
+- Closed the setup-automation evaluation with an explicit three-consumer reconsideration threshold.
+- Clarified the acceptance criteria after Copilot review while preserving the canonical Trellis task lifecycle.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `bdb05e8` | docs: record setup automation no-build decision |
+| `adcf1c0` | fix: remove trailing task whitespace |
+| `5fb6116` | docs: clarify setup automation outcome criteria |
+
+### Testing
+
+- [OK] npm test (115 passed)
+- [OK] npm run check
+- [OK] npm run validate:metadata
+- [OK] SD review full-check passed with Prism and Gito disabled
+- [OK] GitHub CI test passed and all review threads resolved
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
