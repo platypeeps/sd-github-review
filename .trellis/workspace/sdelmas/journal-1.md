@@ -782,3 +782,44 @@ Updated the pending PR-Agent pilot plan and setup guidance to use Kimi K2.6 thro
 
 - Run the bounded credentialed Kimi K2.6 pilot after the capped OpenRouter key
   and provider-use authority are available.
+
+
+## Session 20: Consumer installer lifecycle
+
+**Date**: 2026-07-24
+**Task**: Consumer installer lifecycle
+**Branch**: `codex/add-consumer-installer`
+
+### Summary
+
+Added and reviewed a safe lifecycle CLI for installing, updating, checking, and uninstalling PR-Agent review routing in consumer repositories.
+
+### Main Changes
+
+- Implemented manifest-owned consumer workflow and GitHub metadata lifecycle operations.
+- Documented setup, architecture, provider configuration, and Trellis executable contracts.
+- Addressed Copilot's missing-origin diagnostic finding with a regression test and resolved the review thread.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8a41dc8191f3139806efcfbc027b84f734ef4369` | feat: add consumer installer lifecycle |
+| `a6352654bbbebb656d51c063d87449ca86ca916a` | fix: improve missing-origin diagnostic |
+
+### Testing
+
+- [OK] npm test (130 tests)
+- [OK] npm run check
+- [OK] npm run validate:metadata (531 tracked paths)
+- [OK] SD full check with Prism and Gito disabled
+- [OK] Copilot round 2 reported no new comments; GitHub CI passed
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
