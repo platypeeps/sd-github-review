@@ -470,9 +470,10 @@ const failures = trackedPaths.filter(prohibitedPublishedMetadataReason);
   every non-placeholder reference must use a 40-character commit SHA.
 - Do not use floating `docker://` image references in workflows or examples;
   pin the manifest digest with `@sha256:<64 hex characters>`.
-- Do not use floating images in direct `docker run` adapter steps, mount the
-  Actions workspace into a provider-credentialed container, or replace the
-  tested CLI invocation with a Docker Action form that changes its workdir.
+- Do not use floating images in direct `docker run` adapter steps.
+- Do not mount the Actions workspace into a provider-credentialed container.
+- Do not replace the tested CLI invocation with a Docker Action form that
+  changes its workdir.
 - Do not fetch pull-request files before event gating or when an explicit route
   makes automatic path evaluation irrelevant.
 - Do not add a runtime dependency when a small standard-library solution is
