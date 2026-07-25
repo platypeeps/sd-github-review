@@ -49,3 +49,44 @@ No credential was supplied through chat or recorded in this task.
   relative entrypoint could not start.
 - Disposition: pilot PR closed, no retry or fallback attempted, and source
   remediation required. Raw logs and provider output are not recorded here.
+
+## Reviewed Remediation
+
+- Source PR: `https://github.com/platypeeps/sd-github-review/pull/20`
+- Reviewed source head: `4f787553485be09db6fb50748e0b6a5f25e5eac0`
+- Router Action pin retained by the installed workflow:
+  `8636a3983d18de17c49907a4c48170a61b1bb713`
+- Source CI passed and GitHub Copilot reviewed all changed files with no
+  comments. The authoritative review-thread read was empty.
+- Remediation: invoke the immutable PR-Agent CLI image with direct
+  `docker run`, preserve its `/app` workdir, pass only allow-listed environment
+  names, and mount no repository workspace.
+
+## Successful Credentialed Scenarios
+
+- Private pilot PR: `https://github.com/platypeeps/sd-github-review-pilot/pull/5`
+- Exact pilot head: `7941c6f6d7ad04690182589a9de187c1bb71bd45`
+- Cheap run:
+  `https://github.com/platypeeps/sd-github-review-pilot/actions/runs/30141534479`
+- Deep run:
+  `https://github.com/platypeeps/sd-github-review-pilot/actions/runs/30141602172`
+- Both runs selected the configured
+  `openrouter/moonshotai/kimi-k2.6` model, passed router/configuration and
+  PR-Agent execution, and produced one new `github-actions[bot]` conversation
+  comment after their trigger time.
+- Bounded log scans found the configured model identifier, no raw provider-key
+  value, and no diff, patch-hunk, or prompt-label markers. Comment bodies and
+  raw job logs were not copied into public evidence.
+
+## Rollback And Terminal State
+
+- Installer uninstall dry-run selected only its managed workflow, manifest,
+  and three owned variables for removal. It preserved the repository secret,
+  labels, historical workflow runs, and comments by default.
+- Private PR #5 merged as
+  `2e2c1a2030d96dccfaf26622817120d4c0ffe059` on 2026-07-25 UTC.
+- Pilot `main` contains the credentialed event workflow and the separate
+  provider-free durable workflow; the duplicate provider-free event workflow
+  is removed.
+- Installer `check` passed on the merged private `main` checkout with no
+  issues or planned actions. The secret was verified by name only.

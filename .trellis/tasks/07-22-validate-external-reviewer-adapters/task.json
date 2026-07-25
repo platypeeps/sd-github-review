@@ -15,8 +15,8 @@
   "branch": "codex/validate-external-reviewer-adapters",
   "base_branch": "main",
   "worktree_path": null,
-  "commit": null,
-  "pr_url": null,
+  "commit": "4f78755",
+  "pr_url": "https://github.com/platypeeps/sd-github-review/pull/20",
   "subtasks": [],
   "children": [
     "07-23-add-pr-agent-adapter-support"

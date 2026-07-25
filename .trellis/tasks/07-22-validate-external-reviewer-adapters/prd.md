@@ -77,11 +77,11 @@ the router.
   PR-Agent starts at the adapter boundary.
 - [x] Neither PR-Agent example checks out or executes untrusted pull-request
   code with provider credentials.
-- [ ] Bounded live evidence identifies OpenRouter and Kimi K2.6 without
+- [x] Bounded live evidence identifies OpenRouter and Kimi K2.6 without
   recording credentials, raw provider output, source content, or pricing.
-- [ ] `cheap` and `deep` scenarios each complete selection, PR-Agent execution,
+- [x] `cheap` and `deep` scenarios each complete selection, PR-Agent execution,
   and an observable conversation-comment finding in the private pilot.
-- [ ] Sanitized evidence records the exact immutable identities, limitations,
+- [x] Sanitized evidence records the exact immutable identities, limitations,
   and verified rollback state, and repository checks remain green.
 
 ## Dependencies
