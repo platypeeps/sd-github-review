@@ -23,6 +23,10 @@ model/profile provenance.
   `CONFIG__FALLBACK_MODELS=[]`; never receive later named-chain candidates.
 - Scope the reviewer credential to the child job and keep it out of source,
   receipts, summaries, and logs.
+- For audit finding A-004, run the provider-credentialed reviewer without
+  `checks: write` or another credential capable of mutating the durable receipt
+  namespace. Route and finalization operations use separate least-privilege
+  jobs and exchange only the bounded acknowledgment contract.
 - Return configured/actual model, provider when available, dispatch state,
   applied prompt-profile alias/version/digest, finish reason, usage/cost
   reference, policy digest, and bounded limitations.
@@ -44,6 +48,9 @@ model/profile provenance.
 - [ ] An explicit candidate request uses the same bound profile as automatic
       selection and cannot provide a profile selector.
 - [ ] Secret and raw provider-routing metadata are absent from durable output.
+- [ ] Workflow fixtures prove the reviewer job token cannot create or update
+      Check Runs, while a separate finalizer can persist only a validated
+      bounded acknowledgment.
 - [ ] Preflight fails before reservation when input counting, output-cap
       enforcement, pricing/units, maximum cost, or finish-reason evidence is
       unproven; request content is absent from preflight output.

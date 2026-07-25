@@ -1,0 +1,3 @@
+{"file":".trellis/tasks/07-25-decompose-consumer-installer-lifecycle/research/audit-finding.md","reason":"Preserve the verified A-009 evidence and single-owner remediation boundary."}
+{"file":".trellis/spec/backend/directory-structure.md","reason":"Apply the primary executable contract for this finding."}
+{"file":".trellis/spec/backend/consumer-installer.md","reason":"Preserve adjacent quality, error, lifecycle, or architecture guarantees."}

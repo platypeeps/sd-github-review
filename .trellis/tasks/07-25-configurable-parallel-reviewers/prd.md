@@ -53,7 +53,7 @@ independently reviewable child deliveries.
 - Accept parallel reviewer configuration and dispatch only in explicit
   `mode=managed`; reject parallel fields in standalone source and expose the
   limitation through setup discovery and explain output.
-- Extend the single `.github/sd-review.yml` human source introduced by the
+- Extend the single human-edited routed-review source introduced by the
   budget-aware task. Keep the exact private catalog reference pinned there and
   express reviewer slots, completion policy, and concurrency explicitly; do
   not introduce imports, inheritance, runtime presets, or a second config file.
@@ -178,6 +178,21 @@ independently reviewable child deliveries.
   slots. After cutover the runtime rejects legacy/default selectors; it does
   not dual-read or dual-write them indefinitely. Historical v1 receipts remain
   read-only evidence.
+
+## Child Deliverables
+
+- `07-25-compile-parallel-reviewer-plans` owns bounded variable-slot source,
+  compilation, and immutable plan construction.
+- `07-25-reserve-parallel-review-budgets` owns atomic complete-plan budget
+  authorization.
+- `07-25-orchestrate-parallel-review-dispatch` owns concurrent idempotent
+  child execution.
+- `07-25-aggregate-parallel-review-assurance` owns aggregate assurance and
+  merge-gate projection.
+- `07-25-report-parallel-review-evidence` owns bounded provenance, cost,
+  deferred-state, and effectiveness-ready reporting.
+- `07-25-establish-trusted-finding-adjudication` owns trusted disposition
+  evidence used by later effectiveness analysis.
 
 ## Acceptance Criteria
 

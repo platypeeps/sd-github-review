@@ -13,6 +13,9 @@ and persist authorization before dispatch.
 - Parse only exact trusted comment commands for candidate overrides and options
   discovery. Candidate commands take precedence over persistent broad route
   labels for one new attempt; candidate/slot control labels are rejected.
+- For audit finding A-011, resolve configured mode and a validated trusted
+  command before parsing broad route-label selection. Conflicting lower-
+  priority labels cannot block or alter either higher-priority decision.
 - Support `/review options`, `/review options <lane>`, and
   `/review options <lane> --slot <slot-id>` as bounded read-only queries over
   the active compiled contract and current safe availability projection. They
@@ -50,6 +53,9 @@ and persist authorization before dispatch.
       regardless of the lane's budget-exhaustion merge policy.
 - [ ] Trusted/untrusted, malformed, ambiguous, and invalid-alias command tests
       cover one-attempt precedence and deterministic safe suggestions.
+- [ ] Fixed-mode and trusted-command fixtures with conflicting broad route
+      labels retain the higher-priority decision; automatic mode with the same
+      conflict still fails visibly.
 - [ ] Every options form returns bounded deterministic choices and proves zero
       attempt, reservation, persistence, and dispatch side effects.
 - [ ] Reserved candidate/slot labels fail visibly while stable broad route

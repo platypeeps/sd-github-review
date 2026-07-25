@@ -9,9 +9,9 @@ execution, backups, and legal holds. The command pack owns portable operator
 rendering and confirmation UX.
 
 The profile is assigned by the private control plane and exposed by immutable
-ID/version/digest. Repository configuration does not contain arbitrary
-durations. Future policy variation requires another named profile so every
-receipt and report remains reproducible.
+ID/version/digest. The planned `.github/sd-review.yml` source selects only a
+named profile and does not contain arbitrary durations. Future policy variation
+requires another named profile so every receipt and report remains reproducible.
 
 ## Standard-v1 Matrix
 

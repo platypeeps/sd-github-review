@@ -55,6 +55,15 @@ dispositions.
 - R9: Publish bounded status and evidence contracts usable by generic,
   variable-length cheap/deep reviewer plans.
 
+## Child Deliverables
+
+- `07-25-define-finding-adjudication-contract` owns stable finding identity,
+  schemas, and conformance fixtures.
+- `07-25-implement-trusted-finding-adjudication-workflow` owns authenticated
+  maintainer attestation and idempotent event submission.
+- `07-25-publish-finding-adjudication-evidence` owns bounded read-only status
+  and analysis projections.
+
 ## Acceptance Criteria
 
 - [ ] All three local children and the private-store contract child have

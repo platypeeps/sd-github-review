@@ -68,7 +68,7 @@ service rather than inferred from local counters alone.
 
 ## Requirements
 
-- Add one human-edited explicit-mode `.github/sd-review.yml`. Standalone source
+- Add one human-edited explicit-mode routed-review source file. Standalone source
   contains a strict `direct-handler|local-attested` execution union per lane;
   direct routes reference fixed setup-discovered profiles and local routes
   reference explicit actor/association, PR-author, and evidence-age policy.
@@ -273,6 +273,17 @@ service rather than inferred from local counters alone.
 - Keep management credentials and central budget-ledger state out of consumer
   repository contents and public workflow output; they belong to the private
   consumer control plane.
+
+## Child Deliverables
+
+- `07-25-deliver-routed-review-configuration` owns source scaffolding,
+  migration, and compiled-manifest promotion.
+- `07-25-compile-and-execute-budget-aware-review-plans` owns public schemas,
+  compilation, authorization exchange, receipts, and Checks.
+- `07-25-define-consumer-review-control-plane` owns the provider-neutral
+  private-service contract and conformance boundary.
+- `07-25-integrate-authorized-review-adapters` owns secret-isolated execution
+  of immutable authorized candidates.
 
 ## Acceptance Criteria
 

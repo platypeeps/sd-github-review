@@ -15,6 +15,9 @@ compiled manifests safely.
   exposure before writes.
 - Write compiled output through pending/validated/active states while preserving
   the prior active manifest until promotion succeeds.
+- For audit finding A-013, pending state records enough prior managed-artifact
+  identity to recognize and resume every installer-owned interruption point
+  without treating the known previous workflow as operator drift.
 - Detect managed drift, update idempotently, and uninstall only owned source,
   generated manifest, and explicitly managed labels.
 
@@ -22,6 +25,9 @@ compiled manifests safely.
 
 - [ ] Missing/stale/mismatched catalog, compiler failure, or interrupted
       promotion leaves the prior active configuration intact.
+- [ ] Crash-point fixtures after each pending/source/generated/workflow write
+      resume or roll back deterministically, while a genuine operator edit
+      remains protected and fails before overwrite.
 - [ ] Standalone promotion succeeds with no catalog/control-plane access;
       managed failure never promotes a standalone replacement.
 - [ ] Runtime never observes pending or source-only configuration.

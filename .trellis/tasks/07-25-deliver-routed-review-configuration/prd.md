@@ -7,11 +7,11 @@ the managed compiled-manifest lifecycle.
 
 ## Background
 
-The accepted version-2 design gives consumers one human-edited
-`.github/sd-review.yml` and gives the runtime one generated, digest-bound
-`.github/sd-github-review.json`. This task owns the repository-facing lifecycle
-around those artifacts; the sibling compiler/runtime task owns their schemas
-and semantic compilation. This task is an integration roadmap; fresh
+The accepted version-2 design gives consumers one human-edited routed-review
+source and gives the runtime one generated, digest-bound managed manifest.
+This task owns the repository-facing lifecycle around those artifacts; the
+sibling compiler/runtime task owns their schemas and semantic compilation.
+This task is an integration roadmap; fresh
 scaffolding, one-time migration, and compiled promotion are separate children.
 
 ## Requirements
@@ -43,11 +43,25 @@ scaffolding, one-time migration, and compiled promotion are separate children.
   control routing.
 - Make install, update, check, and uninstall idempotent and preserve unrelated
   workflows, labels, secrets, repository settings, and user-owned files.
+- For audit finding A-018, express every supported first-party installation
+  profile declaratively: Copilot-only, event-driven PR-Agent, durable
+  PR-Agent, direct standalone, and local-attested. Each profile receives the
+  same ownership, dry-run, drift, update, rollback, and uninstall guarantees
+  subject to its explicit permission and credential differences.
 - Expose source/catalog/compiled digests and drift without exposing catalog
   secrets or provider credentials.
 - Publish the stable assurance/gate Checks on the current head before retiring
   a legacy Check. Diagnose branch protection unless only `sd-review / gate` is
   required; never mutate repository rules without explicit authorization.
+
+## Child Deliverables
+
+- `07-25-scaffold-routed-review-source` owns fresh explicit-mode source
+  generation and collision-safe dry runs.
+- `07-25-migrate-routed-review-configuration-v2` owns the one-time legacy
+  conversion and reviewed mode migration.
+- `07-25-manage-compiled-review-configuration-promotion` owns semantic preview,
+  pending/active promotion, recovery, and rollback.
 
 ## Acceptance Criteria
 
@@ -68,6 +82,9 @@ scaffolding, one-time migration, and compiled promotion are separate children.
       rejects legacy/default selectors.
 - [ ] Install, update, check, reapply, drift, and uninstall fixtures preserve
       unrelated consumer content.
+- [ ] Each first-party profile completes install, dry-run, check, update,
+      rollback, and uninstall round trips; profile changes produce a semantic
+      diff and never inherit permissions or secrets from another profile.
 - [ ] Candidate/slot label lifecycle tests prove install, migration, update,
       check, drift detection, and uninstall never create, adopt, mutate, or
       remove those labels; `overrides.labels` is rejected.

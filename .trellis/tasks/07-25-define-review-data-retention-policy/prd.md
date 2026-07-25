@@ -21,7 +21,7 @@ belongs to `platypeeps/sd-ai-command-pack:07-25-add-routed-review-operator-ux`.
 - Define immutable, digest-bound named retention profiles. `standard-v1` is the
   default and must work without arbitrary per-repository duration settings.
   Future variation uses another explicitly selected named profile rather than
-  loose duration fields in `.github/sd-review.yml`.
+  loose duration fields in the repository's routed-review source.
 - Apply the following `standard-v1` classes:
   - Rendered prompts, diffs, source, raw findings, model output, provider
     payloads, and raw billing payloads are prohibited from persistence.

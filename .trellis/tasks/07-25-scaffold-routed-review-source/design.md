@@ -3,7 +3,8 @@
 ## Boundary
 
 The parent configuration-lifecycle design is authoritative. This child owns
-only creation of a fresh, complete human source and explicitly opted-in labels.
+only creation of a fresh, complete human source at `.github/sd-review.yml` and
+explicitly opted-in labels.
 It does not retrieve a catalog or create the compiled runtime manifest.
 
 The scaffolder renders a versioned explicit-mode template from validated
