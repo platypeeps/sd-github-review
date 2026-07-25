@@ -1,0 +1,3 @@
+{"file": ".trellis/tasks/07-25-budget-aware-review-degradation/design.md", "reason": "Preserve the accepted ownership, v2 configuration, fallback, and outage boundaries while adding standalone mode."}
+{"file": ".trellis/tasks/07-25-integrate-authorized-review-adapters/design.md", "reason": "Keep fixed standalone handler execution compatible with existing secret-isolated adapter boundaries."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Implement explicit unsupported and managed-outage fail-closed outcomes without leaking sensitive state."}

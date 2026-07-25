@@ -1,0 +1,32 @@
+{
+  "id": "cheap-review-cost-controls",
+  "name": "cheap-review-cost-controls",
+  "title": "Harden cheap review cost controls",
+  "description": "Coordinate measurable cost, reliability, prompt, reasoning, and provider controls for the cheap review lane.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "sdelmas",
+  "assignee": "sdelmas",
+  "createdAt": "2026-07-25",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "07-25-govern-cheap-review-fallbacks",
+    "07-25-bound-cheap-review-token-usage",
+    "07-25-reduce-cheap-review-prompt",
+    "07-25-control-cheap-review-reasoning-effort",
+    "07-25-enforce-cheap-provider-cost-policy"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

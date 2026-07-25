@@ -1,0 +1,33 @@
+{
+  "id": "configurable-parallel-reviewers",
+  "name": "configurable-parallel-reviewers",
+  "title": "Support configurable parallel reviewers",
+  "description": "Fan out cheap and deep review plans to variable-length reviewer sets with bounded concurrency, durable receipts, and separate aggregate assurance and merge-gate checks.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "sdelmas",
+  "assignee": "sdelmas",
+  "createdAt": "2026-07-25",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "07-25-compile-parallel-reviewer-plans",
+    "07-25-reserve-parallel-review-budgets",
+    "07-25-orchestrate-parallel-review-dispatch",
+    "07-25-aggregate-parallel-review-assurance",
+    "07-25-report-parallel-review-evidence",
+    "07-25-establish-trusted-finding-adjudication"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

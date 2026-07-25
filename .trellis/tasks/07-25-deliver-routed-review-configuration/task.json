@@ -1,0 +1,30 @@
+{
+  "id": "deliver-routed-review-configuration",
+  "name": "deliver-routed-review-configuration",
+  "title": "Deliver routed review configuration lifecycle",
+  "description": "Create and migrate the consumer-owned review source file through the managed compiled-manifest lifecycle.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "sdelmas",
+  "assignee": "sdelmas",
+  "createdAt": "2026-07-25",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "codex/use-qwen-for-cheap-pr-agent-reviews",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "07-25-scaffold-routed-review-source",
+    "07-25-migrate-routed-review-configuration-v2",
+    "07-25-manage-compiled-review-configuration-promotion"
+  ],
+  "parent": "07-25-budget-aware-review-degradation",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

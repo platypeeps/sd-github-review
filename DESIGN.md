@@ -313,6 +313,25 @@ Durable operations deduplicate native and external dispatches across runs.
 Standalone external routing remains a compatibility mode whose adapter
 lifecycle is owned entirely by the consumer workflow.
 
+## Planned Local-Attested Review Execution
+
+Version 2 plans an explicit standalone `local-attested` route for repositories
+that perform review locally and do not want Copilot, PR-Agent, or another
+GitHub-side reviewer dispatched. The local `sd-review` lifecycle publishes one
+bounded, authenticated, exact-head attestation; this Action validates it and
+projects the stable assurance and gate Checks without creating a review,
+comment, adapter request, or provider call.
+
+This path is separate from `none`. `none` means review was skipped and supplies
+no assurance. A local-attested clean result may satisfy assurance only under an
+explicit repository trust policy. The receipt says `repository_attested` and
+does not claim GitHub independently ran or verified the local model. Findings,
+missing evidence, stale heads, failed/cancelled runs, malformed input, and
+unauthorized publishers block the gate.
+
+The planned contract and delivery split live under
+`.trellis/tasks/07-25-support-local-attested-reviews/`.
+
 ## Related Documents
 
 - [`README.md`](README.md) — installation and development quick start

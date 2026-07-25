@@ -1,0 +1,33 @@
+{
+  "id": "compile-and-execute-budget-aware-review-plans",
+  "name": "compile-and-execute-budget-aware-review-plans",
+  "title": "Compile and execute budget-aware review plans",
+  "description": "Own the schemas, deterministic compiler, runtime plan authorization, receipts, checks, and setup-discovery contracts.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "sdelmas",
+  "assignee": "sdelmas",
+  "createdAt": "2026-07-25",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "codex/use-qwen-for-cheap-pr-agent-reviews",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "07-25-define-budget-review-v2-contracts",
+    "07-25-compile-routed-review-configuration",
+    "07-25-authorize-budget-aware-review-plans",
+    "07-25-finalize-budget-review-evidence",
+    "07-25-support-standalone-review-mode",
+    "07-25-support-local-attested-reviews"
+  ],
+  "parent": "07-25-budget-aware-review-degradation",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

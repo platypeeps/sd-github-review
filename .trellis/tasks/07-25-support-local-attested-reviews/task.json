@@ -1,0 +1,30 @@
+{
+  "id": "support-local-attested-reviews",
+  "name": "support-local-attested-reviews",
+  "title": "Support local-attested reviews",
+  "description": "Allow repositories to satisfy review assurance from trusted exact-head local-review attestations without dispatching GitHub-side reviewers.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "sdelmas",
+  "assignee": "sdelmas",
+  "createdAt": "2026-07-25",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "codex/use-qwen-for-cheap-pr-agent-reviews",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "07-25-define-local-review-attestation-contracts",
+    "07-25-ingest-local-review-attestations",
+    "07-25-project-local-review-assurance"
+  ],
+  "parent": "07-25-compile-and-execute-budget-aware-review-plans",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

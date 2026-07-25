@@ -1,0 +1,29 @@
+{
+  "id": "integrate-authorized-review-adapters",
+  "name": "integrate-authorized-review-adapters",
+  "title": "Integrate authorized review adapters",
+  "description": "Execute immutable authorized candidates through secret-isolated Copilot and external reviewer workflow adapters.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "sdelmas",
+  "assignee": "sdelmas",
+  "createdAt": "2026-07-25",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "codex/use-qwen-for-cheap-pr-agent-reviews",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "07-25-integrate-copilot-review-adapter",
+    "07-25-integrate-pr-agent-review-adapter"
+  ],
+  "parent": "07-25-budget-aware-review-degradation",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

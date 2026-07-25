@@ -1,0 +1,33 @@
+{
+  "id": "define-consumer-review-control-plane",
+  "name": "define-consumer-review-control-plane",
+  "title": "Define the consumer review control plane",
+  "description": "Specify and track the private candidate catalog, budget ledger, reservation, reconciliation, deferral, and recovery dependency.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "sdelmas",
+  "assignee": "sdelmas",
+  "createdAt": "2026-07-25",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "codex/use-qwen-for-cheap-pr-agent-reviews",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "07-25-define-review-candidate-catalog",
+    "07-25-define-review-budget-ledger",
+    "07-25-define-review-usage-reconciliation",
+    "07-25-define-deferred-review-recovery",
+    "07-25-define-finding-adjudication-evidence-store",
+    "07-25-define-review-data-retention-policy"
+  ],
+  "parent": "07-25-budget-aware-review-degradation",
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

@@ -1,0 +1,2 @@
+{"file": ".trellis/tasks/07-25-support-local-attested-reviews/research/contract-mapping.md", "reason": "Consume the canonical bounded evidence decisions and preserve authenticated ingestion with zero reviewer dispatch."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Order validation and fail closed for wrong heads, ambiguity, conflicts, and unauthorized actors."}
