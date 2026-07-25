@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Verify adapter output and diagnostics preserve credential and finding boundaries."}
+{"file": ".trellis/tasks/07-22-validate-external-reviewer-adapters/research/implementation-sources.md", "reason": "Verify the tests and installer behavior identified in the task-scoped source map."}

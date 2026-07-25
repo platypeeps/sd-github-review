@@ -1,1 +1,0 @@
-{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Keep router runtime and consumer-owned adapter boundaries separate."}

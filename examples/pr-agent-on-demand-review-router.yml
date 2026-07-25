@@ -77,11 +77,6 @@ jobs:
       - name: Run PR-Agent review
         id: pr-agent
         if: steps.pr-agent-config.outcome == 'success'
-        uses: docker://pragent/pr-agent@sha256:cae31b51b65b5c978a3b2a978d96e89e6a4c5bcd81cb2553fd8dad0251c3a23e
-        with:
-          args: >-
-            --pr_url=https://github.com/${{ github.repository }}/pull/${{ steps.review.outputs.pull-request-number }}
-            review
         env:
           GITHUB__USER_TOKEN: ${{ github.token }}
           OPENAI__KEY: ${{ vars.PR_AGENT_MODEL_PROVIDER == 'openai' && secrets.PR_AGENT_MODEL_API_KEY || '' }}
@@ -100,6 +95,29 @@ jobs:
           CONFIG__MODEL: ${{ steps.review.outputs.model }}
           CONFIG__FALLBACK_MODELS: '[]'
           CONFIG__RESTRICTED_MODE: "true"
+          REVIEW_PULL_REQUEST_NUMBER: ${{ steps.review.outputs.pull-request-number }}
+        run: |
+          docker run --rm \
+            --env GITHUB__USER_TOKEN \
+            --env OPENAI__KEY \
+            --env GOOGLE_AI_STUDIO__GEMINI_API_KEY \
+            --env OPENROUTER__KEY \
+            --env ANTHROPIC__KEY \
+            --env COHERE__KEY \
+            --env REPLICATE__KEY \
+            --env GROQ__KEY \
+            --env SAMBANOVA__KEY \
+            --env XAI__KEY \
+            --env DEEPSEEK__KEY \
+            --env DEEPINFRA__KEY \
+            --env MISTRAL__KEY \
+            --env CODESTRAL__KEY \
+            --env CONFIG__MODEL \
+            --env CONFIG__FALLBACK_MODELS \
+            --env CONFIG__RESTRICTED_MODE \
+            pragent/pr-agent@sha256:cae31b51b65b5c978a3b2a978d96e89e6a4c5bcd81cb2553fd8dad0251c3a23e \
+            --pr_url="https://github.com/${GITHUB_REPOSITORY}/pull/${REVIEW_PULL_REQUEST_NUMBER}" \
+            review
 
       - name: Build the PR-Agent acknowledgment
         id: acknowledge
