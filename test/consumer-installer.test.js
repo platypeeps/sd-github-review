@@ -155,6 +155,20 @@ test("installs, checks, and repeats without leaking secret input", async () => {
   const manifest = await readManifest(target);
   assert.equal(manifest.state, "active");
   assert.equal(manifest.repository, REPOSITORY);
+  assert.deepEqual(manifest.configuration, {
+    provider: "openrouter",
+    cheapModel: "openrouter/qwen/qwen3-coder-30b-a3b-instruct",
+    deepModel: "openrouter/moonshotai/kimi-k2.6",
+  });
+  assert.equal(github.variables.get("PR_AGENT_MODEL_PROVIDER"), "openrouter");
+  assert.equal(
+    github.variables.get("CHEAP_REVIEW_MODEL"),
+    "openrouter/qwen/qwen3-coder-30b-a3b-instruct",
+  );
+  assert.equal(
+    github.variables.get("DEEP_REVIEW_MODEL"),
+    "openrouter/moonshotai/kimi-k2.6",
+  );
   assert.equal(manifest.resources.secret.owned, true);
   assert.equal(
     await readFile(path.join(target, WORKFLOW_PATH), "utf8"),

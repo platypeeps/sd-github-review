@@ -48,7 +48,8 @@ administration access to the consuming repository. Run it from an updated
 `sd-github-review` checkout and point `--target` at the local consumer
 checkout.
 
-Preview and install the default OpenRouter/Kimi K2.6 configuration:
+Preview and install the default OpenRouter configuration, which uses
+Qwen3-Coder 30B A3B for `cheap` reviews and Kimi K2.6 for `deep` reviews:
 
 ```sh
 node scripts/install-consumer.mjs install --target /path/to/consumer --set-secret --dry-run
@@ -172,22 +173,23 @@ with `openrouter/`. For example, an OpenRouter model ID shaped as
 also require `custom_model_max_tokens` in `.pr_agent.toml`; the workflow does
 not guess that value.
 
-#### Kimi K2.6 pilot
+#### Default OpenRouter tier pairing
 
-The current pilot uses Kimi K2.6 through the existing OpenRouter mapping; it
-does not add a separate `kimi` provider or credential shape. Configure:
+The default and current pilot use Qwen3-Coder 30B A3B for routine reviews and
+Kimi K2.6 for deep reviews through the existing OpenRouter mapping. Neither
+model adds a separate provider or credential shape. Configure:
 
 ```text
 PR_AGENT_MODEL_PROVIDER=openrouter
-CHEAP_REVIEW_MODEL=openrouter/moonshotai/kimi-k2.6
+CHEAP_REVIEW_MODEL=openrouter/qwen/qwen3-coder-30b-a3b-instruct
 DEEP_REVIEW_MODEL=openrouter/moonshotai/kimi-k2.6
 ```
 
 Store the OpenRouter API key only in the `PR_AGENT_MODEL_API_KEY` Actions
-secret. Using the same model for both tiers keeps the first credentialed pilot
-bounded; the router still records the selected `cheap` or `deep` policy tier.
-Introduce a different tier model only as an explicit later configuration
-decision, not as an undocumented fallback.
+secret. The smaller code-specialized cheap model reduces routine-review cost,
+while the deep route retains Kimi K2.6 for higher-risk work. Keep tier changes
+explicit; the workflow disables fallback models rather than silently switching
+between them.
 
 ### Other upstream providers
 
