@@ -155,6 +155,13 @@ paths are used only in memory; receipts retain a digest, counts, and normalized
 delta class. A bookkeeping-only successor may select `none` only in `auto`,
 when explicitly enabled and no independent-review floor overrides it.
 
+Both published on-demand workflows expose that trusted repository policy
+directly. `rerequest-authorized` defaults to `false` and is enabled only for a
+validated attempt greater than one; `independent-review-floor` defaults to
+`none` and can require `cheap`, `deep`, or `copilot`. The two controls feed the
+initial route/query operation and never alter the canonical finalization
+identity.
+
 [`config/routed-review-setup-v1.json`](config/routed-review-setup-v1.json)
 declares the workflow identity, contract major, supported intents and
 operations, Check Run capability, permissions, and immutable Action

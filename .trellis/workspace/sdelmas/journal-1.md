@@ -866,3 +866,41 @@ Repaired the PR-Agent CLI container workdir contract, completed the private Open
 ### Next Steps
 
 - None - task complete
+
+
+## Session 22: Pilot durable routed-review runtime
+
+**Date**: 2026-07-24
+**Task**: Pilot durable routed-review runtime
+**Branch**: `codex/pilot-routed-review-runtime-handoff`
+
+### Summary
+
+Closed the published workflow-control gap, proved the durable PR-Agent and Copilot lifecycle in the approved private pilot, and prepared an immutable command-pack handoff.
+
+### Main Changes
+
+- Exposed rerequest authorization and independent-review-floor inputs in both durable workflow examples with symmetry tests and updated contracts.
+- Recorded sanitized exact-head replay, conflict, authorized rerequest, successor, Copilot, security, and rollback evidence from the private pilot.
+- Prepared a paste-ready v1 command-pack handoff without creating an unauthorized upstream PR.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `743c0f90358466f2a05b564f27c731a1a4d6c9b2` | feat: expose durable review policy controls |
+
+### Testing
+
+- [OK] npm test (130 passing)
+- [OK] npm run check and npm run validate:metadata
+- [OK] installer audit, metadata preflight, exact-head CI, and Copilot review with no comments
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

@@ -247,6 +247,12 @@ published setup descriptor/on-demand workflows.
   empty, and retain only the known logical identity for reconciliation.
 - The setup descriptor and workflow agree on contract major, identity,
   intents, operations, permissions, no-checkout, and noninteractive behavior.
+- Both published on-demand workflows expose identical trusted policy inputs:
+  `rerequest-authorized` is boolean and defaults to `false`, while
+  `independent-review-floor` is a `none|cheap|deep|copilot` choice that
+  defaults to `none`. Pass both unchanged to the initial route/query Action
+  call. Finalization remains bound only to the canonical request and
+  acknowledgment.
 
 ### 4. Validation & Error Matrix
 
@@ -254,6 +260,9 @@ published setup descriptor/on-demand workflows.
 | --- | --- |
 | First external route | Emit one adapter request and started receipt |
 | Matching route replay | Emit no adapter request; return existing/reconciliation state |
+| Attempt greater than one with rerequest authorization off | Reject before adapter dispatch |
+| Authorized valid rerequest | Create one distinct attempt receipt and dispatch once |
+| Configured independent-review floor | Do not reduce an automatic route below the selected floor |
 | Current-head Copilot pending/reviewed | Mark already present; do not request again |
 | Valid adapter request plus success outcome | Emit acknowledged JSON with the same logical ID, backend ID, and finding channels; construct no GitHub client |
 | Failure/cancelled/skipped adapter outcome | Emit failed JSON with `adapter-failed`, `adapter-cancelled`, or `adapter-skipped` |
@@ -288,6 +297,8 @@ published setup descriptor/on-demand workflows.
 - Parse the setup descriptor, discovery cases, and workflow; assert durable
   permissions, immutable placeholders, no checkout, and no PR-controlled run
   step.
+- Parse both on-demand workflows and assert identical rerequest/floor input
+  names, types, defaults, choices, and Action mappings.
 - Parse both PR-Agent workflows and assert every fixed provider/credential
   mapping, valid provider-qualified models, rejection of unknown providers and
   incompatible model prefixes, and exclusive secret placement on the

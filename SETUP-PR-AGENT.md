@@ -283,6 +283,17 @@ repository's `issue_comment` workflow without checking out contributor code.
    with the workflow and replace its action-reference placeholder with the
    same full commit SHA.
 
+Each manual dispatch also exposes two repository-policy controls:
+
+- Leave `rerequest-authorized` off for an initial request or replay. Turn it on
+  only when the canonical request has `attempt` greater than one, references
+  the prior receipt and logical dispatch ID, keeps the same policy, route, and
+  backend, and the selected backend declares `supportsRerequest: true`.
+- Set `independent-review-floor` to the minimum route required by repository
+  policy (`none`, `cheap`, `deep`, or `copilot`). The default `none` adds no
+  floor. A stronger floor prevents local evidence or bookkeeping-only policy
+  from reducing the route below that tier.
+
 The durable workflow performs `route → PR-Agent → acknowledge → finalize`.
 PR-Agent runs only for a newly authorized external dispatch. The workflow
 turns the step outcome into a bounded canonical acknowledgment and finalizes
