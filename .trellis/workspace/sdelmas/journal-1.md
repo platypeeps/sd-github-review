@@ -823,3 +823,46 @@ Added and reviewed a safe lifecycle CLI for installing, updating, checking, and 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 21: Validate PR-Agent adapter pilot
+
+**Date**: 2026-07-24
+**Task**: Validate PR-Agent adapter pilot
+**Branch**: `codex/validate-external-reviewer-adapters`
+
+### Summary
+
+Repaired the PR-Agent CLI container workdir contract, completed the private OpenRouter/Kimi cheap and deep pilot, and converged source PR review.
+
+### Main Changes
+
+- Ran the digest-pinned PR-Agent CLI image directly without mounting the Actions workspace.
+- Recorded sanitized successful cheap/deep pilot evidence and verified rollback ownership on private merged main.
+- Addressed and resolved Copilot feedback on spec clarity and complete Docker mount-flag regression coverage.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4f78755` | fix: preserve PR-Agent CLI image workdir |
+| `0af452f` | docs: record PR-Agent pilot evidence |
+| `e15656d` | docs: clarify PR-Agent forbidden patterns |
+| `88585ea` | test: reject all Docker workspace mount forms |
+
+### Testing
+
+- [OK] npm test: 130 tests passed
+- [OK] metadata test: 8 focused tests passed after review fixes
+- [OK] npm run check and npm run validate:metadata passed
+- [OK] SD review full-check passed with 151 command-pack targets and a fresh 256-copy KB
+- [OK] Private cheap run 30141534479 and deep run 30141602172 passed; merged-main installer check reported no issues
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
