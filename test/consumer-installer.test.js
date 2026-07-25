@@ -102,6 +102,19 @@ test("parses supported GitHub origin shapes and rejects unrelated remotes", () =
   assert.equal(parseGitHubRemote("https://gitlab.com/acme/consumer.git"), null);
 });
 
+test("reports actionable recovery when a target checkout has no origin", async () => {
+  const sourceRoot = await makeSource();
+  const target = await mkdtemp(path.join(os.tmpdir(), "sd-review-no-origin-"));
+  execFileSync("git", ["init", "-b", "main", target], { stdio: "ignore" });
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+
+  await assert.rejects(
+    runConsumerInstaller({ command: "install", target }, { sourceRoot, github }),
+    /no readable GitHub origin; configure origin or pass --github OWNER\/REPO/u,
+  );
+  assert.deepEqual(github.calls, []);
+});
+
 test("installer labels stay aligned with the router contract", () => {
   assert.deepEqual(
     new Set(ROUTING_LABELS.map(({ name }) => name)),

@@ -407,8 +407,12 @@ async function resolveTarget(options, github) {
   let originRepository = null;
   try {
     originRepository = parseGitHubRemote(gitOutput(root, ["remote", "get-url", "origin"]));
-  } catch (error) {
-    if (!options.repository) throw error;
+  } catch {
+    if (!options.repository) {
+      throw new Error(
+        `${root}: no readable GitHub origin; configure origin or pass --github OWNER/REPO`,
+      );
+    }
   }
   const requestedRepository = options.repository
     ? normalizeRepository(options.repository)
