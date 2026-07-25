@@ -170,7 +170,10 @@ test("publishes pinned standalone and durable PR-Agent workflows", async () => {
     assert.match(prAgent.run, /docker run --rm/u);
     await assert.doesNotReject(execFileAsync("bash", ["-n", "-c", prAgent.run]));
     assert.ok(prAgent.run.includes(digestReference));
-    assert.equal(/(?:^|\s)(?:-v|--volume)(?:\s|=)/u.test(prAgent.run), false);
+    assert.equal(
+      /(?:^|\s)(?:-v|--volume|--mount|--volumes-from)(?:\s|=)/u.test(prAgent.run),
+      false,
+    );
     assert.equal(prAgent.run.includes("/github/workspace"), false);
     for (const { provider, credential } of providerMappings) {
       assert.equal(
