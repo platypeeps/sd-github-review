@@ -84,6 +84,7 @@ test("publishes pinned standalone and durable PR-Agent workflows", async () => {
   };
   const standalone = await loadWorkflow("pr-agent-router.yml");
   const durable = await loadWorkflow("pr-agent-on-demand-review-router.yml");
+  const genericDurable = await loadWorkflow("on-demand-review-router.yml");
   const digestReference =
     "pragent/pr-agent@sha256:cae31b51b65b5c978a3b2a978d96e89e6a4c5bcd81cb2553fd8dad0251c3a23e";
   const providerMappings = [
@@ -249,9 +250,27 @@ test("publishes pinned standalone and durable PR-Agent workflows", async () => {
   }
 
   const durableSteps = durable.workflow.jobs.review.steps;
+  const genericDurableSteps = genericDurable.workflow.jobs.review.steps;
   const acknowledge = durableSteps.find((step) => step.id === "acknowledge");
   const finalize = durableSteps.find((step) => step.name === "Finalize the external receipt");
   const preflight = durableSteps.find((step) => step.id === "pr-agent-config");
+  const durableRoute = durableSteps.find((step) => step.id === "review");
+  const genericDurableRoute = genericDurableSteps.find((step) => step.id === "review");
+  const durableInputs = durable.workflow.on.workflow_dispatch.inputs;
+  const genericDurableInputs = genericDurable.workflow.on.workflow_dispatch.inputs;
+  for (const control of ["rerequest-authorized", "independent-review-floor"]) {
+    assert.deepEqual(durableInputs[control], genericDurableInputs[control]);
+    assert.equal(durableRoute.with[control], `\${{ inputs.${control} }}`);
+    assert.equal(genericDurableRoute.with[control], `\${{ inputs.${control} }}`);
+  }
+  assert.equal(durableInputs["rerequest-authorized"].type, "boolean");
+  assert.equal(durableInputs["rerequest-authorized"].default, false);
+  assert.equal(durableInputs["independent-review-floor"].type, "choice");
+  assert.equal(durableInputs["independent-review-floor"].default, "none");
+  assert.deepEqual(
+    durableInputs["independent-review-floor"].options,
+    ["none", "cheap", "deep", "copilot"],
+  );
   assert.match(preflight.run, /REVIEW_BACKEND_ID.*pr-agent/su);
   assert.ok(preflight.run.includes('-z "$REVIEW_MODEL"'));
   assert.equal(acknowledge.with.operation, "acknowledge");
@@ -294,8 +313,25 @@ test("publishes consistent read-only setup discovery and a no-checkout durable w
   assert.equal(descriptor.checkoutRequired, false);
   assert.deepEqual(workflow.permissions, descriptor.requiredPermissions);
   assert.ok(workflow.on.workflow_dispatch.inputs["review-request"]);
+  assert.equal(
+    workflow.on.workflow_dispatch.inputs["rerequest-authorized"].default,
+    false,
+  );
+  assert.equal(
+    workflow.on.workflow_dispatch.inputs["independent-review-floor"].default,
+    "none",
+  );
 
   const steps = Object.values(workflow.jobs).flatMap((job) => job.steps ?? []);
+  const route = steps.find((step) => step.id === "review");
+  assert.equal(
+    route.with["rerequest-authorized"],
+    "${{ inputs.rerequest-authorized }}",
+  );
+  assert.equal(
+    route.with["independent-review-floor"],
+    "${{ inputs.independent-review-floor }}",
+  );
   assert.equal(steps.some((step) => step.uses?.startsWith("actions/checkout@")), false);
   assert.equal(steps.some((step) => typeof step.run === "string"), false);
   assert.equal(workflowSource.includes("AskUserQuestion"), false);

@@ -8,12 +8,15 @@ consumer without broadening repo-local implementation authority.
 
 ## Entry Gates
 
-- Protocol core, durable receipts, and on-demand dispatch tasks are merged.
-- `07-22-validate-external-reviewer-adapters` has produced acceptable live
-  evidence for at least one external adapter.
-- The maintainer has authorized the specific private-pilot mutations and any
-  command-pack handoff PR; ordinary repo-local work-loop authority is not
-  sufficient for those external writes.
+- Protocol core, durable receipts, on-demand dispatch, and external-adapter
+  validation tasks are archived with green evidence.
+- The immutable runtime Action is the released `v0.1.0` commit
+  `8636a3983d18de17c49907a4c48170a61b1bb713`; the source baseline for this
+  pilot is `195faec46fa62341a43e0867c04d2ef188536cc4`.
+- The maintainer has authorized this task's bounded writes to the isolated
+  private pilot. That authority does not include production repositories.
+- No command-pack PR is authorized. Prepare a paste-ready handoff unless the
+  maintainer separately approves that specific upstream PR.
 
 ## Requirements
 
@@ -37,6 +40,9 @@ consumer without broadening repo-local implementation authority.
 - Publish or prepare the versioned descriptor/schema/fixture and immutable
   commit identity handoff for the command-pack consumer under separate explicit
   upstream authority.
+- Expose the runtime's explicit same-head rerequest authority and independent
+  review floor in both published on-demand workflow examples so the documented
+  matrix can be exercised without editing the workflow contract ad hoc.
 
 ## Acceptance Criteria
 

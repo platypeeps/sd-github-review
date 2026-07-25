@@ -21,19 +21,24 @@ and the maintainer explicitly approves the proposed release.
 ## 2. Configure the Isolated Pilot
 
 Use the private repository `platypeeps/sd-github-review-pilot`. It must not
-contain production code, provider credentials, or an automatic Copilot review
-ruleset. Copy `examples/pilot-router.yml` into the pilot repository's workflow
-directory as `review-router.yml`. For a future candidate pilot, replace the
-released SHA only with the exact green candidate SHA. Create these labels:
+contain production code or credential values in tracked files or workflow
+configuration. A live external-adapter pilot may use a capped credential stored
+only as an Actions secret. Copy `examples/pilot-router.yml` for a provider-free
+route pilot or the reviewed on-demand workflow for an adapter pilot. Never
+enable overlapping event-driven routers for the same trigger family. For a
+future candidate pilot, replace the released SHA only with the exact green
+candidate SHA. Create these labels:
 
 - `review:cheap`
 - `review:deep`
 - `review:copilot`
 - `review:none`
 
-The workflow deliberately does not check out pull-request code. Cheap/deep are
-observed as outputs only; `run-external-reviewer=true` is evidence that a
-consumer adapter would run, not permission to invoke one during this pilot.
+The workflows deliberately do not check out pull-request code. In the
+provider-free pilot, cheap/deep are observed as outputs only;
+`run-external-reviewer=true` is evidence that a consumer adapter would run, not
+permission to invoke one. A credentialed adapter pilot requires separate
+approval and must keep the credential on its adapter step only.
 
 ## 3. Exercise the Routes
 
@@ -54,7 +59,8 @@ Remove any prior `review:*` label before applying the next one.
 
 The pilot passes when every scenario has one completed workflow run, the live
 Copilot route is visible in the pull request's requested-reviewer or review
-state, no provider secrets exist in repository or workflow configuration, and
+state, no provider credential value exists in tracked repository or workflow
+configuration, and
 there are no unexplained duplicate triggers or unresolved failures during a
 24-hour observation window. Record false positives, API errors, and operator
 friction in the source task before deciding to release.
@@ -66,6 +72,13 @@ For the durable candidate, also exercise `route`, `query`, and external
 `finalize` on one exact head. Confirm matching replay emits no second adapter
 request, a new head creates a different logical identity, and changed-head or
 ambiguous finalization requires reconciliation without fallback.
+
+Leave `rerequest-authorized` disabled for initial requests and replay. Exercise
+one attempt greater than one only with the prior receipt/logical identity,
+unchanged policy/route/backend, a rerequest-capable backend, and explicit pilot
+authority. Exercise `independent-review-floor` separately and confirm local or
+bookkeeping evidence cannot lower the automatic route beneath the selected
+floor.
 
 ## 5. Publish Only After Approval
 

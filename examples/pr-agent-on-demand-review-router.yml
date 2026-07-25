@@ -13,6 +13,17 @@ on:
         default: route
         type: choice
         options: [route, query]
+      rerequest-authorized:
+        description: Authorize a validated same-head request with attempt greater than one
+        required: false
+        default: false
+        type: boolean
+      independent-review-floor:
+        description: Minimum route allowed by repository review policy
+        required: false
+        default: none
+        type: choice
+        options: [none, cheap, deep, copilot]
 
 permissions:
   contents: read
@@ -34,7 +45,9 @@ jobs:
           review-request: ${{ inputs.review-request }}
           cheap-backend: ${{ vars.SD_REVIEW_CHEAP_BACKEND_V1 }}
           deep-backend: ${{ vars.SD_REVIEW_DEEP_BACKEND_V1 }}
+          rerequest-authorized: ${{ inputs.rerequest-authorized }}
           allow-bookkeeping-none: ${{ vars.SD_REVIEW_ALLOW_BOOKKEEPING_NONE || 'false' }}
+          independent-review-floor: ${{ inputs.independent-review-floor }}
 
       - name: Validate PR-Agent configuration
         id: pr-agent-config
