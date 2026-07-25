@@ -16,7 +16,7 @@ test/                # node:test suites mirroring runtime boundaries
 fixtures/protocol/   # canonical versioned protocol behavior fixtures
 fixtures/setup/      # read-only setup discovery fixtures
 config/              # published versioned setup capability descriptor
-scripts/             # repository validation and SD pack helpers
+scripts/             # repository validation, consumer lifecycle, and SD pack helpers
 examples/            # consumer-owned workflow templates
 docs/                # project and release operations
 .github/workflows/   # repository CI only
@@ -69,6 +69,10 @@ single queryable source for priority, ownership, dependencies, and status.
   `test/action.test.js`.
 - Put repository-only validation in `scripts/`; it must not become part of the
   shipped Action runtime.
+- Keep consumer installation lifecycle code in `scripts/consumer-installer.mjs`
+  with a thin `scripts/install-consumer.mjs` entrypoint. It may manage consumer
+  files and bounded GitHub metadata, but must not import into the Action
+  runtime, commit consumer changes, or serialize provider credentials.
 
 ## Naming Conventions
 

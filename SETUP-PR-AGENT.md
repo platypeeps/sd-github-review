@@ -5,8 +5,9 @@ This guide configures PR-Agent as the external reviewer for the router's
 sensitive, unusually large, or explicitly escalated changes.
 
 The supplied workflows automate routing and PR-Agent execution after they are
-installed. This repository does not copy workflows into another repository or
-create its secrets, variables, labels, or branch rules.
+installed. The lifecycle installer can provision the supported event-driven
+workflow, Actions settings, and labels. Durable setup and branch rules remain
+manual.
 
 ## How this integration runs
 
@@ -32,6 +33,79 @@ only on the PR-Agent step and is never passed to `sd-github-review`.
 Install only the workflow that owns a given trigger path. Running multiple
 event-driven review workflows for the same pull request can create duplicate
 provider calls and comments.
+
+## Automated event-driven lifecycle
+
+The repository-owned CLI manages the event-driven workflow and its GitHub
+settings. It requires Node.js 24, Git, and an authenticated `gh` CLI with
+administration access to the consuming repository. Run it from an updated
+`sd-github-review` checkout and point `--target` at the local consumer
+checkout.
+
+Preview and install the default OpenRouter/Kimi K2.6 configuration:
+
+```sh
+node scripts/install-consumer.mjs install --target /path/to/consumer --set-secret --dry-run
+node scripts/install-consumer.mjs install --target /path/to/consumer --set-secret
+```
+
+`--set-secret` delegates the hidden provider-key prompt to `gh secret set`.
+For non-interactive automation, pass the key only through standard input:
+
+```sh
+printf '%s' "$PR_AGENT_KEY" | node scripts/install-consumer.mjs install \
+  --target /path/to/consumer --secret-stdin
+```
+
+Do not place the key directly on the command line. The installer never stores
+it in `.github/sd-github-review.json`, its plan, or JSON output.
+
+To select another supported single-key provider or different tier models, set
+all three values explicitly. Except for OpenAI, each model must use the
+provider-prefixed form enforced by the workflow:
+
+```sh
+node scripts/install-consumer.mjs install --target /path/to/consumer \
+  --provider gemini \
+  --cheap-model gemini/replace-with-cheap-model-id \
+  --deep-model gemini/replace-with-deep-model-id \
+  --set-secret
+```
+
+After updating this source checkout to a reviewed release, inspect and apply a
+consumer update. Omitted provider/model options preserve the manifest's current
+configuration:
+
+```sh
+node scripts/install-consumer.mjs check --target /path/to/consumer
+node scripts/install-consumer.mjs update --target /path/to/consumer --dry-run
+node scripts/install-consumer.mjs update --target /path/to/consumer
+```
+
+`check` is read-only and returns nonzero for local or GitHub drift. Add `--json`
+for machine-readable output.
+
+The installer writes the managed workflow and a `pending` manifest before it
+changes GitHub settings, then marks the manifest `active` after every mutation
+succeeds. It never commits or pushes the consumer checkout. If a GitHub command
+fails, do not commit the files; correct the permission or configuration issue
+and rerun the same install/update command. The recorded ownership makes that
+retry idempotent. A workflow edited after installation is preserved and blocks
+automatic update or uninstall until the operator reconciles it.
+
+Uninstall requires confirmation. It removes the managed files and variables
+created by the installer, but preserves secrets and labels by default because
+they may be shared:
+
+```sh
+node scripts/install-consumer.mjs uninstall --target /path/to/consumer --dry-run
+node scripts/install-consumer.mjs uninstall --target /path/to/consumer --yes
+```
+
+Add `--remove-secret` to delete `PR_AGENT_MODEL_API_KEY`. Add
+`--remove-labels` to delete only labels that the manifest records as created
+by this installer; pre-existing labels remain. Historical PR-Agent comments
+and Actions runs are not deleted.
 
 ## Configure the provider
 
@@ -122,7 +196,7 @@ See PR-Agent's
 and
 [secret template](https://github.com/The-PR-Agent/pr-agent/blob/v0.39.0/pr_agent/settings/.secrets_template.toml).
 
-## Install the event-driven workflow
+## Manual event-driven workflow installation
 
 1. Copy [`examples/pr-agent-router.yml`](examples/pr-agent-router.yml) to the
    consuming repository, for example as
@@ -242,7 +316,9 @@ upstream GitHub Action, whose Dockerfile inherits a floating image tag.
 
 ## Uninstall or roll back
 
-Disable or remove the installed workflow, then remove
-`PR_AGENT_MODEL_API_KEY`, `PR_AGENT_MODEL_PROVIDER`, and the backend/model
-variables if nothing else uses them. Existing PR-Agent comments and durable
-Check Run receipts remain as historical GitHub records.
+For an installer-managed event workflow, use the guarded uninstall command in
+the [automated lifecycle section](#automated-event-driven-lifecycle). For a
+manual event-driven or durable installation, disable or remove the installed
+workflow, then remove `PR_AGENT_MODEL_API_KEY`, `PR_AGENT_MODEL_PROVIDER`, and
+the backend/model variables if nothing else uses them. Existing PR-Agent
+comments and durable Check Run receipts remain as historical GitHub records.

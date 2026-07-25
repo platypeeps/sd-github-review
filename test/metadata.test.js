@@ -10,6 +10,7 @@ import {
   prohibitedPublishedMetadataReason,
   validateMetadata,
 } from "../scripts/validate-action-metadata.mjs";
+import { SUPPORTED_PROVIDERS } from "../scripts/consumer-installer.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -144,6 +145,10 @@ test("publishes pinned standalone and durable PR-Agent workflows", async () => {
       model: "codestral/configured-model",
     },
   ];
+  assert.deepEqual(
+    providerMappings.map(({ provider }) => provider).sort(),
+    [...SUPPORTED_PROVIDERS].sort(),
+  );
 
   assert.deepEqual(standalone.workflow.permissions, {
     contents: "read",
