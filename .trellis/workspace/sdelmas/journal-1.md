@@ -742,3 +742,43 @@ Documented the bounded adoption evidence, recorded the no-build decision, comple
 ### Next Steps
 
 - None - task complete
+
+
+## Session 19: Select Kimi K2.6 for PR-Agent pilot
+
+**Date**: 2026-07-24
+**Task**: Select Kimi K2.6 for PR-Agent pilot
+**Branch**: `codex/use-kimi-26-for-pr-agent-pilot`
+
+### Summary
+
+Updated the pending PR-Agent pilot plan and setup guidance to use Kimi K2.6 through the existing OpenRouter integration while retaining generic Gemini support.
+
+### Main Changes
+
+- Documented the exact OpenRouter provider, model IDs, and consumer-owned secret for the bounded Kimi K2.6 pilot.
+- Recorded Kimi K2.6 as the pending adapter pilot choice without adding a new provider contract or implicit Gemini fallback.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0e738ae` | docs: use Kimi K2.6 for PR-Agent pilot |
+
+### Testing
+
+- [OK] Trellis task context validation
+- [OK] npm run check
+- [OK] npm run validate:metadata
+- [OK] SD review full-check passed with Prism and Gito disabled
+- [OK] GitHub CI passed and Copilot reported no comments
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Run the bounded credentialed Kimi K2.6 pilot after the capped OpenRouter key
+  and provider-use authority are available.

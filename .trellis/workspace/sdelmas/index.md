@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 18
+- **Total Sessions**: 19
 - **Last Active**: 2026-07-24
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~740 | Active |
+| `journal-1.md` | ~779 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 19 | 2026-07-24 | Select Kimi K2.6 for PR-Agent pilot | `0e738ae` | `codex/use-kimi-26-for-pr-agent-pilot` |
 | 18 | 2026-07-24 | Close setup automation evaluation | `bdb05e8`, `adcf1c0`, `5fb6116` | `codex/close-setup-automation-no-build` |
 | 17 | 2026-07-24 | Publish v0.1.0 and complete consumer smoke | `d6cbb69`, `87f519a`, `178e71a`, `938ab6d`, `b4dc415`, `b977696`, `73a71b6`, `b803bc3`, `f95c39e`, `b652b2b`, `0216228` | `codex/complete-v010-release-consumer-smoke` |
 | 16 | 2026-07-23 | Add PR-Agent adapter support | `b2bf702`, `000210b` | `codex/add-pr-agent-support` |
