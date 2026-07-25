@@ -92,6 +92,23 @@ with `openrouter/`. For example, an OpenRouter model ID shaped as
 also require `custom_model_max_tokens` in `.pr_agent.toml`; the workflow does
 not guess that value.
 
+#### Kimi K2.6 pilot
+
+The current pilot uses Kimi K2.6 through the existing OpenRouter mapping; it
+does not add a separate `kimi` provider or credential shape. Configure:
+
+```text
+PR_AGENT_MODEL_PROVIDER=openrouter
+CHEAP_REVIEW_MODEL=openrouter/moonshotai/kimi-k2.6
+DEEP_REVIEW_MODEL=openrouter/moonshotai/kimi-k2.6
+```
+
+Store the OpenRouter API key only in the `PR_AGENT_MODEL_API_KEY` Actions
+secret. Using the same model for both tiers keeps the first credentialed pilot
+bounded; the router still records the selected `cheap` or `deep` policy tier.
+Introduce a different tier model only as an explicit later configuration
+decision, not as an undocumented fallback.
+
 ### Other upstream providers
 
 PR-Agent v0.39.0 also documents or implements configuration for Azure OpenAI,
