@@ -58,7 +58,6 @@ retention policy, or parameter-support requirement.
 
 ## Notes
 
-- Complex-leaning task (2026-07-25 reconciliation): cross-runtime integration
-  tests and policy enforcement suggest `design.md` + `implement.md` are needed
-  before `task.py start`; add them (or record an explicit lightweight
-  designation) at review.
+- Complex task (review decision 2026-07-25): cross-runtime policy translation,
+  fail-closed selection, and integration evidence require the accompanying
+  `design.md` and `implement.md` before `task.py start`.

@@ -63,6 +63,21 @@ separate child contracts and future implementation slices.
   workload authentication, PostgreSQL deployment, and secret-management path
   in the selected private repository.
 
+## Child Deliverables
+
+- `07-25-define-review-candidate-catalog` owns immutable candidate, prompt,
+  capability, and safe-projection contracts.
+- `07-25-define-review-budget-ledger` owns authoritative observations, pools,
+  leases, and atomic reservations.
+- `07-25-define-review-usage-reconciliation` owns actual usage, cost,
+  release, overrun, and unknown-usage semantics.
+- `07-25-define-deferred-review-recovery` owns deferred lifecycle and
+  exact-head recovery.
+- `07-25-define-finding-adjudication-evidence-store` owns append-only trusted
+  adjudication persistence and conformance.
+- `07-25-define-review-data-retention-policy` owns retention, purge, legal
+  hold, transfer, and coverage contracts.
+
 ## Acceptance Criteria
 
 - [ ] Versioned catalog and operation schemas have valid, invalid, stale,

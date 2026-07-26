@@ -7,7 +7,7 @@ label controls.
 
 ## Requirements
 
-- Generate one complete `.github/sd-review.yml` for an explicitly selected
+- Generate one complete routed-review source file for an explicitly selected
   mode: explicit direct-handler profiles and/or local-attestation policies for
   standalone, or exact catalog pin, cheap/deep chains, slots, completion, and
   explicit per-lane `budgetExhaustion.merge` policy for managed.

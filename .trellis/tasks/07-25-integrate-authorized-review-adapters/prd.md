@@ -45,6 +45,13 @@ integration and isolation gates.
   untrusted PR code, and other child operations.
 - Make replay/rerequest handling idempotent and preserve exact-head correlation.
 
+## Child Deliverables
+
+- `07-25-integrate-copilot-review-adapter` owns native Copilot request,
+  observation, rerequest, and permission boundaries.
+- `07-25-integrate-pr-agent-review-adapter` owns external candidate preflight,
+  secret isolation, exact model/profile execution, and acknowledgment.
+
 ## Acceptance Criteria
 
 - [ ] Native Copilot and external candidates execute only after matching durable

@@ -52,6 +52,7 @@ future models may expose reasoning controls with material cost impact.
 
 ## Notes
 
-- Research-first task (2026-07-25 reconciliation): implementation is
-  conditional on proven capability support; PRD-only may be sufficient —
-  record the lightweight-vs-complex decision at review before `task.py start`.
+- Complex research-first task (review decision 2026-07-25): capability
+  discovery, provider-neutral policy translation, and ignored-setting evidence
+  require the accompanying `design.md` and `implement.md`. Unsupported models
+  still complete with an explicit omit decision rather than a no-op setting.

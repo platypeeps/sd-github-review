@@ -7,11 +7,11 @@ the managed compiled-manifest lifecycle.
 
 ## Background
 
-The accepted version-2 design gives consumers one human-edited
-`.github/sd-review.yml` and gives the runtime one generated, digest-bound
-`.github/sd-github-review.json`. This task owns the repository-facing lifecycle
-around those artifacts; the sibling compiler/runtime task owns their schemas
-and semantic compilation. This task is an integration roadmap; fresh
+The accepted version-2 design gives consumers one human-edited routed-review
+source and gives the runtime one generated, digest-bound managed manifest.
+This task owns the repository-facing lifecycle around those artifacts; the
+sibling compiler/runtime task owns their schemas and semantic compilation.
+This task is an integration roadmap; fresh
 scaffolding, one-time migration, and compiled promotion are separate children.
 
 ## Requirements
@@ -48,6 +48,15 @@ scaffolding, one-time migration, and compiled promotion are separate children.
 - Publish the stable assurance/gate Checks on the current head before retiring
   a legacy Check. Diagnose branch protection unless only `sd-review / gate` is
   required; never mutate repository rules without explicit authorization.
+
+## Child Deliverables
+
+- `07-25-scaffold-routed-review-source` owns fresh explicit-mode source
+  generation and collision-safe dry runs.
+- `07-25-migrate-routed-review-configuration-v2` owns the one-time legacy
+  conversion and reviewed mode migration.
+- `07-25-manage-compiled-review-configuration-promotion` owns semantic preview,
+  pending/active promotion, recovery, and rollback.
 
 ## Acceptance Criteria
 
