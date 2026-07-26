@@ -1,4 +1,4 @@
-# Define operation specific Action contract
+# Define operation-specific Action contract
 
 ## Goal
 

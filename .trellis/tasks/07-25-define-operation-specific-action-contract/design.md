@@ -1,4 +1,4 @@
-# Define operation specific Action contract Design
+# Define operation-specific Action contract Design
 
 ## Boundary
 

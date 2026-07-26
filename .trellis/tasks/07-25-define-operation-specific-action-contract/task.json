@@ -1,7 +1,7 @@
 {
   "id": "define-operation-specific-action-contract",
   "name": "define-operation-specific-action-contract",
-  "title": "Define operation specific Action contract",
+  "title": "Define operation-specific Action contract",
   "description": "Remediate audit finding A-010 with a machine-aligned operation contract for Action inputs, permissions, outputs, and documentation.",
   "status": "planning",
   "dev_type": null,

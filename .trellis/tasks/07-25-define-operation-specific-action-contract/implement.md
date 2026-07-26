@@ -1,4 +1,4 @@
-# Define operation specific Action contract Implementation Plan
+# Define operation-specific Action contract Implementation Plan
 
 1. Inventory operation-specific inputs, outputs, and permissions.
 2. Define the tagged contract and compatibility mapping.
