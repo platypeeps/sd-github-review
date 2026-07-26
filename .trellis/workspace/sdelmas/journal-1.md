@@ -1138,3 +1138,43 @@ Added configurable deep or Copilot high-risk routing across standalone and durab
 ### Next Steps
 
 - None - task complete
+
+
+## Session 29: Refresh sd-ai-command-pack to 0.54.0
+
+**Date**: 2026-07-26
+**Task**: Refresh sd-ai-command-pack to 0.54.0
+**Branch**: `codex/refresh-sd-ai-command-pack-0-54-0`
+
+### Summary
+
+Installed the immutable v0.54.0 command-pack release, verified provenance and managed targets, and completed the guarded PR review lifecycle.
+
+### Main Changes
+
+- Created and completed a dedicated Trellis rollout task.
+- Refreshed all configured Claude, Gemini, GitHub, and OpenCode command-pack surfaces to v0.54.0.
+- Verified exact release provenance and retained repository-owned integration context.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a3759488ef445254f7c8d07a544b192cc186c3a8` | chore(task): start command pack refresh |
+| `55f4db89168c6c6249a82be8743397c3211582cb` | chore: refresh sd-ai-command-pack to 0.54.0 |
+
+### Testing
+
+- [OK] install audit passed for 174/174 managed targets
+- [OK] npm ci and npm test passed (136 tests)
+- [OK] npm run check and npm run validate:metadata passed
+- [OK] typed sd-check passed 7/7 and GitHub CI passed
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
