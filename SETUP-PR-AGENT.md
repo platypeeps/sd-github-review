@@ -1,8 +1,10 @@
 # Set up PR-Agent review
 
 This guide configures PR-Agent as the external reviewer for the router's
-`cheap` and `deep` routes. The native `copilot` route remains available for
-sensitive, unusually large, or explicitly escalated changes.
+`cheap` and `deep` routes. The supplied profiles set `high-risk-route: deep`,
+so sensitive and unusually large automatic reviews use PR-Agent's configured
+deep model. The native `copilot` route remains available through an explicit
+mode, label, command, or durable request.
 
 The supplied workflows automate routing and PR-Agent execution after they are
 installed. The lifecycle installer can provision the supported event-driven
@@ -88,6 +90,13 @@ node scripts/install-consumer.mjs check --target /path/to/consumer
 node scripts/install-consumer.mjs update --target /path/to/consumer --dry-run
 node scripts/install-consumer.mjs update --target /path/to/consumer
 ```
+
+Managed updates also adopt the current workflow routing profile. In this
+release that intentionally moves automatic sensitive and threshold-bound
+reviews from native Copilot to the configured PR-Agent `deep` model; provider
+and model values remain unchanged. To retain hybrid automatic escalation, set
+`high-risk-route: copilot` in a manually owned workflow instead of relying on
+the managed template.
 
 `check` is read-only and returns nonzero for local or GitHub drift. Add `--json`
 for machine-readable output.
@@ -231,12 +240,14 @@ and
 
    `issues: write` and `pull-requests: write` allow PR-Agent to publish its
    conversation comment and allow the router to request Copilot when that
-   route is selected. The workflow does not need contents write access.
+   route is selected explicitly. The workflow does not need contents write
+   access.
 5. Add the shared manual-routing labels described in
    [`README.md`](README.md#2-configure-shared-routing-controls).
 6. Adjust the action's `sensitive-paths`, thresholds, command trust settings,
-   or draft policy as needed. The default automatic-selection rules are in
-   [`DESIGN.md`](DESIGN.md#automatic-selection).
+   `high-risk-route`, or draft policy as needed. The supplied value is `deep`;
+   changing it to `copilot` restores native automatic escalation. The complete
+   selection rules are in [`DESIGN.md`](DESIGN.md#automatic-selection).
 
 Repository secrets are not supplied to ordinary `pull_request` workflows from
 forks, so the example skips PR-Agent for fork-originated pull-request events.

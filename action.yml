@@ -72,11 +72,15 @@ inputs:
     description: Pull request number. Usually inferred from the event payload.
     required: false
   changed-line-threshold:
-    description: In auto mode, additions plus deletions at or above this value route to Copilot.
+    description: In auto mode, additions plus deletions at or above this value select high-risk-route.
     required: false
     default: "800"
+  high-risk-route:
+    description: Route used for sensitive paths and changes at the line threshold. One of deep or copilot.
+    required: false
+    default: copilot
   sensitive-paths:
-    description: Comma- or newline-separated glob patterns that route to Copilot in auto mode.
+    description: Comma- or newline-separated glob patterns that select high-risk-route in auto mode.
     required: false
     default: |-
       **/auth/**

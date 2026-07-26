@@ -84,6 +84,8 @@ test("publishes pinned standalone and durable PR-Agent workflows", async () => {
   };
   const standalone = await loadWorkflow("pr-agent-router.yml");
   const durable = await loadWorkflow("pr-agent-on-demand-review-router.yml");
+  const genericStandalone = await loadWorkflow("review-router.yml");
+  const pilot = await loadWorkflow("pilot-router.yml");
   const genericDurable = await loadWorkflow("on-demand-review-router.yml");
   const digestReference =
     "pragent/pr-agent@sha256:cae31b51b65b5c978a3b2a978d96e89e6a4c5bcd81cb2553fd8dad0251c3a23e";
@@ -256,6 +258,16 @@ test("publishes pinned standalone and durable PR-Agent workflows", async () => {
   const preflight = durableSteps.find((step) => step.id === "pr-agent-config");
   const durableRoute = durableSteps.find((step) => step.id === "review");
   const genericDurableRoute = genericDurableSteps.find((step) => step.id === "review");
+  const standaloneRoute = standalone.workflow.jobs.route.steps.find((step) => step.id === "review");
+  const genericStandaloneRoute = genericStandalone.workflow.jobs.route.steps.find(
+    (step) => step.id === "review",
+  );
+  const pilotRoute = pilot.workflow.jobs.route.steps.find((step) => step.id === "review");
+  assert.equal(standaloneRoute.with["high-risk-route"], "deep");
+  assert.equal(durableRoute.with["high-risk-route"], "deep");
+  assert.equal(genericStandaloneRoute.with["high-risk-route"], undefined);
+  assert.equal(pilotRoute.with["high-risk-route"], undefined);
+  assert.equal(genericDurableRoute.with["high-risk-route"], undefined);
   const durableInputs = durable.workflow.on.workflow_dispatch.inputs;
   const genericDurableInputs = genericDurable.workflow.on.workflow_dispatch.inputs;
   for (const control of ["rerequest-authorized", "independent-review-floor"]) {

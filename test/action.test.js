@@ -158,6 +158,29 @@ test("automatic sensitive routing requests Copilot once and reports outputs", as
   assert.match(harness.logs[0], /Selected copilot for PR #23/u);
 });
 
+test("automatic sensitive routing can run the external deep reviewer without requesting Copilot", async () => {
+  const harness = createHarness({ files: ["src/auth/session.js"] });
+
+  const result = await harness.run({
+    event: { action: "opened", pull_request: basePullRequest },
+    env: {
+      "INPUT_SENSITIVE-PATHS": "**/auth/**",
+      "INPUT_HIGH-RISK-ROUTE": "deep",
+      "INPUT_DEEP-MODEL": "deep-model",
+    },
+  });
+
+  assert.equal(result.decision.route, "deep");
+  assert.equal(harness.calls.listPullRequestFiles, 1);
+  assert.equal(harness.calls.getRequestedReviewers, 0);
+  assert.equal(harness.calls.listPullRequestReviews, 0);
+  assert.deepEqual(harness.calls.requestReviewer, []);
+  assert.equal(harness.outputs.get("model"), "deep-model");
+  assert.equal(harness.outputs.get("copilot-requested"), "false");
+  assert.equal(harness.outputs.get("run-external-reviewer"), "true");
+  assert.match(harness.logs[0], /Selected deep for PR #23/u);
+});
+
 test("does not duplicate an existing Copilot review request", async () => {
   const harness = createHarness({
     requestedUsers: [{ login: "copilot-pull-request-reviewer[bot]" }],
@@ -216,6 +239,13 @@ test("rejects invalid inputs and escapes workflow error annotations", async () =
       env: { INPUT_MODE: "expensive" },
     }),
     /mode must be one of/u,
+  );
+  await assert.rejects(
+    harness.run({
+      event: { action: "opened", pull_request: basePullRequest },
+      env: { "INPUT_HIGH-RISK-ROUTE": "cheap" },
+    }),
+    /high-risk-route must be deep or copilot/u,
   );
   assert.equal(annotationEscape("bad%value\nnext"), "bad%25value%0Anext");
   assert.equal(errorAnnotation(new Error("bad\nvalue")).startsWith("::error::Error: bad%0Avalue"), true);

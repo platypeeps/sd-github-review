@@ -24,6 +24,7 @@ jobs:
           github-token: ${{ github.token }}
           cheap-model: ${{ vars.CHEAP_REVIEW_MODEL }}
           deep-model: ${{ vars.DEEP_REVIEW_MODEL }}
+          high-risk-route: deep
 
       - name: Validate PR-Agent configuration
         id: pr-agent-config

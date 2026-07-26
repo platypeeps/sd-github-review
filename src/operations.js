@@ -8,7 +8,13 @@ import {
   stableProtocolJson,
 } from "./protocol.js";
 import { ReceiptStore } from "./receipt.js";
-import { findSensitiveFiles, normalizeConfidence, normalizeMode, parseList } from "./router.js";
+import {
+  findSensitiveFiles,
+  normalizeConfidence,
+  normalizeEscalationRoute,
+  normalizeMode,
+  parseList,
+} from "./router.js";
 
 const OPERATIONS = new Set(["route", "acknowledge", "finalize", "query"]);
 const ADAPTER_OUTCOMES = new Set(["success", "failure", "cancelled", "skipped"]);
@@ -345,19 +351,21 @@ async function routeOperation({ request, client, store, env, now }) {
     parseList(input("sensitive-paths", "", env)),
   );
   const successor = request.supersedes ? await store.compareSuccessor(request) : null;
-  const lowConfidenceRoute = normalizeMode(
+  const lowConfidenceRoute = normalizeEscalationRoute(
     input("low-confidence-route", "deep", env),
     "low-confidence-route",
   );
-  if (!new Set(["deep", "copilot"]).has(lowConfidenceRoute)) {
-    throw new Error("low-confidence-route must be deep or copilot");
-  }
+  const highRiskRoute = normalizeEscalationRoute(
+    input("high-risk-route", "copilot", env),
+    "high-risk-route",
+  );
   const decision = selectProtocolRoute({
     request,
     routingContext: {
       changedLines,
       changedLineThreshold,
       sensitiveFiles,
+      highRiskRoute,
       confidence: normalizeConfidence(input("confidence", "unknown", env)),
       lowConfidenceRoute,
       draft: Boolean(pullRequest.draft),

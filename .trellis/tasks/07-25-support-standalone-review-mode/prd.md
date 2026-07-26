@@ -100,6 +100,12 @@ Version 2 therefore has two explicit modes, never an inferred `auto` mode:
   compilation and mixed-mode rejection.
 - Existing fixed Copilot and PR-Agent adapter profiles and setup discovery.
 
+## Child Tasks
+
+- `07-26-route-high-risk-to-external-reviewer` delivers the standalone routing
+  increment that lets high-risk changes use the configured deep external
+  reviewer while retaining direct Copilot as an explicit route.
+
 ## Out of Scope
 
 - Local emulation of shared budgets, a private catalog, or trusted

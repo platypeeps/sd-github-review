@@ -1,4 +1,5 @@
 const MODES = new Set(["auto", "cheap", "deep", "copilot", "none"]);
+const ESCALATION_ROUTES = new Set(["deep", "copilot"]);
 const CONFIDENCE_LEVELS = new Set(["unknown", "high", "medium", "low"]);
 const EXPLICIT_LABELS = new Map([
   ["review:cheap", "cheap"],
@@ -13,6 +14,14 @@ export function normalizeMode(value, field = "mode") {
     throw new Error(`${field} must be one of: ${[...MODES].join(", ")}`);
   }
   return mode;
+}
+
+export function normalizeEscalationRoute(value, field) {
+  const route = String(value ?? "").trim().toLowerCase();
+  if (!ESCALATION_ROUTES.has(route)) {
+    throw new Error(`${field} must be deep or copilot`);
+  }
+  return route;
 }
 
 export function normalizeConfidence(value) {
@@ -128,6 +137,7 @@ export function routeReview({
   changedLines,
   changedLineThreshold,
   sensitiveFiles,
+  highRiskRoute = "copilot",
   confidence,
   lowConfidenceRoute,
 }) {
@@ -148,13 +158,13 @@ export function routeReview({
   }
   if (sensitiveFiles.length > 0) {
     return {
-      route: "copilot",
+      route: highRiskRoute,
       reason: `${sensitiveFiles.length} sensitive file${sensitiveFiles.length === 1 ? "" : "s"} changed`,
     };
   }
   if (changedLines >= changedLineThreshold) {
     return {
-      route: "copilot",
+      route: highRiskRoute,
       reason: `${changedLines} changed lines met the ${changedLineThreshold} line threshold`,
     };
   }

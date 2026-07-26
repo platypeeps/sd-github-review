@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { normalizeMode, routeReview } from "./router.js";
+import { normalizeEscalationRoute, normalizeMode, routeReview } from "./router.js";
 
 export const PROTOCOL_SCHEMA_MAJOR = 1;
 
@@ -996,9 +996,13 @@ export function selectProtocolRoute({ request: requestValue, routingContext = {}
     "routingContext.confidence",
     CONFIDENCE_LEVELS,
   );
-  const lowConfidenceRoute = resolvedRoute(
+  const lowConfidenceRoute = normalizeEscalationRoute(
     context.lowConfidenceRoute ?? "deep",
     "routingContext.lowConfidenceRoute",
+  );
+  const highRiskRoute = normalizeEscalationRoute(
+    context.highRiskRoute ?? "copilot",
+    "routingContext.highRiskRoute",
   );
   const draft = booleanValue(context.draft ?? false, "routingContext.draft");
   const reviewDrafts = booleanValue(context.reviewDrafts ?? false, "routingContext.reviewDrafts");
@@ -1017,6 +1021,7 @@ export function selectProtocolRoute({ request: requestValue, routingContext = {}
     changedLines,
     changedLineThreshold,
     sensitiveFiles,
+    highRiskRoute,
     confidence,
     lowConfidenceRoute,
   });
@@ -1036,7 +1041,7 @@ export function selectProtocolRoute({ request: requestValue, routingContext = {}
     "policy.independentReviewFloor",
   );
   const riskFloor = sensitiveFiles.length > 0 || changedLines >= changedLineThreshold
-    ? "copilot"
+    ? highRiskRoute
     : "none";
   const floor = strongerRoute(configuredFloor, riskFloor);
   let route = baseDecision.route;
@@ -1087,7 +1092,7 @@ export function selectProtocolRoute({ request: requestValue, routingContext = {}
   route = strongerRoute(route, floor);
   const floorApplied = route === beforeFloor ? null : floor;
   if (floorApplied) {
-    reasons.push(`independent-review floor required ${floorApplied}`);
+    reasons.push(`review floor required ${floorApplied}`);
   }
   return {
     route,

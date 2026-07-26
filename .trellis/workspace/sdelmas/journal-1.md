@@ -1105,3 +1105,36 @@ Resolved final Copilot findings across audit wording, task targeting, operation 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 28: Route high-risk PR-Agent reviews
+
+**Date**: 2026-07-26
+**Task**: Route high-risk PR-Agent reviews
+**Branch**: `codex/route-high-risk-to-external-reviewer`
+
+### Summary
+
+Added configurable deep or Copilot high-risk routing across standalone and durable modes, set managed PR-Agent profiles to deep, preserved explicit Copilot routing, and validated runtime, metadata, installer update, and documentation behavior.
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4ca429b` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

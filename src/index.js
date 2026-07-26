@@ -8,6 +8,7 @@ import {
   isTrustedCommand,
   modeFromLabels,
   normalizeConfidence,
+  normalizeEscalationRoute,
   normalizeMode,
   parseList,
   parseReviewCommand,
@@ -127,13 +128,14 @@ export async function runAction({
   const emitSummary = summaryWriter ?? ((summary) => writeSummary(summary, { env }));
   const configuredMode = normalizeMode(input("mode", "auto", env));
   const confidence = normalizeConfidence(input("confidence", "unknown", env));
-  const lowConfidenceRoute = normalizeMode(
+  const lowConfidenceRoute = normalizeEscalationRoute(
     input("low-confidence-route", "deep", env),
     "low-confidence-route",
   );
-  if (!new Set(["deep", "copilot"]).has(lowConfidenceRoute)) {
-    throw new Error("low-confidence-route must be deep or copilot");
-  }
+  const highRiskRoute = normalizeEscalationRoute(
+    input("high-risk-route", "copilot", env),
+    "high-risk-route",
+  );
 
   const pullRequestNumber = Number.parseInt(
     input("pr-number", "", env) || String(event.pull_request?.number ?? event.issue?.number ?? ""),
@@ -225,6 +227,7 @@ export async function runAction({
     changedLines,
     changedLineThreshold,
     sensitiveFiles,
+    highRiskRoute,
     confidence,
     lowConfidenceRoute,
   });

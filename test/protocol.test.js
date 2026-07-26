@@ -411,6 +411,7 @@ test("explicit protocol routes retain precedence over local evidence and risk fl
       changedLines: 5_000,
       changedLineThreshold: 800,
       sensitiveFiles: ["src/security.js"],
+      highRiskRoute: "deep",
     },
     policy: { independentReviewFloor: "copilot" },
   });
@@ -447,6 +448,10 @@ test("confidence validation identifies the exact protocol field", () => {
   assert.throws(
     () => selectProtocolRoute({ request, routingContext: { confidence: "impossible" } }),
     /routingContext\.confidence must be one of/u,
+  );
+  assert.throws(
+    () => selectProtocolRoute({ request, routingContext: { highRiskRoute: "cheap" } }),
+    /routingContext\.highRiskRoute must be deep or copilot/u,
   );
 });
 
@@ -508,6 +513,47 @@ test("sensitive and large-change floors cannot be bypassed by local evidence", (
     assert.equal(decision.route, "copilot");
     assert.equal(decision.floorApplied, "copilot");
   }
+});
+
+test("configured deep high-risk floors cannot be bypassed and may be strengthened", () => {
+  const automatic = requestByName.get("automatic with exact-head local evidence");
+  for (const routingContext of [
+    { sensitiveFiles: ["src/security.js"] },
+    { changedLines: 800, changedLineThreshold: 800 },
+  ]) {
+    const decision = selectProtocolRoute({
+      request: automatic,
+      routingContext: { ...routingContext, highRiskRoute: "deep" },
+      policy: { localEvidenceRoute: "none" },
+    });
+    assert.equal(decision.route, "deep");
+    assert.equal(decision.floorApplied, "deep");
+  }
+
+  const strengthened = selectProtocolRoute({
+    request: automatic,
+    routingContext: {
+      sensitiveFiles: ["src/security.js"],
+      highRiskRoute: "deep",
+    },
+    policy: { localEvidenceRoute: "none", independentReviewFloor: "copilot" },
+  });
+  assert.equal(strengthened.route, "copilot");
+  assert.equal(strengthened.floorApplied, "copilot");
+
+  const successor = requestByName.get("automatic successor");
+  const bookkeeping = successorByName.get("trusted bookkeeping-only successor");
+  const bookkeepingDecision = selectProtocolRoute({
+    request: successor,
+    routingContext: {
+      sensitiveFiles: ["src/security.js"],
+      highRiskRoute: "deep",
+      successorEvidence: bookkeeping,
+    },
+    policy: { allowBookkeepingNone: true },
+  });
+  assert.equal(bookkeepingDecision.route, "deep");
+  assert.equal(bookkeepingDecision.floorApplied, "deep");
 });
 
 test("configured independent-review floors apply after eligible local evidence", () => {

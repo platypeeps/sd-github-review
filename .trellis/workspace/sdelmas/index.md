@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 27
-- **Last Active**: 2026-07-25
+- **Total Sessions**: 28
+- **Last Active**: 2026-07-26
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1102 | Active |
+| `journal-1.md` | ~1140 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 28 | 2026-07-26 | Route high-risk PR-Agent reviews | `4ca429b` | `codex/route-high-risk-to-external-reviewer` |
 | 27 | 2026-07-25 | Converge audit remediation planning PR | `89e05b`, `3a256c`, `f69e617` | `codex/use-qwen-for-cheap-pr-agent-reviews` |
 | 26 | 2026-07-25 | Repository audit remediation planning and task repair | `cc1e755` | `codex/use-qwen-for-cheap-pr-agent-reviews` |
 | 25 | 2026-07-25 | Converge routed-review planning wave | `41ded21`, `6d53117`, `69e7d18`, `6605475` | `codex/routed-review-planning-wave` |
