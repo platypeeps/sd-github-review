@@ -1025,3 +1025,83 @@ Repaired planning metadata, grounded task context references, clarified retentio
 ### Next Steps
 
 - None - task complete
+
+
+## Session 26: Repository audit remediation planning and task repair
+
+**Date**: 2026-07-25
+**Task**: Repository audit remediation planning and task repair
+**Branch**: `codex/use-qwen-for-cheap-pr-agent-reviews`
+
+### Summary
+
+Recorded the repository audit, created explicit Trellis ownership for all findings, repaired pre-existing task and configuration metadata, and published the clean planning wave.
+
+### Main Changes
+
+- Added the audit ledger, report, remediation parent, and dedicated finding tasks while extending existing owners.
+- Repaired task hierarchy bases, parent-child maps, future-path documentation, and grounded context manifests across the planning backlog.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cc1e755` | Add audit remediation backlog and repair task metadata |
+
+### Testing
+
+- [OK] Review preflight (0 failures)
+- [OK] npm test (130/130 at original planning capture)
+- [OK] Syntax, metadata, 151-target install audit, and diff checks
+
+### Status
+
+[OK] **Planning captured and published; implementation remains open**
+
+### Next Steps
+
+- Implement the audit-remediation children in severity order. Keep
+  `07-25-support-standalone-review-mode` open until its implementation and
+  acceptance criteria are complete.
+
+
+## Session 27: Converge audit remediation planning PR
+
+**Date**: 2026-07-25
+**Task**: Converge audit remediation planning PR
+**Branch**: `codex/use-qwen-for-cheap-pr-agent-reviews`
+
+### Summary
+
+Resolved final Copilot findings across audit wording, task targeting, operation terminology, and ledger-delta documentation, then normalized the stacked PR onto merged main.
+
+### Main Changes
+
+- Corrected audit wording and normalized remediation task base targets.
+- Standardized operation-specific terminology across task contracts.
+- Clarified which audit ledger changes belong to this PR.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `89e05b` | fix: correct audit wording and task targets |
+| `3a256c` | docs: hyphenate operation-specific contract |
+| `f69e617` | docs: clarify audit ledger delta |
+
+### Testing
+
+- [OK] npm run check
+- [OK] npm test (131/131)
+- [OK] Review preflight (0 failures)
+- [OK] Copilot exact-head review (135/135 files, no new comments)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
