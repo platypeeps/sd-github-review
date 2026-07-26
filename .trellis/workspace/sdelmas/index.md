@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 22
-- **Last Active**: 2026-07-24
+- **Total Sessions**: 24
+- **Last Active**: 2026-07-25
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~904 | Active |
+| `journal-1.md` | ~983 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,8 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 24 | 2026-07-25 | Converge Qwen cheap-review default PR | `0c3e761`, `991be66`, `3400ad6` | `codex/qwen-cheap-review-default` |
+| 23 | 2026-07-24 | Use Qwen for cheap PR-Agent reviews | `24915bd` | `main` |
 | 22 | 2026-07-24 | Pilot durable routed-review runtime | `743c0f90358466f2a05b564f27c731a1a4d6c9b2` | `codex/pilot-routed-review-runtime-handoff` |
 | 21 | 2026-07-24 | Validate PR-Agent adapter pilot | `4f78755`, `0af452f`, `e15656d`, `88585ea` | `codex/validate-external-reviewer-adapters` |
 | 20 | 2026-07-24 | Consumer installer lifecycle | `8a41dc8191f3139806efcfbc027b84f734ef4369`, `a6352654bbbebb656d51c063d87449ca86ca916a` | `codex/add-consumer-installer` |

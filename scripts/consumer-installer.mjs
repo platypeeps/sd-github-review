@@ -9,7 +9,7 @@ export const TEMPLATE_PATH = "examples/pr-agent-router.yml";
 export const SECRET_NAME = "PR_AGENT_MODEL_API_KEY";
 export const DEFAULT_CONFIG = Object.freeze({
   provider: "openrouter",
-  cheapModel: "openrouter/moonshotai/kimi-k2.6",
+  cheapModel: "openrouter/qwen/qwen3-coder-30b-a3b-instruct",
   deepModel: "openrouter/moonshotai/kimi-k2.6",
 });
 

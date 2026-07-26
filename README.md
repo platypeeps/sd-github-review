@@ -30,8 +30,9 @@ consumer repository.
 
 From this repository checkout, use Node.js 24, Git, and an authenticated
 GitHub CLI with administration access to the consumer repository. Preview the
-default OpenRouter/Kimi K2.6 setup, then install it and enter the provider key
-through GitHub CLI's secret prompt:
+default OpenRouter setup—Qwen3-Coder 30B A3B for routine reviews and Kimi K2.6
+for deep reviews—then install it and enter the provider key through GitHub
+CLI's secret prompt:
 
 ```sh
 node scripts/install-consumer.mjs install --target /path/to/consumer --set-secret --dry-run

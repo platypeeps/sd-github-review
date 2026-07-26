@@ -47,6 +47,11 @@ node scripts/install-consumer.mjs uninstall [options]
   checked-in PR-Agent workflow. Non-OpenAI model IDs require the exact
   `<provider>/` prefix; every model is nonempty, whitespace-free, and at most
   256 characters.
+- A fresh install defaults to `openrouter`, with
+  `openrouter/qwen/qwen3-coder-30b-a3b-instruct` for `cheap` and
+  `openrouter/moonshotai/kimi-k2.6` for `deep`. An update with omitted
+  provider/model options retains the active manifest's recorded configuration;
+  changing source defaults never silently migrates an existing consumer.
 - GitHub resources are `PR_AGENT_MODEL_PROVIDER`, `CHEAP_REVIEW_MODEL`,
   `DEEP_REVIEW_MODEL`, `PR_AGENT_MODEL_API_KEY`, and the router's five review
   labels. Matching pre-existing resources are unowned and preserved.
@@ -82,11 +87,14 @@ node scripts/install-consumer.mjs uninstall [options]
 ### 5. Good/Base/Bad Cases
 
 - Good: a fresh target uses `--set-secret`; the command writes the pending
-  manifest and workflow, creates missing variables/labels/secret, then marks
-  the manifest active. A second install performs no remote mutations.
+  manifest and workflow, creates the default OpenRouter/Qwen-cheap/Kimi-deep
+  variables plus missing labels/secret, then marks the manifest active. A
+  second install performs no remote mutations.
 - Base: a target already has matching variables, labels, or secret. The
   installer records them as unowned, leaves them unchanged, and later
-  uninstall preserves them.
+  uninstall preserves them. A managed consumer update without provider/model
+  flags likewise preserves its manifest configuration even when source
+  defaults have changed.
 - Bad: an edited manifest claims ownership of an unrelated label, or the
   managed workflow has changed since its recorded hash. Decoding or lifecycle
   validation fails before deletion or overwrite.
@@ -96,6 +104,8 @@ node scripts/install-consumer.mjs uninstall [options]
 - Parse HTTPS/SSH GitHub remotes and reject repository mismatches.
 - Assert install/update convergence, source-template refresh, remote drift,
   dry-run immutability, and provider/model changes.
+- Assert a fresh install writes the exact default provider, cheap model, and
+  deep model to both its manifest and GitHub variables.
 - Simulate a mid-install GitHub failure; assert the pending manifest preserves
   ownership and a retry reaches active state without duplicate side effects.
 - Assert secret input is absent from the report, manifest, fake GitHub call

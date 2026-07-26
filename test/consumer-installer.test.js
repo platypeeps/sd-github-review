@@ -155,6 +155,20 @@ test("installs, checks, and repeats without leaking secret input", async () => {
   const manifest = await readManifest(target);
   assert.equal(manifest.state, "active");
   assert.equal(manifest.repository, REPOSITORY);
+  assert.deepEqual(manifest.configuration, {
+    provider: "openrouter",
+    cheapModel: "openrouter/qwen/qwen3-coder-30b-a3b-instruct",
+    deepModel: "openrouter/moonshotai/kimi-k2.6",
+  });
+  assert.equal(github.variables.get("PR_AGENT_MODEL_PROVIDER"), "openrouter");
+  assert.equal(
+    github.variables.get("CHEAP_REVIEW_MODEL"),
+    "openrouter/qwen/qwen3-coder-30b-a3b-instruct",
+  );
+  assert.equal(
+    github.variables.get("DEEP_REVIEW_MODEL"),
+    "openrouter/moonshotai/kimi-k2.6",
+  );
   assert.equal(manifest.resources.secret.owned, true);
   assert.equal(
     await readFile(path.join(target, WORKFLOW_PATH), "utf8"),
@@ -244,6 +258,38 @@ test("update can deliberately change an installer-owned provider and models", as
   assert.equal(github.variables.get("PR_AGENT_MODEL_PROVIDER"), "gemini");
   assert.equal(github.variables.get("CHEAP_REVIEW_MODEL"), "gemini/cheap-model");
   assert.equal(github.variables.get("DEEP_REVIEW_MODEL"), "gemini/deep-model");
+});
+
+test("update without model flags preserves an existing non-default configuration", async () => {
+  const sourceRoot = await makeSource("name: version one\n");
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  const existingConfiguration = {
+    provider: "openrouter",
+    cheapModel: "openrouter/moonshotai/kimi-k2.6",
+    deepModel: "openrouter/moonshotai/kimi-k2.6",
+  };
+
+  await runConsumerInstaller(
+    { command: "install", target, ...existingConfiguration },
+    { sourceRoot, github },
+  );
+  await writeFile(
+    path.join(sourceRoot, "examples", "pr-agent-router.yml"),
+    "name: version two\n",
+    "utf8",
+  );
+
+  await runConsumerInstaller({ command: "update", target }, { sourceRoot, github });
+
+  assert.deepEqual((await readManifest(target)).configuration, existingConfiguration);
+  assert.equal(github.variables.get("PR_AGENT_MODEL_PROVIDER"), existingConfiguration.provider);
+  assert.equal(github.variables.get("CHEAP_REVIEW_MODEL"), existingConfiguration.cheapModel);
+  assert.equal(github.variables.get("DEEP_REVIEW_MODEL"), existingConfiguration.deepModel);
+  assert.equal(
+    await readFile(path.join(target, WORKFLOW_PATH), "utf8"),
+    "name: version two\n",
+  );
 });
 
 test("refuses unmanaged workflow collisions and unowned variable conflicts", async () => {
