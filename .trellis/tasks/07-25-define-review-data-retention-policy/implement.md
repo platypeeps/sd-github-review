@@ -5,8 +5,9 @@
 2. Add the canonical `standard-v1` profile and deterministic digest fixtures.
 3. Extend the private-control-plane fake with a controllable clock, lifecycle
    scheduler, compaction, active maxima, and idempotent deletion journal.
-4. Implement the 180-day deferred expiry and 30-day terminal-detail window;
-   add 180-day unresolved-attempt expiry and 90-day operational compaction.
+4. Implement the 180-day deferred actionable window followed by 30 days of
+   deferred terminal detail; add the 180-day unresolved-attempt maximum
+   followed by 90 days of operational terminal detail before compaction.
 5. Implement 90-day observation retention, 13-month bounded event/chain/policy
    and static prompt-profile retention, 25-month anonymous aggregates, and
    35-day backup expiry.
