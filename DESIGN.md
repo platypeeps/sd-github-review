@@ -15,8 +15,8 @@ authoritative. AI review is supplemental.
 | Route | Intended use | Action behavior | Backend status |
 | --- | --- | --- | --- |
 | `cheap` | Routine, lower-risk changes | Emits the configured cheap model and `run-external-reviewer=true` | Generic adapter plus executable PR-Agent workflow supported |
-| `deep` | Changes that need a more capable external review | Emits the configured deep model and `run-external-reviewer=true` | Generic adapter plus executable PR-Agent workflow supported |
-| `copilot` | Sensitive, unusually large, or explicitly escalated changes | Requests `copilot-pull-request-reviewer[bot]` through GitHub | Native integration supported |
+| `deep` | Changes that need a more capable external review, including high-risk changes in the PR-Agent profile | Emits the configured deep model and `run-external-reviewer=true` | Generic adapter plus executable PR-Agent workflow supported |
+| `copilot` | Explicit native reviews and the generic high-risk default | Requests `copilot-pull-request-reviewer[bot]` through GitHub | Native integration supported |
 | `none` | Review intentionally disabled or event is irrelevant | Emits routing evidence without requesting a reviewer | Supported |
 
 Copilot is the only reviewer backend invoked directly by the action. The
@@ -179,8 +179,8 @@ The first applicable rule wins:
 | 2 | Trusted exact `/review` command | Command route |
 | 3 | One explicit `review:*` label | Label route |
 | 4 | Draft and `review-drafts=false` | `none` |
-| 5 | A changed path matches `sensitive-paths` | `copilot` |
-| 6 | Changed lines meet `changed-line-threshold` (default `800`) | `copilot` |
+| 5 | A changed path matches `sensitive-paths` | `high-risk-route`, default `copilot` |
+| 6 | Changed lines meet `changed-line-threshold` (default `800`) | `high-risk-route`, default `copilot` |
 | 7 | Upstream `confidence=low` | `low-confidence-route`, default `deep` |
 | 8 | No earlier rule matched | `cheap` |
 
@@ -190,10 +190,14 @@ Only `low` changes routing, and the configured escalation may be `deep` or
 `copilot`.
 
 This makes automatic routing a risk policy rather than a general model
-ranking: known structural risk or scale goes to the native Copilot path,
-uncertainty reported by an upstream reviewer goes to `deep` by default, and
-ordinary work stays on `cheap`. Selecting `copilot` does not dynamically raise
-GitHub's review-effort setting.
+ranking. Known structural risk or scale goes to `high-risk-route`; uncertainty
+reported by an upstream reviewer goes to `low-confidence-route`; and ordinary
+work stays on `cheap`. Both escalation inputs accept `deep` or `copilot`.
+Generic workflows inherit `high-risk-route=copilot`, while both PR-Agent
+profiles set it to `deep` so the configured external deep model handles
+automatic high-risk reviews. Selecting `copilot` does not dynamically raise
+GitHub's review-effort setting, and setting `high-risk-route=deep` does not
+disable explicit Copilot commands, labels, modes, or durable requests.
 
 Sensitive paths accept comma- or newline-separated glob patterns. `*` stays
 within one path segment, `**` crosses directories, and `?` matches one

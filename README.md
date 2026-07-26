@@ -9,8 +9,10 @@ A small, dependency-free GitHub Action that chooses the appropriate AI review
 tier for a pull request:
 
 - `cheap` for routine changes within configured risk limits
-- `deep` for an external premium model
-- `copilot` for sensitive or unusually large changes
+- `deep` for a more capable external model, including high-risk changes in the
+  shipped PR-Agent profile
+- `copilot` for explicit native reviews and, by default, sensitive or unusually
+  large changes in generic profiles
 - `none` when AI review is explicitly disabled
 
 Copilot is integrated directly. The `cheap` and `deep` routes emit a generic
@@ -42,6 +44,9 @@ node scripts/install-consumer.mjs install --target /path/to/consumer --set-secre
 The command copies the reviewed workflow, creates the routing variables and
 missing labels, and records ownership in a consumer-side sd-github-review.json
 manifest under the repository's GitHub metadata directory.
+The managed PR-Agent profile sends sensitive paths and changes at the line
+threshold to its configured `deep` model. An update adopts that profile while
+preserving the consumer's existing provider and cheap/deep model values.
 It never puts the provider key in an argument, manifest, or log. It also
 supports `update`, read-only `check`, and guarded `uninstall`:
 
@@ -62,10 +67,10 @@ failure recovery, and optional cleanup.
   requests Copilot directly when it selects `copilot`; no provider secret is
   required. GitHub owns model selection, and review effort is a GitHub
   repository setting rather than a per-request action input.
-- **PR-Agent plus Copilot escalation:** follow
-  [`SETUP-PR-AGENT.md`](SETUP-PR-AGENT.md). PR-Agent handles `cheap` and `deep`,
-  supports the documented single-key provider mappings, and retains the native
-  Copilot route.
+- **PR-Agent:** follow [`SETUP-PR-AGENT.md`](SETUP-PR-AGENT.md). The shipped
+  profile handles routine and high-risk automatic reviews through `cheap` and
+  `deep`, supports the documented single-key provider mappings, and retains
+  explicit native Copilot routing.
 - **Another external reviewer:** start from
   [`examples/review-router.yml`](examples/review-router.yml) and replace its
   adapter placeholder with the organization's internal review service.

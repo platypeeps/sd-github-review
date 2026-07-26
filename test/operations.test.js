@@ -473,6 +473,30 @@ test("automatic routing never mirrors sensitive paths into durable outputs", asy
   assert.equal(JSON.stringify(harness.summaries).includes("src/auth/session.js"), false);
 });
 
+test("durable high-risk routing can dispatch the configured external deep backend", async () => {
+  const request = clone(requestByName.get("automatic with exact-head local evidence"));
+  const client = new FakeGitHubClient(request.headSha);
+  client.fileNames = ["src/auth/session.js"];
+  const harness = createHarness(client);
+
+  const result = await harness.run("route", request, {
+    "INPUT_SENSITIVE-PATHS": "**/auth/**",
+    "INPUT_HIGH-RISK-ROUTE": "deep",
+    "INPUT_DEEP-BACKEND": JSON.stringify(backendByName.get("external comment backend")),
+  });
+
+  assert.equal(result.state, "started");
+  assert.equal(result.receipt.selectedRoute, "deep");
+  assert.match(result.receipt.reason, /review floor required deep/u);
+  assert.equal(result.receipt.backend.kind, "external");
+  assert.equal(result.receipt.backend.id, "pr-agent");
+  assert.equal(harness.outputs.get("run-external-reviewer"), "true");
+  assert.notEqual(harness.outputs.get("adapter-request"), "");
+  assert.equal(harness.outputs.get("sensitive-files"), "[]");
+  assert.equal(harness.outputs.get("sensitive-file-count"), "1");
+  assert.equal(client.calls.filter(([name]) => name === "requestReviewer").length, 0);
+});
+
 test("durable operations accept only credential-free HTTPS workflow URLs", async () => {
   const request = clone(requestByName.get("explicit none"));
   const client = new FakeGitHubClient(request.headSha);

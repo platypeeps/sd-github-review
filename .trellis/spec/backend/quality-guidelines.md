@@ -54,8 +54,9 @@ state, or output files.
   low-confidence evidence contributes no positive confidence.
 - Only normalized GitHub-compare successor evidence matching the declared
   prior receipt and current head may take the bookkeeping-only `none` path.
-- Sensitive/large-change and configured independent-review floors apply after
-  automatic reductions. Explicit route intent retains precedence.
+- Sensitive/large-change floors use the validated `high-risk-route`
+  (`deep|copilot`) and, together with configured independent-review floors,
+  apply after automatic reductions. Explicit route intent retains precedence.
 
 ### 4. Validation & Error Matrix
 
@@ -67,7 +68,7 @@ state, or output files.
 | New route, policy reference, or validated evidence | Preserve logical identity; change fingerprint |
 | Spoofed compatibility digest | Throw before future dispatch |
 | Non-positive local outcome with positive confidence | Throw |
-| Sensitive/large change plus local-clean reduction | Retain the Copilot floor |
+| Sensitive/large change plus local-clean reduction | Retain the configured high-risk floor |
 | Bookkeeping successor plus required remote floor | Emit the floor, not `none` |
 | Receipt/backend/finding-channel mismatch | Throw before publication |
 
@@ -345,6 +346,10 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 
 - `mode`: `auto|cheap|deep|copilot|none`; explicit configuration outranks
   commands, labels, draft gating, and automatic risk rules.
+- `high-risk-route`: `deep|copilot`, default `copilot`; both sensitive-path and
+  changed-line threshold rules select it. PR-Agent profiles opt into `deep`.
+- `low-confidence-route`: `deep|copilot`, default `deep`; it remains separate
+  from structural high-risk routing.
 - Trusted `/review <mode>` commands and `review:<mode>` labels override only
   automatic routing. Unrelated comments and labels return `none` before client
   construction.
@@ -367,6 +372,7 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 | Condition | Required behavior |
 | --- | --- |
 | Unknown mode or confidence | Throw a field-specific validation error |
+| Invalid high-risk or low-confidence route | Throw before dispatch or reviewer request |
 | Missing/invalid PR number | Throw before GitHub client construction |
 | Untrusted or unrelated comment | Emit `none`; make no GitHub request |
 | Conflicting review labels | Throw and fail the Action |

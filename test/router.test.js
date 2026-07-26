@@ -5,6 +5,7 @@ import {
   ignoredEventDecision,
   isTrustedCommand,
   modeFromLabels,
+  normalizeEscalationRoute,
   parseReviewCommand,
   resolveExplicitMode,
   routeReview,
@@ -21,6 +22,7 @@ const base = {
   changedLines: 100,
   changedLineThreshold: 800,
   sensitiveFiles: [],
+  highRiskRoute: "copilot",
   confidence: "unknown",
   lowConfidenceRoute: "deep",
 };
@@ -38,8 +40,23 @@ test("routes sensitive paths to Copilot", () => {
   assert.match(decision.reason, /sensitive file/u);
 });
 
+test("routes sensitive paths to the configured deep reviewer", () => {
+  const decision = routeReview({
+    ...base,
+    sensitiveFiles: ["src/auth/session.ts"],
+    highRiskRoute: "deep",
+  });
+  assert.equal(decision.route, "deep");
+  assert.match(decision.reason, /sensitive file/u);
+});
+
 test("routes a large pull request to Copilot", () => {
+  assert.equal(routeReview({ ...base, changedLines: 799 }).route, "cheap");
   assert.equal(routeReview({ ...base, changedLines: 800 }).route, "copilot");
+  assert.equal(
+    routeReview({ ...base, changedLines: 800, highRiskRoute: "deep" }).route,
+    "deep",
+  );
 });
 
 test("routes low confidence to the configured escalation", () => {
@@ -47,9 +64,24 @@ test("routes low confidence to the configured escalation", () => {
   assert.equal(routeReview({ ...base, confidence: "low", lowConfidenceRoute: "copilot" }).route, "copilot");
 });
 
+test("validates escalation routes through one shared contract", () => {
+  assert.equal(normalizeEscalationRoute(" DEEP ", "high-risk-route"), "deep");
+  assert.equal(normalizeEscalationRoute("copilot", "low-confidence-route"), "copilot");
+  for (const route of ["auto", "cheap", "none", ""]) {
+    assert.throws(
+      () => normalizeEscalationRoute(route, "high-risk-route"),
+      /high-risk-route must be deep or copilot/u,
+    );
+  }
+});
+
 test("explicit commands and labels override automatic risk routing", () => {
   assert.equal(routeReview({ ...base, commandMode: "none", sensitiveFiles: ["src/auth.ts"] }).route, "none");
   assert.equal(routeReview({ ...base, labelMode: "deep", changedLines: 1_000 }).route, "deep");
+  assert.equal(
+    routeReview({ ...base, commandMode: "copilot", highRiskRoute: "deep" }).route,
+    "copilot",
+  );
 });
 
 test("configured non-auto mode has highest precedence", () => {

@@ -274,9 +274,13 @@ test("update without model flags preserves an existing non-default configuration
     { command: "install", target, ...existingConfiguration },
     { sourceRoot, github },
   );
+  const managedWorkflow = await readFile(
+    path.resolve(import.meta.dirname, "..", "examples", "pr-agent-router.yml"),
+    "utf8",
+  );
   await writeFile(
     path.join(sourceRoot, "examples", "pr-agent-router.yml"),
-    "name: version two\n",
+    managedWorkflow,
     "utf8",
   );
 
@@ -288,8 +292,9 @@ test("update without model flags preserves an existing non-default configuration
   assert.equal(github.variables.get("DEEP_REVIEW_MODEL"), existingConfiguration.deepModel);
   assert.equal(
     await readFile(path.join(target, WORKFLOW_PATH), "utf8"),
-    "name: version two\n",
+    managedWorkflow,
   );
+  assert.match(managedWorkflow, /high-risk-route: deep/u);
 });
 
 test("refuses unmanaged workflow collisions and unowned variable conflicts", async () => {

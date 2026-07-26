@@ -18,7 +18,9 @@
   "commit": null,
   "pr_url": null,
   "subtasks": [],
-  "children": [],
+  "children": [
+    "07-26-route-high-risk-to-external-reviewer"
+  ],
   "parent": "07-25-compile-and-execute-budget-aware-review-plans",
   "relatedFiles": [],
   "notes": "",

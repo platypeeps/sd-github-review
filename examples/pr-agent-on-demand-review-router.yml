@@ -48,6 +48,7 @@ jobs:
           rerequest-authorized: ${{ inputs.rerequest-authorized }}
           allow-bookkeeping-none: ${{ vars.SD_REVIEW_ALLOW_BOOKKEEPING_NONE || 'false' }}
           independent-review-floor: ${{ inputs.independent-review-floor }}
+          high-risk-route: deep
 
       - name: Validate PR-Agent configuration
         id: pr-agent-config
