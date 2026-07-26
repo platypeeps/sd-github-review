@@ -944,3 +944,42 @@ Made Qwen3-Coder 30B A3B the default cheap PR-Agent model, retained Kimi K2.6 fo
 ### Next Steps
 
 - None - task complete
+
+
+## Session 24: Converge Qwen cheap-review default PR
+
+**Date**: 2026-07-25
+**Task**: Converge Qwen cheap-review default PR
+**Branch**: `codex/qwen-cheap-review-default`
+
+### Summary
+
+Resolved final Copilot findings, grounded archived task context references, and added regression coverage proving flagless consumer updates preserve an existing non-default provider and model configuration.
+
+### Main Changes
+
+- Removed and grounded obsolete archived task placeholder context records.
+- Added an end-to-end installer regression for preserving non-default provider and model settings during flagless updates.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0c3e761` | chore: remove archived task placeholders |
+| `991be66` | chore: ground archived task contexts |
+| `3400ad6` | test: preserve consumer models on flagless update |
+
+### Testing
+
+- [OK] npm run check
+- [OK] npm test (131/131)
+- [OK] Copilot exact-head review (11/11 files, no new comments)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
