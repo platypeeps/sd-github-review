@@ -983,3 +983,45 @@ Resolved final Copilot findings, grounded archived task context references, and 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 25: Converge routed-review planning wave
+
+**Date**: 2026-07-25
+**Task**: Converge routed-review planning wave
+**Branch**: `codex/routed-review-planning-wave`
+
+### Summary
+
+Repaired planning metadata, grounded task context references, clarified retention policy, and converged the stacked planning PR after Copilot review.
+
+### Main Changes
+
+- Repaired routed-review planning task metadata and parent-child topology.
+- Grounded cheap-review failover and cost-control task contexts in concrete design evidence.
+- Clarified the review-data retention detail windows.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `41ded21` | fix: repair routed-review planning metadata |
+| `6d53117` | docs: ground cheap failover task contexts |
+| `69e7d18` | docs: curate cheap cost task contexts |
+| `6605475` | docs: distinguish retention detail windows |
+
+### Testing
+
+- [OK] npm run check
+- [OK] npm test (131/131)
+- [OK] Review preflight (0 failures)
+- [OK] Copilot exact-head review (263/263 files, no new comments)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
