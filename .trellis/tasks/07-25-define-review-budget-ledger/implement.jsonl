@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "Apply atomic persistence and concurrency guidance to ledger semantics."}

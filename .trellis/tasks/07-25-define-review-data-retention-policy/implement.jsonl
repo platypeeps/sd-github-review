@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "Preserve the repository's stateless boundary while specifying private control-plane retention conformance."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Trace retention, purge, legal-hold, backup, and coverage semantics across public contracts and private enforcement."}

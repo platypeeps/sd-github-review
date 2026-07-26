@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Apply fail-closed error semantics to compiler, authorization, and runtime boundaries."}

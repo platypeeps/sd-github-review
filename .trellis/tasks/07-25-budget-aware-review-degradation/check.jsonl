@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify that every child preserves fail-closed dispatch, bounded evidence, and repository quality gates."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Check explicit exhausted, unknown, unavailable, ambiguous, and recovery outcomes without silent fallback."}

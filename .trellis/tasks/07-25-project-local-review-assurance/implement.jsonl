@@ -1,0 +1,2 @@
+{"file": ".trellis/tasks/07-25-support-local-attested-reviews/research/contract-mapping.md", "reason": "Implement the accepted local outcomes, immutable evidence, stable Checks, and trust wording."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Fail closed for stale heads, conflicting projections, and ambiguous Check writes."}

@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Keep public routing, private control-plane authority, adapters, and operator surfaces separated across the budget-aware design."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Apply deterministic protocol, receipt, exact-head, privacy, and test contracts to the integration roadmap."}

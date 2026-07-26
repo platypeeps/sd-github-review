@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Verify bounded usage evidence excludes source, prompt, credential, and provider-transcript data."}

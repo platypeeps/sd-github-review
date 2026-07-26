@@ -1,0 +1,32 @@
+{
+  "id": "implement-trusted-finding-adjudication-workflow",
+  "name": "implement-trusted-finding-adjudication-workflow",
+  "title": "Implement trusted finding adjudication workflow",
+  "description": "Validate authorized human attestations and record append-only exact-finding adjudication events without letting reviewers grade themselves.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "sdelmas",
+  "assignee": "sdelmas",
+  "createdAt": "2026-07-25",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "07-25-establish-trusted-finding-adjudication",
+  "relatedFiles": [
+    "src/operations.js",
+    "src/github.js",
+    "src/receipt.js",
+    "test/operations.test.js",
+    "test/github.test.js"
+  ],
+  "notes": "The trusted workflow derives actor authority from GitHub context and never lets a bot or finding publisher confer human trust.",
+  "meta": {}
+}
