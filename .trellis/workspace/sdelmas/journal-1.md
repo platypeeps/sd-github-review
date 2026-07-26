@@ -944,3 +944,42 @@ Made Qwen3-Coder 30B A3B the default cheap PR-Agent model, retained Kimi K2.6 fo
 ### Next Steps
 
 - None - task complete
+
+
+## Session 24: Repository audit remediation planning and task repair
+
+**Date**: 2026-07-25
+**Task**: Repository audit remediation planning and task repair
+**Branch**: `codex/use-qwen-for-cheap-pr-agent-reviews`
+
+### Summary
+
+Recorded the repository audit, created explicit Trellis ownership for all findings, repaired pre-existing task and configuration metadata, and published the clean planning wave.
+
+### Main Changes
+
+- Added the audit ledger, report, remediation parent, and 17 dedicated finding tasks while extending five existing owners.
+- Repaired task hierarchy bases, parent-child maps, future-path documentation, and grounded context manifests across the planning backlog.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cc1e755` | Add audit remediation backlog and repair task metadata |
+
+### Testing
+
+- [OK] review preflight: 0 failures
+- [OK] npm test: 130 passed
+- [OK] syntax, metadata, 151-target install audit, and diff checks passed
+
+### Status
+
+[OK] **Planning captured and published; implementation remains open**
+
+### Next Steps
+
+- Implement the audit-remediation children in severity order. Keep
+  `07-25-support-standalone-review-mode` open until its implementation and
+  acceptance criteria are complete.
