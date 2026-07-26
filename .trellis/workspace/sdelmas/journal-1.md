@@ -946,40 +946,82 @@ Made Qwen3-Coder 30B A3B the default cheap PR-Agent model, retained Kimi K2.6 fo
 - None - task complete
 
 
-## Session 24: Repository audit remediation planning and task repair
+## Session 24: Converge Qwen cheap-review default PR
 
 **Date**: 2026-07-25
-**Task**: Repository audit remediation planning and task repair
-**Branch**: `codex/use-qwen-for-cheap-pr-agent-reviews`
+**Task**: Converge Qwen cheap-review default PR
+**Branch**: `codex/qwen-cheap-review-default`
 
 ### Summary
 
-Recorded the repository audit, created explicit Trellis ownership for all findings, repaired pre-existing task and configuration metadata, and published the clean planning wave.
+Resolved final Copilot findings, grounded archived task context references, and added regression coverage proving flagless consumer updates preserve an existing non-default provider and model configuration.
 
 ### Main Changes
 
-- Added the audit ledger, report, remediation parent, and 17 dedicated finding tasks while extending five existing owners.
-- Repaired task hierarchy bases, parent-child maps, future-path documentation, and grounded context manifests across the planning backlog.
+- Removed and grounded obsolete archived task placeholder context records.
+- Added an end-to-end installer regression for preserving non-default provider and model settings during flagless updates.
 
 
 ### Git Commits
 
 | Hash | Message |
 |------|---------|
-| `cc1e755` | Add audit remediation backlog and repair task metadata |
+| `0c3e761` | chore: remove archived task placeholders |
+| `991be66` | chore: ground archived task contexts |
+| `3400ad6` | test: preserve consumer models on flagless update |
 
 ### Testing
 
-- [OK] review preflight: 0 failures
-- [OK] npm test: 130 passed
-- [OK] syntax, metadata, 151-target install audit, and diff checks passed
+- [OK] npm run check
+- [OK] npm test (131/131)
+- [OK] Copilot exact-head review (11/11 files, no new comments)
 
 ### Status
 
-[OK] **Planning captured and published; implementation remains open**
+[OK] **Completed**
 
 ### Next Steps
 
-- Implement the audit-remediation children in severity order. Keep
-  `07-25-support-standalone-review-mode` open until its implementation and
-  acceptance criteria are complete.
+- None - task complete
+
+
+## Session 25: Converge routed-review planning wave
+
+**Date**: 2026-07-25
+**Task**: Converge routed-review planning wave
+**Branch**: `codex/routed-review-planning-wave`
+
+### Summary
+
+Repaired planning metadata, grounded task context references, clarified retention policy, and converged the stacked planning PR after Copilot review.
+
+### Main Changes
+
+- Repaired routed-review planning task metadata and parent-child topology.
+- Grounded cheap-review failover and cost-control task contexts in concrete design evidence.
+- Clarified the review-data retention detail windows.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `41ded21` | fix: repair routed-review planning metadata |
+| `6d53117` | docs: ground cheap failover task contexts |
+| `69e7d18` | docs: curate cheap cost task contexts |
+| `6605475` | docs: distinguish retention detail windows |
+
+### Testing
+
+- [OK] npm run check
+- [OK] npm test (131/131)
+- [OK] Review preflight (0 failures)
+- [OK] Copilot exact-head review (263/263 files, no new comments)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
