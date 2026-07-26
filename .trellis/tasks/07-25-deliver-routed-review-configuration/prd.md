@@ -43,6 +43,11 @@ scaffolding, one-time migration, and compiled promotion are separate children.
   control routing.
 - Make install, update, check, and uninstall idempotent and preserve unrelated
   workflows, labels, secrets, repository settings, and user-owned files.
+- For audit finding A-018, express every supported first-party installation
+  profile declaratively: Copilot-only, event-driven PR-Agent, durable
+  PR-Agent, direct standalone, and local-attested. Each profile receives the
+  same ownership, dry-run, drift, update, rollback, and uninstall guarantees
+  subject to its explicit permission and credential differences.
 - Expose source/catalog/compiled digests and drift without exposing catalog
   secrets or provider credentials.
 - Publish the stable assurance/gate Checks on the current head before retiring
@@ -77,6 +82,9 @@ scaffolding, one-time migration, and compiled promotion are separate children.
       rejects legacy/default selectors.
 - [ ] Install, update, check, reapply, drift, and uninstall fixtures preserve
       unrelated consumer content.
+- [ ] Each first-party profile completes install, dry-run, check, update,
+      rollback, and uninstall round trips; profile changes produce a semantic
+      diff and never inherit permissions or secrets from another profile.
 - [ ] Candidate/slot label lifecycle tests prove install, migration, update,
       check, drift detection, and uninstall never create, adopt, mutate, or
       remove those labels; `overrides.labels` is rejected.

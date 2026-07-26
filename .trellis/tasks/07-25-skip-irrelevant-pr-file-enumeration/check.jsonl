@@ -1,0 +1,2 @@
+{"file":".trellis/tasks/07-25-skip-irrelevant-pr-file-enumeration/research/audit-finding.md","reason":"Verify the implementation closes A-014 without broadening scope."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Verify focused regressions, exact-head behavior, privacy, and full repository gates."}

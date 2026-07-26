@@ -1,0 +1,2 @@
+{"file":".trellis/tasks/07-25-define-operation-specific-action-contract/research/audit-finding.md","reason":"Verify the implementation closes A-010 without broadening scope."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Verify focused regressions, exact-head behavior, privacy, and full repository gates."}

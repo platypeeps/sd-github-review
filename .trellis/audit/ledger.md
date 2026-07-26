@@ -1,0 +1,294 @@
+# Audit ledger
+Committed cross-session audit findings managed by sd-audit-repo.
+
+## A-001 — Authorized Copilot rerequests are suppressed as duplicates
+- status: open
+- notes: Trellis owner `07-25-integrate-copilot-review-adapter`; remediation planning created 2026-07-25.
+- severity: P1 · effort: S · confidence: Verified
+- dimension: correctness
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - src/receipt.js:476 — a new authorized attempt can permit dispatch.
+  - src/operations.js:401 — a prior exact-head review suppresses the new request.
+- why: A valid rerequest creates a new receipt without requesting a new review.
+- fix: Distinguish authorized rerequests from replay while retaining pending-request deduplication.
+
+## A-002 — A PR-number override can route one PR and mutate another
+- status: open
+- notes: Trellis owner `07-25-harden-pull-request-identity-overrides`; remediation planning created 2026-07-25.
+- severity: P1 · effort: S · confidence: Verified
+- dimension: correctness
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - src/index.js:138 — the override is parsed independently and permissively.
+  - src/index.js:179 — event metadata remains the routing source.
+  - src/index.js:235 — mutations use the override target.
+- why: Routing facts and reviewer side effects can target different PRs.
+- fix: Strictly parse and bind one PR identity across metadata, reads, and mutations.
+
+## A-003 — Concurrent begins can duplicate durable receipts and wedge an identity
+- status: open
+- notes: Trellis owner `07-25-make-durable-receipt-creation-concurrency-safe`; remediation planning created 2026-07-25.
+- severity: P1 · effort: M · confidence: Verified
+- dimension: correctness
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - src/receipt.js:486 — read-before-create has no atomic uniqueness boundary.
+  - src/receipt.js:323 — duplicate logical identities make later reads fail.
+- why: Two concurrent runs can both authorize dispatch and permanently break later receipt operations.
+- fix: Elect one authoritative Check Run and reconcile duplicates before dispatch.
+
+## A-004 — Third-party PR-Agent receives durable-receipt authority
+- status: open
+- notes: Trellis owner `07-25-integrate-pr-agent-review-adapter`; remediation planning created 2026-07-25.
+- severity: P1 · effort: M · confidence: Verified
+- dimension: security
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - examples/pr-agent-on-demand-review-router.yml:28 — the reviewer job has checks write permission.
+  - examples/pr-agent-on-demand-review-router.yml:90 — the same token enters the reviewer container.
+- why: A compromised reviewer can forge receipt state used for dispatch deduplication.
+- fix: Isolate reviewer execution from the dedicated receipt-writing job and token.
+
+## A-005 — Installer writes can escape through symlinked path ancestors
+- status: open
+- notes: Trellis owner `07-25-reject-symlinked-installer-targets`; remediation planning created 2026-07-25.
+- severity: P1 · effort: M · confidence: Verified
+- dimension: security
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - scripts/consumer-installer.mjs:438 — destinations are joined without canonicalizing ancestors.
+  - scripts/consumer-installer.mjs:242 — writes and renames follow existing symlinked ancestors.
+- why: A repository-controlled symlink can redirect fixed-name writes outside the checkout.
+- fix: Reject symlinked ancestors and revalidate containment immediately before mutation.
+
+## A-006 — Shipped process boundaries are untested and CI has no coverage gate
+- status: open
+- notes: Trellis owner `07-25-test-shipped-review-process-boundaries`; remediation planning created 2026-07-25.
+- severity: P1 · effort: M · confidence: Verified
+- dimension: testing
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - test/consumer-installer.test.js:7 — tests bypass the production CLI and real GitHub CLI transport.
+  - action.yml:193 — the shipped Action entrypoint is not exercised as a process.
+  - .github/workflows/ci.yml:20 — CI enforces no coverage floor.
+- why: Entrypoint, exit, transport, stdin, and redaction regressions can remain green.
+- fix: Add subprocess boundary tests and conservative critical-file coverage gates.
+
+## A-007 — The only release lacks the current installer and working PR-Agent template
+- status: open
+- notes: Trellis owner `07-25-publish-traceable-installer-release`; remediation planning created 2026-07-25.
+- severity: P1 · effort: M · confidence: Verified
+- dimension: release-hygiene
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - README.md:38 — current guidance invokes the post-release installer.
+  - SETUP-PR-AGENT.md:19 — current docs reject the release's Docker Action pattern.
+  - v0.1.0:examples/pr-agent-router.yml:61 — the only tag retains that incompatible pattern.
+  - scripts/consumer-installer.mjs:530 — manifests omit source release identity.
+- why: Release-pinned consumers cannot follow current guidance or prove installer provenance.
+- fix: Publish a traceable release and enforce identity, migration, version, and pin synchronization.
+
+## A-008 — Routing responsibility is split across protocol, event, and mode composition
+- status: open
+- notes: Trellis owner `07-25-consolidate-routing-policy-boundaries`; remediation planning created 2026-07-25.
+- severity: P2 · effort: M · confidence: Plausible
+- dimension: architecture
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - src/protocol.js:975 — protocol code owns route policy.
+  - src/index.js:170 — standalone mode composes policy and dispatch.
+  - src/operations.js:333 — durable mode repeats composition.
+- why: Policy, codecs, and modes can drift and cannot evolve independently.
+- fix: Centralize normalized policy and shared dispatch services behind thin composition roots.
+
+## A-009 — The consumer installer is an undecomposed lifecycle subsystem
+- status: open
+- notes: Trellis owner `07-25-decompose-consumer-installer-lifecycle`; remediation planning created 2026-07-25.
+- severity: P2 · effort: M · confidence: Plausible
+- dimension: architecture
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - scripts/consumer-installer.mjs:115 — one module owns transport.
+  - scripts/consumer-installer.mjs:273 — the same module owns validation.
+  - scripts/consumer-installer.mjs:487 — the same module owns planning and mutation.
+- why: Lifecycle concerns cannot change independently as migration and rollback grow.
+- fix: Split codecs, planning, transport, persistence, and orchestration.
+
+## A-010 — The Action contract is neither operation-specific nor mechanically aligned
+- status: open
+- notes: Trellis owner `07-25-define-operation-specific-action-contract`; remediation planning created 2026-07-25.
+- severity: P2 · effort: M · confidence: Plausible
+- dimension: design
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - action.yml:6 — one global input contract covers incompatible operation needs.
+  - src/operations.js:517 — acknowledgment does not need a GitHub client.
+  - scripts/validate-action-metadata.mjs:206 — validation does not compare runtime semantics.
+- why: Metadata, runtime parsing, permissions, and documentation can drift independently.
+- fix: Define and validate a shared tagged operation contract or thin wrappers.
+
+## A-011 — Lower-priority label conflicts can block fixed modes and trusted commands
+- status: open
+- notes: Trellis owner `07-25-authorize-budget-aware-review-plans`; remediation planning created 2026-07-25.
+- severity: P2 · effort: S · confidence: Plausible
+- dimension: correctness
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - src/index.js:179 — labels are normalized before higher-priority controls.
+  - src/router.js:71 — conflicting labels throw.
+- why: Fixed mode and trusted commands cannot recover conflicting route labels.
+- fix: Apply configured and trusted-command precedence before label parsing.
+
+## A-012 — External calls have no execution timeout
+- status: open
+- notes: Trellis owner `07-25-bound-review-remote-operations`; remediation planning created 2026-07-25.
+- severity: P2 · effort: S · confidence: Plausible
+- dimension: correctness
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - src/github.js:156 — fetch has no abort signal.
+  - scripts/consumer-installer.mjs:89 — child processes have no timeout.
+- why: Network or subprocess stalls can hang finite workflows until platform termination.
+- fix: Add bounded per-attempt and child-process timeouts with explicit errors.
+
+## A-013 — An interrupted update can leave pending state that cannot resume
+- status: open
+- notes: Trellis owner `07-25-manage-compiled-review-configuration-promotion`; remediation planning created 2026-07-25.
+- severity: P2 · effort: M · confidence: Plausible
+- dimension: correctness
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - scripts/consumer-installer.mjs:633 — pending manifest is written before workflow replacement.
+  - scripts/consumer-installer.mjs:478 — the known old workflow is rejected after interruption.
+- why: Installer-owned interrupted state is indistinguishable from operator drift.
+- fix: Preserve prior hashes or stage artifacts so recovery can resume safely.
+
+## A-014 — Empty sensitive-path policy still paginates every PR file
+- status: open
+- notes: Trellis owner `07-25-skip-irrelevant-pr-file-enumeration`; remediation planning created 2026-07-25.
+- severity: P2 · effort: S · confidence: Plausible
+- dimension: performance
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - src/index.js:207 — standalone loading ignores empty patterns.
+  - src/operations.js:340 — durable routing loads files before parsing patterns.
+- why: Disabled path routing still consumes latency and GitHub quota.
+- fix: Enumerate files only when at least one sensitive pattern exists.
+
+## A-015 — Same-head rerequests load the same receipt set twice
+- status: open
+- notes: Trellis owner `07-25-reuse-receipt-snapshots-during-rerequests`; remediation planning created 2026-07-25.
+- severity: P2 · effort: S · confidence: Plausible
+- dimension: performance
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - src/receipt.js:396 — rerequest validation loads current-head records.
+  - src/receipt.js:486 — begin immediately reloads the same identity records.
+- why: Rerequests duplicate Check Run latency and quota use.
+- fix: Reuse one current-head receipt snapshot throughout begin.
+
+## A-016 — OpenCode plugin dependency is unlocked and apparently unused
+- status: open
+- notes: Trellis owner `07-25-resolve-opencode-plugin-dependency`; remediation planning created 2026-07-25.
+- severity: P2 · effort: S · confidence: Plausible
+- dimension: dependencies
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - .opencode/package.json:2 — the nested ranged dependency has no lockfile.
+  - .opencode/package.json:4 — no code reference to the package exists.
+- why: Executable dependency code can drift outside root locking and auditing.
+- fix: Remove the declaration or freeze and audit the nested install.
+
+## A-017 — The prescribed local full-check skips every CI package gate
+- status: open
+- notes: Trellis owner `07-25-align-local-full-check-with-ci`; remediation planning created 2026-07-25.
+- severity: P2 · effort: S · confidence: Plausible
+- dimension: tooling
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - scripts/sd-ai-command-pack-full-check.sh:1033 — generic stages omit package script names.
+  - package.json:12 — package-specific gates are test, check, and validate metadata.
+  - .github/workflows/ci.yml:20 — CI runs all three.
+- why: The prescribed local gate can pass after skipping every remote gate.
+- fix: Configure the local gate to run exactly the package checks enforced by CI.
+
+## A-018 — Guarded lifecycle support does not cover every first-party profile
+- status: open
+- notes: Trellis owner `07-25-deliver-routed-review-configuration`; remediation planning created 2026-07-25.
+- severity: P2 · effort: L · confidence: Plausible
+- dimension: improvements
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - README.md:24 — lifecycle support is limited to event-driven PR-Agent.
+  - SETUP-COPILOT.md:55 — Copilot setup remains manual.
+- why: Supported profiles lack consistent ownership, drift, update, rollback, and uninstall safety.
+- fix: Drive every first-party profile through one declarative lifecycle engine.
+
+## A-019 — Installer cannot adopt existing manual installations
+- status: open
+- notes: Trellis owner `07-25-adopt-manual-review-installations`; remediation planning created 2026-07-25.
+- severity: P2 · effort: M · confidence: Plausible
+- dimension: consumer-impact
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - SETUP-PR-AGENT.md:207 — manual workflow copying is supported.
+  - scripts/consumer-installer.mjs:458 — unmanaged differing workflows are rejected.
+- why: Manual and v0.1.0 consumers cannot transition safely into managed updates.
+- fix: Add explicit adoption for approved historical hashes with semantic review and rollback.
+
+## A-020 — Exported review-label registry is mutable
+- status: open
+- notes: Trellis owner `07-25-encapsulate-review-label-registry`; remediation planning created 2026-07-25.
+- severity: P3 · effort: S · confidence: Plausible
+- dimension: design
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - src/router.js:167 — a mutable Set is exported.
+- why: Importers can silently alter routing label behavior for the process.
+- fix: Export a predicate or immutable collection instead.
+
+## A-021 — `hasManagedFiles` is an unreachable public export
+- status: open
+- notes: Trellis owner `07-25-remove-unused-installer-export`; remediation planning created 2026-07-25.
+- severity: P3 · effort: S · confidence: Plausible
+- dimension: bloat
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - scripts/consumer-installer.mjs:890 — only the definition references the symbol.
+- why: The helper expands the supported surface without serving behavior.
+- fix: Delete the unused export.
+
+## A-022 — Consumer installation serializes independent GitHub CLI calls
+- status: open
+- notes: Trellis owner `07-25-parallelize-installer-github-operations`; remediation planning created 2026-07-25.
+- severity: P3 · effort: M · confidence: Plausible
+- dimension: performance
+- first-seen: 2026-07-25 @ 2eeca60
+- last-seen: 2026-07-25 @ 2eeca60
+- evidence:
+  - scripts/consumer-installer.mjs:90 — commands use blocking spawnSync.
+  - scripts/consumer-installer.mjs:117 — independent inspections run serially.
+- why: Cold installation time is the sum of every process and network round trip.
+- fix: Use asynchronous bounded concurrency while keeping state transitions ordered.
