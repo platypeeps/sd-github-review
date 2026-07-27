@@ -1178,3 +1178,41 @@ Installed the immutable v0.54.0 command-pack release, verified provenance and ma
 ### Next Steps
 
 - None - task complete
+
+
+## Session 30: Refresh sd-ai-command-pack to 0.55.2
+
+**Date**: 2026-07-27
+**Task**: Refresh sd-ai-command-pack to 0.55.2
+**Branch**: `codex/refresh-sd-ai-command-pack-0-55-2`
+
+### Summary
+
+Installed and verified the immutable sd-ai-command-pack 0.55.2 release, published PR #28, and cleared exact-head review and CI.
+
+### Main Changes
+
+- Refreshed all managed pack payloads and provenance to 0.55.2.
+- Adopted the newly shareable Claude and Trellis runtime payload exposed by the managed ignore policy.
+- Validated and resolved the exact-head Copilot review finding while deferring the non-blocking classifier parity hardening to the source pack.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `75b10fe153e7c0de143c6c7b14584702438d12e6` | chore: refresh sd-ai-command-pack to 0.55.2 |
+
+### Testing
+
+- [OK] Immutable release audit passed for all 174 managed targets.
+- [OK] Repository full gate passed: 136 tests, npm run check, and npm run validate:metadata.
+- [OK] Exact-head Copilot review, GitHub Actions checks, mergeability, and review-thread gates passed.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
