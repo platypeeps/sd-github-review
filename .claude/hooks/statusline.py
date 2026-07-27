@@ -22,10 +22,10 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-# Fix: Windows Python defaults to GBK encoding, which corrupts UTF-8
-# characters like the middle dot (·). Wrap stdout/stderr with UTF-8.
+# Fix: Windows Python defaults to a legacy codepage, which corrupts UTF-8
+# session input and output containing non-ASCII characters.
 if sys.platform == "win32":
-    for stream in (sys.stdout, sys.stderr):
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
         reconfigure = getattr(stream, "reconfigure", None)
         if callable(reconfigure):
             reconfigure(encoding="utf-8", errors="replace")
