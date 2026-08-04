@@ -104,6 +104,7 @@ test("validates the repository action metadata, pinned workflows, and examples",
   assert.equal(result.workflowCount, 1);
   assert.equal(result.exampleCount, 5);
   assert.ok(result.trackedPathCount > 0);
+  assert.equal(result.contractMajor, 1);
 });
 
 test("publishes pinned standalone and durable PR-Agent workflows", async () => {

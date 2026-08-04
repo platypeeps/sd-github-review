@@ -234,7 +234,12 @@ async function readSetupDescriptor(repositoryRoot) {
   if (!match) {
     throw new Error(`${descriptorPath}: actionReference must pin owner/repo@<40-character SHA>`);
   }
-  return { descriptorPath, actionOwnerRepo: match[1], actionSha: match[2] };
+  return {
+    descriptorPath,
+    actionOwnerRepo: match[1],
+    actionSha: match[2],
+    contractMajor: descriptor.contractMajor,
+  };
 }
 
 function assertFirstPartyConsistency(pins, { descriptorPath, actionOwnerRepo, actionSha }) {

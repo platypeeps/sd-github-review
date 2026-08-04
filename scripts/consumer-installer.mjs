@@ -263,7 +263,7 @@ function resolveOverride({ tag, commit }) {
 // Resolve the installer's own source release identity from its source root.
 // released:true is the single bytes-verified path: an exact v<version> tag on
 // HEAD with a clean template working tree. Any other git state records
-// (false, null); an operator override records the declared (false, v-tag|null).
+// (false, null); an operator override records the declared (false, v-tag).
 export function resolveSourceRelease({ sourceRoot, gitImpl, version, override }) {
   if (override && (override.commit || override.tag)) {
     return resolveOverride(override);
