@@ -310,6 +310,22 @@ test("rejects a malformed pr-number override with a field-specific error before 
   assert.equal(harness.factoryCount(), 0);
 });
 
+test("rejects an unsafe-integer pr-number override that would round during conversion", async () => {
+  const harness = createIdentityHarness();
+
+  // 9007199254740993 (2^53 + 1) is not exactly representable and Number() rounds
+  // it to 9007199254740992 (2^53), which is itself unsafe — the decoder must
+  // reject it rather than silently bind a mutated identity.
+  await assert.rejects(
+    harness.run({
+      event: { action: "opened", pull_request: basePullRequest },
+      env: { "INPUT_PR-NUMBER": "9007199254740993" },
+    }),
+    /pr-number must be a complete positive integer/u,
+  );
+  assert.equal(harness.factoryCount(), 0);
+});
+
 test("rejects a pr-number override that conflicts with the event identity before any GitHub call", async () => {
   const harness = createIdentityHarness();
 
