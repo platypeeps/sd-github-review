@@ -3,7 +3,7 @@ Committed cross-session audit findings managed by sd-audit-repo.
 
 ## A-001 — Authorized Copilot rerequests are suppressed as duplicates
 - status: open
-- notes: Trellis owner `07-25-integrate-copilot-review-adapter`; remediation planning created 2026-07-25.
+- notes: Trellis owner `08-04-harden-copilot-rerequest-dispatch` (dedicated audit child; reassigned from `07-25-integrate-copilot-review-adapter` 2026-08-04); PRD seeded with evidence and acceptance 2026-08-04; still open pending remediation.
 - severity: P1 · effort: S · confidence: Verified
 - dimension: correctness
 - first-seen: 2026-07-25 @ 2eeca60
@@ -43,7 +43,7 @@ Committed cross-session audit findings managed by sd-audit-repo.
 
 ## A-004 — Third-party PR-Agent receives durable-receipt authority
 - status: open
-- notes: Trellis owner `07-25-integrate-pr-agent-review-adapter`; remediation planning created 2026-07-25.
+- notes: Trellis owner `08-04-isolate-pr-agent-receipt-authority` (dedicated audit child; reassigned from `07-25-integrate-pr-agent-review-adapter` 2026-08-04); PRD seeded with evidence and acceptance 2026-08-04; confirmed still open on main @ a546883.
 - severity: P1 · effort: M · confidence: Verified
 - dimension: security
 - first-seen: 2026-07-25 @ 2eeca60

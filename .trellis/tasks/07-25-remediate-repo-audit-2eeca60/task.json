@@ -35,7 +35,9 @@
     "07-25-adopt-manual-review-installations",
     "07-25-encapsulate-review-label-registry",
     "07-25-remove-unused-installer-export",
-    "07-25-parallelize-installer-github-operations"
+    "07-25-parallelize-installer-github-operations",
+    "08-04-harden-copilot-rerequest-dispatch",
+    "08-04-isolate-pr-agent-receipt-authority"
   ],
   "parent": null,
   "relatedFiles": [],

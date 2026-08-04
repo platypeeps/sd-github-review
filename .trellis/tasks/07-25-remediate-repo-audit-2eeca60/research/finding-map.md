@@ -5,10 +5,10 @@ Ledger: `.trellis/audit/ledger.md`
 
 | Finding | Severity | Trellis owner |
 | --- | --- | --- |
-| A-001 | P1 | `07-25-integrate-copilot-review-adapter` |
+| A-001 | P1 | `08-04-harden-copilot-rerequest-dispatch` |
 | A-002 | P1 | `07-25-harden-pull-request-identity-overrides` |
 | A-003 | P1 | `07-25-make-durable-receipt-creation-concurrency-safe` |
-| A-004 | P1 | `07-25-integrate-pr-agent-review-adapter` |
+| A-004 | P1 | `08-04-isolate-pr-agent-receipt-authority` |
 | A-005 | P1 | `07-25-reject-symlinked-installer-targets` |
 | A-006 | P1 | `07-25-test-shipped-review-process-boundaries` |
 | A-007 | P1 | `07-25-publish-traceable-installer-release` |
