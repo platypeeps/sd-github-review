@@ -386,6 +386,32 @@ async function assertContainedPath(root, targetPath, lstatImpl) {
   }
 }
 
+// Create every missing directory from the canonical root down to dirPath one
+// component at a time. A recursive mkdir would follow a symlink swapped into an
+// ancestor and create directories outside the root; creating a single component
+// at a time under an lstat-verified real-directory parent keeps every mkdir
+// contained. A component that already exists as a symlink or non-directory is
+// rejected, and a component swapped to a symlink between its check and creation
+// makes the non-recursive mkdir fail with EEXIST rather than follow it.
+async function assertContainedDir(root, dirPath, lstatImpl) {
+  const resolved = path.resolve(dirPath);
+  if (resolved === root) return;
+  const relativeParts = managedRelativeParts(root, resolved);
+  let current = root;
+  for (let index = 0; index < relativeParts.length; index += 1) {
+    current = path.join(current, relativeParts[index]);
+    const stats = await inspectComponent(current, lstatImpl);
+    const traversed = relativeParts.slice(0, index + 1);
+    if (stats === null) {
+      await mkdir(current);
+    } else if (stats.isSymbolicLink()) {
+      throw containmentError(traversed);
+    } else if (!stats.isDirectory()) {
+      throw containmentError(traversed, "managed ancestor is not a directory");
+    }
+  }
+}
+
 function makePathGuard(root, lstatImpl = lstat) {
   const canonicalRoot = path.resolve(root);
   return {
@@ -393,16 +419,27 @@ function makePathGuard(root, lstatImpl = lstat) {
     assert(targetPath) {
       return assertContainedPath(canonicalRoot, targetPath, lstatImpl);
     },
+    mkdirWithin(targetPath) {
+      return assertContainedDir(
+        canonicalRoot,
+        path.dirname(path.resolve(targetPath)),
+        lstatImpl,
+      );
+    },
   };
 }
 
 async function atomicWrite(guard, filePath, content) {
-  await guard.assert(filePath);
-  await mkdir(path.dirname(filePath), { recursive: true });
-  // Re-check containment after mkdir and immediately before the temp write, so
-  // the write is protected symmetrically with the rename below: a symlink
-  // swapped into an ancestor between the pre-mkdir check and here is caught
-  // before any bytes are written through it.
+  // Create the destination directory one component at a time, rejecting a
+  // symlinked ancestor before creating any child beneath it; a recursive mkdir
+  // would follow a swapped-in symlink and create directories outside the root.
+  // Create the destination directory one component at a time, rejecting a
+  // symlinked ancestor before creating any child beneath it; a recursive mkdir
+  // would follow a swapped-in symlink and create directories outside the root.
+  await guard.mkdirWithin(filePath);
+  // Re-check containment after the directory exists and immediately before the
+  // temp write, so the write is protected symmetrically with the rename below:
+  // a symlink swapped into an ancestor is caught before any bytes are written.
   await guard.assert(filePath);
   const temporaryPath = `${filePath}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
   try {

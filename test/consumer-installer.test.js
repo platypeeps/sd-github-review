@@ -790,6 +790,28 @@ test("install rejects a symlinked .github manifest ancestor before writing outsi
   assert.deepEqual(github.calls, []);
 });
 
+test("install through a symlinked .github ancestor creates nothing outside the target", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  const external = await makeExternal();
+  // .github is a symlink to an external directory. The containment guard must
+  // reject before any managed directory is created beneath it — nothing is
+  // created inside the external target. (A pre-existing symlink is caught by
+  // the read-phase guard; component-wise mkdirWithin additionally narrows the
+  // recursive-mkdir-follow window for a symlink swapped in mid-operation, a
+  // race the injected-lstat harness cannot reproduce deterministically.)
+  await symlink(external, path.join(target, ".github"), "dir");
+
+  await assert.rejects(
+    runConsumerInstaller({ command: "install", target }, { sourceRoot, github }),
+    CONTAINMENT_PATTERN,
+  );
+  // No directory was created through the symlink into the external target.
+  assert.deepEqual(readdirSync(external), []);
+  assert.deepEqual(github.calls, []);
+});
+
 test("install succeeds when .github already exists as a regular directory", async () => {
   const sourceRoot = await makeSource();
   const target = await makeTarget();
