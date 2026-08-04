@@ -342,7 +342,8 @@ function managedRelativeParts(root, targetPath) {
   if (
     relative === "" ||
     relative === "." ||
-    relative.startsWith("..") ||
+    relative === ".." ||
+    relative.startsWith(`..${path.sep}`) ||
     path.isAbsolute(relative)
   ) {
     // Bounded: report only the intended leaf name, never the root or an
