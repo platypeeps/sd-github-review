@@ -338,6 +338,7 @@ test("a superseded durable create defers with bounded reconciliation evidence an
   assert.equal(loser.receiptVerified, true);
   assert.equal(loser.reconciliation.authoritativeCheckId, 50);
   assert.equal(loser.reconciliation.supersededCheckId, 100);
+  assert.equal(loser.reconciliation.duplicateCount, 1);
   assert.deepEqual(loser.reconciliation.duplicateCheckIds, [100]);
   assert.equal(client.checks.get(request.headSha).length, 2);
 });

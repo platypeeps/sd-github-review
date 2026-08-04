@@ -12,6 +12,7 @@ export const RECEIPT_CHECK_NAME = "sd-github-review/receipt";
 export const RECEIPT_MARKER = "<!-- sd-github-review-receipt:v1 -->\n";
 
 const MAX_RECEIPT_TEXT_BYTES = 32 * 1024 + 256;
+const MAX_RECONCILIATION_EVIDENCE = 16;
 const DEFAULT_MAX_COMPARE_FILES = 3_000;
 const COMPARE_STATUSES = new Set(["ahead", "behind", "diverged", "identical"]);
 const FILE_STATUSES = new Set(["added", "removed", "modified", "renamed", "copied", "changed", "unchanged"]);
@@ -568,6 +569,7 @@ export class ReceiptStore {
       // not authorize a second dispatch; surface bounded reconciliation evidence
       // and leave every competing Check Run intact for external reconciliation.
       const duplicates = election.duplicates.get(request.logicalDispatchId) ?? [];
+      const superseded = uniqueSortedNumbers([created.id, ...duplicates]);
       return {
         state: "reconciliation-required",
         receipt: elected.receipt,
@@ -577,7 +579,10 @@ export class ReceiptStore {
         reconciliation: {
           authoritativeCheckId: elected.checkId,
           supersededCheckId: created.id,
-          duplicateCheckIds: uniqueSortedNumbers([created.id, ...duplicates]),
+          duplicateCount: superseded.length,
+          // Keep the evidence hint bounded; every Check Run remains durable for
+          // external reconciliation, so the full set is never lost by capping.
+          duplicateCheckIds: superseded.slice(0, MAX_RECONCILIATION_EVIDENCE),
         },
       };
     }
