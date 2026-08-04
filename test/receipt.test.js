@@ -594,6 +594,36 @@ test("same-head rerequests require explicit policy and prior capability evidence
   assert.equal(client.calls.filter(([name]) => name === "createCheckRun").length, 2);
 });
 
+test("same-head rerequest loads the current-head snapshot once before create (A-015)", async () => {
+  const firstRequest = clone(requestByName.get("explicit cheap"));
+  const client = new FakeGitHubClient({ headSha: firstRequest.headSha });
+  const store = makeStore(client);
+  const first = await store.begin(firstRequest, cheapBeginOptions());
+  const rerequest = {
+    ...clone(firstRequest),
+    correlationId: "corr-rerequest-snapshot",
+    attempt: 2,
+    rerequestOf: {
+      priorReceiptId: first.receipt.receiptId,
+      priorLogicalDispatchId: first.receipt.logicalDispatchId,
+      priorAttempt: 1,
+    },
+  };
+
+  // Isolate the authorized rerequest begin from the setup begin.
+  client.calls.length = 0;
+  const second = await store.begin(
+    rerequest,
+    cheapBeginOptions({ rerequestAuthorized: true }),
+  );
+
+  assert.equal(second.dispatchAllowed, true);
+  // One shared pre-create snapshot (rerequest validation + identity lookup) plus
+  // one post-create reread. Before A-015 this was three: validation and identity
+  // each loaded the same current-head set separately.
+  assert.equal(client.calls.filter(([name]) => name === "listCheckRuns").length, 2);
+});
+
 test("same-head rerequests reject unsupported backends even when policy authorizes them", async () => {
   const firstRequest = clone(requestByName.get("explicit deep"));
   const client = new FakeGitHubClient({ headSha: firstRequest.headSha });

@@ -191,8 +191,8 @@ Committed cross-session audit findings managed by sd-audit-repo.
 - fix: Enumerate files only when at least one sensitive pattern exists.
 
 ## A-015 — Same-head rerequests load the same receipt set twice
-- status: open
-- notes: Trellis owner `07-25-reuse-receipt-snapshots-during-rerequests`; remediation planning created 2026-07-25.
+- status: fixed
+- notes: Trellis owner `08-04-reuse-rerequest-receipt-snapshot` (dedicated audit child; reassigned from `07-25-reuse-receipt-snapshots-during-rerequests` 2026-08-04); verified fixed on main (2026-08-04) — `src/receipt.js` `begin` now loads one pre-create current-head elected snapshot (`#electedRecords`) and shares it between rerequest validation and the identity lookup. Extracted a pure `#selectElectedReceipt(elected, {...})` helper from `query` (identical filter + multi-match throw + empty-criteria guard); `#validateRerequest` now takes the pre-loaded `elected` instead of calling `query`, and `#recordForIdentity` was inlined as `preElection.elected.get(logicalDispatchId)`. The post-`createCheckRun` reread (A-003 concurrency election) is untouched. An authorized same-head rerequest `begin` now issues two `listCheckRuns` calls (one pre-create + one post-create) instead of three; non-rerequest begin is unchanged at two. Regression test: `test/receipt.test.js` "same-head rerequest loads the current-head snapshot once before create (A-015)"; existing rerequest tests unchanged; npm test 232/232, check:full 0 failures.
 - severity: P2 · effort: S · confidence: Plausible
 - dimension: performance
 - first-seen: 2026-07-25 @ 2eeca60

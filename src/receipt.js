@@ -363,11 +363,13 @@ export class ReceiptStore {
     return { elected, duplicates };
   }
 
-  async query({ pullRequestNumber, headSha, logicalDispatchId, correlationId }) {
+  // Pure selection over a pre-loaded elected map. Extracted from query so a
+  // single current-head snapshot can serve both query() and begin()'s rerequest
+  // validation + identity lookup without reloading the same Check Run set (A-015).
+  #selectElectedReceipt(elected, { logicalDispatchId, correlationId }) {
     if (!logicalDispatchId && !correlationId) {
       throw new Error("receipt query requires logicalDispatchId or correlationId");
     }
-    const { elected } = await this.#electedRecords(pullRequestNumber, lower(headSha));
     const matches = [...elected.values()].filter(({ receipt }) =>
       (!logicalDispatchId || receipt.logicalDispatchId === lower(logicalDispatchId))
       && (!correlationId || receipt.correlationIds.includes(correlationId)));
@@ -377,9 +379,9 @@ export class ReceiptStore {
     return matches[0]?.receipt ?? null;
   }
 
-  async #recordForIdentity(request) {
-    const { elected } = await this.#electedRecords(request.pullRequestNumber, request.headSha);
-    return elected.get(request.logicalDispatchId) ?? null;
+  async query({ pullRequestNumber, headSha, logicalDispatchId, correlationId }) {
+    const { elected } = await this.#electedRecords(pullRequestNumber, lower(headSha));
+    return this.#selectElectedReceipt(elected, { logicalDispatchId, correlationId });
   }
 
   async #rereadRecord(receipt) {
@@ -414,12 +416,10 @@ export class ReceiptStore {
     };
   }
 
-  async #validateRerequest(request, selectedRoute, backend, authorized) {
+  #validateRerequest(request, selectedRoute, backend, authorized, elected) {
     if (!request.rerequestOf) return;
     if (!authorized) throw new Error("same-head rerequest is not authorized by repository policy");
-    const prior = await this.query({
-      pullRequestNumber: request.pullRequestNumber,
-      headSha: request.headSha,
+    const prior = this.#selectElectedReceipt(elected, {
       logicalDispatchId: request.rerequestOf.priorLogicalDispatchId,
     });
     if (!prior) throw new Error("same-head rerequest prior receipt was not found");
@@ -501,13 +501,18 @@ export class ReceiptStore {
     this.#assertRepository(request);
     await this.#assertLiveHead(request);
     const receipt = this.#newReceipt(request, { decision, backend, workflowUrl, successorEvidence });
-    await this.#validateRerequest(
+    // Load one pre-create current-head snapshot and share it across rerequest
+    // validation and the identity lookup (A-015). The post-create reread below
+    // is a separate, required observation of the newly created Check Run.
+    const preElection = await this.#electedRecords(request.pullRequestNumber, request.headSha);
+    this.#validateRerequest(
       request,
       receipt.selectedRoute,
       receipt.backend,
       rerequestAuthorized,
+      preElection.elected,
     );
-    const existing = await this.#recordForIdentity(request);
+    const existing = preElection.elected.get(request.logicalDispatchId) ?? null;
     if (existing) {
       if (existing.receipt.requestFingerprint !== request.requestFingerprint) {
         throw new Error("existing durable receipt conflicts with the canonical request fingerprint");
