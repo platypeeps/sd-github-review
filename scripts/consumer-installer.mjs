@@ -66,6 +66,13 @@ const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const REPOSITORY_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u;
 const LIFECYCLE_STATES = new Set(["pending", "active", "uninstalling"]);
 const MAX_MODEL_LENGTH = 256;
+// Bounded wall-clock deadlines for the installer's own subprocesses, so a hung
+// network call or a credential helper waiting on a prompt cannot stall the
+// installer forever. `gh` subprocesses reach the network (repo/label/secret
+// APIs), so they get the larger bound; local `git` metadata reads get the
+// smaller one. Both are positive and fixed here, never derived from input.
+export const GH_COMMAND_TIMEOUT_MS = 120_000;
+export const GIT_COMMAND_TIMEOUT_MS = 30_000;
 
 // Consumer-manifest schema version. Bumped 1 -> 2 to record source provenance
 // (commit, tag, released) on the source template. Distinct from the action
@@ -105,18 +112,44 @@ function redact(value, secret) {
 function commandFailure(command, args, result, secret) {
   const stderr = redact(result.stderr?.trim(), secret);
   const detail = stderr || `exit status ${result.status ?? "unknown"}`;
-  return new Error(`${command} ${args.join(" ")} failed: ${detail}`);
+  // Redact the args too: a secret can be passed via options.secret, and the
+  // nonzero-exit path must not leak it when the timeout/startup paths do not.
+  const redactedArgs = args.map((arg) => redact(arg, secret)).join(" ");
+  return new Error(`${command} ${redactedArgs} failed: ${detail}`);
+}
+
+function commandTimeout(command, args, timeoutMs, secret, readOnly) {
+  // Name the command and its (secret-redacted) args, never stdin, and match the
+  // recovery guidance to the command's effect. A killed mutating subprocess
+  // (variable/secret/label set or delete) may have partially applied a remote
+  // change, so the operator reconciles state; a read-only query (the repo,
+  // variable, secret, and label list calls behind inspect()) has no side effect
+  // to reconcile, so a plain retry is safe.
+  const redactedArgs = args.map((arg) => redact(arg, secret)).join(" ");
+  const guidance = readOnly
+    ? "the read was interrupted — retry once GitHub is responsive"
+    : "verify no partial change was applied before retrying";
+  return new Error(
+    `${command} ${redactedArgs} timed out after ${timeoutMs}ms; ${guidance}`,
+  );
 }
 
 function runCommand(command, args, options = {}) {
-  const result = spawnSync(command, args, {
+  const spawnImpl = options.spawnImpl ?? spawnSync;
+  const timeoutMs = options.timeoutMs ?? GH_COMMAND_TIMEOUT_MS;
+  const result = spawnImpl(command, args, {
     cwd: options.cwd,
     encoding: "utf8",
     env: process.env,
     input: options.input,
     stdio: options.inherit ? "inherit" : undefined,
+    timeout: timeoutMs,
+    killSignal: "SIGTERM",
   });
   if (result.error) {
+    if (result.error.code === "ETIMEDOUT") {
+      throw commandTimeout(command, args, timeoutMs, options.secret, options.readOnly);
+    }
     throw new Error(`${command} could not start: ${redact(result.error.message, options.secret)}`);
   }
   if (result.status !== 0) {
@@ -125,19 +158,36 @@ function runCommand(command, args, options = {}) {
   return result.stdout ?? "";
 }
 
-function runJson(command, args) {
-  const output = runCommand(command, args);
-  try {
-    return JSON.parse(output);
-  } catch {
-    throw new Error(`${command} ${args.join(" ")} returned invalid JSON`);
-  }
-}
-
 export class GitHubCli {
+  // spawnImpl/timeoutMs are injectable so fake-child-process tests can drive the
+  // timeout, redaction, and recovery-guidance paths without a real subprocess.
+  constructor({ spawnImpl = spawnSync, timeoutMs = GH_COMMAND_TIMEOUT_MS } = {}) {
+    this.spawnImpl = spawnImpl;
+    this.timeoutMs = timeoutMs;
+  }
+
+  run(command, args, options = {}) {
+    return runCommand(command, args, {
+      ...options,
+      spawnImpl: this.spawnImpl,
+      timeoutMs: this.timeoutMs,
+    });
+  }
+
+  runJson(command, args) {
+    // runJson only wraps read-only list/view queries, so a timeout gets the
+    // plain-retry guidance rather than the mutation reconciliation wording.
+    const output = this.run(command, args, { readOnly: true });
+    try {
+      return JSON.parse(output);
+    } catch {
+      throw new Error(`${command} ${args.join(" ")} returned invalid JSON`);
+    }
+  }
+
   async inspect(repository) {
-    const repo = runJson("gh", ["repo", "view", repository, "--json", "nameWithOwner"]);
-    const variables = runJson("gh", [
+    const repo = this.runJson("gh", ["repo", "view", repository, "--json", "nameWithOwner"]);
+    const variables = this.runJson("gh", [
       "variable",
       "list",
       "--repo",
@@ -145,7 +195,7 @@ export class GitHubCli {
       "--json",
       "name,value",
     ]);
-    const secrets = runJson("gh", [
+    const secrets = this.runJson("gh", [
       "secret",
       "list",
       "--repo",
@@ -153,7 +203,7 @@ export class GitHubCli {
       "--json",
       "name",
     ]);
-    const labels = runJson("gh", [
+    const labels = this.runJson("gh", [
       "label",
       "list",
       "--repo",
@@ -172,15 +222,15 @@ export class GitHubCli {
   }
 
   async setVariable(repository, name, value) {
-    runCommand("gh", ["variable", "set", name, "--repo", repository, "--body", value]);
+    this.run("gh", ["variable", "set", name, "--repo", repository, "--body", value]);
   }
 
   async deleteVariable(repository, name) {
-    runCommand("gh", ["variable", "delete", name, "--repo", repository]);
+    this.run("gh", ["variable", "delete", name, "--repo", repository]);
   }
 
   async createLabel(repository, label) {
-    runCommand("gh", [
+    this.run("gh", [
       "label",
       "create",
       label.name,
@@ -194,33 +244,43 @@ export class GitHubCli {
   }
 
   async deleteLabel(repository, name) {
-    runCommand("gh", ["label", "delete", name, "--repo", repository, "--yes"]);
+    this.run("gh", ["label", "delete", name, "--repo", repository, "--yes"]);
   }
 
   async setSecret(repository, { interactive = false, value } = {}) {
     const args = ["secret", "set", SECRET_NAME, "--repo", repository];
     if (interactive) {
-      runCommand("gh", args, { inherit: true });
+      this.run("gh", args, { inherit: true });
       return;
     }
     if (typeof value !== "string" || value.length === 0) {
       throw new Error("secret input must be nonempty");
     }
-    runCommand("gh", args, { input: value, secret: value });
+    this.run("gh", args, { input: value, secret: value });
   }
 
   async deleteSecret(repository) {
-    runCommand("gh", ["secret", "delete", SECRET_NAME, "--repo", repository]);
+    this.run("gh", ["secret", "delete", SECRET_NAME, "--repo", repository]);
   }
 }
 
-function gitOutput(target, args) {
+function gitOutput(target, args, execImpl = execFileSync, timeoutMs = GIT_COMMAND_TIMEOUT_MS) {
   try {
-    return execFileSync("git", ["-C", target, ...args], {
+    return execImpl("git", ["-C", target, ...args], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
+      timeout: timeoutMs,
+      killSignal: "SIGTERM",
     }).trim();
   } catch (error) {
+    if (error && error.code === "ETIMEDOUT") {
+      // Every gitOutput call is a read-only metadata query, so a timeout has no
+      // side effect to reconcile; the safe recovery is simply to retry.
+      throw new Error(
+        `${target}: git ${args.join(" ")} timed out after ${timeoutMs}ms; ` +
+          "the read was interrupted — retry once the source checkout is responsive",
+      );
+    }
     const detail = typeof error.stderr === "string" && error.stderr.trim()
       ? error.stderr.trim()
       : error.message;
@@ -229,21 +289,23 @@ function gitOutput(target, args) {
 }
 
 // Git seam for the installer's own source root, mirroring gitOutput. Injected in
-// tests via dependencies.gitImpl so provenance resolution is deterministic.
-function makeSourceGit(sourceRoot) {
+// tests via dependencies.gitImpl so provenance resolution is deterministic;
+// execImpl is a narrower seam so a fake-child test can drive gitOutput's own
+// bounded-timeout path directly.
+export function makeSourceGit(sourceRoot, execImpl = execFileSync) {
   return {
     head() {
-      return gitOutput(sourceRoot, ["rev-parse", "HEAD"]);
+      return gitOutput(sourceRoot, ["rev-parse", "HEAD"], execImpl);
     },
     exactTag() {
       try {
-        return gitOutput(sourceRoot, ["describe", "--tags", "--exact-match", "HEAD"]);
+        return gitOutput(sourceRoot, ["describe", "--tags", "--exact-match", "HEAD"], execImpl);
       } catch {
         return null;
       }
     },
     templateDirty() {
-      return gitOutput(sourceRoot, ["status", "--porcelain", "--", TEMPLATE_PATH]).length > 0;
+      return gitOutput(sourceRoot, ["status", "--porcelain", "--", TEMPLATE_PATH], execImpl).length > 0;
     },
   };
 }

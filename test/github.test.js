@@ -512,3 +512,112 @@ test("creates and updates check runs with documented HTTP methods", async () => 
   assert.deepEqual(JSON.parse(calls[1].options.body), updatePayload);
   assert.match(calls[1].url, /\/check-runs\/41$/u);
 });
+
+// Injected deadline clock (A-012). setTimeoutImpl fires the deadline callback on
+// a microtask so the timeout race is deterministic without a wall clock; the
+// `shouldFire` predicate selects, per attempt, whether that attempt times out.
+function microtaskTimer(shouldFire) {
+  let calls = 0;
+  return {
+    setTimeoutImpl: (callback) => {
+      calls += 1;
+      if (shouldFire(calls)) queueMicrotask(callback);
+      return calls;
+    },
+    clearTimeoutImpl: () => {},
+    attempts: () => calls,
+  };
+}
+
+const hang = () => new Promise(() => {});
+
+test("passes an abort signal to fetch so a timed-out request is cancelled", async () => {
+  let signal;
+  const client = createClient(async (_url, options) => {
+    signal = options.signal;
+    return jsonResponse({ number: 1 });
+  });
+  await client.getPullRequest(1);
+  assert.ok(signal instanceof AbortSignal);
+});
+
+test("rejects a non-positive request timeout at construction", () => {
+  assert.throws(
+    () => createClient(async () => jsonResponse({}), { timeoutMs: 0 }),
+    /positive finite/u,
+  );
+});
+
+test("times out a mutating request without retrying and requires reconciliation", async () => {
+  let calls = 0;
+  const timer = microtaskTimer(() => true);
+  const client = createClient(
+    async () => {
+      calls += 1;
+      return hang();
+    },
+    {
+      setTimeoutImpl: timer.setTimeoutImpl,
+      clearTimeoutImpl: timer.clearTimeoutImpl,
+      sleepImpl: async () => {},
+    },
+  );
+
+  await assert.rejects(
+    client.request("/repos/platypeeps/example/pulls/1/merge", { method: "PUT" }),
+    (error) => {
+      assert.match(error.message, /PUT .*timed out after 30000ms/u);
+      assert.match(error.message, /reconcile state before retrying/u);
+      return true;
+    },
+  );
+  assert.equal(calls, 1, "a mutation must not be retried after a timeout");
+});
+
+test("times out a GET on a stalled response body and retries to the read limit", async () => {
+  const sleeps = [];
+  let calls = 0;
+  const timer = microtaskTimer(() => true);
+  const client = createClient(
+    async () => {
+      calls += 1;
+      // Response headers arrive but the body never finishes streaming.
+      return { ok: true, status: 200, statusText: "OK", text: () => hang() };
+    },
+    {
+      setTimeoutImpl: timer.setTimeoutImpl,
+      clearTimeoutImpl: timer.clearTimeoutImpl,
+      sleepImpl: async (milliseconds) => sleeps.push(milliseconds),
+    },
+  );
+
+  await assert.rejects(client.getPullRequest(1), (error) => {
+    assert.match(error.message, /timed out after 30000ms/u);
+    assert.match(error.message, /the read was interrupted after exhausting retries — safe to retry/u);
+    assert.doesNotMatch(error.message, /reconcile/u);
+    return true;
+  });
+  assert.equal(calls, 3, "a read retries up to MAX_READ_ATTEMPTS");
+  assert.deepEqual(sleeps, [1_000, 2_000], "backoff runs between timed-out reads");
+});
+
+test("retries a GET after a single timeout and returns the eventual response", async () => {
+  const sleeps = [];
+  let calls = 0;
+  const timer = microtaskTimer((attempt) => attempt === 1);
+  const client = createClient(
+    async () => {
+      calls += 1;
+      return calls === 1 ? hang() : jsonResponse({ number: 7 });
+    },
+    {
+      setTimeoutImpl: timer.setTimeoutImpl,
+      clearTimeoutImpl: timer.clearTimeoutImpl,
+      sleepImpl: async (milliseconds) => sleeps.push(milliseconds),
+    },
+  );
+
+  assert.deepEqual(await client.getPullRequest(7), { number: 7 });
+  assert.equal(calls, 2);
+  assert.deepEqual(sleeps, [1_000]);
+});

@@ -14,12 +14,16 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
+  GH_COMMAND_TIMEOUT_MS,
+  GIT_COMMAND_TIMEOUT_MS,
+  GitHubCli,
   HISTORICAL_TEMPLATE_HASHES,
   MANIFEST_PATH,
   MANIFEST_SCHEMA_VERSION,
   ROUTING_LABELS,
   SECRET_NAME,
   WORKFLOW_PATH,
+  makeSourceGit,
   parseArguments,
   parseGitHubRemote,
   resolveSourceRelease,
@@ -1222,5 +1226,125 @@ test("parseArguments accepts adopt confirmation and rejects uninstall cleanup fl
   assert.throws(
     () => parseArguments(["check", "--yes"]),
     /check does not accept --yes/u,
+  );
+});
+
+// A-012: bounded subprocess timeouts for the installer's gh and git seams.
+// A fake spawn/exec drives the ETIMEDOUT path with no real subprocess.
+function timedOutSpawn(calls) {
+  return (command, args, options) => {
+    calls.push({ command, args, options });
+    return { error: Object.assign(new Error("timed out"), { code: "ETIMEDOUT" }), status: null, signal: "SIGTERM", stdout: "", stderr: "" };
+  };
+}
+
+test("gh subprocess timeout raises a bounded error with recovery guidance", async () => {
+  const calls = [];
+  const github = new GitHubCli({ spawnImpl: timedOutSpawn(calls) });
+  await assert.rejects(
+    github.setVariable(REPOSITORY, "PR_AGENT_ROUTING_CONFIG", "value"),
+    (error) => {
+      assert.match(error.message, new RegExp(`timed out after ${GH_COMMAND_TIMEOUT_MS}ms`, "u"));
+      assert.match(error.message, /verify no partial change was applied before retrying/u);
+      assert.doesNotMatch(error.message, /the read was interrupted/u);
+      return true;
+    },
+  );
+  // The timeout and kill signal are actually passed to the child.
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].options.timeout, GH_COMMAND_TIMEOUT_MS);
+  assert.equal(calls[0].options.killSignal, "SIGTERM");
+});
+
+test("gh read-only query timeout advises a plain retry, not reconciliation", async () => {
+  const github = new GitHubCli({ spawnImpl: timedOutSpawn([]) });
+  // inspect() reaches gh only through runJson (repo/variable/secret/label list),
+  // which carries no side effect, so a timeout must not claim a partial change.
+  await assert.rejects(
+    github.inspect(REPOSITORY),
+    (error) => {
+      assert.match(error.message, new RegExp(`timed out after ${GH_COMMAND_TIMEOUT_MS}ms`, "u"));
+      assert.match(error.message, /the read was interrupted — retry once GitHub is responsive/u);
+      assert.doesNotMatch(error.message, /verify no partial change/u);
+      return true;
+    },
+  );
+});
+
+test("gh subprocess timeout redacts the secret from its error", () => {
+  const github = new GitHubCli({ spawnImpl: timedOutSpawn([]) });
+  const secret = "sk-live-SUPER-SECRET";
+  assert.throws(
+    () => github.run("gh", ["secret", "set", "--body", secret], { secret }),
+    (error) => {
+      assert.doesNotMatch(error.message, /SUPER-SECRET/u);
+      assert.match(error.message, /\[redacted\]/u);
+      return true;
+    },
+  );
+});
+
+test("gh nonzero-exit error redacts a secret passed in args", () => {
+  const github = new GitHubCli({
+    spawnImpl: () => ({ error: null, status: 1, stdout: "", stderr: "denied" }),
+  });
+  const secret = "sk-live-EXIT-SECRET";
+  assert.throws(
+    () => github.run("gh", ["secret", "set", "--body", secret], { secret }),
+    (error) => {
+      assert.doesNotMatch(error.message, /EXIT-SECRET/u);
+      assert.match(error.message, /\[redacted\]/u);
+      return true;
+    },
+  );
+});
+
+test("gh non-timeout spawn error is not misreported as a timeout", async () => {
+  const github = new GitHubCli({
+    spawnImpl: () => ({ error: Object.assign(new Error("spawn gh ENOENT"), { code: "ENOENT" }), status: null, stdout: "", stderr: "" }),
+  });
+  await assert.rejects(
+    github.deleteSecret(REPOSITORY),
+    (error) => {
+      assert.match(error.message, /could not start/u);
+      assert.doesNotMatch(error.message, /timed out/u);
+      return true;
+    },
+  );
+});
+
+test("git subprocess timeout raises a bounded error with recovery guidance", () => {
+  const calls = [];
+  const execImpl = (command, args, options) => {
+    calls.push({ command, args, options });
+    throw Object.assign(new Error("git timed out"), { code: "ETIMEDOUT" });
+  };
+  const git = makeSourceGit("/some/source/root", execImpl);
+  assert.throws(
+    () => git.head(),
+    (error) => {
+      assert.match(error.message, new RegExp(`timed out after ${GIT_COMMAND_TIMEOUT_MS}ms`, "u"));
+      // git reads have no side effect to reconcile — recovery is a plain retry.
+      assert.match(error.message, /the read was interrupted — retry/u);
+      assert.doesNotMatch(error.message, /partial change/u);
+      return true;
+    },
+  );
+  assert.equal(calls[0].options.timeout, GIT_COMMAND_TIMEOUT_MS);
+  assert.equal(calls[0].options.killSignal, "SIGTERM");
+});
+
+test("git non-timeout failure keeps its diagnostic and is not a timeout", () => {
+  const execImpl = () => {
+    throw Object.assign(new Error("fatal: not a git repository"), { stderr: "fatal: not a git repository" });
+  };
+  const git = makeSourceGit("/some/source/root", execImpl);
+  assert.throws(
+    () => git.head(),
+    (error) => {
+      assert.match(error.message, /not a git repository/u);
+      assert.doesNotMatch(error.message, /timed out/u);
+      return true;
+    },
   );
 });

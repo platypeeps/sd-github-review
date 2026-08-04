@@ -1500,3 +1500,48 @@ Added a repo-owned check:full package script that runs the exact CI npm gates (t
 ### Next Steps
 
 - None - task complete
+
+
+## Session 38: Bound review remote operations (A-012): request + subprocess timeouts
+
+**Date**: 2026-08-04
+**Task**: Bound review remote operations (A-012): request + subprocess timeouts
+**Branch**: `codex/bound-review-remote-operations`
+
+### Summary
+
+Added explicit, testable deadlines to GitHub HTTP requests and consumer-installer gh/git subprocesses, distinguishing timeout from other failures and matching recovery guidance to whether the operation is read-only or mutating. Converged a 4-round Copilot review (secret redaction, then read-vs-mutating timeout-guidance consistency across git, gh, and GET paths).
+
+### Main Changes
+
+- src/github.js: per-attempt AbortController+deadline race with injectable timers; GET retries within MAX_READ_ATTEMPTS, mutations never retry on timeout; read/mutating-specific guidance
+- scripts/consumer-installer.mjs: bounded gh (120s) and git (30s) subprocess timeouts; readOnly flag threads through runCommand so read queries advise plain retry, mutations advise reconciliation; consistent secret redaction across timeout/startup/nonzero-exit paths
+- Finalization: recorded task branch, archived 07-25-bound-review-remote-operations
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a8a9523` | feat: bound GitHub requests and installer subprocesses with timeouts (A-012) |
+| `c91e9e2` | fix: redact secret from gh nonzero-exit error args (Copilot review) |
+| `b48e8a5` | fix: give read-appropriate git timeout guidance (Copilot review) |
+| `c44afc1` | fix: match gh timeout guidance to read vs mutating subcommand (Copilot review) |
+| `68c4819` | fix: give GET timeouts actionable retry guidance (Copilot review) |
+| `958c759` | chore(task): record branch for bound-review-remote-operations finalization |
+| `1436553` | chore(task): archive 07-25-bound-review-remote-operations |
+
+### Testing
+
+- [OK] node --test test/github.test.js — 25/25 pass
+- [OK] node --test test/consumer-installer.test.js — 53/53 pass
+- [OK] sd-check review-preflight — 0 failures
+- [OK] Copilot review PR #39 — converged clean on head 68c4819 (no new/suppressed/inline comments); CI SUCCESS
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

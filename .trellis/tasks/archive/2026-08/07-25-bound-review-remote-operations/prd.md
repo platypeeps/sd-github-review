@@ -20,10 +20,10 @@ Audit finding A-012 was recorded at repository head `2eeca60` with the following
 
 ## Acceptance Criteria
 
-- [ ] Injected-clock tests cover request timeout before response, body stall, retry interaction, and mutating ambiguity.
-- [ ] Fake child-process tests cover timeout exit, redaction, and recovery guidance.
-- [ ] Timeout values are documented, positive, bounded, and do not leak secrets or commands.
-- [ ] Existing retry and lifecycle tests remain green.
+- [x] Injected-clock tests cover request timeout before response, body stall, retry interaction, and mutating ambiguity.
+- [x] Fake child-process tests cover timeout exit, redaction, and recovery guidance.
+- [x] Timeout values are documented, positive, bounded, and do not leak secrets or commands.
+- [x] Existing retry and lifecycle tests remain green.
 
 ## Dependencies
 
