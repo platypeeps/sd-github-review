@@ -29,8 +29,8 @@ Committed cross-session audit findings managed by sd-audit-repo.
 - fix: Strictly parse and bind one PR identity across metadata, reads, and mutations.
 
 ## A-003 — Concurrent begins can duplicate durable receipts and wedge an identity
-- status: open
-- notes: Trellis owner `07-25-make-durable-receipt-creation-concurrency-safe`; remediation planning created 2026-07-25.
+- status: fixed
+- notes: Trellis owner `07-25-make-durable-receipt-creation-concurrency-safe`; remediation planning created 2026-07-25; verified fixed on main @ a546883 (2026-08-04) — src/receipt.js elects a canonical fingerprint and rejects conflicting durable receipts.
 - severity: P1 · effort: M · confidence: Verified
 - dimension: correctness
 - first-seen: 2026-07-25 @ 2eeca60
@@ -55,8 +55,8 @@ Committed cross-session audit findings managed by sd-audit-repo.
 - fix: Isolate reviewer execution from the dedicated receipt-writing job and token.
 
 ## A-005 — Installer writes can escape through symlinked path ancestors
-- status: open
-- notes: Trellis owner `07-25-reject-symlinked-installer-targets`; remediation planning created 2026-07-25.
+- status: fixed
+- notes: Trellis owner `07-25-reject-symlinked-installer-targets`; remediation planning created 2026-07-25; verified fixed on main @ a546883 (2026-08-04) — scripts/consumer-installer.mjs canonicalizes ancestors via lstat and refuses symlinked ancestors before writes/renames.
 - severity: P1 · effort: M · confidence: Verified
 - dimension: security
 - first-seen: 2026-07-25 @ 2eeca60
@@ -68,8 +68,8 @@ Committed cross-session audit findings managed by sd-audit-repo.
 - fix: Reject symlinked ancestors and revalidate containment immediately before mutation.
 
 ## A-006 — Shipped process boundaries are untested and CI has no coverage gate
-- status: open
-- notes: Trellis owner `07-25-test-shipped-review-process-boundaries`; remediation planning created 2026-07-25.
+- status: fixed
+- notes: Trellis owner `07-25-test-shipped-review-process-boundaries`; remediation planning created 2026-07-25; verified fixed on main @ a546883 (2026-08-04) — subprocess boundary tests (action-entrypoint.test.js, installer-entrypoint.test.js) exist and ci.yml runs npm run test:coverage.
 - severity: P1 · effort: M · confidence: Verified
 - dimension: testing
 - first-seen: 2026-07-25 @ 2eeca60
@@ -82,8 +82,8 @@ Committed cross-session audit findings managed by sd-audit-repo.
 - fix: Add subprocess boundary tests and conservative critical-file coverage gates.
 
 ## A-007 — The only release lacks the current installer and working PR-Agent template
-- status: open
-- notes: Trellis owner `07-25-publish-traceable-installer-release`; remediation planning created 2026-07-25.
+- status: fixed
+- notes: Trellis owner `07-25-publish-traceable-installer-release`; remediation planning created 2026-07-25; verified fixed on main @ a546883 (2026-08-04) — release v0.2.0 published and scripts/consumer-installer.mjs writes schema-2 manifests with source provenance.
 - severity: P1 · effort: M · confidence: Verified
 - dimension: release-hygiene
 - first-seen: 2026-07-25 @ 2eeca60
@@ -97,8 +97,8 @@ Committed cross-session audit findings managed by sd-audit-repo.
 - fix: Publish a traceable release and enforce identity, migration, version, and pin synchronization.
 
 ## A-008 — Routing responsibility is split across protocol, event, and mode composition
-- status: open
-- notes: Trellis owner `07-25-consolidate-routing-policy-boundaries`; remediation planning created 2026-07-25.
+- status: fixed
+- notes: Trellis owner `07-25-consolidate-routing-policy-boundaries`; remediation planning created 2026-07-25; verified fixed on main @ a546883 (2026-08-04) — router.js is the single policy owner via the decodeRoutingInputs edge; protocol.js and receipt.js no longer import router.js.
 - severity: P2 · effort: M · confidence: Plausible
 - dimension: architecture
 - first-seen: 2026-07-25 @ 2eeca60
@@ -152,8 +152,8 @@ Committed cross-session audit findings managed by sd-audit-repo.
 - fix: Apply configured and trusted-command precedence before label parsing.
 
 ## A-012 — External calls have no execution timeout
-- status: open
-- notes: Trellis owner `07-25-bound-review-remote-operations`; remediation planning created 2026-07-25.
+- status: fixed
+- notes: Trellis owner `07-25-bound-review-remote-operations`; remediation planning created 2026-07-25; verified fixed on main @ a546883 (2026-08-04) — src/github.js bounds fetch with a timeout/abort and scripts/consumer-installer.mjs applies a per-command child-process timeout.
 - severity: P2 · effort: S · confidence: Plausible
 - dimension: correctness
 - first-seen: 2026-07-25 @ 2eeca60
@@ -217,8 +217,8 @@ Committed cross-session audit findings managed by sd-audit-repo.
 - fix: Remove the declaration or freeze and audit the nested install.
 
 ## A-017 — The prescribed local full-check skips every CI package gate
-- status: open
-- notes: Trellis owner `07-25-align-local-full-check-with-ci`; remediation planning created 2026-07-25.
+- status: fixed
+- notes: Trellis owner `07-25-align-local-full-check-with-ci`; remediation planning created 2026-07-25; verified fixed on main @ a546883 (2026-08-04) — package.json check:full runs test, test:coverage, check, validate:metadata, validate:ci-parity, and validate:ci-parity enforces CI/local gate parity.
 - severity: P2 · effort: S · confidence: Plausible
 - dimension: tooling
 - first-seen: 2026-07-25 @ 2eeca60
@@ -244,8 +244,8 @@ Committed cross-session audit findings managed by sd-audit-repo.
 - fix: Drive every first-party profile through one declarative lifecycle engine.
 
 ## A-019 — Installer cannot adopt existing manual installations
-- status: open
-- notes: Trellis owner `07-25-adopt-manual-review-installations`; remediation planning created 2026-07-25.
+- status: fixed
+- notes: Trellis owner `07-25-adopt-manual-review-installations`; remediation planning created 2026-07-25; verified fixed on main @ a546883 (2026-08-04) — scripts/consumer-installer.mjs carries an A-019 adoption registry of approved historical hashes for safe adoption.
 - severity: P2 · effort: M · confidence: Plausible
 - dimension: consumer-impact
 - first-seen: 2026-07-25 @ 2eeca60
