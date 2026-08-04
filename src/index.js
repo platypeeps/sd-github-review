@@ -33,6 +33,39 @@ function positiveIntegerInput(name, fallback, env = process.env) {
   return value;
 }
 
+// Decode a pull-request identity as a complete positive decimal. Rejects
+// suffixes (`12garbage`), signs, whitespace variants, leading zeros, zero, and
+// unsafe integers with a field-specific bounded error. Never trims: a value
+// carrying surrounding whitespace is malformed, not sanitizable.
+function decodePullRequestNumber(rawValue, fieldName) {
+  if (!/^[1-9][0-9]*$/u.test(rawValue) || !Number.isSafeInteger(Number(rawValue))) {
+    throw new Error(`${fieldName} must be a complete positive integer`);
+  }
+  return Number(rawValue);
+}
+
+// Bind the event identity and the optional override to one validated PR number
+// before any GitHub client is constructed or any output is emitted. A conflict
+// between an event-carried identity and a non-matching override is rejected
+// rather than silently resolved in the override's favor.
+function resolvePullRequestNumber(event, env) {
+  const overrideRaw = input("pr-number", "", env);
+  const overrideNumber = overrideRaw === "" ? null : decodePullRequestNumber(overrideRaw, "pr-number");
+  const eventIdentity = event.pull_request?.number ?? event.issue?.number;
+  const eventNumber =
+    eventIdentity === undefined || eventIdentity === null
+      ? null
+      : decodePullRequestNumber(String(eventIdentity), "event pull request number");
+  if (overrideNumber !== null && eventNumber !== null && overrideNumber !== eventNumber) {
+    throw new Error(`pr-number ${overrideNumber} conflicts with event pull request #${eventNumber}`);
+  }
+  const pullRequestNumber = overrideNumber ?? eventNumber;
+  if (pullRequestNumber === null) {
+    throw new Error("could not infer a pull request number; set pr-number explicitly");
+  }
+  return pullRequestNumber;
+}
+
 export async function writeOutput(
   name,
   value,
@@ -137,13 +170,7 @@ export async function runAction({
     "high-risk-route",
   );
 
-  const pullRequestNumber = Number.parseInt(
-    input("pr-number", "", env) || String(event.pull_request?.number ?? event.issue?.number ?? ""),
-    10,
-  );
-  if (!Number.isSafeInteger(pullRequestNumber) || pullRequestNumber < 1) {
-    throw new Error("could not infer a pull request number; set pr-number explicitly");
-  }
+  const pullRequestNumber = resolvePullRequestNumber(event, env);
 
   const rawCommand = eventName === "issue_comment" ? parseReviewCommand(event.comment?.body) : null;
   const eventLabel = String(event.label?.name ?? "").toLowerCase();
