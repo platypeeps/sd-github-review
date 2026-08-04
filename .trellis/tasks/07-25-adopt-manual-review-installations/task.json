@@ -3,7 +3,7 @@
   "name": "adopt-manual-review-installations",
   "title": "Adopt manual review installations",
   "description": "Remediate audit finding A-019 with guarded adoption of approved historical or manually installed workflows.",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
