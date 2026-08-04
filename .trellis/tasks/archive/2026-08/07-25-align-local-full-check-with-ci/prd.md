@@ -21,10 +21,10 @@ Audit finding A-017 was recorded at repository head `2eeca60` with the following
 
 ## Acceptance Criteria
 
-- [ ] A clean local full-check runs test, check, and metadata validation and reports their results.
-- [ ] A fixture that removes or fails one package script makes the local gate fail.
-- [ ] CI and local gate inventories are compared by a regression test or validator.
-- [ ] No unrelated generic stage is required for this repository.
+- [x] A clean local full-check runs test, check, and metadata validation and reports their results.
+- [x] A fixture that removes or fails one package script makes the local gate fail.
+- [x] CI and local gate inventories are compared by a regression test or validator.
+- [x] No unrelated generic stage is required for this repository.
 
 ## Dependencies
 

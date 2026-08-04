@@ -1456,3 +1456,47 @@ Added an explicit consumer-installer adopt operation that brings a manually copi
 ### Next Steps
 
 - None - task complete
+
+
+## Session 37: Align local full-check with CI package gates (A-017)
+
+**Date**: 2026-08-04
+**Task**: Align local full-check with CI package gates (A-017)
+**Branch**: `codex/align-local-full-check-with-ci`
+
+### Summary
+
+Added a repo-owned check:full package script that runs the exact CI npm gates (test, test:coverage, check, validate:metadata) plus a new validate:ci-parity guard, then the pack full-check with generic package scripts skipped; PR #38 review loop converged clean.
+
+### Main Changes
+
+- check:full mirrors CI package gates and runs pack full-check with SKIP_PACKAGE_SCRIPTS=1, replacing the generic stage defaults for the sd-review-pr local entrypoint
+- scripts/validate-ci-parity.mjs fails when check:full is missing or omits any ci.yml npm gate; wired as a check:full step and a CI step
+- Reverted an edit to pack-managed docs/SD_AI_COMMAND_PACK.md (install-audit drift); hardened the validator CLI entrypoint guard with pathToFileURL per Copilot review
+- PR template names npm run check:full
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `787b8e4` | feat: align local full-check with CI package gates (A-017) |
+| `5943855` | fix: revert edit to pack-managed docs/SD_AI_COMMAND_PACK.md |
+| `37a8d56` | fix: harden validate-ci-parity CLI entrypoint guard (Copilot review) |
+| `b376d60` | chore(task): record branch for align-local-full-check-with-ci finalization |
+| `01fd778` | chore(task): archive 07-25-align-local-full-check-with-ci |
+
+### Testing
+
+- [OK] npm run check:full — 199 tests, coverage OK, check, validate:metadata, validate:ci-parity, pack full-check (exit 0)
+- [OK] bash scripts/sd-ai-command-pack-review-full-check.sh — selects check:full (exit 0)
+- [OK] node --test test/ci-parity.test.js — 7/7 pass
+- [OK] sd-check 7/7; CI green; Copilot 2nd pass no new comments
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

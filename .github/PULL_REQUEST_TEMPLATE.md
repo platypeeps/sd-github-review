@@ -11,6 +11,7 @@ described in docs/SD_AI_COMMAND_PACK.md. -->
 <!-- Focused checks first, then the local gate. -->
 
 - [ ] Focused local checks:
+- [ ] CI-parity package gates: `npm run check:full`
 - [ ] Local gate: `bash scripts/sd-ai-command-pack-full-check.sh`
 
 ## Pre-PR checklist

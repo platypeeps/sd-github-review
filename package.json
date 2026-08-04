@@ -9,11 +9,13 @@
     "node": ">=24"
   },
   "scripts": {
-    "check": "node --check src/index.js && node --check src/operations.js && node --check src/router.js && node --check src/protocol.js && node --check src/receipt.js && node --check src/github.js && node --check scripts/consumer-installer.mjs && node --check scripts/install-consumer.mjs && node --check scripts/validate-action-metadata.mjs && node --check scripts/check-coverage.mjs",
+    "check": "node --check src/index.js && node --check src/operations.js && node --check src/router.js && node --check src/protocol.js && node --check src/receipt.js && node --check src/github.js && node --check scripts/consumer-installer.mjs && node --check scripts/install-consumer.mjs && node --check scripts/validate-action-metadata.mjs && node --check scripts/check-coverage.mjs && node --check scripts/validate-ci-parity.mjs",
     "validate:metadata": "node scripts/validate-action-metadata.mjs",
     "validate:release": "node scripts/validate-action-metadata.mjs --release-tag",
+    "validate:ci-parity": "node scripts/validate-ci-parity.mjs",
     "test": "node --test",
-    "test:coverage": "node scripts/check-coverage.mjs"
+    "test:coverage": "node scripts/check-coverage.mjs",
+    "check:full": "npm test && npm run test:coverage && npm run check && npm run validate:metadata && npm run validate:ci-parity && SD_AI_COMMAND_PACK_FULL_CHECK_SKIP_PACKAGE_SCRIPTS=1 bash scripts/sd-ai-command-pack-full-check.sh"
   },
   "devDependencies": {
     "yaml": "^2.9.0"
