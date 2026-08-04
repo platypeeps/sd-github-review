@@ -449,6 +449,13 @@ async function atomicWrite(guard, filePath, content) {
     await guard.assert(filePath);
     await rename(temporaryPath, filePath);
   } catch (error) {
+    // Best-effort cleanup of the temp file on any failure. The temp name
+    // carries an unpredictable random suffix, so an ancestor swapped to a
+    // symlink cannot steer this unlink onto an attacker-named external file:
+    // it either removes the real temp file or fails ENOENT through the swap.
+    // The pre-write `wx` write and the pre-write/pre-rename containment
+    // asserts are what prevent writing *through* a swap; this cleanup only
+    // targets the unpredictable temp path and never a caller-supplied one.
     await unlink(temporaryPath).catch(() => {});
     throw error;
   }
