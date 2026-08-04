@@ -6,7 +6,7 @@ import {
   decodeSuccessorEvidence,
   stableProtocolJson,
 } from "./protocol.js";
-import { globToRegExp } from "./router.js";
+import { globToRegExp } from "./path-match.js";
 
 export const RECEIPT_CHECK_NAME = "sd-github-review/receipt";
 export const RECEIPT_MARKER = "<!-- sd-github-review-receipt:v1 -->\n";

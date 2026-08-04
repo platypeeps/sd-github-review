@@ -11,9 +11,9 @@ import {
   decodeSuccessorEvidence,
   deriveLogicalDispatchId,
   deriveRequestFingerprint,
-  selectProtocolRoute,
   stableProtocolJson,
 } from "../src/protocol.js";
+import { selectProtocolRoute } from "../src/router.js";
 
 async function fixture(name) {
   const url = new URL(`../fixtures/protocol/v1/${name}`, import.meta.url);

@@ -2,20 +2,19 @@ import { appendFile, readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { GitHubClient } from "./github.js";
 import { normalizeOperation, runDurableAction, writeDurableSummary } from "./operations.js";
+import { buildRiskContext } from "./risk-context.js";
+import { requestCopilotReviewer } from "./reviewer-dispatch.js";
 import {
-  findSensitiveFiles,
   ignoredEventDecision,
   isTrustedCommand,
   modeFromLabels,
-  normalizeConfidence,
-  normalizeEscalationRoute,
   normalizeMode,
   parseList,
   parseReviewCommand,
   resolveExplicitMode,
   reviewLabels,
-  routeReview,
-} from "./router.js";
+} from "./normalize.js";
+import { routeReview } from "./router.js";
 
 function input(name, fallback = "", env = process.env) {
   return env[`INPUT_${name.toUpperCase().replace(/ /gu, "_")}`] ?? fallback;
@@ -160,15 +159,6 @@ export async function runAction({
   }
   const emitSummary = summaryWriter ?? ((summary) => writeSummary(summary, { env }));
   const configuredMode = normalizeMode(input("mode", "auto", env));
-  const confidence = normalizeConfidence(input("confidence", "unknown", env));
-  const lowConfidenceRoute = normalizeEscalationRoute(
-    input("low-confidence-route", "deep", env),
-    "low-confidence-route",
-  );
-  const highRiskRoute = normalizeEscalationRoute(
-    input("high-risk-route", "copilot", env),
-    "high-risk-route",
-  );
 
   const pullRequestNumber = resolvePullRequestNumber(event, env);
 
@@ -241,7 +231,18 @@ export async function runAction({
   const files = needsSensitivePathEvaluation
     ? await getClient().listPullRequestFiles(pullRequestNumber)
     : [];
-  const sensitiveFiles = findSensitiveFiles(files, patterns);
+  const risk = buildRiskContext({
+    changedLines,
+    changedLineThreshold,
+    files,
+    sensitivePaths: patterns,
+    confidence: input("confidence", "unknown", env),
+    lowConfidenceRoute: input("low-confidence-route", "deep", env),
+    highRiskRoute: input("high-risk-route", "copilot", env),
+    draft: Boolean(pullRequest.draft),
+    reviewDrafts,
+  });
+  const sensitiveFiles = risk.sensitiveFiles;
   const decision = routeReview({
     configuredMode,
     labelMode,
@@ -249,35 +250,18 @@ export async function runAction({
     eventName,
     eventAction: event.action,
     isRelevantLabelEvent: reviewLabels.has(eventLabel),
-    draft: Boolean(pullRequest.draft),
-    reviewDrafts,
-    changedLines,
-    changedLineThreshold,
-    sensitiveFiles,
-    highRiskRoute,
-    confidence,
-    lowConfidenceRoute,
+    ...risk,
   });
 
   let copilotRequested = false;
   if (decision.route === "copilot" && booleanInput("request-copilot", true, env)) {
-    const reviewer = input("copilot-reviewer", "copilot-pull-request-reviewer[bot]", env);
-    const requested = await getClient().getRequestedReviewers(pullRequestNumber);
-    const alreadyRequested = requested.users?.some((user) => user.login === reviewer);
-    const headSha = pullRequest.head?.sha;
-    const alreadyReviewed =
-      !alreadyRequested && headSha
-        ? (await getClient().listPullRequestReviews(pullRequestNumber)).some(
-            (review) =>
-              review.user?.login === reviewer &&
-              review.commit_id === headSha &&
-              review.state !== "DISMISSED",
-          )
-        : false;
-    if (!alreadyRequested && !alreadyReviewed) {
-      await getClient().requestReviewer(pullRequestNumber, reviewer);
-      copilotRequested = true;
-    }
+    const dispatch = await requestCopilotReviewer({
+      client: getClient(),
+      pullRequestNumber,
+      reviewer: input("copilot-reviewer", "copilot-pull-request-reviewer[bot]", env),
+      headSha: pullRequest.head?.sha,
+    });
+    copilotRequested = dispatch.requested;
   }
 
   const model =

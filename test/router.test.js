@@ -1,15 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { findSensitiveFiles } from "../src/path-match.js";
 import {
-  findSensitiveFiles,
   ignoredEventDecision,
   isTrustedCommand,
   modeFromLabels,
   normalizeEscalationRoute,
   parseReviewCommand,
   resolveExplicitMode,
-  routeReview,
-} from "../src/router.js";
+} from "../src/normalize.js";
+import { routeReview } from "../src/router.js";
 
 const base = {
   configuredMode: "auto",

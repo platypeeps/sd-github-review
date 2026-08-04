@@ -21,10 +21,10 @@ Audit finding A-008 was recorded at repository head `2eeca60` with the following
 
 ## Acceptance Criteria
 
-- [ ] Dependency tests or import checks prove protocol and receipt layers do not import policy internals.
-- [ ] Standalone and durable parity fixtures use the shared risk and dispatch services.
-- [ ] Existing route, protocol, receipt, and operation suites remain behaviorally unchanged.
-- [ ] DESIGN.md and directory-structure specs match the implemented boundaries.
+- [x] Dependency tests or import checks prove protocol and receipt layers do not import policy internals.
+- [x] Standalone and durable parity fixtures use the shared risk and dispatch services.
+- [x] Existing route, protocol, receipt, and operation suites remain behaviorally unchanged.
+- [x] DESIGN.md and directory-structure specs match the implemented boundaries.
 
 ## Dependencies
 

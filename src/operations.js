@@ -4,17 +4,13 @@ import {
   decodeAdapterAcknowledgment,
   decodeBackend,
   decodeReviewRequest,
-  selectProtocolRoute,
   stableProtocolJson,
 } from "./protocol.js";
 import { ReceiptStore } from "./receipt.js";
-import {
-  findSensitiveFiles,
-  normalizeConfidence,
-  normalizeEscalationRoute,
-  normalizeMode,
-  parseList,
-} from "./router.js";
+import { selectProtocolRoute } from "./router.js";
+import { buildRiskContext } from "./risk-context.js";
+import { requestCopilotReviewer } from "./reviewer-dispatch.js";
+import { normalizeMode, parseList } from "./normalize.js";
 
 const OPERATIONS = new Set(["route", "acknowledge", "finalize", "query"]);
 const ADAPTER_OUTCOMES = new Set(["success", "failure", "cancelled", "skipped"]);
@@ -346,30 +342,23 @@ async function routeOperation({ request, client, store, env, now }) {
   const files = request.route === "auto"
     ? await client.listPullRequestFiles(request.pullRequestNumber)
     : [];
-  const sensitiveFiles = findSensitiveFiles(
-    files,
-    parseList(input("sensitive-paths", "", env)),
-  );
   const successor = request.supersedes ? await store.compareSuccessor(request) : null;
-  const lowConfidenceRoute = normalizeEscalationRoute(
-    input("low-confidence-route", "deep", env),
-    "low-confidence-route",
-  );
-  const highRiskRoute = normalizeEscalationRoute(
-    input("high-risk-route", "copilot", env),
-    "high-risk-route",
-  );
+  const risk = buildRiskContext({
+    changedLines,
+    changedLineThreshold,
+    files,
+    sensitivePaths: parseList(input("sensitive-paths", "", env)),
+    confidence: input("confidence", "unknown", env),
+    lowConfidenceRoute: input("low-confidence-route", "deep", env),
+    highRiskRoute: input("high-risk-route", "copilot", env),
+    draft: Boolean(pullRequest.draft),
+    reviewDrafts: booleanInput("review-drafts", false, env),
+  });
+  const sensitiveFiles = risk.sensitiveFiles;
   const decision = selectProtocolRoute({
     request,
     routingContext: {
-      changedLines,
-      changedLineThreshold,
-      sensitiveFiles,
-      highRiskRoute,
-      confidence: normalizeConfidence(input("confidence", "unknown", env)),
-      lowConfidenceRoute,
-      draft: Boolean(pullRequest.draft),
-      reviewDrafts: booleanInput("review-drafts", false, env),
+      ...risk,
       ...(successor ? { successorEvidence: successor.evidence } : {}),
     },
     policy: {
@@ -403,25 +392,18 @@ async function routeOperation({ request, client, store, env, now }) {
     adapter = adapterRequest(result.receipt);
   } else if (result.dispatchAllowed && backend?.kind === "copilot") {
     try {
-      const reviewer = backend.reviewAuthors[0];
-      const requested = await client.getRequestedReviewers(request.pullRequestNumber);
-      const alreadyRequested = requested.users?.some((user) => user.login === reviewer);
-      const alreadyReviewed = !alreadyRequested
-        && (await client.listPullRequestReviews(request.pullRequestNumber)).some(
-          (review) =>
-            review.user?.login === reviewer
-            && review.commit_id?.toLowerCase() === request.headSha
-            && review.state !== "DISMISSED",
-        );
-      if (!alreadyRequested && !alreadyReviewed) {
-        await client.requestReviewer(request.pullRequestNumber, reviewer);
-      }
+      const dispatch = await requestCopilotReviewer({
+        client,
+        pullRequestNumber: request.pullRequestNumber,
+        reviewer: backend.reviewAuthors[0],
+        headSha: request.headSha,
+      });
       const completedAt = timestamp(now);
       result = await store.observe({
         pullRequestNumber: request.pullRequestNumber,
         headSha: request.headSha,
         logicalDispatchId: request.logicalDispatchId,
-        alreadyPresent: alreadyRequested || alreadyReviewed,
+        alreadyPresent: dispatch.alreadyPresent,
         observations: {
           latencyMs: elapsedMilliseconds(result.receipt, completedAt),
           costTier: backend.costTier,
@@ -429,7 +411,7 @@ async function routeOperation({ request, client, store, env, now }) {
         workflowUrl: workflowUrl(env),
         completedAt,
       });
-      result.copilotRequested = !alreadyRequested && !alreadyReviewed;
+      result.copilotRequested = dispatch.requested;
     } catch (error) {
       result = {
         state: "reconciliation-required",

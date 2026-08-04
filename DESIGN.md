@@ -46,20 +46,42 @@ effort as GitHub-managed.
 
 ## Architecture
 
-The implementation has six boundaries:
+The implementation follows one downhill dependency direction. Leaf utilities
+carry no policy; the versioned codecs depend only on those leaves; the route
+policy owner depends on the codecs; shared services and the two entrypoints
+depend on the policy owner. Codec and persistence layers never import policy.
 
-1. `src/router.js` contains pure routing policy, command parsing, label parsing,
-   trust checks, and sensitive-path matching.
-2. `src/protocol.js` validates and canonicalizes the versioned review request,
+1. `src/path-match.js` is a leaf utility: pure glob→RegExp translation and
+   sensitive-file selection, with no routing knowledge.
+2. `src/normalize.js` is a leaf utility: value canonicalizers (mode, escalation
+   route, confidence) and input parsers (list, review command, labels, trust,
+   event gating). These are canonicalization, not policy.
+3. `src/protocol.js` validates and canonicalizes the versioned review request,
    adapter request, backend, acknowledgment, successor, and receipt envelopes.
-3. `src/receipt.js` persists and reconciles exact-head receipts in GitHub Check
-   Runs.
-4. `src/operations.js` coordinates explicit `route`, `finalize`, and `query`
+   It also exposes `decodeRoutingInputs`, the codec seam that returns a fully
+   validated, typed routing-input record for the policy owner. It imports only
+   `normalize.js` and never any route policy.
+4. `src/router.js` is the single route-policy owner. It holds the automatic
+   `routeReview` decision and the versioned `selectProtocolRoute` policy
+   (independent-review and risk floors, exact-head local-evidence reduction,
+   and trusted successor handling). It imports the `decodeRoutingInputs` codec
+   seam plus the leaf canonicalizers; it never imports codec internals.
+5. `src/protocol.js` and `src/receipt.js` import no policy. `src/receipt.js`
+   persists and reconciles exact-head receipts in GitHub Check Runs and matches
+   bookkeeping paths through `path-match.js`, not the router.
+6. `src/risk-context.js` builds the shared normalized routing context both
+   entrypoints feed to the policy owner. `src/reviewer-dispatch.js` runs the
+   shared Copilot presence probe and conditional reviewer request.
+7. `src/operations.js` coordinates explicit `route`, `finalize`, and `query`
    receipt operations plus the side-effect-free `acknowledge` adapter helper,
-   and emits bounded outputs.
-5. `src/index.js` selects standalone or durable orchestration and owns GitHub
-   output/error surfaces.
-6. `src/github.js` owns GitHub REST requests, pagination, reviewer requests,
+   and emits bounded outputs. It builds context via `risk-context.js`,
+   dispatches via `reviewer-dispatch.js`, and routes via
+   `selectProtocolRoute`.
+8. `src/index.js` selects standalone or durable orchestration and owns GitHub
+   output/error surfaces. Standalone stays policy-free: it builds context via
+   `risk-context.js`, dispatches via `reviewer-dispatch.js`, and calls
+   `routeReview` directly (never `selectProtocolRoute`).
+9. `src/github.js` owns GitHub REST requests, pagination, reviewer requests,
    comparison metadata, and Check Run transport. Consumer workflows still own
    external reviewer adapters for `cheap` and `deep`.
 
