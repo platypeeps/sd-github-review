@@ -55,10 +55,19 @@ function sourceModules() {
 function localImports(fileName) {
   const source = readFileSync(new URL(fileName, new URL("../src/", import.meta.url)), "utf8");
   const imports = new Set();
-  const pattern = /from\s+["']\.\/([\w-]+\.js)["']/gu;
-  let match;
-  while ((match = pattern.exec(source)) !== null) {
-    imports.add(match[1]);
+  // Catch both `import … from "./x.js"` / `export … from "./x.js"` and
+  // side-effect-only `import "./x.js";`. A bare side-effect import still
+  // creates a dependency edge, so the boundary test must not let it bypass the
+  // matrix (Copilot review).
+  const patterns = [
+    /from\s+["']\.\/([\w-]+\.js)["']/gu,
+    /import\s+["']\.\/([\w-]+\.js)["']/gu,
+  ];
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(source)) !== null) {
+      imports.add(match[1]);
+    }
   }
   return [...imports];
 }
@@ -112,7 +121,10 @@ test("selectProtocolRoute is defined in exactly one module, the policy owner", (
   const definitions = [];
   for (const name of sourceModules()) {
     const source = readFileSync(new URL(name, new URL("../src/", import.meta.url)), "utf8");
-    if (/function\s+selectProtocolRoute\b/u.test(source)) {
+    // Match a function declaration OR a `const/let/var selectProtocolRoute =`
+    // binding, so a later refactor to an arrow/expression form is still counted
+    // as a definition rather than reported missing (Copilot review).
+    if (/(?:function\s+selectProtocolRoute\b|(?:const|let|var)\s+selectProtocolRoute\s*=)/u.test(source)) {
       definitions.push(name);
     }
   }
