@@ -43,7 +43,11 @@ node scripts/install-consumer.mjs install --target /path/to/consumer --set-secre
 
 The command copies the reviewed workflow, creates the routing variables and
 missing labels, and records ownership in a consumer-side sd-github-review.json
-manifest under the repository's GitHub metadata directory.
+manifest under the repository's GitHub metadata directory. The manifest also
+records source provenance (the release commit and, for a clean tagged checkout,
+the release tag); run the installer from a checkout of the release tag, or pass
+`--source-tag`/`--source-commit` for a `.git`-less artifact. See
+[source provenance](SETUP-PR-AGENT.md#source-provenance).
 The managed PR-Agent profile sends sensitive paths and changes at the line
 threshold to its configured `deep` model. An update adopts that profile while
 preserving the consumer's existing provider and cheap/deep model values.

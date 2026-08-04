@@ -7,17 +7,49 @@ import test from "node:test";
 import { promisify } from "node:util";
 import { parseDocument } from "yaml";
 import {
+  parseReleaseTag,
   prohibitedPublishedMetadataReason,
   validateMetadata,
+  validateReleaseConsistency,
 } from "../scripts/validate-action-metadata.mjs";
 import { SUPPORTED_PROVIDERS } from "../scripts/consumer-installer.mjs";
 
 const execFileAsync = promisify(execFile);
 
-async function writeMetadataFixture(root, actionReference) {
+async function writeMetadataFixture(root, actionReference, options = {}) {
+  const {
+    descriptorSha = "a".repeat(40),
+    contractMajor = 1,
+    version = "0.0.0",
+    writeDescriptor = true,
+    writePackage = true,
+  } = options;
   await mkdir(path.join(root, ".github", "workflows"), { recursive: true });
   await mkdir(path.join(root, "examples"), { recursive: true });
   await writeFile(path.join(root, "index.js"), "", "utf8");
+  if (writeDescriptor) {
+    await mkdir(path.join(root, "config"), { recursive: true });
+    await writeFile(
+      path.join(root, "config", "routed-review-setup-v1.json"),
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          contractMajor,
+          actionReference: `platypeeps/sd-github-review@${descriptorSha}`,
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+  }
+  if (writePackage) {
+    await writeFile(
+      path.join(root, "package.json"),
+      `${JSON.stringify({ name: "fixture", version }, null, 2)}\n`,
+      "utf8",
+    );
+  }
   await writeFile(
     path.join(root, "action.yml"),
     [
@@ -72,6 +104,7 @@ test("validates the repository action metadata, pinned workflows, and examples",
   assert.equal(result.workflowCount, 1);
   assert.equal(result.exampleCount, 5);
   assert.ok(result.trackedPathCount > 0);
+  assert.equal(result.contractMajor, 1);
 });
 
 test("publishes pinned standalone and durable PR-Agent workflows", async () => {
@@ -452,6 +485,103 @@ test("rejects floating Docker references and accepts digest pins", async () => {
   await execFileAsync("git", ["init", "-q", pinnedRoot]);
   await execFileAsync("git", ["-C", pinnedRoot, "add", "."]);
   await assert.doesNotReject(validateMetadata(pinnedRoot));
+});
+
+async function initTracked(root) {
+  await execFileAsync("git", ["init", "-q", root]);
+  await execFileAsync("git", ["-C", root, "add", "-f", "."]);
+}
+
+test("rejects a first-party pin that disagrees with the descriptor actionReference", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-firstparty-"));
+  await writeMetadataFixture(root, `platypeeps/sd-github-review@${"b".repeat(40)}`, {
+    descriptorSha: "c".repeat(40),
+  });
+  await assert.rejects(
+    validateMetadata(root),
+    /first-party references must be mutually consistent/u,
+  );
+});
+
+test("rejects a missing setup descriptor", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-nodescriptor-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    writeDescriptor: false,
+  });
+  await assert.rejects(validateMetadata(root), /setup descriptor is missing or invalid JSON/u);
+});
+
+test("rejects an unknown contract major", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-contract-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    contractMajor: 99,
+  });
+  await assert.rejects(validateMetadata(root), /contractMajor must be a known contract/u);
+});
+
+test("rejects a non-semver package version", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-version-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    version: "not-semver",
+  });
+  await assert.rejects(validateMetadata(root), /version must be valid semver/u);
+});
+
+test("validateReleaseConsistency accepts a matching not-yet-existing tag and rejects drift", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-release-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    version: "0.2.0",
+  });
+  await initTracked(root);
+  const absentTag = { tagExists: async () => false };
+
+  const accepted = await validateReleaseConsistency({
+    repositoryRoot: root,
+    releaseTag: "v0.2.0",
+    gitImpl: absentTag,
+  });
+  assert.equal(accepted.releaseChecked, true);
+  assert.equal(accepted.releaseTag, "v0.2.0");
+
+  await assert.rejects(
+    validateReleaseConsistency({ repositoryRoot: root, releaseTag: "v0.3.0", gitImpl: absentTag }),
+    /must equal v0\.2\.0 from package\.json/u,
+  );
+
+  await assert.rejects(
+    validateReleaseConsistency({
+      repositoryRoot: root,
+      releaseTag: "v0.2.0",
+      gitImpl: { tagExists: async () => true },
+    }),
+    /already exists; choose an unused version/u,
+  );
+
+  const consistencyOnly = await validateReleaseConsistency({ repositoryRoot: root });
+  assert.equal(consistencyOnly.releaseChecked, false);
+});
+
+test("accepts a full semver version with both prerelease and build metadata", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-semver-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    version: "1.2.3-alpha.1+build.5",
+  });
+  await initTracked(root);
+  await assert.doesNotReject(validateMetadata(root));
+  const accepted = await validateReleaseConsistency({
+    repositoryRoot: root,
+    releaseTag: "v1.2.3-alpha.1+build.5",
+    gitImpl: { tagExists: async () => false },
+  });
+  assert.equal(accepted.releaseChecked, true);
+});
+
+test("parseReleaseTag rejects an explicitly-empty SD_RELEASE_TAG and reads valid sources", () => {
+  assert.equal(parseReleaseTag([], {}), null);
+  assert.equal(parseReleaseTag([], { SD_RELEASE_TAG: "v0.2.0" }), "v0.2.0");
+  assert.equal(parseReleaseTag(["--release-tag", "v0.2.0"], {}), "v0.2.0");
+  assert.throws(() => parseReleaseTag([], { SD_RELEASE_TAG: "" }), /set but empty/u);
+  assert.throws(() => parseReleaseTag(["--release-tag"], {}), /requires a v<semver> value/u);
 });
 
 test("rejects a prohibited path even when it is force-added to Git", async () => {

@@ -27,6 +27,8 @@ node scripts/install-consumer.mjs uninstall [options]
 
 - `runConsumerInstaller(options, dependencies?) -> Promise<report>`
 - `parseArguments(argv) -> options|{ help: true }`
+- `resolveSourceRelease({ sourceRoot, gitImpl?, version?, override? }) -> { commit, tag, released }`
+- `validateReleaseConsistency({ repositoryRoot?, releaseTag?, gitImpl? }) -> Promise<result>`
 - `decodeManifest(source, filePath?) -> normalizedManifest`
 - `validateConfiguration(configuration) -> normalizedConfiguration`
 - `GitHubCli#inspect(repository) -> repositorySnapshot`
@@ -39,10 +41,25 @@ node scripts/install-consumer.mjs uninstall [options]
 - `install` and `update` copy `examples/pr-agent-router.yml` exactly to the
   consumer's GitHub workflows file named ai-review-router.yml and manage its
   consumer-side sd-github-review.json ownership manifest atomically.
-- The manifest schema is version `1`, tool `sd-github-review`, and state
-  `pending`, `active`, or `uninstalling`. It records repository, workflow and
-  source SHA-256, provider/models, and exact variable/secret/label ownership.
-  Source and workflow hashes must match. Extra owned resources are forbidden.
+- The manifest schema is version `2` (`MANIFEST_SCHEMA_VERSION`), tool
+  `sd-github-review`, and state `pending`, `active`, or `uninstalling`. It
+  records repository, workflow and source SHA-256, source provenance
+  (`source.commit`, `source.tag`, `source.released`), provider/models, and exact
+  variable/secret/label ownership. Source and workflow hashes must match. Extra
+  owned resources are forbidden. A legacy schema-`1` manifest decodes as a
+  pre-provenance install (no `source.commit/tag/released`); it is read-only and
+  `update` rewrites it to schema 2.
+- Source provenance is resolved from the installer's own source root, not the
+  consumer. `source.commit` is always a 40-hex commit. The `(released, tag)`
+  pair encodes the source unambiguously: `(true, v<semver>)` is the single
+  bytes-verified git path (an exact `v<version>` tag on `HEAD` with a clean
+  `examples/pr-agent-router.yml` working tree); `(false, v<semver>)` is an
+  operator-declared `.git`-less artifact via `--source-tag`/`--source-commit`
+  (or `SD_SOURCE_TAG`/`SD_SOURCE_COMMIT`); `(false, null)` is a dev/unreleased
+  checkout. `source.tag`, when non-null, is always `v<semver>`; `released: true`
+  requires a non-null `v<semver>` tag. When neither git identity nor override is
+  available, install/update fail closed with a bounded message. Recorded
+  provenance is an offline identity record, not a cryptographic attestation.
 - Supported providers are the same single-key allowlist enforced by the
   checked-in PR-Agent workflow. Non-OpenAI model IDs require the exact
   `<provider>/` prefix; every model is nonempty, whitespace-free, and at most
@@ -62,7 +79,20 @@ node scripts/install-consumer.mjs uninstall [options]
   install/update remote mutations and `uninstalling` before removals. It never
   commits or pushes the consumer checkout.
 - `check` is read-only and exits nonzero for local, source-template, variable,
-  secret-presence, or label drift.
+  secret-presence, or label drift. It additionally reports a schema-1 migration
+  issue, a newer-source-commit issue, and a released-tag-drift issue when the
+  recorded provenance no longer matches the resolved source identity.
+- The release gate `validateReleaseConsistency({ repositoryRoot, releaseTag,
+  gitImpl })` in `scripts/validate-action-metadata.mjs` is a two-tier hygiene
+  check. Its always-on tier (folded into `validateMetadata`, run by CI) asserts
+  every first-party `platypeeps/sd-github-review@<40-hex>` pin across
+  workflows/examples plus the descriptor `actionReference` in
+  `config/routed-review-setup-v1.json` are mutually equal, the descriptor
+  declares a known `contractMajor`, and `package.json` `version` is valid
+  semver. Its opt-in tier additionally requires `releaseTag === v<version>` and
+  a not-yet-existing tag. It never requires a pin to equal the release commit
+  being cut. Exposed as `npm run validate:release -- vX.Y.Z`; not wired into
+  `ci.yml`.
 - Uninstall requires confirmation or `--yes`, removes only owned variables,
   and preserves secrets and labels unless explicit cleanup flags authorize
   them. `--remove-labels` still removes only installer-created labels.
@@ -81,6 +111,10 @@ node scripts/install-consumer.mjs uninstall [options]
 | GitHub mutation fails during install/update | Retain `pending` manifest for idempotent retry |
 | GitHub mutation fails during uninstall | Retain `uninstalling` manifest and managed workflow |
 | Manifest includes unknown owned variable/label | Reject before any deletion |
+| Source has no git identity and no override | Fail install/update before writing managed files |
+| Manifest is released with a `released:true` but `tag:null` | Reject during decode |
+| First-party pins disagree with the descriptor `actionReference` | Fail the always-on metadata gate |
+| `validate:release` tag does not equal `v<version>` or already exists | Fail the opt-in release gate |
 | `check` observes drift | Return a bounded issue list and nonzero exit without mutation |
 | Secret-setting command fails | Redact the submitted value from the propagated diagnostic |
 
@@ -116,6 +150,14 @@ node scripts/install-consumer.mjs uninstall [options]
   installer-created labels.
 - Assert installer provider and label allowlists remain aligned with workflow
   metadata and router exports.
+- Assert schema-2 provenance capture (git-verified `released:true`, dirty
+  template or mismatched tag falling back to `released:false`, and the
+  `.git`-less override recording `(false, v-tag)`); a schema-1 manifest decodes
+  as pre-provenance and `update` rewrites it to schema 2 with a recorded commit.
+- Assert the always-on metadata gate rejects inconsistent first-party pins, a
+  drifted descriptor `actionReference`, a missing/unknown descriptor, and a
+  non-semver version; assert `validateReleaseConsistency` accepts a matching
+  not-yet-existing tag and rejects version mismatch and an existing tag.
 
 ### 7. Wrong vs Correct
 

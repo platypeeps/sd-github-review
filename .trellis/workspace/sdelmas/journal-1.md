@@ -1249,3 +1249,42 @@ Installer-managed refresh of vendored sd-ai-command-pack 0.64.0 to 0.64.3 (TOCTO
 ### Next Steps
 
 - None - task complete
+
+
+## Session 32: A-007 in-authority code/docs: schema-2 traceable installer provenance
+
+**Date**: 2026-08-04
+**Task**: A-007 in-authority code/docs: schema-2 traceable installer provenance
+**Branch**: `publish-traceable-installer-release`
+
+### Summary
+
+Implemented the in-authority code/docs portion of A-007 (publish-traceable-installer-release): consumer manifest schemaVersion 1->2 with git-resolved source provenance (commit/tag/released), provenance-aware check drift detection, update migration, and a two-tier release-validation gate. Release cut and version choice remain deferred to the operator; task stays in_progress (ACs 1/2/4 depend on the release cut).
+
+### Main Changes
+
+- consumer-installer.mjs: MANIFEST_SCHEMA_VERSION=2; resolveSourceRelease git-resolves commit/tag/released; decodeManifest accepts schema 1 or 2 with provenance invariants; createManifest writes source.{commit,tag,released}; checkInstallation flags migration/newer-commit/release drift; --source-tag/--source-commit override
+- validate-action-metadata.mjs: validateReleaseConsistency two-tier release gate; parseReleaseTag; first-party pin consistency; package version + contract-major checks; runCli release/metadata dispatch
+- Docs: spec/backend/consumer-installer.md provenance contract; SETUP-PR-AGENT.md source-provenance + migration/rollback advisory; README provenance note; CHANGELOG Unreleased
+- Tests: consumer-installer + metadata suites extended for provenance, drift, schema-1 decode/migration, override guards, release gate
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d72918f` | feat(installer): record source provenance in a schema-2 consumer manifest |
+| `b49a30c` | fix(review): address Copilot review on provenance and release-gate |
+
+### Testing
+
+- [OK] Copilot review: 4 findings, all verified real and fixed in b49a30c; 2nd pass no new comments; 0 unresolved threads
+- [OK] CI test job green on head b49a30c
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
