@@ -197,7 +197,6 @@ export async function runAction({
   };
   const pullRequest = event.pull_request ?? (await getClient().getPullRequest(pullRequestNumber));
   const labels = pullRequest.labels ?? event.issue?.labels ?? [];
-  const labelMode = modeFromLabels(labels);
   const trustedAssociations = new Set(
     parseList(input("trusted-associations", "OWNER,MEMBER,COLLABORATOR", env)).map((value) =>
       value.toUpperCase(),
@@ -213,6 +212,12 @@ export async function runAction({
       })
     : false;
   const commandMode = commandIsTrusted ? rawCommand : null;
+  // A-011: labels only decide the route when no higher-precedence control does.
+  // resolveExplicitMode already discards labelMode when a fixed configuredMode or
+  // a trusted commandMode is present, so parse (and its conflict throw) only when
+  // labels can actually decide — a conflict must not block a control that ignores it.
+  const higherPrecedenceMode = configuredMode !== "auto" ? configuredMode : commandMode;
+  const labelMode = higherPrecedenceMode ? null : modeFromLabels(labels);
   const changedLines = Number(pullRequest.additions ?? 0) + Number(pullRequest.deletions ?? 0);
   const reviewDrafts = booleanInput("review-drafts", false, env);
   const changedLineThreshold = positiveIntegerInput("changed-line-threshold", 800, env);

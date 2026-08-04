@@ -138,6 +138,56 @@ test("trusted comment commands fetch PR metadata but skip file enumeration", asy
   assert.equal(harness.outputs.get("model"), "deep-model");
 });
 
+const conflictingLabelPullRequest = {
+  ...basePullRequest,
+  labels: [{ name: "review:cheap" }, { name: "review:copilot" }],
+};
+
+// A-011: a higher-precedence control (fixed mode or trusted command) must route
+// even when the PR carries conflicting review labels, instead of the run
+// throwing on the label conflict.
+test("fixed mode routes despite conflicting review labels (A-011)", async () => {
+  const harness = createHarness();
+
+  const result = await harness.run({
+    event: { action: "opened", pull_request: conflictingLabelPullRequest },
+    env: { INPUT_MODE: "deep", "INPUT_DEEP-MODEL": "deep-model" },
+  });
+
+  assert.equal(result.decision.route, "deep");
+});
+
+test("trusted command routes despite conflicting review labels (A-011)", async () => {
+  const harness = createHarness({ pullRequest: conflictingLabelPullRequest });
+
+  const result = await harness.run({
+    eventName: "issue_comment",
+    event: {
+      action: "created",
+      issue: { number: 23 },
+      comment: {
+        body: "/review deep",
+        author_association: "MEMBER",
+        user: { login: "maintainer" },
+      },
+    },
+    env: { "INPUT_DEEP-MODEL": "deep-model" },
+  });
+
+  assert.equal(result.decision.route, "deep");
+});
+
+test("auto mode with conflicting review labels still throws (A-011)", async () => {
+  const harness = createHarness();
+
+  await assert.rejects(
+    harness.run({
+      event: { action: "opened", pull_request: conflictingLabelPullRequest },
+    }),
+    /conflicting review labels/u,
+  );
+});
+
 test("automatic sensitive routing requests Copilot once and reports outputs", async () => {
   const harness = createHarness({ files: ["src/auth/session.js"] });
 

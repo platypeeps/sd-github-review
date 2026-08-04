@@ -139,8 +139,8 @@ Committed cross-session audit findings managed by sd-audit-repo.
 - fix: Define and validate a shared tagged operation contract or thin wrappers.
 
 ## A-011 — Lower-priority label conflicts can block fixed modes and trusted commands
-- status: open
-- notes: Trellis owner `07-25-authorize-budget-aware-review-plans`; remediation planning created 2026-07-25.
+- status: fixed
+- notes: Trellis owner `08-04-apply-control-precedence-before-labels` (dedicated audit child; reassigned from `07-25-authorize-budget-aware-review-plans` 2026-08-04); verified fixed on main (2026-08-04) — `src/index.js` now resolves `commandMode` (trusted `/review`) before parsing labels and computes `higherPrecedenceMode = configuredMode !== "auto" ? configuredMode : commandMode`; `modeFromLabels(labels)` (the conflict-throwing parse) runs only when `higherPrecedenceMode` is falsy, so a fixed mode or trusted command routes past conflicting `review:*` labels instead of throwing. `resolveExplicitMode` already discarded `labelMode` in those cases, so non-conflict routes are unchanged. Auto mode with no trusted command still throws on conflict (no silent misroute). `modeFromLabels` throw contract untouched (`test/router.test.js:111` green). Regression tests: `test/action.test.js` A-011 cases (fixed mode / trusted command route despite conflicting labels; auto+conflict still throws); npm test 227/227, check:full 0 failures.
 - severity: P2 · effort: S · confidence: Plausible
 - dimension: correctness
 - first-seen: 2026-07-25 @ 2eeca60

@@ -49,6 +49,12 @@ is a coordination record, not a second implementation owner.
 - `07-25-remove-unused-installer-export` owns A-021.
 - `07-25-parallelize-installer-github-operations` owns A-022.
 
+Dedicated `08-04` children reassigned from the generic 07-25 adapter owners:
+
+- `08-04-harden-copilot-rerequest-dispatch` owns A-001.
+- `08-04-isolate-pr-agent-receipt-authority` owns A-004.
+- `08-04-apply-control-precedence-before-labels` owns A-011.
+
 ## Acceptance Criteria
 
 - [ ] Every ledger ID A-001 through A-022 names exactly one Trellis owner.
