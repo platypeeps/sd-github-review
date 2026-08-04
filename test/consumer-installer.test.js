@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { existsSync, readdirSync } from "node:fs";
+import {
+  lstat as realLstat,
+  mkdtemp,
+  mkdir,
+  readFile,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -731,4 +739,150 @@ test("parseArguments accepts source overrides only for install and update", () =
     () => parseArguments(["check", "--target", "/tmp/t", "--source-tag", "v0.1.0"]),
     /check does not accept source provenance overrides/u,
   );
+});
+
+// A-005: contain every installer read/write/rename/removal beneath the
+// canonical worktree without following repository-controlled symlink ancestors.
+
+const CONTAINMENT_PATTERN = /refusing to follow a symlinked or escaping installer path/u;
+
+async function makeExternal() {
+  return mkdtemp(path.join(os.tmpdir(), "sd-review-external-"));
+}
+
+test("install rejects a symlinked .github/workflows ancestor before writing outside the target", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  const external = await makeExternal();
+  await mkdir(path.join(target, ".github"), { recursive: true });
+  await symlink(external, path.join(target, ".github", "workflows"), "dir");
+
+  await assert.rejects(
+    runConsumerInstaller({ command: "install", target }, { sourceRoot, github }),
+    (error) => {
+      assert.match(error.message, CONTAINMENT_PATTERN);
+      assert.equal(error.message.includes(external), false, "must not leak the symlink target");
+      return true;
+    },
+  );
+  await assert.rejects(readFile(path.join(external, "ai-review-router.yml"), "utf8"), /ENOENT/u);
+  await assert.rejects(readFile(path.join(target, MANIFEST_PATH), "utf8"), /ENOENT/u);
+  assert.deepEqual(github.calls, []);
+});
+
+test("install rejects a symlinked .github manifest ancestor before writing outside the target", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  const external = await makeExternal();
+  await symlink(external, path.join(target, ".github"), "dir");
+
+  await assert.rejects(
+    runConsumerInstaller({ command: "install", target }, { sourceRoot, github }),
+    (error) => {
+      assert.match(error.message, CONTAINMENT_PATTERN);
+      assert.equal(error.message.includes(external), false, "must not leak the symlink target");
+      return true;
+    },
+  );
+  await assert.rejects(readFile(path.join(external, "sd-github-review.json"), "utf8"), /ENOENT/u);
+  assert.deepEqual(github.calls, []);
+});
+
+test("install succeeds when .github already exists as a regular directory", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  await mkdir(path.join(target, ".github"), { recursive: true });
+
+  const report = await runConsumerInstaller(
+    { command: "install", target },
+    { sourceRoot, github },
+  );
+  assert.equal(report.ok, true);
+  assert.equal((await readManifest(target)).state, "active");
+  assert.equal(
+    await readFile(path.join(target, WORKFLOW_PATH), "utf8"),
+    "name: managed workflow\n",
+  );
+});
+
+test("a replacement between plan and write fails safely without touching the external target", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  // git resolves the worktree root (e.g. /var -> /private/var on macOS), so the
+  // guard inspects a realpath prefix; match the workflows dir by suffix.
+  const workflowsSuffix = path.join(".github", "workflows");
+  const symlinkStat = {
+    isSymbolicLink: () => true,
+    isDirectory: () => false,
+    isFile: () => false,
+  };
+  // Simulate an attacker swapping .github/workflows for a symlink in the window
+  // between the temp write and the rename: report a symlink only once the
+  // in-flight *.tmp file exists in the directory. The pre-mkdir guard (no temp
+  // yet) sees the real state and passes; the pre-rename guard catches the swap.
+  const lstat = async (targetPath) => {
+    if (
+      targetPath.endsWith(workflowsSuffix) &&
+      existsSync(targetPath) &&
+      readdirSync(targetPath).some((name) => name.endsWith(".tmp"))
+    ) {
+      return symlinkStat;
+    }
+    return realLstat(targetPath);
+  };
+
+  await assert.rejects(
+    runConsumerInstaller({ command: "install", target }, { sourceRoot, github, lstat }),
+    CONTAINMENT_PATTERN,
+  );
+  // The workflow was never renamed into place and no temp file leaked.
+  await assert.rejects(readFile(path.join(target, WORKFLOW_PATH), "utf8"), /ENOENT/u);
+  assert.deepEqual(
+    readdirSync(path.join(target, ".github", "workflows")).filter((name) => name.endsWith(".tmp")),
+    [],
+  );
+});
+
+test("check reports a bounded containment error without leaking the symlink target", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  const external = await makeExternal();
+  await mkdir(path.join(target, ".github"), { recursive: true });
+  await symlink(external, path.join(target, ".github", "workflows"), "dir");
+
+  await assert.rejects(
+    runConsumerInstaller({ command: "check", target }, { sourceRoot, github }),
+    (error) => {
+      assert.match(error.message, CONTAINMENT_PATTERN);
+      assert.equal(error.message.includes(external), false, "must not leak the symlink target");
+      assert.equal(error.message.includes(target), false, "must stay bounded to the managed path");
+      return true;
+    },
+  );
+});
+
+test("dry-run install reports a bounded containment error and mutates nothing", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  const external = await makeExternal();
+  await mkdir(path.join(target, ".github"), { recursive: true });
+  await symlink(external, path.join(target, ".github", "workflows"), "dir");
+
+  await assert.rejects(
+    runConsumerInstaller({ command: "install", target, dryRun: true }, { sourceRoot, github }),
+    (error) => {
+      assert.match(error.message, CONTAINMENT_PATTERN);
+      assert.equal(error.message.includes(external), false, "must not leak the symlink target");
+      assert.equal(error.message.includes(target), false, "must stay bounded to the managed path");
+      return true;
+    },
+  );
+  assert.deepEqual(github.calls, []);
+  await assert.rejects(readFile(path.join(external, "ai-review-router.yml"), "utf8"), /ENOENT/u);
 });

@@ -78,6 +78,17 @@ node scripts/install-consumer.mjs uninstall [options]
 - Mutating commands support `--dry-run`. The tool writes `pending` before
   install/update remote mutations and `uninstalling` before removals. It never
   commits or pushes the consumer checkout.
+- Every managed read, write, rename, and removal stays beneath the canonical
+  Git worktree root. Before touching a managed path the tool inspects each
+  existing ancestor from the root to the destination with `lstat`-equivalent
+  semantics and rejects a symlink component, a non-directory ancestor, a
+  non-regular-file leaf, or any destination resolving outside the root, failing
+  before local or GitHub mutation. It rechecks containment immediately before
+  each atomic rename and removal to narrow the time-of-check/time-of-use
+  window. The same guard covers the install, update, check, adoption, rollback,
+  and uninstall paths. Containment errors are bounded to the managed path
+  relative to the root and never embed a symlink target or other unrelated host
+  path.
 - `check` is read-only and exits nonzero for local, source-template, variable,
   secret-presence, or label drift. It additionally reports a schema-1 migration
   issue, a newer-source-commit issue, and a released-tag-drift issue when the
@@ -111,6 +122,8 @@ node scripts/install-consumer.mjs uninstall [options]
 | GitHub mutation fails during install/update | Retain `pending` manifest for idempotent retry |
 | GitHub mutation fails during uninstall | Retain `uninstalling` manifest and managed workflow |
 | Manifest includes unknown owned variable/label | Reject before any deletion |
+| Managed-path ancestor is a symlink or resolves outside the root | Fail with a bounded relative-path error before any read, write, rename, or removal |
+| Managed-path ancestor is replaced with a symlink between plan and rename/removal | Recheck fails closed before the rename/removal; no external target is touched |
 | Source has no git identity and no override | Fail install/update before writing managed files |
 | Manifest is released with a `released:true` but `tag:null` | Reject during decode |
 | First-party pins disagree with the descriptor `actionReference` | Fail the always-on metadata gate |
@@ -154,6 +167,11 @@ node scripts/install-consumer.mjs uninstall [options]
   template or mismatched tag falling back to `released:false`, and the
   `.git`-less override recording `(false, v-tag)`); a schema-1 manifest decodes
   as pre-provenance and `update` rewrites it to schema 2 with a recorded commit.
+- Assert a symlinked `.github/workflows` or `.github` manifest ancestor fails
+  install/check/dry-run before writing outside the target with a bounded error
+  that omits the symlink target, that a regular pre-existing `.github` directory
+  still installs, and that a symlink swap injected between plan and rename fails
+  closed without touching the external target.
 - Assert the always-on metadata gate rejects inconsistent first-party pins, a
   drifted descriptor `actionReference`, a missing/unknown descriptor, and a
   non-semver version; assert `validateReleaseConsistency` accepts a matching
