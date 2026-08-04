@@ -530,6 +530,20 @@ test("automatic routing never mirrors sensitive paths into durable outputs", asy
   assert.equal(JSON.stringify(harness.summaries).includes("src/auth/session.js"), false);
 });
 
+test("durable auto routing without sensitive paths skips file enumeration (A-014)", async () => {
+  const request = clone(requestByName.get("automatic with exact-head local evidence"));
+  const client = new FakeGitHubClient(request.headSha);
+  client.fileNames = ["src/auth/session.js"];
+  const harness = createHarness(client);
+
+  const result = await harness.run("route", request, {
+    "INPUT_CHEAP-BACKEND": JSON.stringify(backendByName.get("external comment backend")),
+  });
+
+  assert.equal(result.state, "started");
+  assert.equal(client.calls.some(([name]) => name === "listPullRequestFiles"), false);
+});
+
 test("durable high-risk routing can dispatch the configured external deep backend", async () => {
   const request = clone(requestByName.get("automatic with exact-head local evidence"));
   const client = new FakeGitHubClient(request.headSha);

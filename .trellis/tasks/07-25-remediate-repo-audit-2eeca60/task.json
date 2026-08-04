@@ -39,7 +39,8 @@
     "08-04-harden-copilot-rerequest-dispatch",
     "08-04-isolate-pr-agent-receipt-authority",
     "08-04-apply-control-precedence-before-labels",
-    "08-04-resume-interrupted-installer-update"
+    "08-04-resume-interrupted-installer-update",
+    "08-04-skip-empty-sensitive-path-enumeration"
   ],
   "parent": null,
   "relatedFiles": [],

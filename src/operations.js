@@ -339,7 +339,11 @@ async function routeOperation({ request, client, store, env, now }) {
     { minimum: 1 },
     env,
   );
-  const files = request.route === "auto"
+  // A-014: files feed only sensitive-path matching, so skip the enumeration when
+  // no sensitive pattern is configured (an empty policy yields no sensitive files
+  // regardless of the file list).
+  const sensitivePaths = parseList(input("sensitive-paths", "", env));
+  const files = request.route === "auto" && sensitivePaths.length > 0
     ? await client.listPullRequestFiles(request.pullRequestNumber)
     : [];
   const successor = request.supersedes ? await store.compareSuccessor(request) : null;
@@ -347,7 +351,7 @@ async function routeOperation({ request, client, store, env, now }) {
     changedLines,
     changedLineThreshold,
     files,
-    sensitivePaths: parseList(input("sensitive-paths", "", env)),
+    sensitivePaths,
     confidence: input("confidence", "unknown", env),
     lowConfidenceRoute: input("low-confidence-route", "deep", env),
     highRiskRoute: input("high-risk-route", "copilot", env),

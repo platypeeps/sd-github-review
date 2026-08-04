@@ -178,8 +178,8 @@ Committed cross-session audit findings managed by sd-audit-repo.
 - fix: Preserve prior hashes or stage artifacts so recovery can resume safely.
 
 ## A-014 — Empty sensitive-path policy still paginates every PR file
-- status: open
-- notes: Trellis owner `07-25-skip-irrelevant-pr-file-enumeration`; remediation planning created 2026-07-25.
+- status: fixed
+- notes: Trellis owner `08-04-skip-empty-sensitive-path-enumeration` (dedicated audit child; reassigned from `07-25-skip-irrelevant-pr-file-enumeration` 2026-08-04); verified fixed on main (2026-08-04) — both entrypoints now gate `listPullRequestFiles` on a non-empty sensitive-paths policy: `src/index.js` fetches only when `patterns.length > 0`, and `src/operations.js` hoists `sensitivePaths = parseList(...)` above the fetch and gates it with `request.route === "auto" && sensitivePaths.length > 0`. `files` feeds only `buildRiskContext` → `findSensitiveFiles(files, patterns)`, which returns `[]` for empty patterns, so the resolved route and `sensitive-files`/`sensitive-file-count` outputs (count = `sensitiveFiles.length`) are unchanged; only the wasted enumeration is dropped. Regression tests: `test/action.test.js` "auto routing without sensitive paths skips file enumeration (A-014)" (listError proves no fetch) + existing sensitive-pattern test still asserts one fetch; `test/operations.test.js` "durable auto routing without sensitive paths skips file enumeration (A-014)". npm test 231/231, check:full 0 failures.
 - severity: P2 · effort: S · confidence: Plausible
 - dimension: performance
 - first-seen: 2026-07-25 @ 2eeca60

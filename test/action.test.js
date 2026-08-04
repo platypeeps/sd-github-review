@@ -99,6 +99,18 @@ test("ignores unrelated label events without constructing a GitHub client", asyn
   assert.equal(harness.outputs.get("changed-lines"), "42");
 });
 
+test("auto routing without sensitive paths skips file enumeration (A-014)", async () => {
+  // listError makes any file enumeration throw, proving the fetch is not attempted.
+  const harness = createHarness({ listError: new Error("should not list files") });
+
+  const result = await harness.run({
+    event: { action: "opened", pull_request: basePullRequest },
+  });
+
+  assert.equal(harness.calls.listPullRequestFiles, 0);
+  assert.equal(result.decision.route, "cheap");
+});
+
 test("explicit routes skip file enumeration even when it would exceed 3,000 files", async () => {
   const harness = createHarness({ listError: new Error("should not list files") });
 

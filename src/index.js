@@ -233,7 +233,10 @@ export async function runAction({
   const patterns = needsSensitivePathEvaluation
     ? parseList(input("sensitive-paths", "", env))
     : [];
-  const files = needsSensitivePathEvaluation
+  // A-014: files feed only sensitive-path matching (findSensitiveFiles returns []
+  // for empty patterns), so an empty policy makes the enumeration pure wasted
+  // latency and GitHub quota. Fetch only when at least one pattern is configured.
+  const files = patterns.length > 0
     ? await getClient().listPullRequestFiles(pullRequestNumber)
     : [];
   const risk = buildRiskContext({
