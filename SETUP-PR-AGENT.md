@@ -99,7 +99,34 @@ and model values remain unchanged. To retain hybrid automatic escalation, set
 the managed template.
 
 `check` is read-only and returns nonzero for local or GitHub drift. Add `--json`
-for machine-readable output.
+for machine-readable output. It also reports a migration issue for a manifest
+written before provenance tracking (schema 1) and a newer-source-commit or
+release-tag-drift issue when the recorded provenance no longer matches this
+source checkout; `update` records the current provenance and rewrites a schema-1
+manifest to schema 2.
+
+### Source provenance
+
+The installer records which source release produced an install in the schema-2
+manifest under `source.commit`, `source.tag`, and `source.released`. When you
+run the installer from a `git clone` checked out at a release tag, this
+resolves automatically: a clean checkout of an exact `v<version>` tag records
+`released: true`.
+
+If you install from a `.git`-less release artifact (for example an extracted
+tarball), git identity is unavailable, so declare it explicitly. The installer
+records the declared commit and tag but keeps `released: false`, because it
+cannot verify archive bytes against a commit offline:
+
+```sh
+node scripts/install-consumer.mjs install --target /path/to/consumer \
+  --source-tag v0.1.0 --source-commit 8636a3983d18de17c49907a4c48170a61b1bb713 \
+  --set-secret
+```
+
+`SD_SOURCE_TAG` and `SD_SOURCE_COMMIT` are equivalent environment inputs. These
+overrides apply only to `install` and `update`. Recorded provenance is an
+offline identity record for honest installs, not a cryptographic attestation.
 
 The installer writes the managed workflow and a `pending` manifest before it
 changes GitHub settings, then marks the manifest `active` after every mutation
@@ -352,3 +379,22 @@ manual event-driven or durable installation, disable or remove the installed
 workflow, then remove `PR_AGENT_MODEL_API_KEY`, `PR_AGENT_MODEL_PROVIDER`, and
 the backend/model variables if nothing else uses them. Existing PR-Agent
 comments and durable Check Run receipts remain as historical GitHub records.
+
+### Migrating a v0.1.0-era setup onto the installer
+
+The `v0.1.0` release predates `scripts/consumer-installer.mjs`; it has no
+installer. If you set a consumer up under the older manual or `docker run`
+guidance, move it onto the installer flow by running the current release's
+`install` from a checkout of that release tag. The installer adopts the managed
+workflow and writes a schema-2 manifest, so subsequent `check`/`update` keep it
+traceable. This is a forward migration, not a downgrade.
+
+### Rollback bounds
+
+Rolling an installer-managed install back is a clean `uninstall` at the current
+release: it removes the managed workflow and the schema-2 manifest so no older
+decoder ever sees a schema-2 file. Reinstalling a *prior* release requires a
+prior installer-bearing release. Because `v0.1.0` ships no installer, there is
+no earlier installer release to reinstall until a second release is cut; until
+then, rollback terminates at the cleanly uninstalled state rather than a
+downgraded installer.

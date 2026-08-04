@@ -6,11 +6,13 @@ import path from "node:path";
 import test from "node:test";
 import {
   MANIFEST_PATH,
+  MANIFEST_SCHEMA_VERSION,
   ROUTING_LABELS,
   SECRET_NAME,
   WORKFLOW_PATH,
   parseArguments,
   parseGitHubRemote,
+  resolveSourceRelease,
   runConsumerInstaller,
 } from "../scripts/consumer-installer.mjs";
 import { reviewLabels } from "../src/router.js";
@@ -77,11 +79,37 @@ class FakeGitHub {
   }
 }
 
-async function makeSource(workflow = "name: managed workflow\n") {
+function gitCommit(root, message) {
+  execFileSync(
+    "git",
+    ["-C", root, "-c", "user.email=t@example.com", "-c", "user.name=Test", "commit", "-m", message, "--no-gpg-sign"],
+    { stdio: "ignore" },
+  );
+}
+
+// The installer source root is a git checkout in production, so resolveSourceRelease
+// reads real git here. Provenance-specific tests pass { tag, version } to exercise
+// the released path; the default is an untagged dev checkout (released:false).
+async function makeSource(workflow = "name: managed workflow\n", { tag, version } = {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-source-"));
   await mkdir(path.join(root, "examples"));
   await writeFile(path.join(root, "examples", "pr-agent-router.yml"), workflow, "utf8");
+  if (version !== undefined) {
+    await writeFile(
+      path.join(root, "package.json"),
+      `${JSON.stringify({ name: "sd-github-review-source", version }, null, 2)}\n`,
+      "utf8",
+    );
+  }
+  execFileSync("git", ["init", "-b", "main", root], { stdio: "ignore" });
+  execFileSync("git", ["-C", root, "add", "-A"], { stdio: "ignore" });
+  gitCommit(root, "source");
+  if (tag !== undefined) execFileSync("git", ["-C", root, "tag", tag], { stdio: "ignore" });
   return root;
+}
+
+async function sourceCommit(root) {
+  return execFileSync("git", ["-C", root, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
 }
 
 async function makeTarget() {
@@ -469,4 +497,200 @@ test("manifest decoding cannot expand uninstall ownership beyond managed resourc
     /label ownership is malformed/u,
   );
   assert.equal(github.labels.has("do-not-delete"), true);
+});
+
+async function writeManifest(target, manifest) {
+  await writeFile(
+    path.join(target, MANIFEST_PATH),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+    "utf8",
+  );
+}
+
+test("resolveSourceRelease resolves the git-verified, dirty, mismatched, and override paths", () => {
+  const commit = "a".repeat(40);
+  const clean = { head: () => commit, exactTag: () => "v1.2.3", templateDirty: () => false };
+  assert.deepEqual(
+    resolveSourceRelease({ gitImpl: clean, version: "1.2.3" }),
+    { commit, tag: "v1.2.3", released: true },
+  );
+
+  const dirty = { head: () => commit, exactTag: () => "v1.2.3", templateDirty: () => true };
+  assert.deepEqual(
+    resolveSourceRelease({ gitImpl: dirty, version: "1.2.3" }),
+    { commit, tag: null, released: false },
+  );
+
+  const mismatched = { head: () => commit, exactTag: () => "v9.9.9", templateDirty: () => false };
+  assert.deepEqual(
+    resolveSourceRelease({ gitImpl: mismatched, version: "1.2.3" }),
+    { commit, tag: null, released: false },
+  );
+
+  const untagged = { head: () => commit, exactTag: () => null, templateDirty: () => false };
+  assert.deepEqual(
+    resolveSourceRelease({ gitImpl: untagged, version: "1.2.3" }),
+    { commit, tag: null, released: false },
+  );
+
+  const overrideCommit = "b".repeat(40);
+  assert.deepEqual(
+    resolveSourceRelease({ override: { tag: "v0.1.0", commit: overrideCommit } }),
+    { commit: overrideCommit, tag: "v0.1.0", released: false },
+  );
+
+  assert.throws(
+    () => resolveSourceRelease({ override: { tag: "v0.1.0", commit: "short" } }),
+    /--source-commit must be a 40-character hex commit/u,
+  );
+  const noGit = {
+    head() {
+      throw new Error("not a git repository");
+    },
+    exactTag: () => null,
+    templateDirty: () => false,
+  };
+  assert.throws(
+    () => resolveSourceRelease({ gitImpl: noGit, version: "1.2.3" }),
+    /installer source has no git identity/u,
+  );
+});
+
+test("install records git-verified released provenance from a clean tagged checkout", async () => {
+  const sourceRoot = await makeSource("name: released\n", { tag: "v0.9.9", version: "0.9.9" });
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+
+  const manifest = await readManifest(target);
+  assert.equal(manifest.schemaVersion, MANIFEST_SCHEMA_VERSION);
+  assert.equal(manifest.source.commit, await sourceCommit(sourceRoot));
+  assert.equal(manifest.source.tag, "v0.9.9");
+  assert.equal(manifest.source.released, true);
+
+  const checked = await runConsumerInstaller({ command: "check", target }, { sourceRoot, github });
+  assert.deepEqual(checked.issues, []);
+});
+
+test("a dirty template at a release tag records released:false", async () => {
+  const sourceRoot = await makeSource("name: clean\n", { tag: "v0.9.9", version: "0.9.9" });
+  // Dirty the shipped template after tagging: the bytes no longer match the tag.
+  await writeFile(
+    path.join(sourceRoot, "examples", "pr-agent-router.yml"),
+    "name: dirtied\n",
+    "utf8",
+  );
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+
+  const manifest = await readManifest(target);
+  assert.equal(manifest.source.released, false);
+  assert.equal(manifest.source.tag, null);
+});
+
+test("the .git-less override records a declared (false, v-tag) provenance", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  const declaredCommit = "c".repeat(40);
+  await runConsumerInstaller(
+    { command: "install", target, sourceTag: "v0.1.0", sourceCommit: declaredCommit },
+    { sourceRoot, github },
+  );
+
+  const manifest = await readManifest(target);
+  assert.equal(manifest.source.commit, declaredCommit);
+  assert.equal(manifest.source.tag, "v0.1.0");
+  assert.equal(manifest.source.released, false);
+});
+
+test("a schema-1 manifest decodes as pre-provenance; check flags it and update migrates it", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+
+  // Downgrade the freshly written manifest to a legacy schema-1 shape.
+  const manifest = await readManifest(target);
+  delete manifest.source.commit;
+  delete manifest.source.tag;
+  delete manifest.source.released;
+  manifest.schemaVersion = 1;
+  await writeManifest(target, manifest);
+
+  const checked = await runConsumerInstaller({ command: "check", target }, { sourceRoot, github });
+  assert.equal(checked.ok, false);
+  assert.ok(
+    checked.issues.includes("manifest predates provenance tracking; run update to record provenance"),
+    checked.issues.join("\n"),
+  );
+
+  await runConsumerInstaller({ command: "update", target }, { sourceRoot, github });
+  const migrated = await readManifest(target);
+  assert.equal(migrated.schemaVersion, MANIFEST_SCHEMA_VERSION);
+  assert.match(migrated.source.commit, /^[0-9a-f]{40}$/u);
+});
+
+test("check reports a newer source commit as provenance drift", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+
+  // A new source commit that leaves the template bytes unchanged isolates the
+  // commit-drift signal from the byte-hash "newer source workflow" signal.
+  await writeFile(path.join(sourceRoot, "NOTES.md"), "changed\n", "utf8");
+  execFileSync("git", ["-C", sourceRoot, "add", "-A"], { stdio: "ignore" });
+  gitCommit(sourceRoot, "advance");
+
+  const checked = await runConsumerInstaller({ command: "check", target }, { sourceRoot, github });
+  assert.equal(checked.ok, false);
+  assert.ok(
+    checked.issues.includes("a newer source commit is available; run update"),
+    checked.issues.join("\n"),
+  );
+  assert.equal(
+    checked.issues.includes("a newer source workflow is available; run update"),
+    false,
+    "byte hash is unchanged, so only commit drift should fire",
+  );
+});
+
+test("check reports release-tag drift when a released manifest's tag no longer matches", async () => {
+  const sourceRoot = await makeSource("name: released\n", { tag: "v0.9.9", version: "0.9.9" });
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+
+  // Same commit, but the recorded tag drifts from the source's resolved tag.
+  const manifest = await readManifest(target);
+  assert.equal(manifest.source.released, true);
+  manifest.source.tag = "v0.9.8";
+  await writeManifest(target, manifest);
+
+  const checked = await runConsumerInstaller({ command: "check", target }, { sourceRoot, github });
+  assert.ok(
+    checked.issues.includes("recorded release provenance no longer matches the source; run update"),
+    checked.issues.join("\n"),
+  );
+});
+
+test("parseArguments accepts source overrides only for install and update", () => {
+  const parsed = parseArguments([
+    "install",
+    "--target",
+    "/tmp/t",
+    "--source-tag",
+    "v0.1.0",
+    "--source-commit",
+    "a".repeat(40),
+  ]);
+  assert.equal(parsed.sourceTag, "v0.1.0");
+  assert.equal(parsed.sourceCommit, "a".repeat(40));
+
+  assert.throws(
+    () => parseArguments(["check", "--target", "/tmp/t", "--source-tag", "v0.1.0"]),
+    /check does not accept source provenance overrides/u,
+  );
 });

@@ -67,6 +67,13 @@ const REPOSITORY_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u;
 const LIFECYCLE_STATES = new Set(["pending", "active", "uninstalling"]);
 const MAX_MODEL_LENGTH = 256;
 
+// Consumer-manifest schema version. Bumped 1 -> 2 to record source provenance
+// (commit, tag, released) on the source template. Distinct from the action
+// contract descriptor's schemaVersion in config/routed-review-setup-v1.json.
+export const MANIFEST_SCHEMA_VERSION = 2;
+const COMMIT_PATTERN = /^[0-9a-f]{40}$/u;
+const RELEASE_TAG_PATTERN = /^v[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$/u;
+
 function isObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -206,6 +213,82 @@ function gitOutput(target, args) {
   }
 }
 
+// Git seam for the installer's own source root, mirroring gitOutput. Injected in
+// tests via dependencies.gitImpl so provenance resolution is deterministic.
+function makeSourceGit(sourceRoot) {
+  return {
+    head() {
+      return gitOutput(sourceRoot, ["rev-parse", "HEAD"]);
+    },
+    exactTag() {
+      try {
+        return gitOutput(sourceRoot, ["describe", "--tags", "--exact-match", "HEAD"]);
+      } catch {
+        return null;
+      }
+    },
+    templateDirty() {
+      return gitOutput(sourceRoot, ["status", "--porcelain", "--", TEMPLATE_PATH]).length > 0;
+    },
+  };
+}
+
+async function readSourceVersion(sourceRoot) {
+  const raw = await readOptional(path.join(sourceRoot, "package.json"));
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed?.version === "string" ? parsed.version : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveOverride({ tag, commit }) {
+  if (!COMMIT_PATTERN.test(commit ?? "")) {
+    throw new Error("--source-commit must be a 40-character hex commit");
+  }
+  if (tag !== null && tag !== undefined && !RELEASE_TAG_PATTERN.test(tag)) {
+    throw new Error("--source-tag must be a v<semver> release tag");
+  }
+  // A .git-less artifact cannot verify bytes against a commit offline, so a
+  // declared release always records released:false.
+  return { commit, tag: tag ?? null, released: false };
+}
+
+// Resolve the installer's own source release identity from its source root.
+// released:true is the single bytes-verified path: an exact v<version> tag on
+// HEAD with a clean template working tree. Any other git state records
+// (false, null); an operator override records the declared (false, v-tag|null).
+export function resolveSourceRelease({ sourceRoot, gitImpl, version, override }) {
+  if (override && (override.commit || override.tag)) {
+    return resolveOverride(override);
+  }
+  const git = gitImpl ?? makeSourceGit(sourceRoot);
+  let commit;
+  try {
+    commit = git.head();
+  } catch {
+    throw new Error(
+      "installer source has no git identity; run from a cloned release tag or pass --source-tag/--source-commit",
+    );
+  }
+  if (!COMMIT_PATTERN.test(commit ?? "")) {
+    throw new Error("installer source HEAD is not a 40-character hex commit");
+  }
+  const exactTag = git.exactTag();
+  if (
+    exactTag &&
+    version &&
+    exactTag === `v${version}` &&
+    RELEASE_TAG_PATTERN.test(exactTag) &&
+    !git.templateDirty()
+  ) {
+    return { commit, tag: exactTag, released: true };
+  }
+  return { commit, tag: null, released: false };
+}
+
 export function parseGitHubRemote(remote) {
   const trimmed = remote.trim().replace(/\/$/u, "");
   const patterns = [
@@ -311,7 +394,11 @@ export function decodeManifest(source, filePath = MANIFEST_PATH) {
   } catch {
     throw new Error(`${filePath}: manifest is not valid JSON`);
   }
-  if (!isObject(value) || value.schemaVersion !== 1 || value.tool !== "sd-github-review") {
+  if (
+    !isObject(value) ||
+    (value.schemaVersion !== 1 && value.schemaVersion !== MANIFEST_SCHEMA_VERSION) ||
+    value.tool !== "sd-github-review"
+  ) {
     throw new Error(`${filePath}: unsupported or malformed manifest header`);
   }
   if (!LIFECYCLE_STATES.has(value.state)) {
@@ -335,6 +422,24 @@ export function decodeManifest(source, filePath = MANIFEST_PATH) {
   if (value.source.sha256 !== value.workflow.sha256) {
     throw new Error(`${filePath}: source and workflow hashes must match`);
   }
+  if (value.schemaVersion === MANIFEST_SCHEMA_VERSION) {
+    // Schema-2 provenance invariants. No separate provenance-source field: the
+    // (released, tag) pair alone encodes the source unambiguously.
+    if (!COMMIT_PATTERN.test(value.source.commit ?? "")) {
+      throw new Error(`${filePath}: source commit must be a 40-character hex commit`);
+    }
+    if (value.source.tag !== null && !RELEASE_TAG_PATTERN.test(value.source.tag ?? "")) {
+      throw new Error(`${filePath}: source tag must be a v<semver> release tag or null`);
+    }
+    if (typeof value.source.released !== "boolean") {
+      throw new Error(`${filePath}: source released must be a boolean`);
+    }
+    if (value.source.released && value.source.tag === null) {
+      throw new Error(`${filePath}: a released manifest must record a release tag`);
+    }
+  }
+  // A schema-1 manifest decodes as a pre-provenance install (value.schemaVersion
+  // stays 1); check surfaces the migration and update rewrites it to schema 2.
   value.configuration = validateConfiguration(value.configuration ?? {});
   if (!isObject(value.resources) || !isObject(value.resources.variables)) {
     throw new Error(`${filePath}: resource ownership is malformed`);
@@ -527,14 +632,20 @@ function planResources(configuration, snapshot, existingManifest, setSecretReque
   return { actions, resources: { variables, secret, labels } };
 }
 
-function createManifest({ state, repository, templateSha, configuration, resources }) {
+function createManifest({ state, repository, templateSha, configuration, resources, release }) {
   return {
-    schemaVersion: 1,
+    schemaVersion: MANIFEST_SCHEMA_VERSION,
     tool: "sd-github-review",
     state,
     repository,
     workflow: { path: WORKFLOW_PATH, sha256: templateSha },
-    source: { template: TEMPLATE_PATH, sha256: templateSha },
+    source: {
+      template: TEMPLATE_PATH,
+      sha256: templateSha,
+      commit: release.commit,
+      tag: release.tag,
+      released: release.released,
+    },
     configuration,
     resources,
   };
@@ -589,10 +700,23 @@ async function applyRemoteActions(github, repository, actions, options) {
   }
 }
 
+function sourceOverride(options, env) {
+  const tag = options.sourceTag ?? env.SD_SOURCE_TAG;
+  const commit = options.sourceCommit ?? env.SD_SOURCE_COMMIT;
+  return tag || commit ? { tag: tag ?? null, commit: commit ?? null } : undefined;
+}
+
 async function installOrUpdate(command, options, dependencies) {
   const sourceRoot = dependencies.sourceRoot ?? path.resolve(import.meta.dirname, "..");
   const templateSource = await readFile(path.join(sourceRoot, TEMPLATE_PATH), "utf8");
   const templateSha = sha256(templateSource);
+  const version = await readSourceVersion(sourceRoot);
+  const release = resolveSourceRelease({
+    sourceRoot,
+    gitImpl: dependencies.gitImpl,
+    version,
+    override: sourceOverride(options, dependencies.env ?? process.env),
+  });
   const github = dependencies.github ?? new GitHubCli();
   const target = await resolveTarget(options, github);
   const local = await loadLocalState(target.root);
@@ -612,6 +736,7 @@ async function installOrUpdate(command, options, dependencies) {
     templateSha,
     configuration,
     resources,
+    release,
   });
   const actionDescriptions = [
     `write ${MANIFEST_PATH} with pending state`,
@@ -644,6 +769,21 @@ async function checkInstallation(options, dependencies) {
   const sourceRoot = dependencies.sourceRoot ?? path.resolve(import.meta.dirname, "..");
   const templateSource = await readFile(path.join(sourceRoot, TEMPLATE_PATH), "utf8");
   const templateSha = sha256(templateSource);
+  const version = await readSourceVersion(sourceRoot);
+  let release = null;
+  try {
+    release = resolveSourceRelease({
+      sourceRoot,
+      gitImpl: dependencies.gitImpl,
+      version,
+      override: sourceOverride(options, dependencies.env ?? process.env),
+    });
+  } catch {
+    // Source identity is unresolvable here; provenance drift is reported only
+    // when a release identity is available. The byte-hash drift check below is
+    // independent and still applies.
+    release = null;
+  }
   const github = dependencies.github ?? new GitHubCli();
   const target = await resolveTarget(options, github);
   const local = await loadLocalState(target.root);
@@ -665,6 +805,20 @@ async function checkInstallation(options, dependencies) {
   }
   if (local.manifest && local.manifest.source.sha256 !== templateSha) {
     issues.push("a newer source workflow is available; run update");
+  }
+  if (local.manifest) {
+    if (local.manifest.schemaVersion !== MANIFEST_SCHEMA_VERSION) {
+      issues.push("manifest predates provenance tracking; run update to record provenance");
+    } else if (release) {
+      if (local.manifest.source.commit !== release.commit) {
+        issues.push("a newer source commit is available; run update");
+      } else if (
+        local.manifest.source.released &&
+        local.manifest.source.tag !== release.tag
+      ) {
+        issues.push("recorded release provenance no longer matches the source; run update");
+      }
+    }
   }
 
   const configuration = resolveConfiguration(options, local.manifest);
@@ -827,6 +981,11 @@ Install/update secret input:
   --set-secret           Prompt through gh secret set
   --secret-stdin         Read the secret from standard input
 
+Install/update source provenance (.git-less release artifact only):
+  --source-tag vX.Y.Z    Declared release tag (records released:false)
+  --source-commit SHA    Declared 40-hex source commit
+                         (also SD_SOURCE_TAG / SD_SOURCE_COMMIT)
+
 Uninstall options:
   --yes                  Confirm non-interactive uninstall
   --remove-secret        Also delete PR_AGENT_MODEL_API_KEY
@@ -848,6 +1007,8 @@ export function parseArguments(argv) {
     ["--provider", "provider"],
     ["--cheap-model", "cheapModel"],
     ["--deep-model", "deepModel"],
+    ["--source-tag", "sourceTag"],
+    ["--source-commit", "sourceCommit"],
   ]);
   const flags = new Map([
     ["--dry-run", "dryRun"],
@@ -883,6 +1044,9 @@ export function parseArguments(argv) {
   }
   if (command !== "uninstall" && (options.yes || options.removeSecret || options.removeLabels)) {
     throw new Error(`${command} does not accept uninstall options`);
+  }
+  if (!["install", "update"].includes(command) && (options.sourceTag || options.sourceCommit)) {
+    throw new Error(`${command} does not accept source provenance overrides`);
   }
   return options;
 }
