@@ -85,7 +85,14 @@ Quick links:
   durable receipt reconciliation, and declared-channel observation.
 - `scripts/sd-ai-command-pack-review-full-check.sh`: deterministic
   `sd-review-pr` selector for a repository-owned `check:full` wrapper or the
-  canonical pack-script fallback.
+  canonical pack-script fallback. This repository owns that seam: its
+  `package.json` `check:full` runs the exact CI package gates (`test`,
+  `test:coverage`, `check`, `validate:metadata`) plus `validate:ci-parity`,
+  then the pack full-check with its generic package-script list skipped, so the
+  local gate mirrors CI instead of the generic stage defaults (A-017).
+- `scripts/validate-ci-parity.mjs`: fails when `check:full` is missing or omits
+  any npm package gate that `.github/workflows/ci.yml` runs; wired as both a
+  `check:full` step and a CI step so drift is caught locally and remotely.
 - `scripts/sd-ai-command-pack-shell-lib.sh`: shared Bash helpers sourced by
   the full-check, review-local, and review-scope scripts.
 - `scripts/sd-ai-command-pack-toolchain.sh`: non-mutating toolchain doctor and
