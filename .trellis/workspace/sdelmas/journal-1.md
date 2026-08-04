@@ -1288,3 +1288,44 @@ Implemented the in-authority code/docs portion of A-007 (publish-traceable-insta
 ### Next Steps
 
 - None - task complete
+
+
+## Session 33: Publish v0.2.0 traceable installer release (A-007)
+
+**Date**: 2026-08-04
+**Task**: Publish v0.2.0 traceable installer release (A-007)
+**Branch**: `main`
+
+### Summary
+
+Cut the deferred A-007 release: operator chose v0.2.0, stamped package.json/lock/CHANGELOG, converged Copilot review on PR #34, merged, tagged v0.2.0, created the GitHub release bundling installers, verified released-bytes provenance, and archived the task.
+
+### Main Changes
+
+- Bumped package.json + package-lock.json to 0.2.0 and stamped CHANGELOG top heading '## 0.2.0 - 2026-08-04' to satisfy the release-changelog gate
+- Merged PR #34 (squash b8d4872) after two verified Copilot fixes: lockfile version sync, and CHANGELOG heading format conformance to full-check.sh:782
+- Tagged v0.2.0 on the release commit and created the GitHub release with consumer-installer.mjs + install-consumer.mjs assets
+- Archived task publish-traceable-installer-release with all 4 acceptance criteria satisfied (27 satisfied-by-proxy; live consumer smoke test noted as follow-up)
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b8d4872` | chore(release): stamp v0.2.0 for traceable installer release (A-007) (#34) |
+| `3c7d53f` | chore(task): archive 07-25-publish-traceable-installer-release |
+
+### Testing
+
+- [OK] validate:release v0.2.0 on release commit: Validated action.yml, 1 workflow, 5 examples, 1062 tracked public paths
+- [OK] npm test: 162/162 pass
+- [OK] release-bytes provenance: resolveSourceRelease from v0.2.0 tag checkout = released:true, tag v0.2.0, commit b8d4872 == HEAD
+- [OK] criterion 24: git ls-tree v0.2.0 contains both installers + action.yml + all 5 example routers
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

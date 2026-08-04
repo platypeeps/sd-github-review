@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 32
+- **Total Sessions**: 33
 - **Last Active**: 2026-08-04
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1289 | Active |
+| `journal-1.md` | ~1328 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 33 | 2026-08-04 | Publish v0.2.0 traceable installer release (A-007) | `b8d4872`, `3c7d53f` | `main` |
 | 32 | 2026-08-04 | A-007 in-authority code/docs: schema-2 traceable installer provenance | `d72918f`, `b49a30c` | `publish-traceable-installer-release` |
 | 31 | 2026-08-03 | Refresh sd-ai-command-pack to 0.64.3 | `e3ba20d18770de076630053a93cc456c11fe73c8` | `refresh-sd-ai-command-pack-0.64.3` |
 | 30 | 2026-07-27 | Refresh sd-ai-command-pack to 0.55.2 | `75b10fe153e7c0de143c6c7b14584702438d12e6` | `codex/refresh-sd-ai-command-pack-0-55-2` |
