@@ -21,10 +21,10 @@ Audit finding A-005 was recorded at repository head `2eeca60` with the following
 
 ## Acceptance Criteria
 
-- [ ] Malicious `.github/workflows` and manifest-ancestor symlink fixtures fail before writing outside the target.
-- [ ] Normal missing-directory creation and regular-directory lifecycle tests still pass.
-- [ ] A replacement-between-plan-and-write fixture fails safely without touching the external target.
-- [ ] Dry-run and check report bounded path errors without leaking unrelated host paths.
+- [x] Malicious `.github/workflows` and manifest-ancestor symlink fixtures fail before writing outside the target. (Tests: `install rejects a symlinked .github/workflows ancestor…`, `…symlinked .github manifest ancestor…`.)
+- [x] Normal missing-directory creation and regular-directory lifecycle tests still pass. (Test `install succeeds when .github already exists as a regular directory` + full 169-test suite green.)
+- [x] A replacement-between-plan-and-write fixture fails safely without touching the external target. (Tests: `a replacement between plan and write…` pre-rename recheck, and `a replacement between mkdir and temp write…` pre-write recheck.)
+- [x] Dry-run and check report bounded path errors without leaking unrelated host paths. (Tests: `check reports a bounded containment error…`, `dry-run install reports a bounded containment error and mutates nothing`.)
 
 ## Dependencies
 

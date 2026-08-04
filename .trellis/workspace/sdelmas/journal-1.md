@@ -1329,3 +1329,45 @@ Cut the deferred A-007 release: operator chose v0.2.0, stamped package.json/lock
 ### Next Steps
 
 - None - task complete
+
+
+## Session 34: Reject symlinked installer targets (A-005)
+
+**Date**: 2026-08-04
+**Task**: Reject symlinked installer targets (A-005)
+**Branch**: `fix/reject-symlinked-installer-targets`
+
+### Summary
+
+Implemented the A-005 containment guard: an lstat-based ancestor walk beneath the canonical consumer worktree threaded through all six installer lifecycle paths, with TOCTOU rechecks before both the temp write and the rename. Converged two verified Copilot findings and merged via the work-loop ship flow.
+
+### Main Changes
+
+- Add makePathGuard/assertContainedPath: lstat ancestor walk rejecting symlink/non-dir/non-regular-leaf/escape before any mutation; threaded through loadLocalState, atomicWrite, removeOptional across install/update/check/adoption/rollback/uninstall
+- TOCTOU rechecks immediately before both the temp write (Copilot finding) and the atomic rename/removal
+- Precise parent-escape boundary (relative==='..' || '../'-prefixed) instead of startsWith('..') (Copilot finding)
+- 8 total containment regression tests incl. two teeth-proven TOCTOU swaps; documented the containment contract in the consumer-installer spec
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e559742` | fix: reject symlinked installer targets (A-005) |
+| `d8fc6e9` | fix: precise parent-escape check in installer containment guard |
+| `157aae1` | fix: recheck installer containment before the temp write (A-005 TOCTOU) |
+| `85e23f7` | chore(task): archive 07-25-reject-symlinked-installer-targets |
+
+### Testing
+
+- [OK] npm test: 169/169 pass (+7 vs baseline 162)
+- [OK] npm run check / validate:metadata / git diff --check: all clean
+- [OK] TOCTOU pre-write test proven: fails without the recheck (0/1), passes with it (1/1)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

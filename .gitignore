@@ -152,6 +152,10 @@ node_modules/
 .agents/**/tmp/
 .agents/**/*.log
 
+# Python bytecode cache from the sd-ai-command-pack helper scripts.
+__pycache__/
+*.pyc
+
 # Shared Copilot hooks are public; runtime/session artifacts are not.
 .github/copilot/**/.cache/
 .github/copilot/**/cache/
