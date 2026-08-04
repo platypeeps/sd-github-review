@@ -1258,11 +1258,11 @@ Install/update/check configuration:
   --cheap-model ID       Model for the cheap route
   --deep-model ID        Model for the deep route
 
-Install/update secret input:
+Install/update/adopt secret input:
   --set-secret           Prompt through gh secret set
   --secret-stdin         Read the secret from standard input
 
-Install/update source provenance (.git-less release artifact only):
+Install/update/adopt source provenance (.git-less release artifact only):
   --source-tag vX.Y.Z    Declared release tag (records released:false)
   --source-commit SHA    Declared 40-hex source commit
                          (also SD_SOURCE_TAG / SD_SOURCE_COMMIT)

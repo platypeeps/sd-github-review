@@ -25,6 +25,9 @@ import {
   resolveSourceRelease,
   runConsumerInstaller,
 } from "../scripts/consumer-installer.mjs";
+import { reviewLabels } from "../src/router.js";
+
+const REPOSITORY = "acme/consumer";
 
 const sha256Hex = (value) => createHash("sha256").update(value).digest("hex");
 
@@ -32,9 +35,6 @@ async function placeManualWorkflow(target, content) {
   await mkdir(path.join(target, ".github", "workflows"), { recursive: true });
   await writeFile(path.join(target, WORKFLOW_PATH), content, "utf8");
 }
-import { reviewLabels } from "../src/router.js";
-
-const REPOSITORY = "acme/consumer";
 
 class FakeGitHub {
   constructor({ variables = {}, secrets = [], labels = [] } = {}) {
