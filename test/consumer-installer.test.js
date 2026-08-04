@@ -847,6 +847,46 @@ test("a replacement between plan and write fails safely without touching the ext
   );
 });
 
+test("a replacement between mkdir and temp write fails before writing through the swap", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  const workflowsSuffix = path.join(".github", "workflows");
+  const symlinkStat = {
+    isSymbolicLink: () => true,
+    isDirectory: () => false,
+    isFile: () => false,
+  };
+  // Simulate an attacker swapping .github/workflows for a symlink in the window
+  // between mkdir and the temp write: report a symlink only once the directory
+  // exists but before any *.tmp file has been created. The pre-mkdir guard (dir
+  // absent) passes; the pre-write guard must catch the swap before writeFile.
+  // Without the pre-write recheck the temp write proceeds, the later pre-rename
+  // guard sees the *.tmp (so this predicate is false and reports the real dir),
+  // and the install would wrongly succeed.
+  const lstat = async (targetPath) => {
+    if (
+      targetPath.endsWith(workflowsSuffix) &&
+      existsSync(targetPath) &&
+      !readdirSync(targetPath).some((name) => name.endsWith(".tmp"))
+    ) {
+      return symlinkStat;
+    }
+    return realLstat(targetPath);
+  };
+
+  await assert.rejects(
+    runConsumerInstaller({ command: "install", target }, { sourceRoot, github, lstat }),
+    CONTAINMENT_PATTERN,
+  );
+  // No workflow file and no leaked temp: the write never happened through the swap.
+  await assert.rejects(readFile(path.join(target, WORKFLOW_PATH), "utf8"), /ENOENT/u);
+  assert.deepEqual(
+    readdirSync(path.join(target, ".github", "workflows")).filter((name) => name.endsWith(".tmp")),
+    [],
+  );
+});
+
 test("check reports a bounded containment error without leaking the symlink target", async () => {
   const sourceRoot = await makeSource();
   const target = await makeTarget();

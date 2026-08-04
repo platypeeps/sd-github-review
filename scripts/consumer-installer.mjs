@@ -399,6 +399,11 @@ function makePathGuard(root, lstatImpl = lstat) {
 async function atomicWrite(guard, filePath, content) {
   await guard.assert(filePath);
   await mkdir(path.dirname(filePath), { recursive: true });
+  // Re-check containment after mkdir and immediately before the temp write, so
+  // the write is protected symmetrically with the rename below: a symlink
+  // swapped into an ancestor between the pre-mkdir check and here is caught
+  // before any bytes are written through it.
+  await guard.assert(filePath);
   const temporaryPath = `${filePath}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
   try {
     await writeFile(temporaryPath, content, { encoding: "utf8", mode: 0o644, flag: "wx" });
