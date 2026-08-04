@@ -1414,3 +1414,45 @@ Added hermetic subprocess tests exercising the real src/index.js and scripts/ins
 ### Next Steps
 
 - None - task complete
+
+
+## Session 36: Implement adopt operation for manually installed review workflows (A-019)
+
+**Date**: 2026-08-04
+**Task**: Implement adopt operation for manually installed review workflows (A-019)
+**Branch**: `feat/adopt-manual-review-installations`
+
+### Summary
+
+Added an explicit consumer-installer adopt operation that brings a manually copied ai-review-router.yml under installer ownership: exact-hash recognition against the current template or a versioned historical allow-list, converge-to-current, pending->active manifest, confirmation gate, and reuse of the A-005 containment guard. Shipped via PR #37 (Copilot approved).
+
+### Main Changes
+
+- Add recognizeTemplate + HISTORICAL_TEMPLATE_HASHES registry and adoptInstallation to scripts/consumer-installer.mjs
+- Wire adopt into parseArguments (command, --yes/secret/source gating) and runConsumerInstaller; extend HELP
+- Update consumer-installer spec, SETUP-PR-AGENT.md adoption guidance, and add 12 adopt tests
+- Address Copilot review: group test imports; rename secret/source HELP headings to include adopt
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `50d2d53` | feat: adopt manually installed review workflows into installer ownership (A-019) |
+| `9d15726` | fix: address Copilot review on adopt (A-019) |
+| `1d9d892` | chore(task): record branch for adopt-manual-review-installations |
+| `ab82fc3` | chore(task): archive 07-25-adopt-manual-review-installations |
+
+### Testing
+
+- [OK] npm test: 194 pass, 0 fail
+- [OK] npm run check / validate:metadata clean; sd-check 7/7 passed
+- [OK] Copilot review APPROVED on PR #37; all threads resolved; CI test job pass
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

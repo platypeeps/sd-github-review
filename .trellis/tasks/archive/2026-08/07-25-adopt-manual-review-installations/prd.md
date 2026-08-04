@@ -21,10 +21,10 @@ Audit finding A-019 was recorded at repository head `2eeca60` with the following
 
 ## Acceptance Criteria
 
-- [ ] Known v0.1.0/current manual fixtures adopt deterministically without deleting user resources.
-- [ ] Unknown, partially matching, symlinked, or provider-conflicting workflows fail before mutation.
-- [ ] Adoption writes pending then active ownership only after local and remote validation succeeds.
-- [ ] Check, update, rollback, and uninstall work after adoption and preserve originally unowned resources.
+- [x] Known v0.1.0/current manual fixtures adopt deterministically without deleting user resources.
+- [x] Unknown, partially matching, symlinked, or provider-conflicting workflows fail before mutation.
+- [x] Adoption writes pending then active ownership only after local and remote validation succeeds.
+- [x] Check, update, rollback, and uninstall work after adoption and preserve originally unowned resources.
 
 ## Dependencies
 

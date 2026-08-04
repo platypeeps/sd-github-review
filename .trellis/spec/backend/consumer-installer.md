@@ -21,6 +21,7 @@ commits, pushes, and pull requests are outside this command boundary.
 ```text
 node scripts/install-consumer.mjs install [options]
 node scripts/install-consumer.mjs update [options]
+node scripts/install-consumer.mjs adopt [options]
 node scripts/install-consumer.mjs check [options]
 node scripts/install-consumer.mjs uninstall [options]
 ```
@@ -41,6 +42,22 @@ node scripts/install-consumer.mjs uninstall [options]
 - `install` and `update` copy `examples/pr-agent-router.yml` exactly to the
   consumer's GitHub workflows file named ai-review-router.yml and manage its
   consumer-side sd-github-review.json ownership manifest atomically.
+- `adopt` brings an unmanaged, manually copied workflow under installer
+  ownership. It is explicit only and never inferred during install or update. It
+  refuses when a manifest already exists (the installation is already managed;
+  use `update`) or when no workflow exists (nothing to adopt; run `install`). It
+  recognizes the existing workflow only by exact SHA-256 against the current
+  template or the versioned `HISTORICAL_TEMPLATE_HASHES` allow-list (there is no
+  fuzzy or semantic matching); an unrecognized workflow is rejected with a
+  bounded manual-reconciliation message that never embeds the workflow content.
+  A recognized workflow is converged to the current source, and provenance is
+  recorded exactly as `install` records it. `adopt` plans ownership without
+  claiming pre-existing unowned GitHub resources — only resources it creates are
+  owned — so a conflicting unowned variable stops it before any mutation and a
+  later `uninstall`/`check`/`update` behaves as for a fresh install. It requires
+  confirmation (interactive `confirm` seam or `--yes`), honors `--dry-run`, and
+  writes `pending` then `active` so a partial GitHub failure is resumable
+  through the normal lifecycle.
 - The manifest schema is version `2` (`MANIFEST_SCHEMA_VERSION`), tool
   `sd-github-review`, and state `pending`, `active`, or `uninstalling`. It
   records repository, workflow and source SHA-256, source provenance
@@ -115,11 +132,14 @@ node scripts/install-consumer.mjs uninstall [options]
 | Target is not a Git checkout | Fail before local or GitHub mutation |
 | Explicit repository differs from GitHub origin | Fail with both bounded identities |
 | Unsupported provider or malformed model | Fail before writing managed files |
-| Unmanaged workflow has different content | Refuse overwrite |
+| Unmanaged workflow has different content | Refuse `install` overwrite; `adopt` if recognized |
+| `adopt` workflow is unrecognized (not current or an allow-listed historical hash) | Reject with bounded reconciliation guidance before any mutation |
+| `adopt` target already has a manifest | Refuse; direct the operator to `update` |
+| `adopt` without confirmation or `--yes` | Cancel before writing the pending manifest or mutating GitHub |
 | Managed workflow differs from recorded hash | Preserve operator edit and refuse update/uninstall |
 | Pre-existing unowned variable conflicts | Refuse takeover; require manual reconciliation |
 | Secret is absent without an approved input mode | Fail with prompt/stdin recovery command |
-| GitHub mutation fails during install/update | Retain `pending` manifest for idempotent retry |
+| GitHub mutation fails during install/update/adopt | Retain `pending` manifest; adopt resumes through the normal `install`/`update` lifecycle |
 | GitHub mutation fails during uninstall | Retain `uninstalling` manifest and managed workflow |
 | Manifest includes unknown owned variable/label | Reject before any deletion |
 | Managed-path ancestor is a symlink or resolves outside the root | Fail with a bounded relative-path error before any read, write, rename, or removal |
@@ -176,6 +196,14 @@ node scripts/install-consumer.mjs uninstall [options]
   drifted descriptor `actionReference`, a missing/unknown descriptor, and a
   non-semver version; assert `validateReleaseConsistency` accepts a matching
   not-yet-existing tag and rejects version mismatch and an existing tag.
+- Cover `adopt`: a current-template manual install adopts without claiming
+  pre-existing unowned resources and later uninstalls cleanly; an allow-listed
+  historical workflow adopts and converges to the current source; an
+  unrecognized workflow, an already-managed manifest, a missing workflow, a
+  declined confirmation, a provider-conflicting unowned variable, and a
+  symlinked workflow ancestor each fail before mutation; a mid-adopt GitHub
+  failure retains the pending manifest and resumes via `install`; and the
+  historical registry is well-formed and distinct from the current template.
 
 ### 7. Wrong vs Correct
 

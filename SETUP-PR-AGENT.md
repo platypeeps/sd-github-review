@@ -150,6 +150,30 @@ Add `--remove-secret` to delete `PR_AGENT_MODEL_API_KEY`. Add
 by this installer; pre-existing labels remain. Historical PR-Agent comments
 and Actions runs are not deleted.
 
+## Adopt a manually installed workflow
+
+If you copied `examples/pr-agent-router.yml` into `.github/workflows/` by hand,
+`install` refuses to overwrite the unmanaged file. Use `adopt` to bring a
+recognized manual workflow under installer ownership without deleting it first:
+
+```sh
+node scripts/install-consumer.mjs adopt --target /path/to/consumer --dry-run
+node scripts/install-consumer.mjs adopt --target /path/to/consumer --yes
+```
+
+`adopt` recognizes only the current workflow template and an allow-list of
+previously shipped template versions, matched by exact content. It converges a
+recognized historical workflow to the current source, writes the ownership
+manifest (`pending` then `active`), and creates any missing managed variables,
+labels, or secret. It never claims pre-existing GitHub resources it did not
+create, so a later `uninstall` preserves them. Pass the same
+`--provider`/`--cheap-model`/`--deep-model` values your manual variables use; a
+conflicting unowned variable stops adoption before any mutation. Adoption
+requires confirmation (`--yes` for non-interactive runs). A workflow whose
+content is not a recognized template is rejected: back it up, remove it, and run
+`install` to reconcile manually. After adopting, `check`, `update`, and
+`uninstall` behave exactly as for a freshly installed consumer.
+
 ## Configure the provider
 
 The checked-in examples use a provider-neutral secret and explicitly support

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, readdirSync } from "node:fs";
 import {
   lstat as realLstat,
@@ -13,6 +14,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
+  HISTORICAL_TEMPLATE_HASHES,
   MANIFEST_PATH,
   MANIFEST_SCHEMA_VERSION,
   ROUTING_LABELS,
@@ -26,6 +28,13 @@ import {
 import { reviewLabels } from "../src/router.js";
 
 const REPOSITORY = "acme/consumer";
+
+const sha256Hex = (value) => createHash("sha256").update(value).digest("hex");
+
+async function placeManualWorkflow(target, content) {
+  await mkdir(path.join(target, ".github", "workflows"), { recursive: true });
+  await writeFile(path.join(target, WORKFLOW_PATH), content, "utf8");
+}
 
 class FakeGitHub {
   constructor({ variables = {}, secrets = [], labels = [] } = {}) {
@@ -947,4 +956,271 @@ test("dry-run install reports a bounded containment error and mutates nothing", 
   );
   assert.deepEqual(github.calls, []);
   await assert.rejects(readFile(path.join(external, "ai-review-router.yml"), "utf8"), /ENOENT/u);
+});
+
+// A-019: adopt a manually installed workflow into installer ownership.
+
+const DEFAULT_CONFIG = {
+  provider: "openrouter",
+  cheapModel: "openrouter/qwen/qwen3-coder-30b-a3b-instruct",
+  deepModel: "openrouter/moonshotai/kimi-k2.6",
+};
+const ALL_LABELS = ROUTING_LABELS.map(({ name }) => name);
+
+function fullyProvisionedGitHub() {
+  return new FakeGitHub({
+    variables: {
+      PR_AGENT_MODEL_PROVIDER: DEFAULT_CONFIG.provider,
+      CHEAP_REVIEW_MODEL: DEFAULT_CONFIG.cheapModel,
+      DEEP_REVIEW_MODEL: DEFAULT_CONFIG.deepModel,
+    },
+    secrets: [SECRET_NAME],
+    labels: ALL_LABELS,
+  });
+}
+
+test("the historical adoption registry is well-formed and distinct from the current template", async () => {
+  const currentTemplate = await readFile(
+    path.resolve(import.meta.dirname, "..", "examples", "pr-agent-router.yml"),
+    "utf8",
+  );
+  const currentSha = sha256Hex(currentTemplate);
+  assert.ok(HISTORICAL_TEMPLATE_HASHES.length >= 1);
+  for (const entry of HISTORICAL_TEMPLATE_HASHES) {
+    assert.match(entry.tag, /^v[0-9]+\.[0-9]+\.[0-9]+/u);
+    assert.match(entry.sha256, /^[0-9a-f]{64}$/u);
+    assert.notEqual(entry.sha256, currentSha, "historical hash must differ from the current template");
+  }
+});
+
+test("adopt brings a current manual workflow under management and preserves unowned resources", async () => {
+  const sourceRoot = await makeSource("name: current source\n");
+  const target = await makeTarget();
+  await placeManualWorkflow(target, "name: current source\n");
+  const github = fullyProvisionedGitHub();
+
+  const report = await runConsumerInstaller(
+    { command: "adopt", target, yes: true },
+    { sourceRoot, github },
+  );
+  assert.equal(report.ok, true);
+  assert.equal(report.adoptedFrom, "current source");
+  // Every GitHub resource pre-existed and matched, so adoption performs no
+  // remote mutation and claims none of them.
+  assert.deepEqual(github.calls, []);
+
+  const manifest = await readManifest(target);
+  assert.equal(manifest.state, "active");
+  assert.equal(manifest.repository, REPOSITORY);
+  assert.equal(manifest.resources.secret.owned, false);
+  assert.equal(manifest.resources.variables.PR_AGENT_MODEL_PROVIDER.owned, false);
+  assert.ok(manifest.resources.labels.every((label) => label.owned === false));
+  assert.equal(
+    await readFile(path.join(target, WORKFLOW_PATH), "utf8"),
+    "name: current source\n",
+  );
+
+  const checked = await runConsumerInstaller({ command: "check", target }, { sourceRoot, github });
+  assert.equal(checked.ok, true, checked.issues.join("\n"));
+
+  // Uninstall preserves resources adoption never claimed.
+  await runConsumerInstaller({ command: "uninstall", target, yes: true }, { sourceRoot, github });
+  assert.equal(github.variables.size, 3);
+  assert.equal(github.secrets.has(SECRET_NAME), true);
+  assert.ok(ALL_LABELS.every((name) => github.labels.has(name)));
+});
+
+test("adopt recognizes an allow-listed historical workflow and converges it to the current source", async () => {
+  const sourceRoot = await makeSource("name: current source\n");
+  const target = await makeTarget();
+  const legacy = "name: legacy v0.1.0 workflow\n";
+  await placeManualWorkflow(target, legacy);
+  const github = fullyProvisionedGitHub();
+
+  const report = await runConsumerInstaller(
+    { command: "adopt", target, yes: true },
+    {
+      sourceRoot,
+      github,
+      historicalTemplates: [{ tag: "v0.1.0", sha256: sha256Hex(legacy) }],
+    },
+  );
+  assert.equal(report.adoptedFrom, "v0.1.0");
+  assert.ok(
+    report.actions.some((action) => /refresh .* from adopted v0\.1\.0 to current source/u.test(action)),
+  );
+  // The historical workflow was converged in place to the current source.
+  assert.equal(
+    await readFile(path.join(target, WORKFLOW_PATH), "utf8"),
+    "name: current source\n",
+  );
+  const manifest = await readManifest(target);
+  assert.equal(manifest.state, "active");
+  assert.equal(manifest.source.sha256, manifest.workflow.sha256);
+
+  const checked = await runConsumerInstaller({ command: "check", target }, { sourceRoot, github });
+  assert.equal(checked.ok, true, checked.issues.join("\n"));
+});
+
+test("adopt refuses an unrecognized workflow before any mutation", async () => {
+  const sourceRoot = await makeSource("name: current source\n");
+  const target = await makeTarget();
+  await placeManualWorkflow(target, "name: hand-rolled by an operator\n");
+  const github = fullyProvisionedGitHub();
+
+  await assert.rejects(
+    runConsumerInstaller({ command: "adopt", target, yes: true }, { sourceRoot, github }),
+    /is not a recognized sd-github-review template/u,
+  );
+  assert.deepEqual(github.calls, []);
+  await assert.rejects(readFile(path.join(target, MANIFEST_PATH), "utf8"), /ENOENT/u);
+});
+
+test("adopt refuses a repository already managed by sd-github-review", async () => {
+  const sourceRoot = await makeSource("name: current source\n");
+  const target = await makeTarget();
+  const github = fullyProvisionedGitHub();
+  await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+
+  await assert.rejects(
+    runConsumerInstaller({ command: "adopt", target, yes: true }, { sourceRoot, github }),
+    /already manages this installation; use update/u,
+  );
+});
+
+test("adopt refuses when no workflow exists to adopt", async () => {
+  const sourceRoot = await makeSource("name: current source\n");
+  const target = await makeTarget();
+  const github = fullyProvisionedGitHub();
+
+  await assert.rejects(
+    runConsumerInstaller({ command: "adopt", target, yes: true }, { sourceRoot, github }),
+    /nothing to adopt/u,
+  );
+  assert.deepEqual(github.calls, []);
+});
+
+test("adopt requires confirmation and mutates nothing when it is declined", async () => {
+  const sourceRoot = await makeSource("name: current source\n");
+  const target = await makeTarget();
+  await placeManualWorkflow(target, "name: current source\n");
+  const github = fullyProvisionedGitHub();
+
+  // No --yes and no confirm seam: adoption is cancelled before any mutation.
+  await assert.rejects(
+    runConsumerInstaller({ command: "adopt", target }, { sourceRoot, github }),
+    /adopt cancelled; pass --yes/u,
+  );
+  assert.deepEqual(github.calls, []);
+  await assert.rejects(readFile(path.join(target, MANIFEST_PATH), "utf8"), /ENOENT/u);
+
+  // A confirm seam that approves proceeds to an active adoption.
+  await runConsumerInstaller(
+    { command: "adopt", target },
+    { sourceRoot, github, confirm: async () => true },
+  );
+  assert.equal((await readManifest(target)).state, "active");
+});
+
+test("adopt dry-run plans without confirmation or mutation", async () => {
+  const sourceRoot = await makeSource("name: current source\n");
+  const target = await makeTarget();
+  await placeManualWorkflow(target, "name: current source\n");
+  const github = fullyProvisionedGitHub();
+
+  const report = await runConsumerInstaller(
+    { command: "adopt", target, dryRun: true },
+    { sourceRoot, github },
+  );
+  assert.equal(report.dryRun, true);
+  assert.ok(report.actions.some((action) => /write .* with active state/u.test(action)));
+  assert.deepEqual(github.calls, []);
+  await assert.rejects(readFile(path.join(target, MANIFEST_PATH), "utf8"), /ENOENT/u);
+});
+
+test("adopt fails on a provider-conflicting unowned variable before mutation", async () => {
+  const sourceRoot = await makeSource("name: current source\n");
+  const target = await makeTarget();
+  await placeManualWorkflow(target, "name: current source\n");
+  const github = new FakeGitHub({
+    secrets: [SECRET_NAME],
+    labels: ALL_LABELS,
+    variables: { PR_AGENT_MODEL_PROVIDER: "gemini" },
+  });
+
+  await assert.rejects(
+    runConsumerInstaller({ command: "adopt", target, yes: true }, { sourceRoot, github }),
+    /different unowned value/u,
+  );
+  assert.deepEqual(github.calls, []);
+  await assert.rejects(readFile(path.join(target, MANIFEST_PATH), "utf8"), /ENOENT/u);
+});
+
+test("adopt retains pending ownership after a partial GitHub failure and resumes via install", async () => {
+  const sourceRoot = await makeSource("name: current source\n");
+  const target = await makeTarget();
+  await placeManualWorkflow(target, "name: current source\n");
+  // A manual install missing one label: adoption must create it, and that call fails.
+  const github = new FakeGitHub({
+    variables: {
+      PR_AGENT_MODEL_PROVIDER: DEFAULT_CONFIG.provider,
+      CHEAP_REVIEW_MODEL: DEFAULT_CONFIG.cheapModel,
+      DEEP_REVIEW_MODEL: DEFAULT_CONFIG.deepModel,
+    },
+    secrets: [SECRET_NAME],
+    labels: ALL_LABELS.filter((name) => name !== "review:auto"),
+  });
+  github.failKind = "create-label";
+
+  await assert.rejects(
+    runConsumerInstaller({ command: "adopt", target, yes: true }, { sourceRoot, github }),
+    /simulated create-label failure/u,
+  );
+  const pending = await readManifest(target);
+  assert.equal(pending.state, "pending");
+
+  // Once adoption has written the pending manifest and converged the workflow,
+  // the installation is managed; the normal lifecycle resumes it to active.
+  github.failKind = null;
+  await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+  assert.equal((await readManifest(target)).state, "active");
+  assert.ok(github.labels.has("review:auto"));
+});
+
+test("adopt rejects a symlinked workflow ancestor before reading outside the target", async () => {
+  const sourceRoot = await makeSource("name: current source\n");
+  const target = await makeTarget();
+  const github = fullyProvisionedGitHub();
+  const external = await makeExternal();
+  await mkdir(path.join(target, ".github"), { recursive: true });
+  await symlink(external, path.join(target, ".github", "workflows"), "dir");
+
+  await assert.rejects(
+    runConsumerInstaller({ command: "adopt", target, yes: true }, { sourceRoot, github }),
+    (error) => {
+      assert.match(error.message, CONTAINMENT_PATTERN);
+      assert.equal(error.message.includes(external), false, "must not leak the symlink target");
+      return true;
+    },
+  );
+  assert.deepEqual(github.calls, []);
+});
+
+test("parseArguments accepts adopt confirmation and rejects uninstall cleanup flags", () => {
+  assert.deepEqual(
+    parseArguments(["adopt", "--target", "/tmp/t", "--yes", "--provider", "openrouter"]),
+    { command: "adopt", target: "/tmp/t", yes: true, provider: "openrouter" },
+  );
+  assert.equal(
+    parseArguments(["adopt", "--source-tag", "v0.1.0", "--source-commit", "a".repeat(40)]).sourceTag,
+    "v0.1.0",
+  );
+  assert.throws(
+    () => parseArguments(["adopt", "--remove-labels"]),
+    /adopt does not accept uninstall cleanup options/u,
+  );
+  assert.throws(
+    () => parseArguments(["check", "--yes"]),
+    /check does not accept --yes/u,
+  );
 });

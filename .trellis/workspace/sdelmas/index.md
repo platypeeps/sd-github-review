@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 35
+- **Total Sessions**: 36
 - **Last Active**: 2026-08-04
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1413 | Active |
+| `journal-1.md` | ~1456 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 36 | 2026-08-04 | Implement adopt operation for manually installed review workflows (A-019) | `50d2d53`, `9d15726`, `1d9d892`, `ab82fc3` | `feat/adopt-manual-review-installations` |
 | 35 | 2026-08-04 | A-006: subprocess coverage for shipped Action + installer entrypoints | `3442f55`, `f221675`, `d991083` | `test/shipped-review-process-boundaries` |
 | 34 | 2026-08-04 | Reject symlinked installer targets (A-005) | `e559742`, `d8fc6e9`, `157aae1`, `85e23f7` | `fix/reject-symlinked-installer-targets` |
 | 33 | 2026-08-04 | Publish v0.2.0 traceable installer release (A-007) | `b8d4872`, `3c7d53f` | `main` |

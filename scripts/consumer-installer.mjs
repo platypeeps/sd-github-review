@@ -75,6 +75,20 @@ const COMMIT_PATTERN = /^[0-9a-f]{40}$/u;
 const RELEASE_TAG_PATTERN =
   /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
 
+// A-019 adoption registry. Versioned repository data, not a contextual guess:
+// the exact SHA-256 of every historical `examples/pr-agent-router.yml` a
+// consumer may have copied manually per SETUP-PR-AGENT.md. `adopt` recognizes
+// only these hashes (plus the current template, matched dynamically) and then
+// converges the workflow to the current source. When the shipped template
+// changes, add the superseded release's hash here so its manual installs stay
+// adoptable. Hashes are exact bytes; there is no fuzzy/semantic matching.
+export const HISTORICAL_TEMPLATE_HASHES = Object.freeze([
+  Object.freeze({
+    tag: "v0.1.0",
+    sha256: "fb372116ae1853da92865ddf03c79dd93dcc174ac0f7979eda3eefdcf336bc18",
+  }),
+]);
+
 function isObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -913,6 +927,112 @@ async function installOrUpdate(command, options, dependencies) {
   return report;
 }
 
+// Recognize an existing manual workflow by exact bytes. The current template
+// (matched dynamically against templateSha) and every allow-listed historical
+// hash are adoptable; anything else is unknown drift. Returns a bounded label
+// for reporting, never the workflow content.
+function recognizeTemplate(workflowSha, templateSha, historical) {
+  if (workflowSha === templateSha) return { label: "current source" };
+  const match = historical.find((entry) => entry.sha256 === workflowSha);
+  return match ? { label: match.tag } : null;
+}
+
+// A-019: adopt a manually installed workflow into installer ownership. Explicit
+// only — never inferred during install/update. Recognizes an allow-listed
+// historical or current template, plans ownership without claiming pre-existing
+// unowned GitHub resources, requires confirmation, then writes pending -> active
+// exactly like install so check/update/rollback/uninstall work afterward.
+async function adoptInstallation(options, dependencies) {
+  const sourceRoot = dependencies.sourceRoot ?? path.resolve(import.meta.dirname, "..");
+  const templateSource = await readFile(path.join(sourceRoot, TEMPLATE_PATH), "utf8");
+  const templateSha = sha256(templateSource);
+  const version = await readSourceVersion(sourceRoot);
+  const release = resolveSourceRelease({
+    sourceRoot,
+    gitImpl: dependencies.gitImpl,
+    version,
+    override: sourceOverride(options, dependencies.env ?? process.env),
+  });
+  const github = dependencies.github ?? new GitHubCli();
+  const target = await resolveTarget(options, github);
+  const guard = makePathGuard(target.root, dependencies.lstat);
+  const local = await loadLocalState(guard, target.root);
+  if (local.manifest) {
+    throw new Error(
+      `${MANIFEST_PATH} already manages this installation; use update instead of adopt`,
+    );
+  }
+  if (local.workflow === null) {
+    throw new Error(
+      `${WORKFLOW_PATH} not found; nothing to adopt. Run install to create a managed installation`,
+    );
+  }
+  const historical = dependencies.historicalTemplates ?? HISTORICAL_TEMPLATE_HASHES;
+  const recognized = recognizeTemplate(sha256(local.workflow), templateSha, historical);
+  if (!recognized) {
+    // Bounded reconciliation guidance: never embed the unrecognized content.
+    throw new Error(
+      `${WORKFLOW_PATH} is not a recognized sd-github-review template; ` +
+        "back up and remove it, then run install to reconcile it manually",
+    );
+  }
+  const refreshWorkflow = recognized.label !== "current source";
+  const configuration = resolveConfiguration(options, null);
+  const setSecretRequested = options.secretMode === "interactive" || options.secretMode === "stdin";
+  const { actions, resources } = planResources(
+    configuration,
+    target.snapshot,
+    null,
+    setSecretRequested,
+  );
+  const pendingManifest = createManifest({
+    state: "pending",
+    repository: target.repository,
+    templateSha,
+    configuration,
+    resources,
+    release,
+  });
+  const actionDescriptions = [
+    `write ${MANIFEST_PATH} with pending state`,
+    refreshWorkflow
+      ? `refresh ${WORKFLOW_PATH} from adopted ${recognized.label} to current source`
+      : `record ${WORKFLOW_PATH} ownership`,
+    ...actions.map(publicAction),
+    `write ${MANIFEST_PATH} with active state`,
+  ];
+  const report = {
+    command: "adopt",
+    ok: true,
+    dryRun: Boolean(options.dryRun),
+    repository: target.repository,
+    target: target.root,
+    configuration,
+    adoptedFrom: recognized.label,
+    actions: actionDescriptions,
+  };
+  if (options.dryRun) return report;
+
+  if (!options.yes) {
+    const confirm = dependencies.confirm;
+    if (!confirm || !(await confirm(target.repository))) {
+      throw new Error("adopt cancelled; pass --yes for non-interactive confirmation");
+    }
+  }
+
+  await atomicWrite(guard, local.manifestFile, manifestJson(pendingManifest));
+  // Converge the workflow to the current source. For a current-template adoption
+  // these bytes already match; for a historical one this refreshes it in place.
+  await atomicWrite(guard, local.workflowFile, templateSource);
+  await applyRemoteActions(github, target.repository, actions, options);
+  await atomicWrite(
+    guard,
+    local.manifestFile,
+    manifestJson({ ...pendingManifest, state: "active" }),
+  );
+  return report;
+}
+
 async function checkInstallation(options, dependencies) {
   const sourceRoot = dependencies.sourceRoot ?? path.resolve(import.meta.dirname, "..");
   const templateSource = await readFile(path.join(sourceRoot, TEMPLATE_PATH), "utf8");
@@ -1088,6 +1208,8 @@ export async function runConsumerInstaller(options, dependencies = {}) {
     case "install":
     case "update":
       return installOrUpdate(options.command, options, dependencies);
+    case "adopt":
+      return adoptInstallation(options, dependencies);
     case "check":
       if (options.secretMode) throw new Error("check does not accept secret input");
       return checkInstallation(options, dependencies);
@@ -1117,7 +1239,7 @@ export function formatReport(report) {
 }
 
 export const HELP = `Usage:
-  node scripts/install-consumer.mjs <install|update|check|uninstall> [options]
+  node scripts/install-consumer.mjs <install|update|adopt|check|uninstall> [options]
 
 Common options:
   --target PATH          Consumer checkout (default: current directory)
@@ -1125,16 +1247,22 @@ Common options:
   --dry-run              Show changes without mutating files or GitHub
   --json                 Emit machine-readable output
 
+Adopt (bring a manually installed workflow under management):
+  Recognizes a current or allow-listed historical ai-review-router.yml,
+  converges it to the current source, and records ownership. Accepts the
+  install configuration/secret/source options below. Requires confirmation:
+  --yes                  Confirm non-interactive adoption
+
 Install/update/check configuration:
   --provider NAME        Single-key PR-Agent provider
   --cheap-model ID       Model for the cheap route
   --deep-model ID        Model for the deep route
 
-Install/update secret input:
+Install/update/adopt secret input:
   --set-secret           Prompt through gh secret set
   --secret-stdin         Read the secret from standard input
 
-Install/update source provenance (.git-less release artifact only):
+Install/update/adopt source provenance (.git-less release artifact only):
   --source-tag vX.Y.Z    Declared release tag (records released:false)
   --source-commit SHA    Declared 40-hex source commit
                          (also SD_SOURCE_TAG / SD_SOURCE_COMMIT)
@@ -1150,8 +1278,8 @@ export function parseArguments(argv) {
     return { help: true };
   }
   const command = argv[0];
-  if (!["install", "update", "check", "uninstall"].includes(command)) {
-    throw new Error(`first argument must be install, update, check, or uninstall`);
+  if (!["install", "update", "adopt", "check", "uninstall"].includes(command)) {
+    throw new Error(`first argument must be install, update, adopt, check, or uninstall`);
   }
   const options = { command };
   const values = new Map([
@@ -1192,13 +1320,18 @@ export function parseArguments(argv) {
   if (command === "uninstall" && (options.provider || options.cheapModel || options.deepModel)) {
     throw new Error("uninstall does not accept provider or model options");
   }
-  if (!["install", "update"].includes(command) && options.secretMode) {
+  if (!["install", "update", "adopt"].includes(command) && options.secretMode) {
     throw new Error(`${command} does not accept secret input`);
   }
-  if (command !== "uninstall" && (options.yes || options.removeSecret || options.removeLabels)) {
-    throw new Error(`${command} does not accept uninstall options`);
+  // --yes confirms a non-interactive uninstall or adopt; the destructive
+  // cleanup flags remain uninstall-only.
+  if (command !== "uninstall" && (options.removeSecret || options.removeLabels)) {
+    throw new Error(`${command} does not accept uninstall cleanup options`);
   }
-  if (!["install", "update"].includes(command) && (options.sourceTag || options.sourceCommit)) {
+  if (!["uninstall", "adopt"].includes(command) && options.yes) {
+    throw new Error(`${command} does not accept --yes`);
+  }
+  if (!["install", "update", "adopt"].includes(command) && (options.sourceTag || options.sourceCommit)) {
     throw new Error(`${command} does not accept source provenance overrides`);
   }
   return options;
