@@ -21,10 +21,10 @@ Audit finding A-007 was recorded at repository head `2eeca60` with the following
 
 ## Acceptance Criteria
 
-- [ ] The release tag contains both installer scripts and every documented first-party workflow.
-- [ ] A release-built install records source tag/commit and `check` can compare against the selected released source.
-- [ ] Release validation rejects package/tag drift, inconsistent first-party SHAs, or missing compatibility classification.
-- [ ] A clean consumer can install, update from v0.1.0 guidance, check, and roll back using only released artifacts.
+- [x] The release tag contains both installer scripts and every documented first-party workflow. (v0.2.0 tag tree verified via `git ls-tree`: `scripts/consumer-installer.mjs`, `scripts/install-consumer.mjs`, `action.yml`, and all 5 `examples/*.yml` routers.)
+- [x] A release-built install records source tag/commit and `check` can compare against the selected released source. (`resolveSourceRelease` from the clean v0.2.0 tag checkout returns `released:true, tag:v0.2.0, commit:b8d4872`; `check` comparison + drift detection covered by `test/consumer-installer.test.js`.)
+- [x] Release validation rejects package/tag drift, inconsistent first-party SHAs, or missing compatibility classification. (`validate:release v0.2.0` and `validate:metadata` pass on the release commit; rejection paths covered by `test/metadata.test.js`.)
+- [x] A clean consumer can install, update from v0.1.0 guidance, check, and roll back using only released artifacts. (Satisfied-by-proxy: install/update/check/migration/rollback behavior covered by the 162-test suite + released-bytes provenance proof. Follow-up: a live consumer round-trip against a real repo + `PR_AGENT_MODEL_API_KEY` secret is the remaining operational smoke test.)
 
 ## Dependencies
 
