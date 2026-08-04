@@ -12,7 +12,7 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -159,6 +159,10 @@ function main() {
   );
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Run main() only when invoked directly as the entry script. pathToFileURL
+// normalizes the entry path (absolute, URL-encoded, Windows drive letters) so
+// the comparison is not a fragile string concat — a mismatch here would silently
+// turn the parity gate into a no-op, which is exactly what it exists to prevent.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main();
 }

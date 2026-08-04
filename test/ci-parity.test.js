@@ -77,6 +77,35 @@ test("npm ci is not treated as a package gate; npm test aliases the test script"
   assert.equal(result.ok, true);
 });
 
+test("the validator CLI actually runs (not a silent no-op) and passes for this repo", async () => {
+  const validator = path.join(REPO_ROOT, "scripts", "validate-ci-parity.mjs");
+  const { stdout } = await execFileAsync(process.execPath, [validator], { cwd: REPO_ROOT });
+  assert.match(stdout, /validate-ci-parity: OK/);
+});
+
+test("the validator CLI exits nonzero when a fixture drops a CI gate", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "ci-parity-cli-"));
+  try {
+    const ci = "jobs:\n  test:\n    steps:\n      - run: npm test\n      - run: npm run validate:metadata\n";
+    const pkg = { name: "fx", private: true, scripts: { "check:full": "npm test" } };
+    const ciPath = path.join(dir, "ci.yml");
+    const pkgPath = path.join(dir, "package.json");
+    await writeFile(ciPath, ci);
+    await writeFile(pkgPath, JSON.stringify(pkg));
+    const validator = path.join(REPO_ROOT, "scripts", "validate-ci-parity.mjs");
+    await assert.rejects(
+      execFileAsync(process.execPath, [validator, "--ci-file", ciPath, "--package-file", pkgPath]),
+      (error) => {
+        assert.equal(error.code, 1);
+        assert.match(String(error.stderr), /missing CI package gate/);
+        return true;
+      },
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("removing a package script the CI runner references makes check:full fail", async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "ci-parity-fixture-"));
   try {
