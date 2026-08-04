@@ -143,7 +143,7 @@ function timeoutError(method, path, attempt, timeoutMs) {
   // stack; a mutating request may or may not have applied, so the caller must
   // reconcile before retrying rather than blindly repeat the mutation.
   const guidance = method === "GET"
-    ? ""
+    ? "; the read was interrupted after exhausting retries — safe to retry once GitHub is responsive"
     : "; mutating request may have applied — reconcile state before retrying";
   return new Error(
     `GitHub API ${method} ${path} timed out after ${timeoutMs}ms${attempts}${guidance}`,

@@ -593,6 +593,7 @@ test("times out a GET on a stalled response body and retries to the read limit",
 
   await assert.rejects(client.getPullRequest(1), (error) => {
     assert.match(error.message, /timed out after 30000ms/u);
+    assert.match(error.message, /the read was interrupted after exhausting retries — safe to retry/u);
     assert.doesNotMatch(error.message, /reconcile/u);
     return true;
   });
