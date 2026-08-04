@@ -337,9 +337,10 @@ test("event-target routing drives every client call with the single event PR num
   const called = [
     ...harness.numbers.listPullRequestFiles,
     ...harness.numbers.getRequestedReviewers,
+    ...harness.numbers.listPullRequestReviews,
     ...harness.numbers.requestReviewer,
   ];
-  assert.ok(called.length >= 3);
+  assert.ok(called.length >= 4);
   assert.ok(called.every((number) => number === 23), `expected all calls to bind #23, saw ${called}`);
 });
 
@@ -357,10 +358,12 @@ test("explicit-target override fetches metadata and binds every client call to t
     ...harness.numbers.getPullRequest,
     ...harness.numbers.listPullRequestFiles,
     ...harness.numbers.getRequestedReviewers,
+    ...harness.numbers.listPullRequestReviews,
     ...harness.numbers.requestReviewer,
   ];
   assert.ok(harness.numbers.getPullRequest.length >= 1, "explicit target must fetch its own metadata");
-  assert.ok(called.length >= 4);
+  assert.ok(harness.numbers.listPullRequestReviews.length >= 1, "copilot de-dup must check reviews");
+  assert.ok(called.length >= 5);
   assert.ok(called.every((number) => number === 77), `expected all calls to bind #77, saw ${called}`);
 });
 
