@@ -191,12 +191,29 @@ test("publishes pinned standalone and durable PR-Agent workflows", async () => {
     issues: "write",
     "pull-requests": "write",
   });
-  assert.deepEqual(durable.workflow.permissions, {
+  // A-004: the third-party reviewer runs in an isolated job whose token has no
+  // receipt authority. Workflow-level permissions are minimal; only the
+  // receipt-writing jobs (review, finalize) hold checks:write, and the reviewer
+  // job (pr-agent) holds neither checks:write nor issues:write.
+  assert.deepEqual(durable.workflow.permissions, { contents: "read" });
+  assert.deepEqual(durable.workflow.jobs.review.permissions, {
     contents: "read",
     issues: "write",
     "pull-requests": "write",
     checks: "write",
   });
+  assert.deepEqual(durable.workflow.jobs.finalize.permissions, {
+    contents: "read",
+    issues: "write",
+    "pull-requests": "write",
+    checks: "write",
+  });
+  assert.deepEqual(durable.workflow.jobs["pr-agent"].permissions, {
+    contents: "read",
+    "pull-requests": "write",
+  });
+  assert.equal(durable.workflow.jobs["pr-agent"].permissions.checks, undefined);
+  assert.equal(durable.workflow.jobs["pr-agent"].permissions.issues, undefined);
 
   for (const { source, workflow } of [standalone, durable]) {
     const steps = Object.values(workflow.jobs).flatMap((job) => job.steps ?? []);
@@ -218,12 +235,16 @@ test("publishes pinned standalone and durable PR-Agent workflows", async () => {
       );
       assert.ok(prAgent.run.includes(`--env ${credential}`));
     }
-    assert.equal(prAgent.env.CONFIG__MODEL, "${{ steps.review.outputs.model }}");
+    // The reviewer step reads route outputs from the same job (standalone) or
+    // across jobs via needs (durable, where the reviewer is isolated).
+    const crossJob = Boolean(workflow.jobs["pr-agent"]);
+    const routeOut = crossJob ? "needs.review.outputs" : "steps.review.outputs";
+    assert.equal(prAgent.env.CONFIG__MODEL, `\${{ ${routeOut}.model }}`);
     assert.equal(prAgent.env.CONFIG__FALLBACK_MODELS, "[]");
     assert.equal(prAgent.env.CONFIG__RESTRICTED_MODE, "true");
     assert.equal(
       prAgent.env.REVIEW_PULL_REQUEST_NUMBER,
-      "${{ steps.review.outputs.pull-request-number }}",
+      `\${{ ${routeOut}.pull-request-number }}`,
     );
     assert.match(prAgent.run, /--pr_url=.*REVIEW_PULL_REQUEST_NUMBER/u);
     assert.equal(
@@ -284,12 +305,14 @@ test("publishes pinned standalone and durable PR-Agent workflows", async () => {
     }
   }
 
-  const durableSteps = durable.workflow.jobs.review.steps;
+  // Durable pr-agent workflow is split across jobs (review / pr-agent /
+  // finalize) for A-004 isolation, so steps are gathered across all jobs.
+  const durableSteps = Object.values(durable.workflow.jobs).flatMap((job) => job.steps ?? []);
   const genericDurableSteps = genericDurable.workflow.jobs.review.steps;
   const acknowledge = durableSteps.find((step) => step.id === "acknowledge");
   const finalize = durableSteps.find((step) => step.name === "Finalize the external receipt");
   const preflight = durableSteps.find((step) => step.id === "pr-agent-config");
-  const durableRoute = durableSteps.find((step) => step.id === "review");
+  const durableRoute = durable.workflow.jobs.review.steps.find((step) => step.id === "review");
   const genericDurableRoute = genericDurableSteps.find((step) => step.id === "review");
   const standaloneRoute = standalone.workflow.jobs.route.steps.find((step) => step.id === "review");
   const genericStandaloneRoute = genericStandalone.workflow.jobs.route.steps.find(
@@ -321,7 +344,7 @@ test("publishes pinned standalone and durable PR-Agent workflows", async () => {
   assert.equal(acknowledge.with.operation, "acknowledge");
   assert.equal(
     acknowledge.with["adapter-outcome"],
-    "${{ steps.pr-agent.outcome }}",
+    "${{ needs.pr-agent.result }}",
   );
   assert.equal(finalize.with["adapter-acknowledgment"], "${{ steps.acknowledge.outputs.adapter-acknowledgment }}");
   assert.equal(

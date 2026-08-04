@@ -37,15 +37,22 @@ execution from the receipt-writing job and its token.
 
 ## Acceptance Criteria
 
-- [ ] `examples/pr-agent-on-demand-review-router.yml` reviewer job no longer
+- [x] `examples/pr-agent-on-demand-review-router.yml` reviewer job no longer
       grants `checks: write` and no longer passes a receipt-authoritative token
-      into the reviewer container.
-- [ ] Receipt writing is performed by a distinct job/step with its own scoped
-      token, documented in the workflow.
-- [ ] Any shipped/installed copy of this template (installer output, docs) is
-      consistent with the isolated shape.
-- [ ] Current-head verification recorded; `.trellis/audit/ledger.md` A-004 set to
+      into the reviewer container. (The `pr-agent` job holds only
+      `contents: read` + `pull-requests: write`.)
+- [x] Receipt writing is performed by a distinct job/step with its own scoped
+      token, documented in the workflow. (`review` + `finalize` jobs hold
+      `checks: write`; the reviewer job does not; workflow default is
+      `contents: read`.)
+- [x] Any shipped/installed copy of this template is consistent with the
+      isolated shape. The installer ships `pr-agent-router.yml`, which grants no
+      `checks: write` and is therefore already receipt-safe; only the audited
+      on-demand template needed the split. (Documented in design.md.)
+- [x] Current-head verification recorded; `.trellis/audit/ledger.md` A-004 set to
       fixed only after that verification, per the parent epic rule.
+      (`test/metadata.test.js` asserts the reviewer job lacks `checks`/`issues`;
+      npm test 224/224, validate:metadata clean.)
 
 ## Out of Scope
 

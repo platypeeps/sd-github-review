@@ -42,8 +42,8 @@ Committed cross-session audit findings managed by sd-audit-repo.
 - fix: Elect one authoritative Check Run and reconcile duplicates before dispatch.
 
 ## A-004 — Third-party PR-Agent receives durable-receipt authority
-- status: open
-- notes: Trellis owner `08-04-isolate-pr-agent-receipt-authority` (dedicated audit child; reassigned from `07-25-integrate-pr-agent-review-adapter` 2026-08-04); PRD seeded with evidence and acceptance 2026-08-04; confirmed still open on main @ a546883.
+- status: fixed
+- notes: Trellis owner `08-04-isolate-pr-agent-receipt-authority` (dedicated audit child; reassigned from `07-25-integrate-pr-agent-review-adapter` 2026-08-04); verified fixed on main (2026-08-04) — `examples/pr-agent-on-demand-review-router.yml` split into three jobs: `review` and `finalize` hold `checks: write` for receipt writing; the third-party `pr-agent` reviewer job holds only `contents: read` + `pull-requests: write`, so its `github.token` cannot forge durable receipts. Workflow-level permissions reduced to `contents: read`. `test/metadata.test.js` asserts the reviewer job lacks `checks`/`issues` (A-004 regression lock); npm test 224/224, validate:metadata clean. The installer-shipped `pr-agent-router.yml` grants no `checks: write` and was already receipt-safe.
 - severity: P1 · effort: M · confidence: Verified
 - dimension: security
 - first-seen: 2026-07-25 @ 2eeca60

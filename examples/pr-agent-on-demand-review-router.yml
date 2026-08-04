@@ -25,15 +25,26 @@ on:
         type: choice
         options: [none, cheap, deep, copilot]
 
+# Least privilege by default; each job widens only to what it needs. The
+# receipt-writing jobs (review, finalize) hold checks:write; the third-party
+# reviewer job (pr-agent) never does, so a compromised reviewer cannot forge
+# durable receipts.
 permissions:
   contents: read
-  issues: write
-  pull-requests: write
-  checks: write
 
 jobs:
   review:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      checks: write
+    outputs:
+      adapter-request: ${{ steps.review.outputs.adapter-request }}
+      backend-id: ${{ steps.review.outputs.backend-id }}
+      model: ${{ steps.review.outputs.model }}
+      pull-request-number: ${{ steps.review.outputs.pull-request-number }}
     steps:
       - name: Route or query the exact-head review
         id: review
@@ -50,13 +61,22 @@ jobs:
           independent-review-floor: ${{ inputs.independent-review-floor }}
           high-risk-route: deep
 
+  pr-agent:
+    needs: review
+    if: needs.review.outputs.adapter-request != ''
+    runs-on: ubuntu-latest
+    # Reviewer isolation: no checks:write and no issues:write, so the token
+    # handed to the third-party container cannot write durable receipts.
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
       - name: Validate PR-Agent configuration
         id: pr-agent-config
-        if: steps.review.outputs.adapter-request != ''
         env:
-          REVIEW_BACKEND_ID: ${{ steps.review.outputs.backend-id }}
+          REVIEW_BACKEND_ID: ${{ needs.review.outputs.backend-id }}
           REVIEW_MODEL_PROVIDER: ${{ vars.PR_AGENT_MODEL_PROVIDER }}
-          REVIEW_MODEL: ${{ steps.review.outputs.model }}
+          REVIEW_MODEL: ${{ needs.review.outputs.model }}
         run: |
           if [ "$REVIEW_BACKEND_ID" != "pr-agent" ]; then
             echo "The selected external backend must use id pr-agent." >&2
@@ -106,10 +126,10 @@ jobs:
           DEEPINFRA__KEY: ${{ vars.PR_AGENT_MODEL_PROVIDER == 'deepinfra' && secrets.PR_AGENT_MODEL_API_KEY || '' }}
           MISTRAL__KEY: ${{ vars.PR_AGENT_MODEL_PROVIDER == 'mistral' && secrets.PR_AGENT_MODEL_API_KEY || '' }}
           CODESTRAL__KEY: ${{ vars.PR_AGENT_MODEL_PROVIDER == 'codestral' && secrets.PR_AGENT_MODEL_API_KEY || '' }}
-          CONFIG__MODEL: ${{ steps.review.outputs.model }}
+          CONFIG__MODEL: ${{ needs.review.outputs.model }}
           CONFIG__FALLBACK_MODELS: '[]'
           CONFIG__RESTRICTED_MODE: "true"
-          REVIEW_PULL_REQUEST_NUMBER: ${{ steps.review.outputs.pull-request-number }}
+          REVIEW_PULL_REQUEST_NUMBER: ${{ needs.review.outputs.pull-request-number }}
         run: |
           docker run --rm \
             --env GITHUB__USER_TOKEN \
@@ -133,18 +153,26 @@ jobs:
             --pr_url="https://github.com/${GITHUB_REPOSITORY}/pull/${REVIEW_PULL_REQUEST_NUMBER}" \
             review
 
+  finalize:
+    needs: [review, pr-agent]
+    if: needs.review.outputs.adapter-request != '' && always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      checks: write
+    steps:
       - name: Build the PR-Agent acknowledgment
         id: acknowledge
-        if: steps.review.outputs.adapter-request != '' && always()
         uses: platypeeps/sd-github-review@8636a3983d18de17c49907a4c48170a61b1bb713
         with:
           github-token: ${{ github.token }}
           operation: acknowledge
-          adapter-request: ${{ steps.review.outputs.adapter-request }}
-          adapter-outcome: ${{ steps.pr-agent.outcome }}
+          adapter-request: ${{ needs.review.outputs.adapter-request }}
+          adapter-outcome: ${{ needs.pr-agent.result }}
 
       - name: Finalize the external receipt
-        if: steps.review.outputs.adapter-request != '' && always()
         uses: platypeeps/sd-github-review@8636a3983d18de17c49907a4c48170a61b1bb713
         with:
           github-token: ${{ github.token }}
