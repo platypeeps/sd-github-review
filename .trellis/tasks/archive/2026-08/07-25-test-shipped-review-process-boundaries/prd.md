@@ -21,10 +21,10 @@ Audit finding A-006 was recorded at repository head `2eeca60` with the following
 
 ## Acceptance Criteria
 
-- [ ] Installer subprocess tests cover install, check, update, uninstall, JSON/human output, TTY refusal, and redacted failures.
-- [ ] Action subprocess tests cover successful output plus missing/malformed event failure annotation and exit status.
-- [ ] CI runs the coverage command and fails below documented floors.
-- [ ] Tests remain hermetic and never use a real repository, network, secret, or user directory.
+- [x] Installer subprocess tests cover install, check, update, uninstall, JSON/human output, TTY refusal, and redacted failures. — `test/installer-entrypoint.test.js` (install+manifest+gh, check-healthy JSON, update idempotent, uninstall `--yes`, human report without `--json`, `--set-secret` TTY refusal, secret redaction on gh failure).
+- [x] Action subprocess tests cover successful output plus missing/malformed event failure annotation and exit status. — `test/action-entrypoint.test.js` (routing outputs+summary exit 0, stdout fallback, missing `GITHUB_EVENT_PATH` `::error::` exit 1, malformed payload `::error::` exit 1).
+- [x] CI runs the coverage command and fails below documented floors. — `.github/workflows/ci.yml` runs `npm run test:coverage`; `scripts/check-coverage.mjs` enforces global + per-file floors (teeth-verified: exit 1 when a floor is raised above actual).
+- [x] Tests remain hermetic and never use a real repository, network, secret, or user directory. — `test/support/subprocess.mjs` uses temp dirs, a fake `gh` on `PATH`, a locally git-initialised target, and an unroutable `GITHUB_API_URL`.
 
 ## Dependencies
 

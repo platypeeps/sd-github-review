@@ -1371,3 +1371,46 @@ Implemented the A-005 containment guard: an lstat-based ancestor walk beneath th
 ### Next Steps
 
 - None - task complete
+
+
+## Session 35: A-006: subprocess coverage for shipped Action + installer entrypoints
+
+**Date**: 2026-08-04
+**Task**: A-006: subprocess coverage for shipped Action + installer entrypoints
+**Branch**: `test/shipped-review-process-boundaries`
+
+### Summary
+
+Added hermetic subprocess tests exercising the real src/index.js and scripts/install-consumer.mjs composition roots, plus a coverage-floor CI gate. Fixed a latent readFile(fd) stdin bug the new test surfaced.
+
+### Main Changes
+
+- test/action-entrypoint.test.js + test/installer-entrypoint.test.js run the real entrypoints as subprocesses (temp event/output/summary files, fake gh on PATH, git-init target, unroutable GITHUB_API_URL)
+- test/support/subprocess.mjs holds reusable subprocess + fake-gh fixtures
+- scripts/check-coverage.mjs enforces global + per-file coverage floors; wired into CI as npm run test:coverage
+- Fixed install-consumer.mjs --secret-stdin: node:fs/promises.readFile(0) rejects numeric fd on Node >=24; switched to readFileSync(0)
+- Documented subprocess-boundary testing + coverage-floor convention in backend/quality-guidelines.md
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3442f55` | test: cover shipped Action and installer process entrypoints (A-006) |
+| `f221675` | chore(task): record branch for finalization |
+| `d991083` | chore(task): archive 07-25-test-shipped-review-process-boundaries |
+
+### Testing
+
+- [OK] npm test — 182 pass (+12)
+- [OK] npm run test:coverage — global 91.31% lines / 81.19% branches / 92.69% funcs; teeth-verified exit 1 when floor raised
+- [OK] npm run check, npm run validate:metadata (1066 paths), git diff --check clean
+- [OK] CI PR #36 test job pass (15s) on Node 24 — confirms subprocess coverage capture + gate green
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
