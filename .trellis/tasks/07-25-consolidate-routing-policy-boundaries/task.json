@@ -3,7 +3,7 @@
   "name": "consolidate-routing-policy-boundaries",
   "title": "Consolidate routing policy boundaries",
   "description": "Remediate audit finding A-008 by giving routing policy, protocol codecs, and dispatch composition clear ownership.",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,

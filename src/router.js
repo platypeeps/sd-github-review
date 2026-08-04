@@ -1,129 +1,23 @@
-const MODES = new Set(["auto", "cheap", "deep", "copilot", "none"]);
-const ESCALATION_ROUTES = new Set(["deep", "copilot"]);
-const CONFIDENCE_LEVELS = new Set(["unknown", "high", "medium", "low"]);
-const EXPLICIT_LABELS = new Map([
-  ["review:cheap", "cheap"],
-  ["review:deep", "deep"],
-  ["review:copilot", "copilot"],
-  ["review:none", "none"],
+// Route-policy owner. Holds the pure automatic routing decision (routeReview)
+// and the versioned route-selection policy (selectProtocolRoute + floors,
+// local-evidence, and successor handling). Canonicalizers/parsers live in
+// normalize.js; path matching in path-match.js; versioned decoding in
+// protocol.js. This module imports the protocol decode seam
+// (decodeRoutingInputs) but no codec internals, keeping the one-way edge
+// router -> protocol.
+import {
+  ignoredEventDecision,
+  normalizeMode,
+  resolveExplicitMode,
+} from "./normalize.js";
+import { decodeRoutingInputs } from "./protocol.js";
+
+const ROUTE_STRENGTH = new Map([
+  ["none", 0],
+  ["cheap", 1],
+  ["deep", 2],
+  ["copilot", 3],
 ]);
-
-export function normalizeMode(value, field = "mode") {
-  const mode = String(value ?? "").trim().toLowerCase();
-  if (!MODES.has(mode)) {
-    throw new Error(`${field} must be one of: ${[...MODES].join(", ")}`);
-  }
-  return mode;
-}
-
-export function normalizeEscalationRoute(value, field) {
-  const route = String(value ?? "").trim().toLowerCase();
-  if (!ESCALATION_ROUTES.has(route)) {
-    throw new Error(`${field} must be deep or copilot`);
-  }
-  return route;
-}
-
-export function normalizeConfidence(value) {
-  const confidence = String(value ?? "unknown").trim().toLowerCase();
-  if (!CONFIDENCE_LEVELS.has(confidence)) {
-    throw new Error("confidence must be one of: unknown, high, medium, low");
-  }
-  return confidence;
-}
-
-export function parseList(value) {
-  return String(value ?? "")
-    .split(/[\n,]/u)
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-export function parseReviewCommand(body) {
-  const match = String(body ?? "").match(/^\s*\/review\s+(auto|cheap|deep|copilot|none)\s*$/iu);
-  return match?.[1]?.toLowerCase() ?? null;
-}
-
-export function globToRegExp(pattern) {
-  let normalized = String(pattern).trim().replace(/^\.\//u, "").replace(/^\//u, "");
-  if (!normalized) {
-    throw new Error("sensitive path patterns cannot be empty");
-  }
-
-  let source = "";
-  for (let index = 0; index < normalized.length; index += 1) {
-    const character = normalized[index];
-    if (character === "*" && normalized[index + 1] === "*") {
-      if (normalized[index + 2] === "/") {
-        source += "(?:.*/)?";
-        index += 2;
-      } else {
-        source += ".*";
-        index += 1;
-      }
-    } else if (character === "*") {
-      source += "[^/]*";
-    } else if (character === "?") {
-      source += "[^/]";
-    } else {
-      source += character.replace(/[|\\{}()[\]^$+?.]/gu, "\\$&");
-    }
-  }
-  return new RegExp(`^${source}$`, "u");
-}
-
-export function findSensitiveFiles(files, patterns) {
-  const matchers = patterns.map(globToRegExp);
-  return files.filter((file) => matchers.some((matcher) => matcher.test(file)));
-}
-
-export function modeFromLabels(labels) {
-  const selected = new Set(
-    labels
-      .map((label) => (typeof label === "string" ? label : label?.name))
-      .map((label) => String(label ?? "").toLowerCase())
-      .filter((label) => EXPLICIT_LABELS.has(label))
-      .map((label) => EXPLICIT_LABELS.get(label)),
-  );
-
-  if (selected.size > 1) {
-    throw new Error(`conflicting review labels select multiple routes: ${[...selected].join(", ")}`);
-  }
-  return [...selected][0] ?? null;
-}
-
-export function isTrustedCommand({
-  association,
-  commenter,
-  pullRequestAuthor,
-  trustedAssociations,
-  allowPullRequestAuthor,
-}) {
-  if (allowPullRequestAuthor && commenter && commenter === pullRequestAuthor) {
-    return true;
-  }
-  return trustedAssociations.has(String(association ?? "").toUpperCase());
-}
-
-export function ignoredEventDecision({
-  eventName,
-  eventAction,
-  isRelevantLabelEvent = true,
-  commandMode,
-}) {
-  if (eventName === "issue_comment" && !commandMode) {
-    return { route: "none", reason: "comment did not contain a trusted review command" };
-  }
-  if (eventName === "pull_request" && eventAction === "labeled" && !isRelevantLabelEvent) {
-    return { route: "none", reason: "label event was unrelated to review routing" };
-  }
-  return null;
-}
-
-export function resolveExplicitMode({ configuredMode, commandMode, labelMode }) {
-  const explicitMode = configuredMode !== "auto" ? configuredMode : commandMode ?? labelMode;
-  return explicitMode && explicitMode !== "auto" ? explicitMode : null;
-}
 
 export function routeReview({
   configuredMode,
@@ -174,4 +68,143 @@ export function routeReview({
   return { route: "cheap", reason: "routine pull request within configured risk limits" };
 }
 
-export const reviewLabels = new Set(["review:auto", ...EXPLICIT_LABELS.keys()]);
+function resolvedRoute(value, field) {
+  if (typeof value !== "string") throw new Error(`${field} must be a string`);
+  const route = normalizeMode(value, field);
+  if (route === "auto") throw new Error(`${field} must be a resolved route`);
+  return route;
+}
+
+function weakerRoute(left, right) {
+  return ROUTE_STRENGTH.get(left) <= ROUTE_STRENGTH.get(right) ? left : right;
+}
+
+function strongerRoute(left, right) {
+  return ROUTE_STRENGTH.get(left) >= ROUTE_STRENGTH.get(right) ? left : right;
+}
+
+function successorMatchesRequest(evidence, request) {
+  if (!request.supersedes) {
+    throw new Error("successorEvidence requires request.supersedes");
+  }
+  if (evidence.priorReceiptId !== request.supersedes.priorReceiptId) {
+    throw new Error("successorEvidence.priorReceiptId must match request.supersedes");
+  }
+  if (evidence.priorLogicalDispatchId !== request.supersedes.priorLogicalDispatchId) {
+    throw new Error("successorEvidence.priorLogicalDispatchId must match request.supersedes");
+  }
+  if (evidence.priorHeadSha !== request.supersedes.priorHeadSha) {
+    throw new Error("successorEvidence.priorHeadSha must match request.supersedes");
+  }
+  if (evidence.currentHeadSha !== request.headSha) {
+    throw new Error("successorEvidence.currentHeadSha must match request.headSha");
+  }
+}
+
+export function selectProtocolRoute(inputs) {
+  const {
+    request,
+    sensitiveFiles,
+    changedLines,
+    changedLineThreshold,
+    confidence,
+    lowConfidenceRoute,
+    highRiskRoute,
+    draft,
+    reviewDrafts,
+    allowBookkeepingNone,
+    localConfidenceThreshold,
+    successorEvidence: decodedSuccessorEvidence,
+    independentReviewFloor,
+    localEvidenceRoute,
+  } = decodeRoutingInputs(inputs);
+
+  const baseDecision = routeReview({
+    configuredMode: request.route,
+    labelMode: null,
+    commandMode: null,
+    eventName: "workflow_dispatch",
+    eventAction: "requested",
+    draft,
+    reviewDrafts,
+    changedLines,
+    changedLineThreshold,
+    sensitiveFiles,
+    highRiskRoute,
+    confidence,
+    lowConfidenceRoute,
+  });
+
+  if (request.route !== "auto") {
+    return {
+      ...baseDecision,
+      policyVersion: request.policyVersion,
+      floorApplied: null,
+      localEvidence: request.localReview ? "ignored-explicit" : "absent",
+      successorEvidence: decodedSuccessorEvidence ? "ignored-explicit" : "absent",
+    };
+  }
+
+  const configuredFloor = resolvedRoute(
+    independentReviewFloor ?? "none",
+    "policy.independentReviewFloor",
+  );
+  const riskFloor = sensitiveFiles.length > 0 || changedLines >= changedLineThreshold
+    ? highRiskRoute
+    : "none";
+  const floor = strongerRoute(configuredFloor, riskFloor);
+  let route = baseDecision.route;
+  const reasons = [baseDecision.reason];
+  let localEvidence = request.localReview ? "ineligible" : "absent";
+  let successorEvidence = decodedSuccessorEvidence ? "ineligible" : "absent";
+
+  if (request.localReview) {
+    const threshold = localConfidenceThreshold;
+    const eligible = ["clean", "fully-dispositioned"].includes(request.localReview.outcome)
+      && request.localReview.confidence >= threshold
+      && request.localReview.dispositionCounts.unresolved === 0;
+    if (eligible) {
+      const target = resolvedRoute(
+        localEvidenceRoute ?? "cheap",
+        "policy.localEvidenceRoute",
+      );
+      const reduced = weakerRoute(route, target);
+      localEvidence = reduced === route ? "unchanged" : "lowered";
+      route = reduced;
+      reasons.push(
+        localEvidence === "lowered"
+          ? `eligible exact-head local evidence lowered auto to ${route}`
+          : "eligible exact-head local evidence did not lower the automatic route",
+      );
+    } else {
+      reasons.push("local evidence supplied no positive routing confidence");
+    }
+  }
+
+  if (decodedSuccessorEvidence) {
+    successorMatchesRequest(decodedSuccessorEvidence, request);
+    if (decodedSuccessorEvidence.comparison === "bookkeeping-only" && allowBookkeepingNone) {
+      route = weakerRoute(route, "none");
+      successorEvidence = "lowered";
+      reasons.push("trusted bookkeeping-only successor evidence selected none");
+    } else {
+      successorEvidence = "unchanged";
+      reasons.push("successor evidence did not qualify for a lower route");
+    }
+  }
+
+  const beforeFloor = route;
+  route = strongerRoute(route, floor);
+  const floorApplied = route === beforeFloor ? null : floor;
+  if (floorApplied) {
+    reasons.push(`review floor required ${floorApplied}`);
+  }
+  return {
+    route,
+    reason: reasons.join("; "),
+    policyVersion: request.policyVersion,
+    floorApplied,
+    localEvidence,
+    successorEvidence,
+  };
+}

@@ -29,7 +29,7 @@ import {
   resolveSourceRelease,
   runConsumerInstaller,
 } from "../scripts/consumer-installer.mjs";
-import { reviewLabels } from "../src/router.js";
+import { reviewLabels } from "../src/normalize.js";
 
 const REPOSITORY = "acme/consumer";
 

@@ -5,13 +5,17 @@
 ## Directory Layout
 
 ```text
-src/                 # dependency-free Action runtime
-  index.js           # standalone/durable entrypoint and GitHub outputs
-  operations.js      # on-demand route/acknowledge/finalize/query orchestration
-  router.js          # pure routing policy
-  protocol.js        # versioned request/receipt decoding and canonical identity
-  receipt.js         # exact-head Check Run receipt storage and reconciliation
-  github.js          # GitHub REST transport
+src/                   # dependency-free Action runtime
+  index.js             # standalone/durable entrypoint and GitHub outputs
+  operations.js        # on-demand route/acknowledge/finalize/query orchestration
+  router.js            # route-policy owner: routeReview + selectProtocolRoute
+  protocol.js          # versioned request/receipt decoding, canonical identity, decodeRoutingInputs
+  receipt.js           # exact-head Check Run receipt storage and reconciliation
+  risk-context.js      # shared normalized routing-context builder
+  reviewer-dispatch.js # shared Copilot presence probe and reviewer request
+  normalize.js         # leaf: value canonicalizers and input parsers
+  path-match.js        # leaf: glob matching and sensitive-file selection
+  github.js            # GitHub REST transport
 test/                # node:test suites mirroring runtime boundaries
 fixtures/protocol/   # canonical versioned protocol behavior fixtures
 fixtures/setup/      # read-only setup discovery fixtures
@@ -52,21 +56,44 @@ single queryable source for priority, ownership, dependencies, and status.
 
 ## Module Organization
 
-- Put deterministic policy, parsing, trust, and glob behavior in
-  `src/router.js`.
+- Keep one downhill dependency direction. Leaf utilities import no local
+  module; the codecs import only leaves; the policy owner imports the codec
+  seam plus leaves; services and entrypoints import the policy owner. The codec
+  (`src/protocol.js`) and persistence (`src/receipt.js`) layers must never
+  import route policy. `test/dependency-boundaries.test.js` enforces the whole
+  allowed-import matrix, including that `selectProtocolRoute` is defined in
+  exactly one module.
+- Put value canonicalizers (mode/route/confidence) and input parsers
+  (list/command/label/trust/event-gate) in `src/normalize.js`; put glob
+  matching and sensitive-file selection in `src/path-match.js`. Both are leaves
+  with no local imports.
+- Put the route policy in `src/router.js`: the automatic `routeReview` decision
+  and the versioned `selectProtocolRoute` (floors, local-evidence reduction,
+  successor handling). It is the single policy owner and imports the
+  `decodeRoutingInputs` codec seam plus leaf canonicalizers, never codec
+  internals.
 - Put versioned routed-review decoding, privacy validation, stable hashing,
-  receipt envelopes, and pure local/successor policy inputs in
+  receipt envelopes, and the `decodeRoutingInputs` typed routing-input record in
   `src/protocol.js`. It must not access the network, filesystem, environment,
-  or GitHub output surfaces.
+  GitHub output surfaces, or route policy.
 - Put HTTP mechanics and GitHub endpoint methods in `src/github.js`.
 - Put durable Check Run marker encoding, receipt lookup/reconciliation, and
-  trusted successor-compare normalization in `src/receipt.js`.
+  trusted successor-compare normalization in `src/receipt.js`; match
+  bookkeeping paths through `src/path-match.js`, not the router.
+- Put the shared normalized routing-context assembly in `src/risk-context.js`
+  and the shared Copilot presence probe plus reviewer request in
+  `src/reviewer-dispatch.js`. Both entrypoints use these services;
+  entrypoint-specific concerns (standalone command/label/trust, the durable
+  policy block, `route==="auto"` file gating, and successor compare) stay at the
+  entrypoints.
 - Put durable operation input staging, dispatch, bounded outputs, and summaries
   in `src/operations.js`; keep standalone event staging and the thin process
-  entrypoint in `src/index.js`.
+  entrypoint in `src/index.js`. Standalone stays policy-free and calls
+  `routeReview` directly, never `selectProtocolRoute`.
 - Mirror each boundary in `test/router.test.js`, `test/protocol.test.js`,
-  `test/receipt.test.js`, `test/github.test.js`, `test/operations.test.js`, and
-  `test/action.test.js`.
+  `test/receipt.test.js`, `test/github.test.js`, `test/operations.test.js`,
+  `test/action.test.js`, `test/dependency-boundaries.test.js`, and
+  `test/shared-service-parity.test.js`.
 - Put repository-only validation in `scripts/`; it must not become part of the
   shipped Action runtime.
 - Keep consumer installation lifecycle code in `scripts/consumer-installer.mjs`
@@ -83,8 +110,8 @@ methods, such as `routeReview()`, `GitHubClient#listPullRequestFiles()`, and
 
 ## Examples
 
-- `resolveExplicitMode()` in `src/router.js` centralizes precedence used by
-  both early orchestration and the final route decision.
+- `resolveExplicitMode()` in `src/normalize.js` centralizes the precedence used
+  by both early orchestration and `routeReview()` in `src/router.js`.
 - `GitHubClient` in `src/github.js` owns all REST headers and pagination.
 - `runAction()` in `src/index.js` is injectable while `main()` remains the
   thin process entrypoint.

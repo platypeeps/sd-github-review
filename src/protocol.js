@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { normalizeEscalationRoute, normalizeMode, routeReview } from "./router.js";
+import { normalizeEscalationRoute, normalizeMode } from "./normalize.js";
 
 export const PROTOCOL_SCHEMA_MAJOR = 1;
 
@@ -93,13 +93,6 @@ const FORBIDDEN_FIELD_NAMES = new Set([
   "localartifacts",
   "content",
   "contents",
-]);
-
-const ROUTE_STRENGTH = new Map([
-  ["none", 0],
-  ["cheap", 1],
-  ["deep", 2],
-  ["copilot", 3],
 ]);
 
 function isPlainObject(value) {
@@ -939,40 +932,13 @@ export function decodeReceipt(value) {
   return normalized;
 }
 
-function resolvedRoute(value, field) {
-  if (typeof value !== "string") throw new Error(`${field} must be a string`);
-  const route = normalizeMode(value, field);
-  if (route === "auto") throw new Error(`${field} must be a resolved route`);
-  return route;
-}
-
-function weakerRoute(left, right) {
-  return ROUTE_STRENGTH.get(left) <= ROUTE_STRENGTH.get(right) ? left : right;
-}
-
-function strongerRoute(left, right) {
-  return ROUTE_STRENGTH.get(left) >= ROUTE_STRENGTH.get(right) ? left : right;
-}
-
-function successorMatchesRequest(evidence, request) {
-  if (!request.supersedes) {
-    throw new Error("successorEvidence requires request.supersedes");
-  }
-  if (evidence.priorReceiptId !== request.supersedes.priorReceiptId) {
-    throw new Error("successorEvidence.priorReceiptId must match request.supersedes");
-  }
-  if (evidence.priorLogicalDispatchId !== request.supersedes.priorLogicalDispatchId) {
-    throw new Error("successorEvidence.priorLogicalDispatchId must match request.supersedes");
-  }
-  if (evidence.priorHeadSha !== request.supersedes.priorHeadSha) {
-    throw new Error("successorEvidence.priorHeadSha must match request.supersedes");
-  }
-  if (evidence.currentHeadSha !== request.headSha) {
-    throw new Error("successorEvidence.currentHeadSha must match request.headSha");
-  }
-}
-
-export function selectProtocolRoute({ request: requestValue, routingContext = {}, policy = {} }) {
+// Codec seam for the route-policy owner. Returns a fully validated, typed
+// routing-input record so the policy owner (router.js) never touches a codec-
+// private validator. Every value selectProtocolRoute needs is validated here
+// EXCEPT the route-strength policy fields independentReviewFloor and
+// localEvidenceRoute: those resolve through ROUTE_STRENGTH (policy), so they
+// pass through raw for the policy owner to resolve after decode.
+export function decodeRoutingInputs({ request: requestValue, routingContext = {}, policy = {} }) {
   const request = decodeReviewRequest(requestValue);
   const context = objectValue(routingContext, "routingContext");
   const policyValue = objectValue(policy, "policy");
@@ -1006,100 +972,28 @@ export function selectProtocolRoute({ request: requestValue, routingContext = {}
   );
   const draft = booleanValue(context.draft ?? false, "routingContext.draft");
   const reviewDrafts = booleanValue(context.reviewDrafts ?? false, "routingContext.reviewDrafts");
-  const decodedSuccessorEvidence = context.successorEvidence === undefined
+  const localConfidenceThreshold = integerValue(
+    policyValue.localConfidenceThreshold ?? 80,
+    "policy.localConfidenceThreshold",
+    { maximum: 100 },
+  );
+  const successorEvidence = context.successorEvidence === undefined
     ? undefined
     : decodeSuccessorEvidence(context.successorEvidence);
-
-  const baseDecision = routeReview({
-    configuredMode: request.route,
-    labelMode: null,
-    commandMode: null,
-    eventName: "workflow_dispatch",
-    eventAction: "requested",
-    draft,
-    reviewDrafts,
+  return {
+    request,
+    sensitiveFiles,
     changedLines,
     changedLineThreshold,
-    sensitiveFiles,
-    highRiskRoute,
     confidence,
     lowConfidenceRoute,
-  });
-
-  if (request.route !== "auto") {
-    return {
-      ...baseDecision,
-      policyVersion: request.policyVersion,
-      floorApplied: null,
-      localEvidence: request.localReview ? "ignored-explicit" : "absent",
-      successorEvidence: decodedSuccessorEvidence ? "ignored-explicit" : "absent",
-    };
-  }
-
-  const configuredFloor = resolvedRoute(
-    policyValue.independentReviewFloor ?? "none",
-    "policy.independentReviewFloor",
-  );
-  const riskFloor = sensitiveFiles.length > 0 || changedLines >= changedLineThreshold
-    ? highRiskRoute
-    : "none";
-  const floor = strongerRoute(configuredFloor, riskFloor);
-  let route = baseDecision.route;
-  const reasons = [baseDecision.reason];
-  let localEvidence = request.localReview ? "ineligible" : "absent";
-  let successorEvidence = decodedSuccessorEvidence ? "ineligible" : "absent";
-
-  if (request.localReview) {
-    const threshold = integerValue(
-      policyValue.localConfidenceThreshold ?? 80,
-      "policy.localConfidenceThreshold",
-      { maximum: 100 },
-    );
-    const eligible = ["clean", "fully-dispositioned"].includes(request.localReview.outcome)
-      && request.localReview.confidence >= threshold
-      && request.localReview.dispositionCounts.unresolved === 0;
-    if (eligible) {
-      const target = resolvedRoute(
-        policyValue.localEvidenceRoute ?? "cheap",
-        "policy.localEvidenceRoute",
-      );
-      const reduced = weakerRoute(route, target);
-      localEvidence = reduced === route ? "unchanged" : "lowered";
-      route = reduced;
-      reasons.push(
-        localEvidence === "lowered"
-          ? `eligible exact-head local evidence lowered auto to ${route}`
-          : "eligible exact-head local evidence did not lower the automatic route",
-      );
-    } else {
-      reasons.push("local evidence supplied no positive routing confidence");
-    }
-  }
-
-  if (decodedSuccessorEvidence) {
-    successorMatchesRequest(decodedSuccessorEvidence, request);
-    if (decodedSuccessorEvidence.comparison === "bookkeeping-only" && allowBookkeepingNone) {
-      route = weakerRoute(route, "none");
-      successorEvidence = "lowered";
-      reasons.push("trusted bookkeeping-only successor evidence selected none");
-    } else {
-      successorEvidence = "unchanged";
-      reasons.push("successor evidence did not qualify for a lower route");
-    }
-  }
-
-  const beforeFloor = route;
-  route = strongerRoute(route, floor);
-  const floorApplied = route === beforeFloor ? null : floor;
-  if (floorApplied) {
-    reasons.push(`review floor required ${floorApplied}`);
-  }
-  return {
-    route,
-    reason: reasons.join("; "),
-    policyVersion: request.policyVersion,
-    floorApplied,
-    localEvidence,
+    highRiskRoute,
+    draft,
+    reviewDrafts,
+    allowBookkeepingNone,
+    localConfidenceThreshold,
     successorEvidence,
+    independentReviewFloor: policyValue.independentReviewFloor,
+    localEvidenceRoute: policyValue.localEvidenceRoute,
   };
 }
