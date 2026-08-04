@@ -15,8 +15,8 @@ Committed cross-session audit findings managed by sd-audit-repo.
 - fix: Distinguish authorized rerequests from replay while retaining pending-request deduplication.
 
 ## A-002 — A PR-number override can route one PR and mutate another
-- status: open
-- notes: Trellis owner `07-25-harden-pull-request-identity-overrides`; remediation planning created 2026-07-25.
+- status: fixed
+- notes: Trellis owner `07-25-harden-pull-request-identity-overrides`; remediation planning created 2026-07-25; verified fixed on main @ a546883 (2026-08-04) — src/index.js resolvePullRequestNumber binds one PR identity, strictly decodes the pr-number override, and rejects an override that conflicts with the event-carried PR number; the single pullRequestNumber threads through metadata, reads, and mutations. Shipped via PR #31.
 - severity: P1 · effort: S · confidence: Verified
 - dimension: correctness
 - first-seen: 2026-07-25 @ 2eeca60
