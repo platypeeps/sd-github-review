@@ -1308,7 +1308,9 @@ test("git subprocess timeout raises a bounded error with recovery guidance", () 
     () => git.head(),
     (error) => {
       assert.match(error.message, new RegExp(`timed out after ${GIT_COMMAND_TIMEOUT_MS}ms`, "u"));
-      assert.match(error.message, /verify no partial change was applied before retrying/u);
+      // git reads have no side effect to reconcile — recovery is a plain retry.
+      assert.match(error.message, /the read was interrupted — retry/u);
+      assert.doesNotMatch(error.message, /partial change/u);
       return true;
     },
   );

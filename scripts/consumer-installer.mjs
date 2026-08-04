@@ -267,9 +267,11 @@ function gitOutput(target, args, execImpl = execFileSync, timeoutMs = GIT_COMMAN
     }).trim();
   } catch (error) {
     if (error && error.code === "ETIMEDOUT") {
+      // Every gitOutput call is a read-only metadata query, so a timeout has no
+      // side effect to reconcile; the safe recovery is simply to retry.
       throw new Error(
         `${target}: git ${args.join(" ")} timed out after ${timeoutMs}ms; ` +
-          "verify no partial change was applied before retrying",
+          "the read was interrupted — retry once the source checkout is responsive",
       );
     }
     const detail = typeof error.stderr === "string" && error.stderr.trim()
