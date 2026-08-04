@@ -4,6 +4,11 @@ const BASE_RETRY_DELAY_MS = 1_000;
 const MAX_RETRY_DELAY_MS = 60_000;
 const SECONDARY_RATE_LIMIT_DELAY_MS = 60_000;
 const RETRYABLE_READ_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
+// Per-attempt wall-clock deadline covering both the response headers and the
+// body read, so a stalled connection cannot hang the Action indefinitely. It is
+// a transport deadline, independent of and never shortening the evidence-backed
+// rate-limit waits computed in retryDecision.
+const REQUEST_TIMEOUT_MS = 30_000;
 
 function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -127,6 +132,24 @@ function transportError(method, path, error, attempt) {
   });
 }
 
+// Internal sentinel a per-attempt deadline rejects with, so the request loop can
+// tell a timeout apart from an HTTP, provider, or network failure and pick the
+// right terminal outcome. It never escapes request().
+class RequestTimeout {}
+
+function timeoutError(method, path, attempt, timeoutMs) {
+  const attempts = attempt > 1 ? `; attempts=${attempt}` : "";
+  // A read timed out with no observable side effect and is safely retried up the
+  // stack; a mutating request may or may not have applied, so the caller must
+  // reconcile before retrying rather than blindly repeat the mutation.
+  const guidance = method === "GET"
+    ? ""
+    : "; mutating request may have applied — reconcile state before retrying";
+  return new Error(
+    `GitHub API ${method} ${path} timed out after ${timeoutMs}ms${attempts}${guidance}`,
+  );
+}
+
 export class GitHubClient {
   constructor({
     token,
@@ -135,16 +158,25 @@ export class GitHubClient {
     fetchImpl = fetch,
     sleepImpl = sleep,
     now = () => Date.now(),
+    timeoutMs = REQUEST_TIMEOUT_MS,
+    setTimeoutImpl = setTimeout,
+    clearTimeoutImpl = clearTimeout,
   }) {
     if (!token) throw new Error("github-token is required");
     const [owner, repo] = String(repository ?? "").split("/");
     if (!owner || !repo) throw new Error("GITHUB_REPOSITORY must be in owner/repo form");
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+      throw new Error("github request timeoutMs must be a positive finite number");
+    }
     this.owner = owner;
     this.repo = repo;
     this.apiUrl = apiUrl.replace(/\/$/u, "");
     this.fetch = fetchImpl;
     this.sleep = sleepImpl;
     this.now = now;
+    this.timeoutMs = timeoutMs;
+    this.setTimeout = setTimeoutImpl;
+    this.clearTimeout = clearTimeoutImpl;
     this.headers = {
       Accept: "application/vnd.github+json",
       Authorization: `Bearer ${token}`,
@@ -158,14 +190,39 @@ export class GitHubClient {
     for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
       let response;
       let text;
-      try {
-        response = await this.fetch(`${this.apiUrl}${path}`, {
+      const controller = new AbortController();
+      let deadlineHandle;
+      const deadline = new Promise((_, reject) => {
+        deadlineHandle = this.setTimeout(() => reject(new RequestTimeout()), this.timeoutMs);
+      });
+      const send = (async () => {
+        const res = await this.fetch(`${this.apiUrl}${path}`, {
           method,
           headers: { ...this.headers, ...(body ? { "Content-Type": "application/json" } : {}) },
           body: body ? JSON.stringify(body) : undefined,
+          signal: controller.signal,
         });
-        text = await response.text();
+        return { res, payload: await res.text() };
+      })();
+      // The deadline may win the race, leaving `send` to reject later once the
+      // abort propagates; swallow that so it is not an unhandled rejection.
+      send.catch(() => {});
+      try {
+        const raced = await Promise.race([send, deadline]);
+        response = raced.res;
+        text = raced.payload;
       } catch (error) {
+        if (error instanceof RequestTimeout) {
+          controller.abort();
+          if (method === "GET" && attempt < maximumAttempts) {
+            await this.sleep(Math.min(
+              BASE_RETRY_DELAY_MS * (2 ** (attempt - 1)),
+              MAX_RETRY_DELAY_MS,
+            ));
+            continue;
+          }
+          throw timeoutError(method, path, attempt, this.timeoutMs);
+        }
         if (method !== "GET" || attempt >= maximumAttempts) {
           throw transportError(method, path, error, attempt);
         }
@@ -174,6 +231,8 @@ export class GitHubClient {
           MAX_RETRY_DELAY_MS,
         ));
         continue;
+      } finally {
+        this.clearTimeout(deadlineHandle);
       }
 
       let result = null;

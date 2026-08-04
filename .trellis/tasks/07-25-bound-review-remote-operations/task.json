@@ -3,7 +3,7 @@
   "name": "bound-review-remote-operations",
   "title": "Bound review remote operations",
   "description": "Remediate audit finding A-012 with explicit deadlines for GitHub requests and installer subprocesses.",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
