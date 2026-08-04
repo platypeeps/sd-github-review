@@ -54,6 +54,7 @@ class FakeGitHubClient {
     this.calls = [];
     this.createError = null;
     this.updateError = null;
+    this.beforeCreate = null;
     this.onCreate = null;
     this.onUpdate = null;
     this.onCompare = null;
@@ -70,6 +71,7 @@ class FakeGitHubClient {
   }
 
   async createCheckRun(payload) {
+    if (this.beforeCreate) await this.beforeCreate();
     this.calls.push(["createCheckRun", clone(payload)]);
     if (this.createError) throw this.createError;
     const check = checkFromPayload(this.nextId, payload);
@@ -278,39 +280,84 @@ test("changed heads and ambiguous create failures never authorize dispatch", asy
 
 test("concurrent begins elect exactly one authoritative dispatch", async () => {
   const request = clone(requestByName.get("explicit cheap"));
+  const client = new FakeGitHubClient({ headSha: request.headSha });
+  const store = makeStore(client);
 
-  // Winner: a concurrent begin durably lands a higher-id Check Run for the same
-  // identity right as this caller creates the lower id. The caller is elected.
-  const winnerClient = new FakeGitHubClient({ headSha: request.headSha });
-  winnerClient.onCreate = () => {
-    winnerClient.onCreate = null;
-    const headChecks = winnerClient.checks.get(request.headSha);
-    headChecks.push({ ...clone(headChecks[0]), id: 999 });
+  // Barrier: hold both begins at their durable create until both have passed the
+  // pre-create absence check, forcing a genuine two-create race for one identity
+  // against a single shared Check Run store.
+  let arrived = 0;
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  client.beforeCreate = async () => {
+    arrived += 1;
+    if (arrived >= 2) release();
+    await gate;
   };
-  const winner = await makeStore(winnerClient).begin(request, cheapBeginOptions());
-  assert.equal(winner.state, "started");
-  assert.equal(winner.dispatchAllowed, true);
 
-  // Loser: a concurrent begin durably lands a lower-id Check Run first, so this
-  // caller (higher id) must defer with a recoverable reconciliation state and
-  // must not authorize a second dispatch. No Check Run is deleted.
-  const loserClient = new FakeGitHubClient({ headSha: request.headSha });
-  loserClient.onCreate = () => {
-    loserClient.onCreate = null;
-    const headChecks = loserClient.checks.get(request.headSha);
+  const [a, b] = await Promise.all([
+    store.begin(clone(request), cheapBeginOptions()),
+    store.begin(clone(request), cheapBeginOptions()),
+  ]);
+
+  // Both durably created a Check Run, but exactly one is authorized to dispatch;
+  // the other is recoverable and nothing is deleted.
+  assert.equal(client.checks.get(request.headSha).length, 2);
+  assert.equal(client.calls.filter(([name]) => name === "createCheckRun").length, 2);
+  const dispatched = [a, b].filter((result) => result.dispatchAllowed);
+  const deferred = [a, b].filter((result) => !result.dispatchAllowed);
+  assert.equal(dispatched.length, 1);
+  assert.equal(dispatched[0].state, "started");
+  assert.equal(deferred.length, 1);
+  assert.equal(deferred[0].state, "reconciliation-required");
+  assert.equal(deferred[0].reconciliationRequired, true);
+  assert.equal(
+    deferred[0].reconciliation.authoritativeCheckId,
+    Math.min(...client.checks.get(request.headSha).map((check) => check.id)),
+  );
+});
+
+test("a superseded durable create defers with bounded reconciliation evidence and deletes nothing", async () => {
+  const request = clone(requestByName.get("explicit cheap"));
+  const client = new FakeGitHubClient({ headSha: request.headSha });
+  // A concurrent begin durably lands a lower-id Check Run first, so this caller
+  // (the higher id) must defer rather than authorize a second dispatch.
+  client.onCreate = () => {
+    client.onCreate = null;
+    const headChecks = client.checks.get(request.headSha);
     headChecks.unshift({ ...clone(headChecks[0]), id: 50 });
   };
-  const loser = await makeStore(loserClient).begin(request, cheapBeginOptions());
+
+  const loser = await makeStore(client).begin(request, cheapBeginOptions());
+
   assert.equal(loser.state, "reconciliation-required");
   assert.equal(loser.dispatchAllowed, false);
   assert.equal(loser.reconciliationRequired, true);
+  assert.equal(loser.receiptVerified, true);
   assert.equal(loser.reconciliation.authoritativeCheckId, 50);
   assert.equal(loser.reconciliation.supersededCheckId, 100);
   assert.deepEqual(loser.reconciliation.duplicateCheckIds, [100]);
-  assert.equal(loserClient.checks.get(request.headSha).length, 2);
+  assert.equal(client.checks.get(request.headSha).length, 2);
+});
 
-  // Across the racing pair exactly one dispatch is authorized.
-  assert.equal([winner, loser].filter((result) => result.dispatchAllowed).length, 1);
+test("an unusable create response id keeps the verified authoritative receipt for reconciliation", async () => {
+  const request = clone(requestByName.get("explicit cheap"));
+  const client = new FakeGitHubClient({ headSha: request.headSha });
+  const create = client.createCheckRun.bind(client);
+  client.createCheckRun = async (payload) => {
+    const check = await create(payload);
+    return { ...check, id: null };
+  };
+
+  const result = await makeStore(client).begin(request, cheapBeginOptions());
+
+  assert.equal(result.state, "reconciliation-required");
+  assert.equal(result.dispatchAllowed, false);
+  assert.equal(result.receiptVerified, true);
+  assert.equal(result.receipt.logicalDispatchId, decodeReviewRequest(request).logicalDispatchId);
+  assert.match(result.error, /created receipt identity is ambiguous/u);
 });
 
 test("a duplicate receipt never authorizes a second dispatch and finalize resolves the elected receipt", async () => {

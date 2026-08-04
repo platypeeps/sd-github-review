@@ -554,7 +554,14 @@ export class ReceiptStore {
       return mutationFailure(elected.receipt, error, { receiptVerified: true });
     }
     if (!Number.isInteger(created?.id)) {
-      return mutationFailure(elected.receipt, new Error("created receipt identity is ambiguous"));
+      // The authoritative receipt was already reread and its live head asserted,
+      // so it is verified even though this caller's own create response id is
+      // unusable; retain it for reconciliation rather than dropping it.
+      return mutationFailure(
+        elected.receipt,
+        new Error("created receipt identity is ambiguous"),
+        { receiptVerified: true },
+      );
     }
     if (created.id !== elected.checkId) {
       // A concurrent begin durably created the authoritative receipt first. Do
