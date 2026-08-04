@@ -1246,6 +1246,7 @@ test("gh subprocess timeout raises a bounded error with recovery guidance", asyn
     (error) => {
       assert.match(error.message, new RegExp(`timed out after ${GH_COMMAND_TIMEOUT_MS}ms`, "u"));
       assert.match(error.message, /verify no partial change was applied before retrying/u);
+      assert.doesNotMatch(error.message, /the read was interrupted/u);
       return true;
     },
   );
@@ -1253,6 +1254,21 @@ test("gh subprocess timeout raises a bounded error with recovery guidance", asyn
   assert.equal(calls.length, 1);
   assert.equal(calls[0].options.timeout, GH_COMMAND_TIMEOUT_MS);
   assert.equal(calls[0].options.killSignal, "SIGTERM");
+});
+
+test("gh read-only query timeout advises a plain retry, not reconciliation", async () => {
+  const github = new GitHubCli({ spawnImpl: timedOutSpawn([]) });
+  // inspect() reaches gh only through runJson (repo/variable/secret/label list),
+  // which carries no side effect, so a timeout must not claim a partial change.
+  await assert.rejects(
+    github.inspect(REPOSITORY),
+    (error) => {
+      assert.match(error.message, new RegExp(`timed out after ${GH_COMMAND_TIMEOUT_MS}ms`, "u"));
+      assert.match(error.message, /the read was interrupted — retry once GitHub is responsive/u);
+      assert.doesNotMatch(error.message, /verify no partial change/u);
+      return true;
+    },
+  );
 });
 
 test("gh subprocess timeout redacts the secret from its error", () => {

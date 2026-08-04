@@ -118,14 +118,19 @@ function commandFailure(command, args, result, secret) {
   return new Error(`${command} ${redactedArgs} failed: ${detail}`);
 }
 
-function commandTimeout(command, args, timeoutMs, secret) {
-  // Name the command and its (secret-redacted) args, never stdin, and give
-  // bounded recovery guidance: a killed subprocess may have partially applied a
-  // remote change, so the operator reconciles state instead of blindly retrying.
+function commandTimeout(command, args, timeoutMs, secret, readOnly) {
+  // Name the command and its (secret-redacted) args, never stdin, and match the
+  // recovery guidance to the command's effect. A killed mutating subprocess
+  // (variable/secret/label set or delete) may have partially applied a remote
+  // change, so the operator reconciles state; a read-only query (the repo,
+  // variable, secret, and label list calls behind inspect()) has no side effect
+  // to reconcile, so a plain retry is safe.
   const redactedArgs = args.map((arg) => redact(arg, secret)).join(" ");
+  const guidance = readOnly
+    ? "the read was interrupted — retry once GitHub is responsive"
+    : "verify no partial change was applied before retrying";
   return new Error(
-    `${command} ${redactedArgs} timed out after ${timeoutMs}ms; ` +
-      "verify no partial change was applied before retrying",
+    `${command} ${redactedArgs} timed out after ${timeoutMs}ms; ${guidance}`,
   );
 }
 
@@ -143,7 +148,7 @@ function runCommand(command, args, options = {}) {
   });
   if (result.error) {
     if (result.error.code === "ETIMEDOUT") {
-      throw commandTimeout(command, args, timeoutMs, options.secret);
+      throw commandTimeout(command, args, timeoutMs, options.secret, options.readOnly);
     }
     throw new Error(`${command} could not start: ${redact(result.error.message, options.secret)}`);
   }
@@ -170,7 +175,9 @@ export class GitHubCli {
   }
 
   runJson(command, args) {
-    const output = this.run(command, args);
+    // runJson only wraps read-only list/view queries, so a timeout gets the
+    // plain-retry guidance rather than the mutation reconciliation wording.
+    const output = this.run(command, args, { readOnly: true });
     try {
       return JSON.parse(output);
     } catch {
