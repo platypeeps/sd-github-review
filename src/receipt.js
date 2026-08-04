@@ -12,6 +12,7 @@ export const RECEIPT_CHECK_NAME = "sd-github-review/receipt";
 export const RECEIPT_MARKER = "<!-- sd-github-review-receipt:v1 -->\n";
 
 const MAX_RECEIPT_TEXT_BYTES = 32 * 1024 + 256;
+const MAX_RECONCILIATION_EVIDENCE = 16;
 const DEFAULT_MAX_COMPARE_FILES = 3_000;
 const COMPARE_STATUSES = new Set(["ahead", "behind", "diverged", "identical"]);
 const FILE_STATUSES = new Set(["added", "removed", "modified", "renamed", "copied", "changed", "unchanged"]);
@@ -26,6 +27,10 @@ function lower(value) {
 
 function uniqueSorted(values) {
   return [...new Set(values)].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+}
+
+function uniqueSortedNumbers(values) {
+  return [...new Set(values)].sort((left, right) => left - right);
 }
 
 function isoTimestamp(value, field) {
@@ -322,27 +327,48 @@ export class ReceiptStore {
 
   async #records(pullRequestNumber, headSha) {
     const checks = await this.client.listCheckRuns(headSha, RECEIPT_CHECK_NAME);
-    const records = checks.map((check) => decodeReceiptCheckRun(check, {
+    return checks.map((check) => decodeReceiptCheckRun(check, {
       repository: this.repository,
       pullRequestNumber,
       headSha,
     }));
-    const identities = new Set();
+  }
+
+  // Elect one authoritative record per logical dispatch identity. GitHub Check
+  // Runs offer no atomic create-if-absent, so concurrent begins can durably
+  // create more than one Check Run for a single identity. The lowest check id
+  // (the earliest durable create) is authoritative; extra creates are retained
+  // as bounded reconciliation evidence and never deleted or overwritten. This
+  // replaces the previous unconditional duplicate rejection, which wedged every
+  // later query/finalize with no recovery path (A-003).
+  async #electedRecords(pullRequestNumber, headSha) {
+    const records = await this.#records(pullRequestNumber, headSha);
+    const elected = new Map();
+    const duplicates = new Map();
     for (const record of records) {
-      if (identities.has(record.receipt.logicalDispatchId)) {
-        throw new Error("duplicate durable receipts exist for one logical dispatch identity");
+      const id = record.receipt.logicalDispatchId;
+      const current = elected.get(id);
+      if (!current) {
+        elected.set(id, record);
+        continue;
       }
-      identities.add(record.receipt.logicalDispatchId);
+      const keep = record.checkId < current.checkId ? record : current;
+      const drop = record.checkId < current.checkId ? current : record;
+      elected.set(id, keep);
+      duplicates.set(id, [...(duplicates.get(id) ?? []), drop.checkId]);
     }
-    return records;
+    for (const [id, ids] of duplicates) {
+      duplicates.set(id, uniqueSortedNumbers(ids));
+    }
+    return { elected, duplicates };
   }
 
   async query({ pullRequestNumber, headSha, logicalDispatchId, correlationId }) {
     if (!logicalDispatchId && !correlationId) {
       throw new Error("receipt query requires logicalDispatchId or correlationId");
     }
-    const records = await this.#records(pullRequestNumber, lower(headSha));
-    const matches = records.filter(({ receipt }) =>
+    const { elected } = await this.#electedRecords(pullRequestNumber, lower(headSha));
+    const matches = [...elected.values()].filter(({ receipt }) =>
       (!logicalDispatchId || receipt.logicalDispatchId === lower(logicalDispatchId))
       && (!correlationId || receipt.correlationIds.includes(correlationId)));
     if (matches.length > 1) {
@@ -352,15 +378,13 @@ export class ReceiptStore {
   }
 
   async #recordForIdentity(request) {
-    const records = await this.#records(request.pullRequestNumber, request.headSha);
-    return records.find(({ receipt }) => receipt.logicalDispatchId === request.logicalDispatchId) ?? null;
+    const { elected } = await this.#electedRecords(request.pullRequestNumber, request.headSha);
+    return elected.get(request.logicalDispatchId) ?? null;
   }
 
   async #rereadRecord(receipt) {
-    const records = await this.#records(receipt.pullRequestNumber, receipt.headSha);
-    const match = records.find(
-      (record) => record.receipt.logicalDispatchId === receipt.logicalDispatchId,
-    );
+    const { elected } = await this.#electedRecords(receipt.pullRequestNumber, receipt.headSha);
+    const match = elected.get(receipt.logicalDispatchId);
     if (!match) throw new Error("durable receipt was not observable after mutation");
     return match;
   }
@@ -515,23 +539,56 @@ export class ReceiptStore {
     } catch (error) {
       return mutationFailure(receipt, error);
     }
-    let record;
+    let election;
     try {
-      record = await this.#rereadRecord(receipt);
+      election = await this.#electedRecords(request.pullRequestNumber, request.headSha);
     } catch (error) {
       return mutationFailure(receipt, error);
+    }
+    const elected = election.elected.get(request.logicalDispatchId);
+    if (!elected) {
+      return mutationFailure(receipt, new Error("durable receipt was not observable after mutation"));
     }
     try {
       await this.#assertLiveHead(request);
     } catch (error) {
-      return mutationFailure(record.receipt, error, { receiptVerified: true });
+      return mutationFailure(elected.receipt, error, { receiptVerified: true });
     }
-    if (!Number.isInteger(created?.id) || created.id !== record.checkId) {
-      return mutationFailure(record.receipt, new Error("created receipt identity is ambiguous"));
+    if (!Number.isInteger(created?.id)) {
+      // The authoritative receipt was already reread and its live head asserted,
+      // so it is verified even though this caller's own create response id is
+      // unusable; retain it for reconciliation rather than dropping it.
+      return mutationFailure(
+        elected.receipt,
+        new Error("created receipt identity is ambiguous"),
+        { receiptVerified: true },
+      );
+    }
+    if (created.id !== elected.checkId) {
+      // A concurrent begin durably created the authoritative receipt first. Do
+      // not authorize a second dispatch; surface bounded reconciliation evidence
+      // and leave every competing Check Run intact for external reconciliation.
+      const duplicates = election.duplicates.get(request.logicalDispatchId) ?? [];
+      const superseded = uniqueSortedNumbers([created.id, ...duplicates]);
+      return {
+        state: "reconciliation-required",
+        receipt: elected.receipt,
+        dispatchAllowed: false,
+        reconciliationRequired: true,
+        receiptVerified: true,
+        reconciliation: {
+          authoritativeCheckId: elected.checkId,
+          supersededCheckId: created.id,
+          duplicateCount: superseded.length,
+          // Keep the evidence hint bounded; every Check Run remains durable for
+          // external reconciliation, so the full set is never lost by capping.
+          duplicateCheckIds: superseded.slice(0, MAX_RECONCILIATION_EVIDENCE),
+        },
+      };
     }
     return {
       state: receipt.dispatch.status === "skipped" ? "skipped" : "started",
-      receipt: record.receipt,
+      receipt: elected.receipt,
       dispatchAllowed: receipt.dispatch.status === "requested",
       reconciliationRequired: false,
     };
@@ -539,8 +596,8 @@ export class ReceiptStore {
 
   async acknowledge({ pullRequestNumber, headSha, logicalDispatchId, acknowledgment }) {
     const decoded = decodeAdapterAcknowledgment(acknowledgment);
-    const records = await this.#records(pullRequestNumber, lower(headSha));
-    const record = records.find(({ receipt }) => receipt.logicalDispatchId === lower(logicalDispatchId));
+    const { elected } = await this.#electedRecords(pullRequestNumber, lower(headSha));
+    const record = elected.get(lower(logicalDispatchId));
     if (!record) throw new Error("durable receipt was not found for acknowledgment");
     if (decoded.logicalDispatchId !== record.receipt.logicalDispatchId) {
       throw new Error("acknowledgment logicalDispatchId must match the durable receipt");
@@ -605,8 +662,8 @@ export class ReceiptStore {
     workflowUrl,
     completedAt,
   }) {
-    const records = await this.#records(pullRequestNumber, lower(headSha));
-    const record = records.find(({ receipt }) => receipt.logicalDispatchId === lower(logicalDispatchId));
+    const { elected } = await this.#electedRecords(pullRequestNumber, lower(headSha));
+    const record = elected.get(lower(logicalDispatchId));
     if (!record) throw new Error("durable receipt was not found for observation");
     if (record.receipt.dispatch.status === "failed" || record.receipt.dispatch.status === "skipped") {
       throw new Error("failed or skipped receipts cannot transition to observed");

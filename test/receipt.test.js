@@ -54,6 +54,7 @@ class FakeGitHubClient {
     this.calls = [];
     this.createError = null;
     this.updateError = null;
+    this.beforeCreate = null;
     this.onCreate = null;
     this.onUpdate = null;
     this.onCompare = null;
@@ -70,6 +71,7 @@ class FakeGitHubClient {
   }
 
   async createCheckRun(payload) {
+    if (this.beforeCreate) await this.beforeCreate();
     this.calls.push(["createCheckRun", clone(payload)]);
     if (this.createError) throw this.createError;
     const check = checkFromPayload(this.nextId, payload);
@@ -197,7 +199,7 @@ test("matching retries append aliases without authorizing a second dispatch", as
   assert.equal(second.receipt.logicalDispatchId, first.receipt.logicalDispatchId);
 });
 
-test("conflicting fingerprints, malformed checks, and duplicates fail closed", async () => {
+test("conflicting fingerprints and malformed checks fail closed; duplicates elect the authoritative receipt", async () => {
   const request = clone(requestByName.get("explicit cheap"));
   const client = new FakeGitHubClient({ headSha: request.headSha });
   const store = makeStore(client);
@@ -214,15 +216,17 @@ test("conflicting fingerprints, malformed checks, and duplicates fail closed", a
     /conflicts with the canonical request fingerprint/u,
   );
 
+  // A duplicate durable receipt for one identity no longer wedges reads: query
+  // elects the authoritative (lowest-id) receipt instead of throwing (A-003).
   const checks = client.checks.get(request.headSha);
   checks.push({ ...clone(checks[0]), id: 999 });
-  await assert.rejects(
-    store.query({
+  assert.deepEqual(
+    await store.query({
       pullRequestNumber: request.pullRequestNumber,
       headSha: request.headSha,
       logicalDispatchId: first.receipt.logicalDispatchId,
     }),
-    /duplicate durable receipts/u,
+    first.receipt,
   );
 
   checks.splice(1, 1);
@@ -272,6 +276,139 @@ test("changed heads and ambiguous create failures never authorize dispatch", asy
   assert.equal(missing.dispatchAllowed, false);
   assert.equal(missing.reconciliationRequired, true);
   assert.match(missing.error, /not observable after mutation/u);
+});
+
+test("concurrent begins elect exactly one authoritative dispatch", async () => {
+  const request = clone(requestByName.get("explicit cheap"));
+  const client = new FakeGitHubClient({ headSha: request.headSha });
+  const store = makeStore(client);
+
+  // Barrier: hold both begins at their durable create until both have passed the
+  // pre-create absence check, forcing a genuine two-create race for one identity
+  // against a single shared Check Run store.
+  let arrived = 0;
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  client.beforeCreate = async () => {
+    arrived += 1;
+    if (arrived >= 2) release();
+    await gate;
+  };
+
+  const [a, b] = await Promise.all([
+    store.begin(clone(request), cheapBeginOptions()),
+    store.begin(clone(request), cheapBeginOptions()),
+  ]);
+
+  // Both durably created a Check Run, but exactly one is authorized to dispatch;
+  // the other is recoverable and nothing is deleted.
+  assert.equal(client.checks.get(request.headSha).length, 2);
+  assert.equal(client.calls.filter(([name]) => name === "createCheckRun").length, 2);
+  const dispatched = [a, b].filter((result) => result.dispatchAllowed);
+  const deferred = [a, b].filter((result) => !result.dispatchAllowed);
+  assert.equal(dispatched.length, 1);
+  assert.equal(dispatched[0].state, "started");
+  assert.equal(deferred.length, 1);
+  assert.equal(deferred[0].state, "reconciliation-required");
+  assert.equal(deferred[0].reconciliationRequired, true);
+  assert.equal(
+    deferred[0].reconciliation.authoritativeCheckId,
+    Math.min(...client.checks.get(request.headSha).map((check) => check.id)),
+  );
+});
+
+test("a superseded durable create defers with bounded reconciliation evidence and deletes nothing", async () => {
+  const request = clone(requestByName.get("explicit cheap"));
+  const client = new FakeGitHubClient({ headSha: request.headSha });
+  // A concurrent begin durably lands a lower-id Check Run first, so this caller
+  // (the higher id) must defer rather than authorize a second dispatch.
+  client.onCreate = () => {
+    client.onCreate = null;
+    const headChecks = client.checks.get(request.headSha);
+    headChecks.unshift({ ...clone(headChecks[0]), id: 50 });
+  };
+
+  const loser = await makeStore(client).begin(request, cheapBeginOptions());
+
+  assert.equal(loser.state, "reconciliation-required");
+  assert.equal(loser.dispatchAllowed, false);
+  assert.equal(loser.reconciliationRequired, true);
+  assert.equal(loser.receiptVerified, true);
+  assert.equal(loser.reconciliation.authoritativeCheckId, 50);
+  assert.equal(loser.reconciliation.supersededCheckId, 100);
+  assert.equal(loser.reconciliation.duplicateCount, 1);
+  assert.deepEqual(loser.reconciliation.duplicateCheckIds, [100]);
+  assert.equal(client.checks.get(request.headSha).length, 2);
+});
+
+test("an unusable create response id keeps the verified authoritative receipt for reconciliation", async () => {
+  const request = clone(requestByName.get("explicit cheap"));
+  const client = new FakeGitHubClient({ headSha: request.headSha });
+  const create = client.createCheckRun.bind(client);
+  client.createCheckRun = async (payload) => {
+    const check = await create(payload);
+    return { ...check, id: null };
+  };
+
+  const result = await makeStore(client).begin(request, cheapBeginOptions());
+
+  assert.equal(result.state, "reconciliation-required");
+  assert.equal(result.dispatchAllowed, false);
+  assert.equal(result.receiptVerified, true);
+  assert.equal(result.receipt.logicalDispatchId, decodeReviewRequest(request).logicalDispatchId);
+  assert.match(result.error, /created receipt identity is ambiguous/u);
+});
+
+test("a duplicate receipt never authorizes a second dispatch and finalize resolves the elected receipt", async () => {
+  const request = clone(requestByName.get("explicit cheap"));
+  const client = new FakeGitHubClient({ headSha: request.headSha });
+  const store = makeStore(client);
+  const started = await store.begin(request, cheapBeginOptions());
+  assert.equal(started.dispatchAllowed, true);
+
+  // A duplicate durable receipt for the same identity lands afterwards.
+  const checks = client.checks.get(request.headSha);
+  checks.push({ ...clone(checks[0]), id: 777 });
+
+  // A retry that reaches begin with the duplicate present never authorizes a
+  // second dispatch: the identity already resolves to the elected receipt.
+  const second = await store.begin(request, cheapBeginOptions());
+  assert.equal(second.dispatchAllowed, false);
+  assert.equal(client.calls.filter(([name]) => name === "createCheckRun").length, 1);
+
+  // query and the acknowledge/observe finalize path resolve the elected
+  // (lowest-id) receipt rather than wedging, and leave the duplicate intact.
+  assert.deepEqual(
+    await store.query({
+      pullRequestNumber: request.pullRequestNumber,
+      headSha: request.headSha,
+      logicalDispatchId: started.receipt.logicalDispatchId,
+    }),
+    started.receipt,
+  );
+  await store.acknowledge({
+    pullRequestNumber: request.pullRequestNumber,
+    headSha: request.headSha,
+    logicalDispatchId: started.receipt.logicalDispatchId,
+    acknowledgment: {
+      schemaVersion: 1,
+      logicalDispatchId: started.receipt.logicalDispatchId,
+      backendId: "pr-agent",
+      status: "acknowledged",
+      acknowledgedAt: "2026-07-23T12:30:10Z",
+      findingChannels: ["conversation-comment"],
+    },
+  });
+  const observed = await store.observe({
+    pullRequestNumber: request.pullRequestNumber,
+    headSha: request.headSha,
+    logicalDispatchId: started.receipt.logicalDispatchId,
+    completedAt: "2026-07-23T12:30:20Z",
+  });
+  assert.equal(observed.state, "observed");
+  assert.ok(client.checks.get(request.headSha).some((check) => check.id === 777));
 });
 
 test("acknowledgment and observation advance phases monotonically", async () => {
