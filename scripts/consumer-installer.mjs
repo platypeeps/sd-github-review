@@ -788,6 +788,12 @@ function assertWorkflowCanBeManaged(command, local, templateSource) {
   }
   if (
     local.workflow !== null &&
+    // A-013: the modification guard protects a completed (active) install from
+    // clobbering operator edits. A pending manifest is mid-transaction (a prior
+    // install/update/adopt was interrupted); installOrUpdate rewrites the
+    // workflow unconditionally, so a pending workflow-hash mismatch is expected
+    // interrupted state, not operator drift, and must resume rather than throw.
+    local.manifest.state !== "pending" &&
     sha256(local.workflow) !== local.manifest.workflow.sha256
   ) {
     throw new Error(

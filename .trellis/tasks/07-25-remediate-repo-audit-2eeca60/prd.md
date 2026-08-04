@@ -54,6 +54,7 @@ Dedicated `08-04` children reassigned from the generic 07-25 adapter owners:
 - `08-04-harden-copilot-rerequest-dispatch` owns A-001.
 - `08-04-isolate-pr-agent-receipt-authority` owns A-004.
 - `08-04-apply-control-precedence-before-labels` owns A-011.
+- `08-04-resume-interrupted-installer-update` owns A-013.
 
 ## Acceptance Criteria
 

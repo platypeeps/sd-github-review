@@ -165,8 +165,8 @@ Committed cross-session audit findings managed by sd-audit-repo.
 - fix: Add bounded per-attempt and child-process timeouts with explicit errors.
 
 ## A-013 — An interrupted update can leave pending state that cannot resume
-- status: open
-- notes: Trellis owner `07-25-manage-compiled-review-configuration-promotion`; remediation planning created 2026-07-25.
+- status: fixed
+- notes: Trellis owner `08-04-resume-interrupted-installer-update` (dedicated audit child; reassigned from `07-25-manage-compiled-review-configuration-promotion` 2026-08-04); verified fixed on main (2026-08-04) — `scripts/consumer-installer.mjs` `assertWorkflowCanBeManaged` now scopes the workflow-modification guard to non-pending manifests (`local.manifest.state !== "pending"` conjunct). An `install`/`update` interrupted after the pending-manifest write but before the workflow replacement leaves a pending manifest recording the new hash while disk holds the old workflow; `installOrUpdate` rewrites the workflow unconditionally, so that mismatch is expected interrupted state and now resumes instead of throwing `modified after installation`. Active-install operator-drift protection is unchanged (locked by a regression test). No manifest schema change (the audit's stage-artifacts alternative was unnecessary). Regression tests: `test/consumer-installer.test.js` "resumes an update interrupted before the workflow was replaced (A-013)" + "active install still rejects an operator-modified workflow (A-013 lock)"; npm test 229/229, check:full 0 failures. Sole guard caller is `installOrUpdate`; pending is written only mid-transaction (install/update/adopt), never persisted, so relaxing it cannot clobber a completed operator install.
 - severity: P2 · effort: M · confidence: Plausible
 - dimension: correctness
 - first-seen: 2026-07-25 @ 2eeca60

@@ -426,6 +426,55 @@ test("retains pending ownership after a partial GitHub failure and resumes safel
   assert.ok(ROUTING_LABELS.every(({ name }) => github.labels.has(name)));
 });
 
+test("resumes an update interrupted before the workflow was replaced (A-013)", async () => {
+  const sourceV1 = await makeSource("name: managed v1\n");
+  const sourceV2 = await makeSource("name: managed v2\n");
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+
+  // Establish an active v1 installation.
+  await runConsumerInstaller({ command: "install", target }, { sourceRoot: sourceV1, github });
+
+  // Simulate an update to v2 interrupted AFTER the pending manifest was written
+  // (recording the v2 hash) but BEFORE the workflow file was replaced: the
+  // manifest is pending with the v2 hash while the on-disk workflow is still v1.
+  const v2Content = "name: managed v2\n";
+  const v2Sha = sha256Hex(v2Content);
+  const interrupted = await readManifest(target);
+  interrupted.state = "pending";
+  interrupted.workflow.sha256 = v2Sha;
+  interrupted.source.sha256 = v2Sha;
+  await writeFile(
+    path.join(target, MANIFEST_PATH),
+    `${JSON.stringify(interrupted, null, 2)}\n`,
+    "utf8",
+  );
+
+  // Re-running the update must resume rather than mistake installer-owned pending
+  // state for operator modification.
+  await runConsumerInstaller({ command: "update", target }, { sourceRoot: sourceV2, github });
+
+  const resumed = await readManifest(target);
+  assert.equal(resumed.state, "active");
+  assert.equal(resumed.workflow.sha256, v2Sha);
+  assert.equal(await readFile(path.join(target, WORKFLOW_PATH), "utf8"), v2Content);
+});
+
+test("active install still rejects an operator-modified workflow (A-013 lock)", async () => {
+  const sourceRoot = await makeSource("name: managed v1\n");
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+
+  await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+  // Operator edits the workflow of a completed (active) install.
+  await writeFile(path.join(target, WORKFLOW_PATH), "name: operator edit\n", "utf8");
+
+  await assert.rejects(
+    runConsumerInstaller({ command: "update", target }, { sourceRoot, github }),
+    /modified after installation/u,
+  );
+});
+
 test("dry-run plans secret setup without reading or mutating secret state", async () => {
   const sourceRoot = await makeSource();
   const target = await makeTarget();
