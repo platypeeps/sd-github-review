@@ -251,6 +251,119 @@ test("rejects invalid inputs and escapes workflow error annotations", async () =
   assert.equal(errorAnnotation(new Error("bad\nvalue")).startsWith("::error::Error: bad%0Avalue"), true);
 });
 
+function createIdentityHarness(overrides = {}) {
+  const numbers = {
+    getPullRequest: [],
+    listPullRequestFiles: [],
+    getRequestedReviewers: [],
+    listPullRequestReviews: [],
+    requestReviewer: [],
+  };
+  let factories = 0;
+  const client = {
+    async getPullRequest(number) {
+      numbers.getPullRequest.push(number);
+      return overrides.pullRequest ?? basePullRequest;
+    },
+    async listPullRequestFiles(number) {
+      numbers.listPullRequestFiles.push(number);
+      return overrides.files ?? [];
+    },
+    async getRequestedReviewers(number) {
+      numbers.getRequestedReviewers.push(number);
+      return { users: [] };
+    },
+    async listPullRequestReviews(number) {
+      numbers.listPullRequestReviews.push(number);
+      return [];
+    },
+    async requestReviewer(number) {
+      numbers.requestReviewer.push(number);
+    },
+  };
+  const run = ({ event, eventName = "pull_request", env = {} }) =>
+    runAction({
+      event,
+      eventName,
+      env: { GITHUB_REPOSITORY: "platypeeps/example", "INPUT_GITHUB-TOKEN": "test-token", ...env },
+      clientFactory() {
+        factories += 1;
+        return client;
+      },
+      outputWriter() {},
+      summaryWriter() {},
+      logger() {},
+    });
+  return { numbers, factoryCount: () => factories, run };
+}
+
+test("rejects a malformed pr-number override with a field-specific error before any GitHub call", async () => {
+  const harness = createIdentityHarness();
+
+  await assert.rejects(
+    harness.run({
+      event: { action: "opened", pull_request: basePullRequest },
+      env: { "INPUT_PR-NUMBER": "12garbage" },
+    }),
+    /pr-number must be a complete positive integer/u,
+  );
+  assert.equal(harness.factoryCount(), 0);
+});
+
+test("rejects a pr-number override that conflicts with the event identity before any GitHub call", async () => {
+  const harness = createIdentityHarness();
+
+  await assert.rejects(
+    harness.run({
+      event: { action: "opened", pull_request: basePullRequest },
+      env: { "INPUT_PR-NUMBER": "99" },
+    }),
+    /pr-number 99 conflicts with event pull request #23/u,
+  );
+  assert.equal(harness.factoryCount(), 0);
+});
+
+test("event-target routing drives every client call with the single event PR number", async () => {
+  const harness = createIdentityHarness({ files: ["src/auth/session.js"] });
+
+  const result = await harness.run({
+    event: { action: "opened", pull_request: basePullRequest },
+    env: { "INPUT_SENSITIVE-PATHS": "**/auth/**" },
+  });
+
+  assert.equal(result.decision.route, "copilot");
+  // Event carries metadata, so getPullRequest is never called; every other call binds to #23.
+  assert.deepEqual(harness.numbers.getPullRequest, []);
+  const called = [
+    ...harness.numbers.listPullRequestFiles,
+    ...harness.numbers.getRequestedReviewers,
+    ...harness.numbers.requestReviewer,
+  ];
+  assert.ok(called.length >= 3);
+  assert.ok(called.every((number) => number === 23), `expected all calls to bind #23, saw ${called}`);
+});
+
+test("explicit-target override fetches metadata and binds every client call to the normalized number", async () => {
+  const harness = createIdentityHarness({ files: ["src/auth/session.js"] });
+
+  const result = await harness.run({
+    eventName: "workflow_dispatch",
+    event: {},
+    env: { "INPUT_PR-NUMBER": "77", "INPUT_SENSITIVE-PATHS": "**/auth/**" },
+  });
+
+  assert.equal(result.decision.route, "copilot");
+  const called = [
+    ...harness.numbers.getPullRequest,
+    ...harness.numbers.listPullRequestFiles,
+    ...harness.numbers.getRequestedReviewers,
+    ...harness.numbers.requestReviewer,
+  ];
+  assert.ok(harness.numbers.getPullRequest.length >= 1, "explicit target must fetch its own metadata");
+  assert.ok(called.length >= 4);
+  assert.ok(called.every((number) => number === 77), `expected all calls to bind #77, saw ${called}`);
+});
+
 test("writes multiline outputs and summaries through injected append operations", async () => {
   const writes = [];
   const env = { GITHUB_OUTPUT: "/tmp/output", GITHUB_STEP_SUMMARY: "/tmp/summary" };

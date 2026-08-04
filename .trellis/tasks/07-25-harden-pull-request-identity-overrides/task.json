@@ -3,7 +3,7 @@
   "name": "harden-pull-request-identity-overrides",
   "title": "Harden pull request identity overrides",
   "description": "Remediate audit finding A-002 by binding routing metadata and reviewer mutations to one strictly validated PR identity.",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
