@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
 import {
   HELP,
@@ -30,7 +30,10 @@ async function main() {
     throw new Error("--set-secret requires a terminal; use --secret-stdin for automation");
   }
   if (options.secretMode === "stdin" && !options.dryRun) {
-    const input = await readFile(0, "utf8");
+    // Read the whole of stdin (fd 0) synchronously: node:fs/promises.readFile
+    // no longer accepts a numeric fd on newer Node runtimes the engines field
+    // supports, so the async fd form silently broke secret-stdin there.
+    const input = readFileSync(0, "utf8");
     options.secretInput = input.replace(/\r?\n$/u, "");
     if (options.secretInput.length === 0) throw new Error("standard input secret is empty");
   }

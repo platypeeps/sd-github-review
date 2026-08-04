@@ -3,7 +3,7 @@
   "name": "test-shipped-review-process-boundaries",
   "title": "Test shipped review process boundaries",
   "description": "Remediate audit finding A-006 with subprocess coverage for the Action and installer entrypoints plus critical coverage gates.",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,

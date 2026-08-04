@@ -521,17 +521,35 @@ or orchestration tests, including negative side-effect assertions when a route
 must avoid a GitHub call. GitHub transport tests cover request headers,
 pagination, payloads, and surfaced API errors.
 
+Injected-boundary unit tests do not cover the shipped composition roots
+(`src/index.js`, `scripts/install-consumer.mjs`) — argument parsing, env reads,
+exit status, redaction, and the `gh`/git boundaries. Cover those with hermetic
+subprocess tests that run the real entrypoint via `node <entrypoint>` with a
+temporary event/output/summary file, a fake `gh` on `PATH`, and a locally
+git-initialised target. Keep them hermetic: no real repository, network,
+secret, or user directory, and use an unroutable `GITHUB_API_URL` so an
+accidental client build fails loudly. Reuse `test/support/subprocess.mjs`.
+
+Coverage floors guard against boundary regressions: `npm run test:coverage`
+runs `scripts/check-coverage.mjs`, which enforces a conservative global floor
+plus per-file floors for the critical entrypoints. Set floors a few points
+below current coverage — high enough to catch a regression, low enough not to
+flake — and never inflate them by faking side-effecting terminal boundaries
+(the interactive TTY prompt and secret readline stay honestly uncovered).
+
 Before review, run:
 
 ```sh
 npm test
+npm run test:coverage
 npm run check
 npm run validate:metadata
 python3 scripts/sd-ai-command-pack-install-audit.py
 git diff --check
 ```
 
-CI must run the JavaScript, test, and metadata gates on the exact PR head.
+CI must run the JavaScript, test, coverage, and metadata gates on the exact PR
+head.
 
 ## Code Review Checklist
 
@@ -541,3 +559,5 @@ CI must run the JavaScript, test, and metadata gates on the exact PR head.
 - Workflow permissions are minimal and no provider secret reaches PR code.
 - Action runtime, metadata, examples, and README installation guidance agree.
 - Release or consumer references use immutable reviewed SHAs.
+- Shipped entrypoints keep hermetic subprocess coverage and pass the
+  documented coverage floors; new boundaries are not hidden below them.
