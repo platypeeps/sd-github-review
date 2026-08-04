@@ -7,6 +7,7 @@ import test from "node:test";
 import { promisify } from "node:util";
 import { parseDocument } from "yaml";
 import {
+  parseReleaseTag,
   prohibitedPublishedMetadataReason,
   validateMetadata,
   validateReleaseConsistency,
@@ -557,6 +558,29 @@ test("validateReleaseConsistency accepts a matching not-yet-existing tag and rej
 
   const consistencyOnly = await validateReleaseConsistency({ repositoryRoot: root });
   assert.equal(consistencyOnly.releaseChecked, false);
+});
+
+test("accepts a full semver version with both prerelease and build metadata", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-semver-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    version: "1.2.3-alpha.1+build.5",
+  });
+  await initTracked(root);
+  await assert.doesNotReject(validateMetadata(root));
+  const accepted = await validateReleaseConsistency({
+    repositoryRoot: root,
+    releaseTag: "v1.2.3-alpha.1+build.5",
+    gitImpl: { tagExists: async () => false },
+  });
+  assert.equal(accepted.releaseChecked, true);
+});
+
+test("parseReleaseTag rejects an explicitly-empty SD_RELEASE_TAG and reads valid sources", () => {
+  assert.equal(parseReleaseTag([], {}), null);
+  assert.equal(parseReleaseTag([], { SD_RELEASE_TAG: "v0.2.0" }), "v0.2.0");
+  assert.equal(parseReleaseTag(["--release-tag", "v0.2.0"], {}), "v0.2.0");
+  assert.throws(() => parseReleaseTag([], { SD_RELEASE_TAG: "" }), /set but empty/u);
+  assert.throws(() => parseReleaseTag(["--release-tag"], {}), /requires a v<semver> value/u);
 });
 
 test("rejects a prohibited path even when it is force-added to Git", async () => {

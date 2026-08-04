@@ -72,7 +72,8 @@ const MAX_MODEL_LENGTH = 256;
 // contract descriptor's schemaVersion in config/routed-review-setup-v1.json.
 export const MANIFEST_SCHEMA_VERSION = 2;
 const COMMIT_PATTERN = /^[0-9a-f]{40}$/u;
-const RELEASE_TAG_PATTERN = /^v[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$/u;
+const RELEASE_TAG_PATTERN =
+  /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
 
 function isObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -248,12 +249,15 @@ function resolveOverride({ tag, commit }) {
   if (!COMMIT_PATTERN.test(commit ?? "")) {
     throw new Error("--source-commit must be a 40-character hex commit");
   }
-  if (tag !== null && tag !== undefined && !RELEASE_TAG_PATTERN.test(tag)) {
+  // Both parts are required: a commit-only override would record (false, null),
+  // indistinguishable from a dev checkout and breaking the (released, tag)
+  // encoding. A declared .git-less artifact must carry its v<semver> tag.
+  if (tag === null || tag === undefined || !RELEASE_TAG_PATTERN.test(tag)) {
     throw new Error("--source-tag must be a v<semver> release tag");
   }
   // A .git-less artifact cannot verify bytes against a commit offline, so a
   // declared release always records released:false.
-  return { commit, tag: tag ?? null, released: false };
+  return { commit, tag, released: false };
 }
 
 // Resolve the installer's own source release identity from its source root.
@@ -772,11 +776,13 @@ async function checkInstallation(options, dependencies) {
   const version = await readSourceVersion(sourceRoot);
   let release = null;
   try {
+    // check resolves provenance from the source root's own git identity only.
+    // Operator overrides are an install/update-time declaration; honoring an
+    // ambient SD_SOURCE_* env here would make read-only check nondeterministic.
     release = resolveSourceRelease({
       sourceRoot,
       gitImpl: dependencies.gitImpl,
       version,
-      override: sourceOverride(options, dependencies.env ?? process.env),
     });
   } catch {
     // Source identity is unresolvable here; provenance drift is reported only

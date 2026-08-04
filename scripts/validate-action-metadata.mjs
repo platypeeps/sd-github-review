@@ -9,8 +9,10 @@ const immutableActionReference = /^[^/@\s]+\/[^/@\s]+(?:\/[^@\s]+)?@[0-9a-f]{40}
 const placeholderActionReference = /^[^/@\s]+\/[^/@\s]+(?:\/[^@\s]+)?@<[^<>\s]+>$/u;
 const immutableDockerReference = /^docker:\/\/[^@\s]+@sha256:[0-9a-f]{64}$/u;
 const firstPartyReference = /^([^/@\s]+\/[^/@\s]+)(?:\/[^@\s]+)?@([0-9a-f]{40})$/u;
-const semverPattern = /^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$/u;
-const releaseTagPattern = /^v[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$/u;
+const semverPattern =
+  /^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
+const releaseTagPattern =
+  /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
 const setupDescriptorPath = "config/routed-review-setup-v1.json";
 // Contract majors this release can compatibly serve. Drift beyond this set is a
 // classification the release gate must reject rather than silently ship.
@@ -364,7 +366,7 @@ export async function validateReleaseConsistency({
   return { ...base, releaseTag, releaseChecked: true };
 }
 
-function parseReleaseTag(argv, env) {
+export function parseReleaseTag(argv, env) {
   const flagIndex = argv.indexOf("--release-tag");
   if (flagIndex !== -1) {
     const value = argv[flagIndex + 1];
@@ -373,7 +375,15 @@ function parseReleaseTag(argv, env) {
     }
     return value;
   }
-  return env.SD_RELEASE_TAG ?? null;
+  const envValue = env.SD_RELEASE_TAG;
+  if (envValue !== undefined && envValue !== null) {
+    // An explicitly-set-but-empty env var must not silently skip the gate.
+    if (envValue === "") {
+      throw new Error("SD_RELEASE_TAG is set but empty; provide a v<semver> tag or unset it");
+    }
+    return envValue;
+  }
+  return null;
 }
 
 async function runCli() {

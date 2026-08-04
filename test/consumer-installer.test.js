@@ -543,6 +543,16 @@ test("resolveSourceRelease resolves the git-verified, dirty, mismatched, and ove
     () => resolveSourceRelease({ override: { tag: "v0.1.0", commit: "short" } }),
     /--source-commit must be a 40-character hex commit/u,
   );
+  // A commit-only override would collide with dev's (false, null); require the tag.
+  assert.throws(
+    () => resolveSourceRelease({ override: { tag: null, commit: overrideCommit } }),
+    /--source-tag must be a v<semver> release tag/u,
+  );
+  // A prerelease+build semver tag is valid.
+  assert.deepEqual(
+    resolveSourceRelease({ override: { tag: "v1.2.3-rc.1+build.5", commit: overrideCommit } }),
+    { commit: overrideCommit, tag: "v1.2.3-rc.1+build.5", released: false },
+  );
   const noGit = {
     head() {
       throw new Error("not a git repository");
@@ -674,6 +684,21 @@ test("check reports release-tag drift when a released manifest's tag no longer m
     checked.issues.includes("recorded release provenance no longer matches the source; run update"),
     checked.issues.join("\n"),
   );
+});
+
+test("check ignores ambient SD_SOURCE_* env and stays deterministic", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+
+  // Ambient overrides must not perturb read-only check's resolved provenance.
+  const env = { SD_SOURCE_TAG: "v9.9.9", SD_SOURCE_COMMIT: "d".repeat(40) };
+  const checked = await runConsumerInstaller(
+    { command: "check", target },
+    { sourceRoot, github, env },
+  );
+  assert.deepEqual(checked.issues, []);
 });
 
 test("parseArguments accepts source overrides only for install and update", () => {
