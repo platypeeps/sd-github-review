@@ -3,7 +3,7 @@
   "name": "make-durable-receipt-creation-concurrency-safe",
   "title": "Make durable receipt creation concurrency safe",
   "description": "Remediate audit finding A-003 by electing one authoritative receipt before dispatch under concurrent begins.",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
