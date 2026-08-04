@@ -1545,3 +1545,46 @@ Added explicit, testable deadlines to GitHub HTTP requests and consumer-installe
 ### Next Steps
 
 - None - task complete
+
+
+## Session 39: Consolidate routing policy boundaries (A-008)
+
+**Date**: 2026-08-04
+**Task**: Consolidate routing policy boundaries (A-008)
+**Branch**: `codex/consolidate-routing-policy-boundaries`
+
+### Summary
+
+Gave routing policy, protocol codecs, risk context, and reviewer dispatch one dependency direction: router.js is the single policy owner, protocol.js/receipt.js no longer import it, via a protocol-side decodeRoutingInputs codec seam and two new leaf modules plus two shared services. AC1/AC2 boundary+parity tests added; Copilot review converged in one round.
+
+### Main Changes
+
+- Extract src/path-match.js + src/normalize.js leaf modules (zero local imports)
+- Add protocol decodeRoutingInputs codec; move selectProtocolRoute + route-strength policy to router.js (new one-way router->protocol edge); remove protocol/receipt->router inversion
+- Extract src/risk-context.js + src/reviewer-dispatch.js shared services; standalone stays policy-free (routeReview direct)
+- Add test/dependency-boundaries.test.js (AC1 import matrix) + test/shared-service-parity.test.js (AC2); harden boundary detection for side-effect imports and const-form defs per Copilot review
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8743298` | refactor: consolidate routing policy boundaries (A-008) |
+| `874f47a` | test: harden AC1 boundary detection (Copilot review) |
+| `785bb52` | chore(task): record branch for consolidate-routing-policy-boundaries finalization |
+| `deda6a0` | chore(task): archive 07-25-consolidate-routing-policy-boundaries |
+
+### Testing
+
+- [OK] npm test — 223 pass, 0 fail
+- [OK] npm run test:coverage — global 92.11% lines / 82.30% branches / 94.16% funcs, no floor lowered
+- [OK] npm run check / validate:metadata / validate:ci-parity — all green
+- [OK] Copilot review PR #40 — 2 findings round 1 (both fixed), 0 round 2
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
