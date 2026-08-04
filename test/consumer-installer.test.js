@@ -615,6 +615,19 @@ test("the .git-less override records a declared (false, v-tag) provenance", asyn
   assert.equal(manifest.source.released, false);
 });
 
+test("an explicitly-empty SD_SOURCE_TAG env rejects rather than silently skipping the override", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  await assert.rejects(
+    runConsumerInstaller(
+      { command: "install", target },
+      { sourceRoot, github, env: { SD_SOURCE_TAG: "" } },
+    ),
+    /SD_SOURCE_TAG is set but empty/u,
+  );
+});
+
 test("a schema-1 manifest decodes as pre-provenance; check flags it and update migrates it", async () => {
   const sourceRoot = await makeSource();
   const target = await makeTarget();

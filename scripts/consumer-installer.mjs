@@ -704,9 +704,24 @@ async function applyRemoteActions(github, repository, actions, options) {
   }
 }
 
+function overrideInput(optionValue, envValue, envName) {
+  if (optionValue !== undefined && optionValue !== null) {
+    return optionValue;
+  }
+  if (envValue !== undefined && envValue !== null) {
+    // An explicitly-set-but-empty env var must not silently skip the declared
+    // provenance path; mirror parseReleaseTag's empty-env handling.
+    if (envValue === "") {
+      throw new Error(`${envName} is set but empty; provide a value or unset it`);
+    }
+    return envValue;
+  }
+  return undefined;
+}
+
 function sourceOverride(options, env) {
-  const tag = options.sourceTag ?? env.SD_SOURCE_TAG;
-  const commit = options.sourceCommit ?? env.SD_SOURCE_COMMIT;
+  const tag = overrideInput(options.sourceTag, env.SD_SOURCE_TAG, "SD_SOURCE_TAG");
+  const commit = overrideInput(options.sourceCommit, env.SD_SOURCE_COMMIT, "SD_SOURCE_COMMIT");
   return tag || commit ? { tag: tag ?? null, commit: commit ?? null } : undefined;
 }
 
