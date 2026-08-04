@@ -12,7 +12,7 @@
   "assignee": "sdelmas",
   "createdAt": "2026-07-25",
   "completedAt": null,
-  "branch": null,
+  "branch": "codex/bound-review-remote-operations",
   "base_branch": "main",
   "worktree_path": null,
   "commit": null,
