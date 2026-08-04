@@ -397,13 +397,15 @@ async function routeOperation({ request, client, store, env, now }) {
         pullRequestNumber: request.pullRequestNumber,
         reviewer: backend.reviewAuthors[0],
         headSha: request.headSha,
+        forceRerequest:
+          Boolean(request.rerequestOf) && booleanInput("rerequest-authorized", false, env),
       });
       const completedAt = timestamp(now);
       result = await store.observe({
         pullRequestNumber: request.pullRequestNumber,
         headSha: request.headSha,
         logicalDispatchId: request.logicalDispatchId,
-        alreadyPresent: dispatch.alreadyPresent,
+        alreadyPresent: !dispatch.requested,
         observations: {
           latencyMs: elapsedMilliseconds(result.receipt, completedAt),
           costTier: backend.costTier,

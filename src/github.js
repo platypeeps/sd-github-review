@@ -404,4 +404,11 @@ export class GitHubClient {
       body: { reviewers: [reviewer] },
     });
   }
+
+  removeRequestedReviewer(number, reviewer) {
+    return this.request(`/repos/${this.owner}/${this.repo}/pulls/${number}/requested_reviewers`, {
+      method: "DELETE",
+      body: { reviewers: [reviewer] },
+    });
+  }
 }

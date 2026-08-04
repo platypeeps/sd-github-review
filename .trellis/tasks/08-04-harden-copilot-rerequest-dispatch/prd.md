@@ -19,11 +19,18 @@ new review, while replayed (unauthorized) same-head requests remain suppressed.
 - Why: the exact-head suppression path does not distinguish an authorized
   rerequest from an unauthorized replay, so the authorized case silently no-ops.
 
-Note: since the audit, rerequest scaffolding has appeared
-(`rerequest-authorized` input at `src/operations.js:388`, `#validateRerequest`
-at `src/receipt.js:417`). The remediation must first confirm whether that
-machinery already routes an authorized Copilot rerequest to a real new review,
-or only governs same-head authorization (A-015 territory), then close the gap.
+Confirmed on main @ HEAD (2026-08-04): the rerequest scaffolding added since the
+audit (`rerequest-authorized` input at `src/operations.js:388`,
+`#validateRerequest` at `src/receipt.js:417`, attempt-keyed `logicalDispatchId`
+at `src/protocol.js` `logicalIdentityFields`) fixes only the durable-receipt
+dedup layer. The actual Copilot dispatch is still suppressed one layer down:
+`requestCopilotReviewer` (`src/reviewer-dispatch.js:9`) skips `requestReviewer`
+whenever the reviewer is `alreadyRequested` or `alreadyReviewed`, with no bypass
+for an authorized rerequest. So an authorized rerequest against an
+already-reviewed head issues no new Copilot review — A-001 remains open. A
+failing regression test (authorized Copilot rerequest → `copilot-requested`
+false) reproduced this. The fix belongs in `requestCopilotReviewer`, not the
+receipt layer.
 
 ## Requirements
 
@@ -38,11 +45,14 @@ or only governs same-head authorization (A-015 territory), then close the gap.
 
 ## Acceptance Criteria
 
-- [ ] A test proves: prior exact-head review + `rerequest-authorized=true` →
-      a new Copilot review is requested.
-- [ ] A test proves: prior exact-head review + unauthorized request → suppressed,
-      no new dispatch.
-- [ ] Current-head verification recorded; `.trellis/audit/ledger.md` A-001 set to
+- [x] A test proves: prior exact-head review + `rerequest-authorized=true` →
+      a new Copilot review is requested. (`test/operations.test.js` "policy-authorized
+      Copilot rerequest issues a new native review while replay stays suppressed";
+      `test/shared-service-parity.test.js` forced-rerequest cases.)
+- [x] A test proves: prior exact-head review + unauthorized request → suppressed,
+      no new dispatch. (same operations test: unauthorized rerequest rejected,
+      `requestReviewer` count unchanged.)
+- [x] Current-head verification recorded; `.trellis/audit/ledger.md` A-001 set to
       fixed only after that verification, per the parent epic rule.
 
 ## Out of Scope

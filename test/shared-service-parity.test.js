@@ -53,6 +53,9 @@ function fakeClient({ requestedUsers = [], reviews = [] } = {}) {
     async requestReviewer(number, reviewer) {
       calls.push(["requestReviewer", number, reviewer]);
     },
+    async removeRequestedReviewer(number, reviewer) {
+      calls.push(["removeRequestedReviewer", number, reviewer]);
+    },
   };
 }
 
@@ -113,6 +116,7 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyReviewed: false,
     alreadyPresent: true,
     requested: false,
+    rerequested: false,
   });
   // Already requested short-circuits before listing reviews or requesting.
   assert.ok(!requested.calls.includes("listPullRequestReviews"));
@@ -133,6 +137,7 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyReviewed: true,
     alreadyPresent: true,
     requested: false,
+    rerequested: false,
   });
 
   // A DISMISSED review at the head is not presence; the reviewer is requested.
@@ -150,6 +155,7 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyReviewed: false,
     alreadyPresent: false,
     requested: true,
+    rerequested: false,
   });
   assert.ok(dismissed.calls.some((call) => Array.isArray(call) && call[0] === "requestReviewer"));
 
@@ -166,8 +172,54 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyReviewed: false,
     alreadyPresent: false,
     requested: true,
+    rerequested: false,
   });
   assert.deepEqual(fresh.calls.filter((call) => Array.isArray(call)), [["requestReviewer", 42, REVIEWER]]);
+
+  // A-001: an authorized rerequest forces a fresh review. A still-requested
+  // reviewer is removed then re-requested; an already-reviewed head is
+  // re-requested directly.
+  const forcedPending = fakeClient({ requestedUsers: [{ login: REVIEWER }] });
+  const forcedPendingResult = await requestCopilotReviewer({
+    client: forcedPending,
+    pullRequestNumber: 42,
+    reviewer: REVIEWER,
+    headSha: HEAD,
+    forceRerequest: true,
+  });
+  assert.deepEqual(forcedPendingResult, {
+    alreadyRequested: true,
+    alreadyReviewed: false,
+    alreadyPresent: true,
+    requested: true,
+    rerequested: true,
+  });
+  assert.deepEqual(
+    forcedPending.calls.filter((call) => Array.isArray(call)),
+    [["removeRequestedReviewer", 42, REVIEWER], ["requestReviewer", 42, REVIEWER]],
+  );
+
+  const forcedReviewed = fakeClient({
+    reviews: [{ user: { login: REVIEWER }, commit_id: HEAD, state: "APPROVED" }],
+  });
+  const forcedReviewedResult = await requestCopilotReviewer({
+    client: forcedReviewed,
+    pullRequestNumber: 42,
+    reviewer: REVIEWER,
+    headSha: HEAD,
+    forceRerequest: true,
+  });
+  assert.deepEqual(forcedReviewedResult, {
+    alreadyRequested: false,
+    alreadyReviewed: true,
+    alreadyPresent: true,
+    requested: true,
+    rerequested: true,
+  });
+  assert.deepEqual(
+    forcedReviewed.calls.filter((call) => Array.isArray(call)),
+    [["requestReviewer", 42, REVIEWER]],
+  );
 });
 
 test("selectProtocolRoute returns the exact explicit-branch shape", () => {

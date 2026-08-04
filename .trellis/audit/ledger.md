@@ -2,8 +2,8 @@
 Committed cross-session audit findings managed by sd-audit-repo.
 
 ## A-001 — Authorized Copilot rerequests are suppressed as duplicates
-- status: open
-- notes: Trellis owner `08-04-harden-copilot-rerequest-dispatch` (dedicated audit child; reassigned from `07-25-integrate-copilot-review-adapter` 2026-08-04); PRD seeded with evidence and acceptance 2026-08-04; still open pending remediation.
+- status: fixed
+- notes: Trellis owner `08-04-harden-copilot-rerequest-dispatch` (dedicated audit child; reassigned from `07-25-integrate-copilot-review-adapter` 2026-08-04); verified fixed on main (2026-08-04) — `src/reviewer-dispatch.js` `requestCopilotReviewer` gained a `forceRerequest` path that bypasses `alreadyReviewed` and removes-then-re-requests an `alreadyRequested` reviewer, plumbed from `src/operations.js` as `Boolean(request.rerequestOf) && rerequest-authorized`; `src/github.js` gained `removeRequestedReviewer` (DELETE requested_reviewers). Receipt/identity dedup was already correct via attempt-keyed logicalDispatchId. Regression tests: operations.test.js "policy-authorized Copilot rerequest issues a new native review while replay stays suppressed" + shared-service-parity forced cases; full suite 224/224. Note: the fix issues a fresh review request; GitHub re-notification of the Copilot bot on remove+re-add is external behavior not exercised by the fake client.
 - severity: P1 · effort: S · confidence: Verified
 - dimension: correctness
 - first-seen: 2026-07-25 @ 2eeca60

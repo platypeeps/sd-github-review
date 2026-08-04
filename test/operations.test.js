@@ -115,6 +115,12 @@ class FakeGitHubClient {
     return { users: clone(this.requestedUsers) };
   }
 
+  async removeRequestedReviewer(number, reviewer) {
+    this.calls.push(["removeRequestedReviewer", number, reviewer]);
+    this.requestedUsers = this.requestedUsers.filter((user) => user.login !== reviewer);
+    return { users: clone(this.requestedUsers) };
+  }
+
   async compareCommits(base, head) {
     this.calls.push(["compareCommits", base, head]);
     return clone(this.comparison);
@@ -415,6 +421,57 @@ test("native Copilot dispatch is deduplicated and observed in the shared receipt
   assert.equal(replay.dispatchAllowed, false);
   assert.equal(harness.outputs.get("copilot-requested"), "false");
   assert.equal(client.calls.filter(([name]) => name === "requestReviewer").length, 1);
+});
+
+// A-001: once Copilot has reviewed the head, an unauthorized same-head request
+// stays suppressed, but a policy-authorized rerequest (next attempt) must issue
+// a brand-new native review instead of being deduplicated away.
+test("policy-authorized Copilot rerequest issues a new native review while replay stays suppressed", async () => {
+  const request = clone(requestByName.get("explicit copilot"));
+  const client = new FakeGitHubClient(request.headSha);
+  const harness = createHarness(client);
+
+  const first = await harness.run("route", request);
+  assert.equal(first.receipt.backend.kind, "copilot");
+  assert.equal(harness.outputs.get("copilot-requested"), "true");
+  const reviewer = first.receipt.backend.reviewAuthors[0];
+  assert.equal(client.calls.filter(([name]) => name === "requestReviewer").length, 1);
+
+  // Copilot submits its review for this head: it leaves the requested set and
+  // appears in the reviews list. A plain replay must now stay suppressed.
+  client.requestedUsers = client.requestedUsers.filter((user) => user.login !== reviewer);
+  client.reviews.push({ user: { login: reviewer }, commit_id: request.headSha, state: "APPROVED" });
+
+  const replay = await harness.run("route", request);
+  assert.equal(replay.dispatchAllowed, false);
+  assert.equal(harness.outputs.get("copilot-requested"), "false");
+  assert.equal(client.calls.filter(([name]) => name === "requestReviewer").length, 1);
+
+  const rerequest = {
+    ...request,
+    correlationId: "corr-copilot-rerequest",
+    attempt: 2,
+    rerequestOf: {
+      priorReceiptId: first.receipt.receiptId,
+      priorLogicalDispatchId: first.receipt.logicalDispatchId,
+      priorAttempt: 1,
+    },
+  };
+
+  await assert.rejects(
+    harness.run("route", rerequest),
+    /not authorized by repository policy/u,
+  );
+  assert.equal(client.calls.filter(([name]) => name === "requestReviewer").length, 1);
+
+  const second = await harness.run("route", rerequest, {
+    "INPUT_REREQUEST-AUTHORIZED": "true",
+  });
+  assert.equal(second.state, "observed");
+  assert.equal(second.receipt.attempt, 2);
+  assert.notEqual(second.receipt.logicalDispatchId, first.receipt.logicalDispatchId);
+  assert.equal(harness.outputs.get("copilot-requested"), "true");
+  assert.equal(client.calls.filter(([name]) => name === "requestReviewer").length, 2);
 });
 
 test("ambiguous Copilot dispatch returns reconciliation state and never suggests fallback", async () => {
