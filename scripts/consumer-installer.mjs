@@ -112,7 +112,10 @@ function redact(value, secret) {
 function commandFailure(command, args, result, secret) {
   const stderr = redact(result.stderr?.trim(), secret);
   const detail = stderr || `exit status ${result.status ?? "unknown"}`;
-  return new Error(`${command} ${args.join(" ")} failed: ${detail}`);
+  // Redact the args too: a secret can be passed via options.secret, and the
+  // nonzero-exit path must not leak it when the timeout/startup paths do not.
+  const redactedArgs = args.map((arg) => redact(arg, secret)).join(" ");
+  return new Error(`${command} ${redactedArgs} failed: ${detail}`);
 }
 
 function commandTimeout(command, args, timeoutMs, secret) {

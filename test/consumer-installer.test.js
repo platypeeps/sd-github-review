@@ -1268,6 +1268,21 @@ test("gh subprocess timeout redacts the secret from its error", () => {
   );
 });
 
+test("gh nonzero-exit error redacts a secret passed in args", () => {
+  const github = new GitHubCli({
+    spawnImpl: () => ({ error: null, status: 1, stdout: "", stderr: "denied" }),
+  });
+  const secret = "sk-live-EXIT-SECRET";
+  assert.throws(
+    () => github.run("gh", ["secret", "set", "--body", secret], { secret }),
+    (error) => {
+      assert.doesNotMatch(error.message, /EXIT-SECRET/u);
+      assert.match(error.message, /\[redacted\]/u);
+      return true;
+    },
+  );
+});
+
 test("gh non-timeout spawn error is not misreported as a timeout", async () => {
   const github = new GitHubCli({
     spawnImpl: () => ({ error: Object.assign(new Error("spawn gh ENOENT"), { code: "ENOENT" }), status: null, stdout: "", stderr: "" }),
