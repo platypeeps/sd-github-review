@@ -92,3 +92,19 @@ and 4 stay open until the operator cuts the release; the task is not archived.
 Do not ship if the A-007 regression fixture fails or if an existing exact-head,
 privacy, ownership, or no-duplicate-side-effect guarantee regresses. The release
 cut itself is deferred to the operator regardless of gate state.
+
+## Status (this run)
+
+In-authority code/docs landed and merged (steps 1–5): schema-2 provenance
+manifest, provenance-aware `check` drift detection, schema-1→2 `update`
+migration, the two-tier release-consistency gate, the executable spec update,
+the migration/rollback docs, and the test coverage. Copilot review converged
+clean and CI is green.
+
+Deferred to the operator — the task stays open until these land, so acceptance
+criteria 1, 2, and 4 remain unchecked:
+
+- Cut the GitHub release from a tagged clean checkout and choose its version
+  number (both are irreversible operator actions outside the loop's authority).
+- After the release exists, run a clean consumer install/update/check/rollback
+  against the released artifacts to close acceptance criteria 4.
