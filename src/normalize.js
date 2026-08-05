@@ -98,4 +98,15 @@ export function resolveExplicitMode({ configuredMode, commandMode, labelMode }) 
   return explicitMode && explicitMode !== "auto" ? explicitMode : null;
 }
 
-export const reviewLabels = new Set(["review:auto", ...EXPLICIT_LABELS.keys()]);
+// Canonical review-label registry. Kept module-private so importers cannot
+// mutate it and silently repoint label routing for the whole process (A-020).
+const reviewLabelSet = new Set(["review:auto", ...EXPLICIT_LABELS.keys()]);
+
+export function isReviewLabel(label) {
+  return reviewLabelSet.has(label);
+}
+
+// Read-only view for callers that must enumerate the label names (e.g. the
+// installer↔router parity check). Strings are immutable; freezing the array
+// blocks add/reorder, so no mutable collection escapes the module.
+export const reviewLabelNames = Object.freeze([...reviewLabelSet]);

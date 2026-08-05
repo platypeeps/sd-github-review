@@ -10,6 +10,27 @@ import {
   resolveExplicitMode,
 } from "../src/normalize.js";
 import { routeReview } from "../src/router.js";
+import * as normalize from "../src/normalize.js";
+
+test("the review-label registry is immutable and not exported as a Set (A-020)", () => {
+  // A-020: reviewLabels used to be an exported mutable Set — importers could
+  // .add/.delete/.clear it and silently repoint label routing process-wide.
+  // The registry is now a module-private set behind a predicate plus a frozen
+  // name list, so no mutable collection escapes the module.
+  assert.equal(
+    "reviewLabels" in normalize,
+    false,
+    "the mutable reviewLabels Set must not be exported",
+  );
+  assert.equal(typeof normalize.isReviewLabel, "function");
+  for (const label of ["review:auto", "review:cheap", "review:deep", "review:copilot", "review:none"]) {
+    assert.equal(normalize.isReviewLabel(label), true, `${label} should be a review label`);
+  }
+  assert.equal(normalize.isReviewLabel("review:bogus"), false);
+  assert.equal(normalize.isReviewLabel("random"), false);
+  assert.equal(Object.isFrozen(normalize.reviewLabelNames), true);
+  assert.throws(() => normalize.reviewLabelNames.push("review:injected"), TypeError);
+});
 
 const base = {
   configuredMode: "auto",

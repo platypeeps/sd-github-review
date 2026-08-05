@@ -12,7 +12,7 @@ import {
   parseList,
   parseReviewCommand,
   resolveExplicitMode,
-  reviewLabels,
+  isReviewLabel,
 } from "./normalize.js";
 import { routeReview } from "./router.js";
 
@@ -167,7 +167,7 @@ export async function runAction({
   const preNetworkDecision = ignoredEventDecision({
     eventName,
     eventAction: event.action,
-    isRelevantLabelEvent: reviewLabels.has(eventLabel),
+    isRelevantLabelEvent: isReviewLabel(eventLabel),
     commandMode: rawCommand,
   });
   if (preNetworkDecision) {
@@ -224,7 +224,7 @@ export async function runAction({
   const ignoredDecision = ignoredEventDecision({
     eventName,
     eventAction: event.action,
-    isRelevantLabelEvent: reviewLabels.has(eventLabel),
+    isRelevantLabelEvent: isReviewLabel(eventLabel),
     commandMode,
   });
   const explicitMode = resolveExplicitMode({ configuredMode, commandMode, labelMode });
@@ -257,7 +257,7 @@ export async function runAction({
     commandMode,
     eventName,
     eventAction: event.action,
-    isRelevantLabelEvent: reviewLabels.has(eventLabel),
+    isRelevantLabelEvent: isReviewLabel(eventLabel),
     ...risk,
   });
 

@@ -29,7 +29,7 @@ import {
   resolveSourceRelease,
   runConsumerInstaller,
 } from "../scripts/consumer-installer.mjs";
-import { reviewLabels } from "../src/normalize.js";
+import { reviewLabelNames } from "../src/normalize.js";
 import * as installerModule from "../scripts/consumer-installer.mjs";
 
 const REPOSITORY = "acme/consumer";
@@ -179,7 +179,7 @@ test("reports actionable recovery when a target checkout has no origin", async (
 test("installer labels stay aligned with the router contract", () => {
   assert.deepEqual(
     new Set(ROUTING_LABELS.map(({ name }) => name)),
-    reviewLabels,
+    new Set(reviewLabelNames),
   );
 });
 

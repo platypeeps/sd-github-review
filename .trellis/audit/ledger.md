@@ -257,8 +257,8 @@ Committed cross-session audit findings managed by sd-audit-repo.
 - fix: Add explicit adoption for approved historical hashes with semantic review and rollback.
 
 ## A-020 — Exported review-label registry is mutable
-- status: open
-- notes: Trellis owner `07-25-encapsulate-review-label-registry`; remediation planning created 2026-07-25.
+- status: fixed
+- notes: Trellis owner reassigned to `08-04-encapsulate-review-label-registry`; verified fixed on main @ 2026-08-04 — the mutable `reviewLabels` Set (since moved from src/router.js to src/normalize.js) is now a module-private `reviewLabelSet` behind an `isReviewLabel(label)` predicate plus a frozen `reviewLabelNames` array; no mutable collection is exported (Object.freeze on a Set would not have blocked .add/.delete, so the reference was removed instead). src/index.js migrated to `isReviewLabel` at all three call sites (identical membership); installer parity test compares `new Set(reviewLabelNames)`. Regression lock in test/router.test.js asserts `reviewLabels` is not exported, the predicate classifies labels, and `reviewLabelNames` is frozen and rejects push. Full suite 235/235, check:full whitespace clean and preflight 0 failures.
 - severity: P3 · effort: S · confidence: Plausible
 - dimension: design
 - first-seen: 2026-07-25 @ 2eeca60
