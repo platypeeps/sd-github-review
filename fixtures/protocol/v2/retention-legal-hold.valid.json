@@ -1,0 +1,52 @@
+[
+  {
+    "name": "active hold scoped to two data classes",
+    "value": {
+      "schemaVersion": 2,
+      "holdId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "tenant": "acme",
+      "repository": { "owner": "octo", "name": "demo" },
+      "dataClasses": ["bounded_event", "operational_state"],
+      "actor": "counsel-a",
+      "reason": "Litigation hold for matter 2026-114.",
+      "authorization": "legal-approval-114",
+      "state": "active",
+      "startAt": "2026-08-04T00:00:00Z",
+      "expiresAt": "2027-02-04T00:00:00Z"
+    }
+  },
+  {
+    "name": "released hold records its release moment",
+    "value": {
+      "schemaVersion": 2,
+      "holdId": "4444444444444444444444444444444444444444444444444444444444444444",
+      "tenant": "acme",
+      "repository": { "owner": "octo", "name": "demo" },
+      "dataClasses": ["deferred_review"],
+      "actor": "counsel-a",
+      "reason": "Matter closed early.",
+      "authorization": "legal-approval-114",
+      "state": "released",
+      "startAt": "2026-08-04T00:00:00Z",
+      "expiresAt": "2027-02-04T00:00:00Z",
+      "releasedAt": "2026-09-04T00:00:00Z"
+    }
+  },
+  {
+    "name": "renewed hold names its prior hold",
+    "value": {
+      "schemaVersion": 2,
+      "holdId": "5555555555555555555555555555555555555555555555555555555555555555",
+      "tenant": "acme",
+      "repository": { "owner": "octo", "name": "demo" },
+      "dataClasses": ["bounded_event"],
+      "actor": "counsel-a",
+      "reason": "Renewal for matter 2026-114.",
+      "authorization": "legal-approval-201",
+      "state": "renewed",
+      "startAt": "2027-02-04T00:00:00Z",
+      "expiresAt": "2027-08-04T00:00:00Z",
+      "renewedFromHoldId": "3333333333333333333333333333333333333333333333333333333333333333"
+    }
+  }
+]
