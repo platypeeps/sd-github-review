@@ -309,6 +309,20 @@ test("a quarantine overlay rejects catalog content under any spelling variant", 
       smuggled,
     );
   }
+  // Nested catalog content under an arbitrary wrapper must fail closed too.
+  assert.throws(
+    () => decodeCandidateQuarantine({
+      schemaMajor: 2,
+      catalogDigest: "1".repeat(64),
+      alias: "kimi-review",
+      state: "quarantined",
+      reason: "bad",
+      effectiveAt: "2026-08-05T00:00:00Z",
+      meta: { Candidates: [] },
+    }),
+    /never mutates a pinned catalog version/u,
+    "nested catalog content",
+  );
 });
 
 // --- version transition / rollback -----------------------------------------

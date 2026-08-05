@@ -257,6 +257,13 @@ function rejectIdentifyingFields(value, field) {
   rejectFieldNames(value, field, IDENTIFYING_FIELDS, "catalog anonymization boundary");
 }
 
+// Reject embedded catalog content (candidates/profiles/policy) by NORMALIZED
+// key at ANY depth, so a separator/casing variant or a nested wrapper cannot
+// smuggle catalog content past the overlay and mutate a pinned version.
+function rejectCatalogContent(value, field) {
+  rejectFieldNames(value, field, CATALOG_CONTENT_FIELDS, "catalog-content boundary; a quarantine overlay never mutates a pinned catalog version");
+}
+
 function assertEncodedSize(value, field, maximum) {
   let encoded;
   try {
@@ -935,16 +942,13 @@ export function decodeCandidateSafeProjection(value, field = "candidateSafeProje
 export function decodeCandidateQuarantine(value, field = "candidateQuarantine") {
   rejectForbiddenContent(value, field);
   assertEncodedSize(value, field, RESPONSE_MAX_BYTES);
+  // Reject embedded catalog content at ANY depth so neither a separator/casing
+  // variant (e.g. `Candidates`, `prompt_profiles`) nor a nested wrapper
+  // (e.g. `{ meta: { candidates: [...] } }`) can smuggle catalog content past
+  // the overlay and mutate a pinned version by implication.
+  rejectCatalogContent(value, field);
   const overlay = objectValue(value, field);
   schemaVersion(overlay.schemaMajor, `${field}.schemaMajor`);
-  // Reject embedded catalog content by NORMALIZED key so a separator/casing
-  // variant (e.g. `Candidates`, `prompt_profiles`) cannot smuggle catalog
-  // content past an exact-name check and mutate a pinned version by implication.
-  for (const key of Object.keys(overlay)) {
-    if (CATALOG_CONTENT_FIELDS.has(key.toLowerCase().replace(/[^a-z0-9]/gu, ""))) {
-      throw new Error(`${field}.${key} is forbidden; a quarantine overlay never mutates a pinned catalog version`);
-    }
-  }
   const state = enumValue(overlay.state, `${field}.state`, QUARANTINE_STATE_SET);
   const normalized = {
     schemaMajor: CATALOG_SCHEMA_MAJOR,
