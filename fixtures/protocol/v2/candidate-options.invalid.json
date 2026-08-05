@@ -1,0 +1,65 @@
+[
+  {
+    "name": "option identifies an attempt head",
+    "error": "cannot identify an attempt",
+    "value": {
+      "schemaVersion": 2,
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "configurationDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "options": [
+        {
+          "alias": "balanced-review",
+          "displayName": "Balanced Review",
+          "handler": "pr-agent",
+          "costTier": "medium",
+          "eligibleLanes": ["review"],
+          "eligibleSlots": ["managed"],
+          "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "availability": { "state": "available" }
+        }
+      ]
+    }
+  },
+  {
+    "name": "response authorizes an attempt",
+    "error": "cannot authorize an attempt",
+    "value": {
+      "schemaVersion": 2,
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "configurationDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "logicalDispatchId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "options": []
+    }
+  },
+  {
+    "name": "credential leaked into options",
+    "error": "privacy boundary",
+    "value": {
+      "schemaVersion": 2,
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "configurationDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "credentials": { "apiKey": "sk-secret" },
+      "options": []
+    }
+  },
+  {
+    "name": "available option carrying an unavailability reason",
+    "error": "reason is valid only for a non-available state",
+    "value": {
+      "schemaVersion": 2,
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "configurationDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "options": [
+        {
+          "alias": "balanced-review",
+          "displayName": "Balanced Review",
+          "handler": "pr-agent",
+          "costTier": "medium",
+          "eligibleLanes": ["review"],
+          "eligibleSlots": ["managed"],
+          "availability": { "state": "available", "reason": "should not be here" }
+        }
+      ]
+    }
+  }
+]

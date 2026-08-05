@@ -1,0 +1,26 @@
+[
+  {
+    "name": "assurance projection revision one",
+    "value": {
+      "schemaVersion": 2,
+      "checkName": "sd-review / assurance",
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "conclusion": "success",
+      "revision": 1,
+      "attempt": 1,
+      "latestAuthorizedAttemptToken": "1111111111111111111111111111111111111111111111111111111111111111"
+    }
+  },
+  {
+    "name": "gate projection action required",
+    "value": {
+      "schemaVersion": 2,
+      "checkName": "sd-review / gate",
+      "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "conclusion": "action_required",
+      "revision": 3,
+      "attempt": 2,
+      "latestAuthorizedAttemptToken": "2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  }
+]

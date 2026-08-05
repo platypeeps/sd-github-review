@@ -1,0 +1,275 @@
+[
+  {
+    "name": "unsupported schema major",
+    "error": "schema major 2",
+    "value": {
+      "schemaVersion": 1,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": { "review": { "execution": "direct-handler", "handler": "pr-agent", "promptProfile": { "mode": "handler-managed" } } }
+    }
+  },
+  {
+    "name": "missing mode",
+    "error": "mode must be a string",
+    "value": {
+      "schemaVersion": 2,
+      "budgetOutcome": "not_managed",
+      "routes": { "review": { "execution": "direct-handler", "handler": "pr-agent", "promptProfile": { "mode": "handler-managed" } } }
+    }
+  },
+  {
+    "name": "unknown mode",
+    "error": "mode must be one of",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "hybrid",
+      "routes": {}
+    }
+  },
+  {
+    "name": "standalone missing not_managed budget outcome",
+    "error": "budgetOutcome must be not_managed",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "routes": { "review": { "execution": "direct-handler", "handler": "pr-agent", "promptProfile": { "mode": "handler-managed" } } }
+    }
+  },
+  {
+    "name": "standalone with managed lanes is a mixed mode",
+    "error": "lanes is forbidden for standalone mode",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": { "review": { "execution": "direct-handler", "handler": "pr-agent", "promptProfile": { "mode": "handler-managed" } } },
+      "lanes": {}
+    }
+  },
+  {
+    "name": "standalone local-attested carrying a handler",
+    "error": "handler is forbidden for a local-attested route",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "assurance": {
+          "execution": "local-attested",
+          "handler": "pr-agent",
+          "attestation": { "trustPolicyRef": "t", "allowedAssociations": ["OWNER"], "allowPrAuthor": false, "maxAgeSeconds": 60 }
+        }
+      }
+    }
+  },
+  {
+    "name": "standalone local-attested slot forbidden in initial contract",
+    "error": "slot is forbidden for a local-attested route",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "assurance": {
+          "execution": "local-attested",
+          "slot": "managed",
+          "attestation": { "trustPolicyRef": "t", "allowedAssociations": ["OWNER"], "allowPrAuthor": false, "maxAgeSeconds": 60 }
+        }
+      }
+    }
+  },
+  {
+    "name": "standalone direct-handler carrying attestation",
+    "error": "attestation is forbidden for a direct-handler route",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "review": {
+          "execution": "direct-handler",
+          "handler": "pr-agent",
+          "promptProfile": { "mode": "handler-managed" },
+          "attestation": { "trustPolicyRef": "t", "allowedAssociations": ["OWNER"], "allowPrAuthor": false, "maxAgeSeconds": 60 }
+        }
+      }
+    }
+  },
+  {
+    "name": "unknown execution kind",
+    "error": "execution must be one of",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": { "review": { "execution": "inferred", "handler": "x" } }
+    }
+  },
+  {
+    "name": "managed lane without explicit merge policy",
+    "error": "budgetExhaustion.merge must be a string",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "managed",
+      "catalogDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "lanes": {
+        "assurance": {
+          "slot": "managed",
+          "budgetExhaustion": {},
+          "candidate": { "candidateDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "promptProfile": { "mode": "handler-managed" } }
+        }
+      }
+    }
+  },
+  {
+    "name": "managed lane with legacy exhaustion value",
+    "error": "budgetExhaustion.merge must be one of",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "managed",
+      "catalogDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "lanes": {
+        "assurance": {
+          "slot": "managed",
+          "budgetExhaustion": { "merge": "defer" },
+          "candidate": { "candidateDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "promptProfile": { "mode": "handler-managed" } }
+        }
+      }
+    }
+  },
+  {
+    "name": "managed contract carrying standalone routes",
+    "error": "routes is forbidden for managed mode",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "managed",
+      "catalogDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "routes": {},
+      "lanes": {}
+    }
+  },
+  {
+    "name": "referenced profile missing digest",
+    "error": "promptProfile.digest",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "review": {
+          "execution": "direct-handler",
+          "handler": "pr-agent",
+          "promptProfile": { "mode": "referenced", "alias": "x", "version": "1.0.0" }
+        }
+      }
+    }
+  },
+  {
+    "name": "handler-managed profile carrying an alias",
+    "error": "alias is forbidden for a handler-managed profile",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "review": {
+          "execution": "direct-handler",
+          "handler": "pr-agent",
+          "promptProfile": { "mode": "handler-managed", "alias": "sneaky" }
+        }
+      }
+    }
+  },
+  {
+    "name": "prompt profile declaring a lane default",
+    "error": "promptProfile.default is forbidden",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "review": {
+          "execution": "direct-handler",
+          "handler": "pr-agent",
+          "promptProfile": { "mode": "handler-managed", "default": true }
+        }
+      }
+    }
+  },
+  {
+    "name": "prompt profile declaring inheritance",
+    "error": "promptProfile.inheritance is forbidden",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "review": {
+          "execution": "direct-handler",
+          "handler": "pr-agent",
+          "promptProfile": {
+            "mode": "referenced",
+            "alias": "balanced-review",
+            "version": "1.0.0",
+            "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "inheritance": "lane"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "prompt profile declaring a fallback",
+    "error": "promptProfile.fallback is forbidden",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "review": {
+          "execution": "direct-handler",
+          "handler": "pr-agent",
+          "promptProfile": { "mode": "handler-managed", "fallback": "default-profile" }
+        }
+      }
+    }
+  },
+  {
+    "name": "prompt profile declaring a runtime override",
+    "error": "promptProfile.runtimeOverride is forbidden",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "review": {
+          "execution": "direct-handler",
+          "handler": "pr-agent",
+          "promptProfile": { "mode": "handler-managed", "runtimeOverride": "x" }
+        }
+      }
+    }
+  },
+  {
+    "name": "managed contract carrying a standalone-only capability reason",
+    "error": "capabilityUnavailableReason is forbidden for managed mode",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "managed",
+      "catalogDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "capabilityUnavailableReason": "control_plane_unreachable",
+      "lanes": {
+        "assurance": {
+          "slot": "managed",
+          "budgetExhaustion": { "merge": "block" },
+          "candidate": { "candidateDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "promptProfile": { "mode": "handler-managed" } }
+        }
+      }
+    }
+  }
+]

@@ -1,0 +1,67 @@
+[
+  {
+    "name": "assurance fail with a passing gate",
+    "error": "gateOutcome must block",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attempt": 1,
+      "logicalDispatchId": "1111111111111111111111111111111111111111111111111111111111111111",
+      "reviewOutcome": { "state": "failed", "reasonCode": "policy_violation" },
+      "assuranceOutcome": { "state": "fail", "reasonCode": "policy_violation" },
+      "gateOutcome": { "state": "pass", "reasonCode": "policy_violation" }
+    }
+  },
+  {
+    "name": "failed review with a passing gate and passing assurance",
+    "error": "gateOutcome must block",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "ffffffffffffffffffffffffffffffffffffffff",
+      "attempt": 1,
+      "logicalDispatchId": "6666666666666666666666666666666666666666666666666666666666666666",
+      "reviewOutcome": { "state": "failed", "reasonCode": "policy_violation" },
+      "assuranceOutcome": { "state": "pass", "reasonCode": "completed" },
+      "gateOutcome": { "state": "pass", "reasonCode": "completed" }
+    }
+  },
+  {
+    "name": "deferred assurance without budget reason",
+    "error": "deferred requires the budget_exhausted_deferred reason",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attempt": 1,
+      "logicalDispatchId": "1111111111111111111111111111111111111111111111111111111111111111",
+      "reviewOutcome": { "state": "skipped", "reasonCode": "policy_violation" },
+      "assuranceOutcome": { "state": "deferred", "reasonCode": "policy_violation" },
+      "gateOutcome": { "state": "pass", "reasonCode": "policy_violation" }
+    }
+  },
+  {
+    "name": "unknown review outcome state",
+    "error": "reviewOutcome.state must be one of",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attempt": 1,
+      "logicalDispatchId": "1111111111111111111111111111111111111111111111111111111111111111",
+      "reviewOutcome": { "state": "maybe", "reasonCode": "completed" },
+      "assuranceOutcome": { "state": "pass", "reasonCode": "completed" },
+      "gateOutcome": { "state": "pass", "reasonCode": "completed" }
+    }
+  },
+  {
+    "name": "unknown reason code",
+    "error": "reasonCode must be one of",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attempt": 1,
+      "logicalDispatchId": "1111111111111111111111111111111111111111111111111111111111111111",
+      "reviewOutcome": { "state": "completed", "reasonCode": "vibes" },
+      "assuranceOutcome": { "state": "pass", "reasonCode": "completed" },
+      "gateOutcome": { "state": "pass", "reasonCode": "completed" }
+    }
+  }
+]

@@ -1,0 +1,40 @@
+[
+  {
+    "name": "available candidate within budget",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "candidateDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "promptProfileDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "policyDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "configurationDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "units": "tokens",
+      "countedInputTokens": 12000,
+      "inputCounted": true,
+      "outputCap": 4000,
+      "maxExpectedCharge": 16000,
+      "hardRequestLimit": 32000,
+      "safetyMargin": 2000,
+      "capabilityEvidence": { "available": true }
+    }
+  },
+  {
+    "name": "conservatively bounded input with unavailable capability",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "candidateDigest": "5555555555555555555555555555555555555555555555555555555555555555",
+      "promptProfileDigest": "6666666666666666666666666666666666666666666666666666666666666666",
+      "policyDigest": "7777777777777777777777777777777777777777777777777777777777777777",
+      "configurationDigest": "8888888888888888888888888888888888888888888888888888888888888888",
+      "units": "tokens",
+      "countedInputTokens": 50000,
+      "inputCounted": false,
+      "outputCap": 8000,
+      "maxExpectedCharge": 58000,
+      "hardRequestLimit": 64000,
+      "safetyMargin": 0,
+      "capabilityEvidence": { "available": false, "reason": "control_plane_unreachable" }
+    }
+  }
+]

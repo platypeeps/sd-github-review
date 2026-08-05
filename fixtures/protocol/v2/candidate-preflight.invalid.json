@@ -1,0 +1,83 @@
+[
+  {
+    "name": "non-token units",
+    "error": "units must be one of",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "candidateDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "promptProfileDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "policyDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "configurationDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "units": "dollars",
+      "countedInputTokens": 100,
+      "inputCounted": true,
+      "outputCap": 10,
+      "maxExpectedCharge": 100,
+      "hardRequestLimit": 200,
+      "safetyMargin": 0,
+      "capabilityEvidence": { "available": true }
+    }
+  },
+  {
+    "name": "max expected charge exceeds hard limit",
+    "error": "maxExpectedCharge must not exceed hardRequestLimit",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "candidateDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "promptProfileDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "policyDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "configurationDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "units": "tokens",
+      "countedInputTokens": 100,
+      "inputCounted": true,
+      "outputCap": 10,
+      "maxExpectedCharge": 500,
+      "hardRequestLimit": 200,
+      "safetyMargin": 0,
+      "capabilityEvidence": { "available": true }
+    }
+  },
+  {
+    "name": "unavailable capability without reason",
+    "error": "capabilityEvidence.reason is required",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "candidateDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "promptProfileDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "policyDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "configurationDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "units": "tokens",
+      "countedInputTokens": 100,
+      "inputCounted": true,
+      "outputCap": 10,
+      "maxExpectedCharge": 100,
+      "hardRequestLimit": 200,
+      "safetyMargin": 0,
+      "capabilityEvidence": { "available": false }
+    }
+  },
+  {
+    "name": "prompt body embedded in preflight",
+    "error": "privacy boundary",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "candidateDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "promptProfileDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "policyDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "configurationDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "units": "tokens",
+      "countedInputTokens": 100,
+      "inputCounted": true,
+      "outputCap": 10,
+      "maxExpectedCharge": 100,
+      "hardRequestLimit": 200,
+      "safetyMargin": 0,
+      "prompt": "you are a reviewer",
+      "capabilityEvidence": { "available": true }
+    }
+  }
+]
