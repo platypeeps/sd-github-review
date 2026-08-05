@@ -1,0 +1,50 @@
+[
+  {
+    "name": "duplicate profile identity",
+    "error": "duplicates prompt profile",
+    "value": [
+      { "alias": "dup", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"] },
+      { "alias": "dup", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+    ]
+  },
+  {
+    "name": "empty registry",
+    "error": "must declare at least one prompt profile",
+    "value": []
+  },
+  {
+    "name": "profile carries a prompt body",
+    "error": "catalog privacy boundary",
+    "value": [
+      { "alias": "leaky", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "promptBody": "You are a reviewer..." }
+    ]
+  },
+  {
+    "name": "profile carries a configuration value",
+    "error": "catalog privacy boundary",
+    "value": [
+      { "alias": "leaky", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "configuration": { "temperature": 0.2 } }
+    ]
+  },
+  {
+    "name": "profile carries a PR-specific identifier",
+    "error": "catalog anonymization boundary",
+    "value": [
+      { "alias": "leaky", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "pullRequestNumber": 42 }
+    ]
+  },
+  {
+    "name": "malformed profile digest",
+    "error": "has an invalid format",
+    "value": [
+      { "alias": "bad", "version": "1.0.0", "digest": "not-a-digest", "compatibleHandlers": ["pr-agent"] }
+    ]
+  },
+  {
+    "name": "profile lists no compatible handler",
+    "error": "must list at least one compatible handler",
+    "value": [
+      { "alias": "bad", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": [] }
+    ]
+  }
+]

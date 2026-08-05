@@ -12,6 +12,7 @@ src/                   # dependency-free Action runtime
   protocol.js          # versioned request/receipt decoding, canonical identity, decodeRoutingInputs
   protocol-v2.js       # pure v2 budget-aware contracts: decoders, vocabularies, fingerprints
   retention-policy.js  # pure standard-v1 retention/deletion/legal-hold/purge contracts (injected time)
+  review-candidate-catalog.js # pure immutable candidate/prompt-profile catalog, safe projection, retention classification (injected time)
   receipt.js           # exact-head Check Run receipt storage and reconciliation
   risk-context.js      # shared normalized routing-context builder
   reviewer-dispatch.js # shared Copilot presence probe and reviewer request
@@ -86,8 +87,11 @@ single queryable source for priority, ownership, dependencies, and status.
   `src/protocol.js`. It must not access the network, filesystem, environment,
   GitHub output surfaces, or route policy.
 - Put pure versioned contract definitions — v2 budget-aware wire/storage shapes
-  in `src/protocol-v2.js` and the `standard-v1` retention/deletion/legal-hold/
-  purge contracts in `src/retention-policy.js` — in their own leaf modules.
+  in `src/protocol-v2.js`, the `standard-v1` retention/deletion/legal-hold/
+  purge contracts in `src/retention-policy.js`, and the immutable review
+  candidate/prompt-profile catalog with its bounded safe projection and
+  reference-aware retention classification in
+  `src/review-candidate-catalog.js` — in their own leaf modules.
   Like `src/protocol.js` they must not access the network, filesystem,
   environment, GitHub output surfaces, or route policy, and they take no
   ambient time: every lifecycle/expiry computation receives an injected

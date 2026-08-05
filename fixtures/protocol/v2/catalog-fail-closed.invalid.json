@@ -1,0 +1,41 @@
+[
+  {
+    "name": "policy-incomplete candidate: safety margin at or above the hard request limit",
+    "error": "safetyMargin must be below hardRequestCostLimit",
+    "value": {
+      "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+      "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+      "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+      "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+      "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+      "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 1000, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+    }
+  },
+  {
+    "name": "policy-incomplete candidate: missing pricing evidence",
+    "error": "pricing must be an object",
+    "value": {
+      "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+      "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+      "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+      "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+      "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+      "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+    }
+  },
+  {
+    "name": "unknown lane on a candidate",
+    "error": "must be one of",
+    "value": {
+      "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+      "eligibleLanes": ["deploy"], "eligibleSlots": ["managed"],
+      "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+      "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+      "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+      "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+      "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+    }
+  }
+]

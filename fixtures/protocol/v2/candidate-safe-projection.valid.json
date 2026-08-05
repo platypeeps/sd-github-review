@@ -1,0 +1,57 @@
+[
+  {
+    "name": "referenced external projection with profile identity and compatibility",
+    "value": {
+      "schemaMajor": 2,
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "alias": "kimi-review",
+      "kind": "external",
+      "handler": "pr-agent",
+      "model": "kimi/k2-review",
+      "costTier": "low",
+      "eligibleLanes": ["review"],
+      "eligibleSlots": ["managed", "parallel"],
+      "units": "tokens",
+      "hardInputLimit": 120000,
+      "hardOutputLimit": 8000,
+      "hardRequestCostLimit": 5000,
+      "safetyMargin": 500,
+      "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+      "pricing": { "pricingRef": "price:kimi-2026-08", "verified": true },
+      "finishReason": { "supported": true, "verified": true },
+      "usage": { "supported": true, "verified": true },
+      "promptProfile": {
+        "mode": "referenced",
+        "alias": "thorough-shared",
+        "version": "1.2.0",
+        "digest": "2222222222222222222222222222222222222222222222222222222222222222",
+        "compatibleHandlers": ["pr-agent"],
+        "capabilities": ["diff-review"]
+      }
+    }
+  },
+  {
+    "name": "native handler-managed projection carries no profile body",
+    "value": {
+      "schemaMajor": 2,
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "alias": "copilot-native",
+      "kind": "native",
+      "handler": "copilot",
+      "model": "copilot/default",
+      "costTier": "unknown",
+      "eligibleLanes": ["review"],
+      "eligibleSlots": ["parallel"],
+      "units": "tokens",
+      "hardInputLimit": 90000,
+      "hardOutputLimit": 4000,
+      "hardRequestCostLimit": 3000,
+      "safetyMargin": 300,
+      "tokenizer": { "tokenizerId": "native-estimate", "counting": "estimated", "verified": true },
+      "pricing": { "pricingRef": "price:copilot-flat", "verified": true },
+      "finishReason": { "supported": true, "verified": true },
+      "usage": { "supported": false, "verified": true },
+      "promptProfile": { "mode": "handler-managed" }
+    }
+  }
+]

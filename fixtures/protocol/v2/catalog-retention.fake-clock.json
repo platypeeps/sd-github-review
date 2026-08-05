@@ -1,0 +1,64 @@
+{
+  "createdAt": "2026-01-01T00:00:00Z",
+  "scenarios": [
+    {
+      "name": "an actively referenced catalog version is not on a deletion clock",
+      "subject": "catalog_version",
+      "referenced": true,
+      "nowIso": "2030-01-01T00:00:00Z",
+      "expect": { "dataClass": "catalog_policy_version", "lifecycleState": "active", "retainedUntil": null, "finalForm": "digest_only" }
+    },
+    {
+      "name": "an actively referenced static prompt profile is not on a deletion clock",
+      "subject": "prompt_profile",
+      "referenced": true,
+      "nowIso": "2030-01-01T00:00:00Z",
+      "expect": { "dataClass": "static_prompt_profile", "lifecycleState": "active", "retainedUntil": null, "finalForm": "digest_only" }
+    },
+    {
+      "name": "final reference removal starts the 13-month grace tail",
+      "subject": "catalog_version",
+      "referenced": false,
+      "lastReferencedAt": "2026-06-01T00:00:00Z",
+      "nowIso": "2026-07-01T00:00:00Z",
+      "expect": { "lifecycleState": "terminal", "retainedUntil": "2027-07-01T00:00:00.000Z", "finalForm": "digest_only" }
+    },
+    {
+      "name": "one day before the tail ends the version is still retained",
+      "subject": "catalog_version",
+      "referenced": false,
+      "lastReferencedAt": "2026-06-01T00:00:00Z",
+      "nowIso": "2027-06-30T00:00:00Z",
+      "expect": { "lifecycleState": "terminal", "retainedUntil": "2027-07-01T00:00:00.000Z" }
+    },
+    {
+      "name": "after the 13-month tail only the non-reversible digest fact remains",
+      "subject": "prompt_profile",
+      "referenced": false,
+      "lastReferencedAt": "2026-06-01T00:00:00Z",
+      "nowIso": "2027-07-01T00:00:00.000Z",
+      "expect": { "lifecycleState": "deleted", "nextDeletionAt": "2027-07-01T00:00:00.000Z", "finalForm": "digest_only" }
+    },
+    {
+      "name": "a covered legal hold pauses the tail so no dangling deletion is owed",
+      "subject": "prompt_profile",
+      "referenced": false,
+      "lastReferencedAt": "2026-06-01T00:00:00Z",
+      "nowIso": "2027-07-02T00:00:00Z",
+      "hold": {
+        "schemaVersion": 2,
+        "holdId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "tenant": "acme",
+        "repository": { "owner": "octo", "name": "demo" },
+        "dataClasses": ["static_prompt_profile"],
+        "actor": "counsel-a",
+        "reason": "litigation hold over the retired profile",
+        "authorization": "legal-approval-1",
+        "state": "active",
+        "startAt": "2027-06-01T00:00:00Z",
+        "expiresAt": "2028-01-01T00:00:00Z"
+      },
+      "expect": { "lifecycleState": "terminal", "holdPaused": true, "retainedUntil": null }
+    }
+  ]
+}

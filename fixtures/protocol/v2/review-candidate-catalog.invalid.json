@@ -1,0 +1,233 @@
+[
+  {
+    "name": "external candidate references a profile absent from the registry",
+    "error": "references unknown prompt profile",
+    "value": {
+      "schemaMajor": 2,
+      "name": "cat",
+      "version": "1.0.0",
+      "promptProfiles": [
+        { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+      ],
+      "candidates": [
+        {
+          "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+          "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+          "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+          "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+          "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+          "promptProfile": { "mode": "referenced", "alias": "missing", "version": "9.9.9", "digest": "3333333333333333333333333333333333333333333333333333333333333333" },
+          "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        }
+      ]
+    }
+  },
+  {
+    "name": "external candidate references a substituted profile digest",
+    "error": "substituted digest",
+    "value": {
+      "schemaMajor": 2,
+      "name": "cat",
+      "version": "1.0.0",
+      "promptProfiles": [
+        { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+      ],
+      "candidates": [
+        {
+          "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+          "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+          "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+          "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+          "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+          "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "9999999999999999999999999999999999999999999999999999999999999999" },
+          "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        }
+      ]
+    }
+  },
+  {
+    "name": "candidate handler is not compatible with the referenced profile",
+    "error": "not compatible with prompt profile",
+    "value": {
+      "schemaMajor": 2,
+      "name": "cat",
+      "version": "1.0.0",
+      "promptProfiles": [
+        { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+      ],
+      "candidates": [
+        {
+          "alias": "c1", "kind": "external", "displayName": "C1", "handler": "other-handler", "model": "kimi/k2", "costTier": "low",
+          "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+          "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+          "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+          "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+          "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+          "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        }
+      ]
+    }
+  },
+  {
+    "name": "external candidate declares handler-managed instead of referencing a profile",
+    "error": "must reference a prompt profile for an external candidate",
+    "value": {
+      "schemaMajor": 2,
+      "name": "cat",
+      "version": "1.0.0",
+      "promptProfiles": [
+        { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+      ],
+      "candidates": [
+        {
+          "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+          "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+          "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+          "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+          "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+          "promptProfile": { "mode": "handler-managed" },
+          "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        }
+      ]
+    }
+  },
+  {
+    "name": "native candidate references a profile instead of declaring handler-managed",
+    "error": "must be handler-managed for a native candidate",
+    "value": {
+      "schemaMajor": 2,
+      "name": "cat",
+      "version": "1.0.0",
+      "promptProfiles": [
+        { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+      ],
+      "candidates": [
+        {
+          "alias": "c1", "kind": "native", "displayName": "C1", "handler": "copilot", "model": "copilot/default", "costTier": "unknown",
+          "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+          "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+          "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+          "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+          "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+          "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        }
+      ]
+    }
+  },
+  {
+    "name": "duplicate candidate alias breaks alias stability",
+    "error": "duplicates candidate alias",
+    "value": {
+      "schemaMajor": 2,
+      "name": "cat",
+      "version": "1.0.0",
+      "promptProfiles": [
+        { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+      ],
+      "candidates": [
+        {
+          "alias": "dup", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+          "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+          "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+          "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+          "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+          "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+          "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        },
+        {
+          "alias": "dup", "kind": "external", "displayName": "C2", "handler": "pr-agent", "model": "qwen/q3", "costTier": "medium",
+          "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+          "credentialRef": "cred:b", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+          "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+          "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+          "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+          "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:b", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        }
+      ]
+    }
+  },
+  {
+    "name": "embedded disabled flag attempts to mutate a pinned version",
+    "error": "disabled is forbidden",
+    "value": {
+      "schemaMajor": 2,
+      "name": "cat",
+      "version": "1.0.0",
+      "promptProfiles": [
+        { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+      ],
+      "candidates": [
+        {
+          "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+          "disabled": true,
+          "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+          "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+          "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+          "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+          "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+          "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        }
+      ]
+    }
+  },
+  {
+    "name": "cross-model failover is rejected",
+    "error": "sameModelOnly must be explicitly true",
+    "value": {
+      "schemaMajor": 2,
+      "name": "cat",
+      "version": "1.0.0",
+      "promptProfiles": [
+        { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+      ],
+      "candidates": [
+        {
+          "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+          "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+          "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+          "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+          "failover": { "sameModelOnly": false, "maxAlternates": 2 },
+          "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+          "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        }
+      ]
+    }
+  },
+  {
+    "name": "duplicate prompt profile identity in the registry",
+    "error": "duplicates prompt profile",
+    "value": {
+      "schemaMajor": 2,
+      "name": "cat",
+      "version": "1.0.0",
+      "promptProfiles": [
+        { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] },
+        { "alias": "known", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+      ],
+      "candidates": []
+    }
+  },
+  {
+    "name": "a binding declares a forbidden fallback lever",
+    "error": "is forbidden; a profile binding declares no lane default",
+    "value": {
+      "schemaMajor": 2,
+      "name": "cat",
+      "version": "1.0.0",
+      "promptProfiles": [
+        { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+      ],
+      "candidates": [
+        {
+          "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+          "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+          "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+          "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+          "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+          "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "fallback": "other" },
+          "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        }
+      ]
+    }
+  }
+]

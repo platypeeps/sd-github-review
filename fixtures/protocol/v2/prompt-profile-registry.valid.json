@@ -1,0 +1,19 @@
+[
+  {
+    "name": "array of immutable profile metadata with shared and specific entries",
+    "value": [
+      { "alias": "thorough-shared", "version": "1.2.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent", "pr-agent-lite"], "capabilities": ["diff-review", "inline-suggest"] },
+      { "alias": "gate-specific", "version": "2.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"], "capabilities": ["gate-summary"] },
+      { "alias": "thorough-shared", "version": "2.0.0", "digest": "4444444444444444444444444444444444444444444444444444444444444444", "compatibleHandlers": ["pr-agent"] }
+    ]
+  },
+  {
+    "name": "object form with explicit schema major",
+    "value": {
+      "schemaMajor": 2,
+      "profiles": [
+        { "alias": "solo", "version": "1.0.0", "digest": "3333333333333333333333333333333333333333333333333333333333333333", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+      ]
+    }
+  }
+]

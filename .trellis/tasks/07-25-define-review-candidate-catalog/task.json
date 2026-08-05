@@ -3,7 +3,7 @@
   "name": "define-review-candidate-catalog",
   "title": "Define review candidate catalog",
   "description": "Specify immutable candidate and prompt-profile aliases, safe projections, bindings, capabilities, and policy versioning.",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
