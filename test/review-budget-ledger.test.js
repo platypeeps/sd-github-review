@@ -188,6 +188,7 @@ function INELIGIBLE_REASONS() {
     "candidate_quarantined",
     "observation_stale",
     "observation_unknown",
+    "lease_expiry_not_future",
   ]);
 }
 
@@ -540,6 +541,24 @@ test("adjustPool drives the pool overdrawn when a negative adjustment pushes rea
   assert.ok(pool.realCapacity < 0, "the clawback drives real capacity negative");
   assert.equal(pool.state, "overdrawn");
   assert.equal(adjusted.decision.clearedOverdrawn, false);
+});
+
+test("a prototype-key pool id fails closed as an unknown pool", () => {
+  const base = ledger();
+  // "constructor" passes the alias charset but must not resolve to an inherited
+  // Object.prototype value; requirePool fails closed.
+  assert.throws(
+    () => reserve(base, request({ poolId: "constructor" }), { nowIso: NOW }),
+    /references unknown pool constructor/u,
+  );
+  assert.throws(
+    () => applyObservation(base, observation({ poolId: "constructor" }), { nowIso: NOW }),
+    /references unknown pool constructor/u,
+  );
+  // A candidate named after a prototype key is not silently treated as
+  // quarantined via an inherited property.
+  const decision = reserve(base, request({ identity: { candidate: "kimi-review" } }), { nowIso: NOW });
+  assert.equal(decision.decision.outcome, "reserved");
 });
 
 test("releaseReservation returns a held reservation's capacity and replays idempotently", () => {

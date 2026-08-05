@@ -630,7 +630,9 @@ export function createBudgetLedger(value, field = "budgetLedger") {
   const candidateToPool = new Map();
   for (const [index, entry] of input.observations.entries()) {
     const observation = decodeBudgetObservation(entry, `${field}.observations[${index}]`);
-    if (pools[observation.poolId]) {
+    // Own-property check: an alias like "constructor" would otherwise resolve to
+    // an inherited Object.prototype value and be mistaken for a real pool.
+    if (Object.hasOwn(pools, observation.poolId)) {
       throw new Error(`${field}.observations[${index}] duplicates pool ${observation.poolId}`);
     }
     for (const candidate of observation.candidates) {
@@ -700,11 +702,12 @@ function requireDecodedState(state) {
 }
 
 function requirePool(state, poolId, field) {
-  const pool = state.pools[poolId];
-  if (!pool) {
+  // Own-property lookup so a prototype key (e.g. "constructor") fails closed as
+  // an unknown pool instead of returning an inherited Object.prototype value.
+  if (!Object.hasOwn(state.pools, poolId)) {
     throw new Error(`${field} references unknown pool ${poolId}`);
   }
-  return pool;
+  return state.pools[poolId];
 }
 
 // Sum the live reserved holds and the settled charges against a pool. Live =
@@ -793,7 +796,10 @@ export function reserve(state, requestValue, { nowIso } = {}) {
     }),
   });
 
-  const quarantine = state.quarantine[request.identity.candidate];
+  const candidateKey = request.identity.candidate;
+  const quarantine = Object.hasOwn(state.quarantine, candidateKey)
+    ? state.quarantine[candidateKey]
+    : undefined;
   if (quarantine && quarantine.state === "quarantined") {
     return ineligible("candidate_quarantined");
   }
