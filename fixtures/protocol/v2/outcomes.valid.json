@@ -70,5 +70,53 @@
       "assuranceOutcome": { "state": "not_applicable", "reasonCode": "not_managed" },
       "gateOutcome": { "state": "pass", "reasonCode": "not_managed" }
     }
+  },
+  {
+    "name": "clean local review passes assurance and gate",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attempt": 1,
+      "logicalDispatchId": "7777777777777777777777777777777777777777777777777777777777777777",
+      "reviewOutcome": { "state": "completed_local", "reasonCode": "local_clean" },
+      "assuranceOutcome": { "state": "pass", "reasonCode": "completed" },
+      "gateOutcome": { "state": "pass", "reasonCode": "completed" }
+    }
+  },
+  {
+    "name": "local findings block the gate",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "attempt": 1,
+      "logicalDispatchId": "8888888888888888888888888888888888888888888888888888888888888888",
+      "reviewOutcome": { "state": "completed_local_findings", "reasonCode": "local_findings" },
+      "assuranceOutcome": { "state": "fail", "reasonCode": "local_findings" },
+      "gateOutcome": { "state": "block", "reasonCode": "local_findings" }
+    }
+  },
+  {
+    "name": "awaiting local attestation blocks the gate",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "cccccccccccccccccccccccccccccccccccccccc",
+      "attempt": 1,
+      "logicalDispatchId": "9999999999999999999999999999999999999999999999999999999999999999",
+      "reviewOutcome": { "state": "awaiting_local_attestation", "reasonCode": "awaiting_local_attestation" },
+      "assuranceOutcome": { "state": "fail", "reasonCode": "awaiting_local_attestation" },
+      "gateOutcome": { "state": "block", "reasonCode": "awaiting_local_attestation" }
+    }
+  },
+  {
+    "name": "local terminal error blocks the gate",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "dddddddddddddddddddddddddddddddddddddddd",
+      "attempt": 1,
+      "logicalDispatchId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "reviewOutcome": { "state": "failed_local", "reasonCode": "local_terminal_error" },
+      "assuranceOutcome": { "state": "fail", "reasonCode": "local_terminal_error" },
+      "gateOutcome": { "state": "block", "reasonCode": "local_terminal_error" }
+    }
   }
 ]

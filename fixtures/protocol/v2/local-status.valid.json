@@ -1,0 +1,29 @@
+[
+  {
+    "name": "awaiting local attestation carries no evidence digest",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lane": "assurance",
+      "attempt": 1,
+      "state": "awaiting_local_attestation",
+      "updatedAt": "2026-08-04T12:00:00Z"
+    }
+  },
+  {
+    "name": "completed local status binds its evidence digest",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lane": "assurance",
+      "attempt": 1,
+      "state": "completed_local",
+      "evidenceDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "updatedAt": "2026-08-04T12:10:00Z"
+    }
+  }
+]

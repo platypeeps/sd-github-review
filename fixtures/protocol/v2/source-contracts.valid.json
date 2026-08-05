@@ -45,6 +45,43 @@
     }
   },
   {
+    "name": "standalone all-local routes across every lane",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "review": {
+          "execution": "local-attested",
+          "attestation": {
+            "trustPolicyRef": "repo-attested-v1",
+            "allowedAssociations": ["OWNER", "MEMBER", "COLLABORATOR"],
+            "allowPrAuthor": true,
+            "maxAgeSeconds": 1800
+          }
+        },
+        "assurance": {
+          "execution": "local-attested",
+          "attestation": {
+            "trustPolicyRef": "repo-attested-v1",
+            "allowedAssociations": ["OWNER"],
+            "allowPrAuthor": false,
+            "maxAgeSeconds": 3600
+          }
+        },
+        "gate": {
+          "execution": "local-attested",
+          "attestation": {
+            "trustPolicyRef": "repo-attested-v1",
+            "allowedAssociations": ["OWNER", "MEMBER"],
+            "allowPrAuthor": false,
+            "maxAgeSeconds": 900
+          }
+        }
+      }
+    }
+  },
+  {
     "name": "managed lanes with explicit exhaustion merge policy",
     "value": {
       "schemaVersion": 2,

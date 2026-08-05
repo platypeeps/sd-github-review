@@ -1,0 +1,42 @@
+[
+  {
+    "name": "clean local assurance attestation request",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lane": "assurance",
+      "attempt": 1,
+      "configurationDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "localReceiptDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "contentDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "evidenceDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "reviewResult": "clean",
+      "producedAt": "2026-08-04T12:00:00Z"
+    }
+  },
+  {
+    "name": "findings local request with self-reported usage",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 7,
+      "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "lane": "review",
+      "attempt": 2,
+      "configurationDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "localReceiptDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "contentDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "evidenceDigest": "5555555555555555555555555555555555555555555555555555555555555555",
+      "reviewResult": "findings",
+      "producedAt": "2026-08-04T12:05:00Z",
+      "usage": {
+        "kind": "self_reported_local",
+        "inputTokens": 1200,
+        "outputTokens": 340,
+        "costTier": "low"
+      }
+    }
+  }
+]

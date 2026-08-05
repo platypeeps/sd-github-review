@@ -1,0 +1,151 @@
+[
+  {
+    "name": "request pre-asserting a GitHub actor",
+    "error": "actor is forbidden",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lane": "assurance",
+      "attempt": 1,
+      "configurationDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "localReceiptDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "contentDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "evidenceDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "reviewResult": "clean",
+      "producedAt": "2026-08-04T12:00:00Z",
+      "actor": "octo-owner"
+    }
+  },
+  {
+    "name": "request pre-asserting a trust level",
+    "error": "trustLevel is forbidden",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lane": "assurance",
+      "attempt": 1,
+      "configurationDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "localReceiptDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "contentDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "evidenceDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "reviewResult": "clean",
+      "producedAt": "2026-08-04T12:00:00Z",
+      "trustLevel": "repository_attested"
+    }
+  },
+  {
+    "name": "request pre-asserting a publication context",
+    "error": "publicationContext is forbidden",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lane": "assurance",
+      "attempt": 1,
+      "configurationDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "localReceiptDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "contentDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "evidenceDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "reviewResult": "clean",
+      "producedAt": "2026-08-04T12:00:00Z",
+      "publicationContext": { "publisher": "octo-owner" }
+    }
+  },
+  {
+    "name": "request pre-asserting authorization",
+    "error": "authorized is forbidden",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lane": "assurance",
+      "attempt": 1,
+      "configurationDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "localReceiptDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "contentDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "evidenceDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "reviewResult": "clean",
+      "producedAt": "2026-08-04T12:00:00Z",
+      "authorized": true
+    }
+  },
+  {
+    "name": "request with unknown review result",
+    "error": "reviewResult must be one of",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lane": "assurance",
+      "attempt": 1,
+      "configurationDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "localReceiptDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "contentDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "evidenceDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "reviewResult": "awaiting",
+      "producedAt": "2026-08-04T12:00:00Z"
+    }
+  },
+  {
+    "name": "request missing the evidence digest",
+    "error": "evidenceDigest must be a string",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lane": "assurance",
+      "attempt": 1,
+      "configurationDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "localReceiptDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "contentDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "reviewResult": "clean",
+      "producedAt": "2026-08-04T12:00:00Z"
+    }
+  },
+  {
+    "name": "request usage claiming a non-local source",
+    "error": "usage.kind must be one of",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lane": "assurance",
+      "attempt": 1,
+      "configurationDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "localReceiptDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "contentDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "evidenceDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "reviewResult": "clean",
+      "producedAt": "2026-08-04T12:00:00Z",
+      "usage": { "kind": "managed_billing" }
+    }
+  },
+  {
+    "name": "request smuggling findings in a nested container",
+    "error": "privacy boundary",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lane": "assurance",
+      "attempt": 1,
+      "configurationDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "localReceiptDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "contentDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "evidenceDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "reviewResult": "clean",
+      "producedAt": "2026-08-04T12:00:00Z",
+      "extra": { "findings": "line 12 leaks a secret" }
+    }
+  }
+]

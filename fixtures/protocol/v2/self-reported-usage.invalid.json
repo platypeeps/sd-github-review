@@ -1,0 +1,22 @@
+[
+  {
+    "name": "usage claiming a managed billing source",
+    "error": "kind must be one of",
+    "value": { "kind": "managed_billing", "inputTokens": 10 }
+  },
+  {
+    "name": "usage pre-asserting authority",
+    "error": "authoritative is forbidden",
+    "value": { "kind": "self_reported_local", "authoritative": true }
+  },
+  {
+    "name": "usage attaching a billing marker",
+    "error": "billing is forbidden",
+    "value": { "kind": "self_reported_local", "billing": "invoice-123" }
+  },
+  {
+    "name": "usage carrying a monetary balance",
+    "error": "privacy boundary",
+    "value": { "kind": "self_reported_local", "balance": 4200 }
+  }
+]

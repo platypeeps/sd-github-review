@@ -3,9 +3,11 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   ASSURANCE_CHECK_NAME,
+  ATTESTED_TRUST_LEVEL,
   GATE_CHECK_NAME,
   NOT_MANAGED_BUDGET_OUTCOME,
   PROTOCOL_V2_SCHEMA_MAJOR,
+  SELF_REPORTED_LOCAL_SOURCE,
   assertReviewerSelectionLabel,
   assertV2DispatchSelector,
   authorizeProjectionWrite,
@@ -15,11 +17,16 @@ import {
   decodeCandidatePreflight,
   decodeCheckProjection,
   decodeHistoricalV1Receipt,
+  decodeLocalAttestationRequest,
+  decodeLocalAttestationStatus,
+  decodeLocalReviewAuthorization,
+  decodeLocalReviewReceipt,
   decodePromptProfileBinding,
   decodeReviewerCatalog,
   decodeReviewerPlanOptions,
   decodeReviewerPlanSource,
   decodeReviewOutcomes,
+  decodeSelfReportedUsage,
   decodeSetupDiscoveryV2,
   decodeSourceContract,
   deriveV2Fingerprint,
@@ -50,6 +57,16 @@ const invalidReviewerSources = await fixture("protocol/v2/reviewer-plan-source.i
 const reviewerCatalog = (await fixture("protocol/v2/reviewer-catalog.valid.json"))[0].value;
 const validReviewerOptions = await fixture("protocol/v2/reviewer-plan-options.valid.json");
 const invalidReviewerOptions = await fixture("protocol/v2/reviewer-plan-options.invalid.json");
+const validLocalRequests = await fixture("protocol/v2/local-attestation-request.valid.json");
+const invalidLocalRequests = await fixture("protocol/v2/local-attestation-request.invalid.json");
+const validLocalAuthorizations = await fixture("protocol/v2/local-authorization.valid.json");
+const invalidLocalAuthorizations = await fixture("protocol/v2/local-authorization.invalid.json");
+const validLocalReceipts = await fixture("protocol/v2/local-receipt.valid.json");
+const invalidLocalReceipts = await fixture("protocol/v2/local-receipt.invalid.json");
+const validLocalStatuses = await fixture("protocol/v2/local-status.valid.json");
+const invalidLocalStatuses = await fixture("protocol/v2/local-status.invalid.json");
+const validLocalUsage = await fixture("protocol/v2/self-reported-usage.valid.json");
+const invalidLocalUsage = await fixture("protocol/v2/self-reported-usage.invalid.json");
 
 function clone(value) {
   return structuredClone(value);
@@ -456,6 +473,99 @@ test("v2 dispatch selector rejects v1, default, and absent selectors", () => {
     () => assertV2DispatchSelector({ contractMajor: 2, default: true }),
     /must not rely on a default selector/u,
   );
+});
+
+// --- local-attested review contracts ---------------------------------------
+
+test("decodes every local attestation request and binds exact evidence identity", () => {
+  for (const entry of validLocalRequests) {
+    const decoded = decodeLocalAttestationRequest(entry.value);
+    assert.match(decoded.headSha, /^[a-f0-9]{40,64}$/u, entry.name);
+    assert.match(decoded.evidenceDigest, /^[a-f0-9]{64}$/u, entry.name);
+    assert.ok(["review", "assurance", "gate"].includes(decoded.lane), entry.name);
+    assert.ok(["clean", "findings", "error"].includes(decoded.reviewResult), entry.name);
+    // A caller can never assert its own trust, actor, or authorization.
+    assert.equal(decoded.trustLevel, undefined, entry.name);
+    assert.equal(decoded.publicationContext, undefined, entry.name);
+  }
+});
+
+test("rejects every invalid local attestation request without echoing values", () => {
+  eachInvalid(invalidLocalRequests, decodeLocalAttestationRequest);
+  const poisoned = { ...clone(validLocalRequests[0].value), extra: { findings: "secret leak line 12" } };
+  assert.throws(
+    () => decodeLocalAttestationRequest(poisoned),
+    (error) => /privacy boundary/u.test(error.message) && !error.message.includes("secret leak"),
+    "a nested forbidden field must be rejected without echoing its value",
+  );
+});
+
+test("only authorized clean exact-head evidence mints repository-attested trust", () => {
+  for (const entry of validLocalAuthorizations) {
+    const decoded = decodeLocalReviewAuthorization(entry.value);
+    assert.equal(decoded.trustLevel, ATTESTED_TRUST_LEVEL, entry.name);
+    assert.notEqual(decoded.trustLevel, "independent", entry.name);
+    if (decoded.authorized) {
+      assert.equal(decoded.reviewResult, "clean", entry.name);
+    }
+    assert.match(decoded.attemptToken, /^[a-f0-9]{64}$/u, entry.name);
+  }
+  eachInvalid(invalidLocalAuthorizations, decodeLocalReviewAuthorization);
+});
+
+test("the authorization attempt token binds every identity input", () => {
+  const base = clone(validLocalAuthorizations[0].value);
+  const token = decodeLocalReviewAuthorization(base).attemptToken;
+  // Reordering keys does not change the token.
+  const reordered = Object.fromEntries(Object.entries(base).reverse());
+  assert.equal(decodeLocalReviewAuthorization(reordered).attemptToken, token);
+  // Changing the head changes the token.
+  const movedHead = { ...clone(base), headSha: "c".repeat(40) };
+  assert.notEqual(decodeLocalReviewAuthorization(movedHead).attemptToken, token);
+  // Changing the evidence digest changes the token.
+  const movedEvidence = { ...clone(base), evidenceDigest: "9".repeat(64) };
+  assert.notEqual(decodeLocalReviewAuthorization(movedEvidence).attemptToken, token);
+});
+
+test("local review receipts are immutable and only clean satisfies the gate", () => {
+  for (const entry of validLocalReceipts) {
+    const decoded = decodeLocalReviewReceipt(entry.value);
+    assert.equal(decoded.trustLevel, ATTESTED_TRUST_LEVEL, entry.name);
+    assert.ok(Object.isFrozen(decoded), entry.name);
+    assert.equal(decoded.gateSatisfied, decoded.outcomeClass === "completed_local", entry.name);
+  }
+  eachInvalid(invalidLocalReceipts, decodeLocalReviewReceipt);
+});
+
+test("local attestation status binds evidence only once settled", () => {
+  for (const entry of validLocalStatuses) {
+    const decoded = decodeLocalAttestationStatus(entry.value);
+    if (decoded.state === "awaiting_local_attestation") {
+      assert.equal(decoded.evidenceDigest, undefined, entry.name);
+    } else {
+      assert.match(decoded.evidenceDigest, /^[a-f0-9]{64}$/u, entry.name);
+    }
+  }
+  eachInvalid(invalidLocalStatuses, decodeLocalAttestationStatus);
+});
+
+test("self-reported usage is advisory and never authoritative budget evidence", () => {
+  for (const entry of validLocalUsage) {
+    const decoded = decodeSelfReportedUsage(entry.value);
+    assert.equal(decoded.kind, SELF_REPORTED_LOCAL_SOURCE, entry.name);
+    assert.equal(decoded.authoritative, false, entry.name);
+  }
+  eachInvalid(invalidLocalUsage, decodeSelfReportedUsage);
+});
+
+test("historical v1 receipts cannot be decoded as v2 local attestations", () => {
+  for (const entry of validV1Receipts) {
+    // A v1 summary decodes read-only as a routing hint.
+    const record = decodeHistoricalV1Receipt(entry.value);
+    assert.equal(record.readOnly, true, entry.name);
+    // It can never be re-read as a v2 local attestation request.
+    assert.throws(() => decodeLocalAttestationRequest(entry.value), undefined, entry.name);
+  }
 });
 
 // --- parallel reviewer plan compiler ---------------------------------------
