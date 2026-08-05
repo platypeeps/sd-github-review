@@ -5,21 +5,44 @@
 Define the immutable `standard-v1` retention contract family and its fixtures.
 Completes the parent retention acceptance criterion.
 
+## Delivered by 07-25 (PR #45, merged 2026-08-05)
+
+Sibling task `07-25-define-review-data-retention-policy` shipped the bulk of
+this contract family in `src/retention-policy.js` (immutable STANDARD_V1
+profile with deterministic digest) plus `fixtures/protocol/v2/retention-*.json`
+and `test/retention-policy.test.js`. Already delivered and merged:
+
+- retention-profile (`decodeRetentionProfile`, `STANDARD_V1`), record-
+  classification (`decodeRecordClassification`), lifecycle
+  (`computeRecordLifecycle`, `RETENTION_LIFECYCLE_STATES`), legal-hold
+  (`decodeLegalHold`, `LEGAL_HOLD_STATES`), status (`decodeRetentionStatus`,
+  `decodeRetentionStatusReport`), purge request/progress/result
+  (`decodePurgeRequest`, `assertLivePurgeWithinSla`), coverage
+  (`summarizeCoverage`, `buildAnonymousAggregate`), transfer/removal
+  (`decodeRepositoryLifecycleEvent`, `REPOSITORY_LIFECYCLE_KINDS`).
+- seven-day live deletion SLA and 35-day backup hard-max enforced via
+  `livePurgeSlaDays` / `backupHardMaxDays` (`authorizeRestoreReads`).
+- Fixtures: `retention-standard-v1`, `retention-status.{valid,invalid}`,
+  `retention-purge.{valid,invalid}`, `retention-legal-hold.{valid,invalid}`,
+  `retention-privacy-fields.invalid`; suite green under npm test + syntax +
+  ci-parity.
+
+This task is now scoped to the residual gaps below, not a re-delivery.
+
 ## Requirements
 
-- Define immutable retention-profile, record-classification, lifecycle, legal-
-  hold, status, purge request/progress/result, deletion-receipt, backup-expiry,
-  transfer/removal, and coverage schemas for `standard-v1`.
-- Fixtures cover destructive authorization, idempotent purge, seven-day live
-  deletion, 35-day backup expiry, holds, transfer/removal, deletion-journal
-  restore, and coverage gaps.
+- Add the `deletion-receipt` decoder (idempotent deletion outcome envelope with
+  its privacy validation) not covered by the shipped 07-25 suite.
+- Add the fixtures still missing after 07-25: destructive-authorization,
+  transfer/removal, deletion-journal restore, and coverage-gaps.
 
 ## Acceptance Criteria
 
-- [ ] Retention fixtures cover `standard-v1`, destructive authorization,
-      idempotent purge, seven-day live deletion, 35-day backup expiry, holds,
-      transfer/removal, deletion-journal restore, and coverage gaps (parent
-      retention AC).
+- [ ] `deletion-receipt` decoder added to `src/retention-policy.js` with
+      privacy/ordering validation matching the existing decoder conventions and
+      a valid/invalid fixture pair.
+- [ ] Fixtures added for destructive-authorization, transfer/removal, deletion-
+      journal restore, and coverage-gaps (parent retention AC completeness).
 - [ ] npm test, syntax check, metadata + ci-parity validation, coverage gate green.
 
 ## Dependencies
