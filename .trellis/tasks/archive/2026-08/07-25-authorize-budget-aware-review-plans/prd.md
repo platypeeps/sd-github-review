@@ -46,29 +46,29 @@ and persist authorization before dispatch.
 
 ## Acceptance Criteria
 
-- [ ] Tests cover first eligible selection, explicit override, shared pool,
+- [x] Tests cover first eligible selection, explicit override, shared pool,
       stale/unknown state, proven budget exhaustion, deferred assurance, and
       blocked/passing gate outcomes.
-- [ ] Unverifiable, policy, authentication, and framework failures always block
+- [x] Unverifiable, policy, authentication, and framework failures always block
       regardless of the lane's budget-exhaustion merge policy.
-- [ ] Trusted/untrusted, malformed, ambiguous, and invalid-alias command tests
+- [x] Trusted/untrusted, malformed, ambiguous, and invalid-alias command tests
       cover one-attempt precedence and deterministic safe suggestions.
-- [ ] Fixed-mode and trusted-command fixtures with conflicting broad route
+- [x] Fixed-mode and trusted-command fixtures with conflicting broad route
       labels retain the higher-priority decision; automatic mode with the same
       conflict still fails visibly.
-- [ ] Every options form returns bounded deterministic choices and proves zero
+- [x] Every options form returns bounded deterministic choices and proves zero
       attempt, reservation, persistence, and dispatch side effects.
-- [ ] Reserved candidate/slot labels fail visibly while stable broad route
+- [x] Reserved candidate/slot labels fail visibly while stable broad route
       labels retain their existing route semantics.
-- [ ] Response mismatch, replay conflict, changed head, or stale configuration
+- [x] Response mismatch, replay conflict, changed head, or stale configuration
       cannot authorize dispatch.
-- [ ] Prompt-profile mismatch, private-resolution failure, or prepared-request
+- [x] Prompt-profile mismatch, private-resolution failure, or prepared-request
       fingerprint drift cannot authorize dispatch or another candidate.
-- [ ] Oversized, uncountable, unpriced, unit-mismatched, or unenforceable
+- [x] Oversized, uncountable, unpriced, unit-mismatched, or unenforceable
       requests fail before reservation; no fixture silently truncates context
       or escalates to another lane.
-- [ ] Authorization persistence is idempotent and precedes every adapter call.
-- [ ] No internal adapter fallback or post-ambiguity next-candidate selection is
+- [x] Authorization persistence is idempotent and precedes every adapter call.
+- [x] No internal adapter fallback or post-ambiguity next-candidate selection is
       possible.
 
 ## Dependencies
