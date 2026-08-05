@@ -39,9 +39,11 @@ const REASON_MAX_BYTES = 512;
 const MAX_COLLECTION_ITEMS = 64;
 const MAX_NESTING_DEPTH = 32;
 
-// The largest budget quantity any observation, reservation, or charge may
-// declare. Kept comfortably below Number.MAX_SAFE_INTEGER so sums of a bounded
-// number of leases never lose precision.
+// The largest budget quantity any single observation, reservation, or charge
+// may declare. This bounds one quantity, not an accumulated total: the settled
+// lease log grows without bound over a pool's life, so `poolAggregates` fails
+// closed if a running total ever crosses Number.MAX_SAFE_INTEGER rather than
+// pretending a fixed lease count keeps every sum exact.
 const AMOUNT_MAX = 1_000_000_000_000_000;
 
 // --- controlled vocabularies (mirrored, never imported) --------------------
@@ -89,6 +91,7 @@ export const INELIGIBILITY_REASONS = Object.freeze([
   "candidate_quarantined",
   "observation_stale",
   "observation_unknown",
+  "lease_expiry_not_future",
 ]);
 
 export const QUARANTINE_STATES = Object.freeze(["quarantined", "released"]);
@@ -718,6 +721,14 @@ function poolAggregates(state, poolId) {
       settledTotal += lease.settledCharge;
     }
   }
+  // Fail closed rather than silently lose precision: per-quantity bounds cap a
+  // single amount, but the settled log grows without bound over a pool's life,
+  // so an accumulated total can still cross the safe-integer boundary. A pool
+  // whose totals can no longer be represented exactly must not authorize new
+  // capacity math against them.
+  if (!Number.isSafeInteger(reservedTotal) || !Number.isSafeInteger(settledTotal)) {
+    throw new Error(`pool ${poolId} aggregate totals exceed the safe-integer bound`);
+  }
   return { reservedTotal, settledTotal };
 }
 
@@ -794,6 +805,13 @@ export function reserve(state, requestValue, { nowIso } = {}) {
   }
   if (pool.confidence === "unknown") {
     return ineligible("observation_unknown");
+  }
+  // Fail closed on a lease that is already dead on arrival: an expiry at or
+  // before the reservation instant would hold capacity until a later
+  // expireLeases() sweep, breaking the invariant that a live hold reflects only
+  // a lease whose deadline is still ahead.
+  if (Date.parse(request.leaseExpiresAt) <= nowMs) {
+    return ineligible("lease_expiry_not_future");
   }
   const { reservedTotal, settledTotal } = poolAggregates(state, pool.poolId);
   if (realCapacityOf(pool, settledTotal) < 0) {
@@ -1002,7 +1020,9 @@ export function reconcile(state, value, { nowIso } = {}) {
 // non-stale observation whose amount restores non-negative real capacity clears
 // an `overdrawn` pool (verified replenishment). A stale or unknown observation
 // updates the reading but can NEVER clear overdrawn — the pool keeps failing
-// closed. Clearing an overdrawn pool never touches candidate quarantine.
+// closed. Conversely, any observation whose amount no longer covers settled
+// charges (real capacity negative) drives the pool overdrawn regardless of
+// freshness. Clearing an overdrawn pool never touches candidate quarantine.
 export function applyObservation(state, observationValue, { nowIso } = {}) {
   requireDecodedState(state);
   const now = timestampValue(nowIso, "nowIso");
@@ -1028,7 +1048,14 @@ export function applyObservation(state, observationValue, { nowIso } = {}) {
   const { settledTotal } = poolAggregates(next, pool.poolId);
   const restored = realCapacityOf(nextPool, settledTotal) >= 0;
   let cleared = false;
-  if (nextPool.overdrawn && fresh && restored) {
+  if (!restored) {
+    // A new reading that no longer covers settled charges drives the pool
+    // overdrawn regardless of freshness, so projectPool().state can never
+    // report "usable" while realCapacity is negative. Fail closed.
+    nextPool.overdrawn = true;
+  } else if (nextPool.overdrawn && fresh) {
+    // Only a KNOWN, non-stale reading that restores non-negative capacity
+    // clears overdrawn (verified replenishment).
     nextPool.overdrawn = false;
     cleared = true;
   }
@@ -1060,7 +1087,11 @@ export function adjustPool(state, value, { nowIso } = {}) {
   const { settledTotal } = poolAggregates(next, poolId);
   const restored = realCapacityOf(nextPool, settledTotal) >= 0;
   let cleared = false;
-  if (nextPool.overdrawn && restored) {
+  if (!restored) {
+    // A negative adjustment that pushes real capacity below zero fails closed
+    // to overdrawn, keeping projectPool().state consistent with realCapacity.
+    nextPool.overdrawn = true;
+  } else if (nextPool.overdrawn) {
     nextPool.overdrawn = false;
     cleared = true;
   }

@@ -15,6 +15,7 @@ import {
   quarantineCandidate,
   reconcile,
   releaseQuarantine,
+  releaseReservation,
   reserve,
   stableBudgetLedgerJson,
 } from "../src/review-budget-ledger.js";
@@ -494,4 +495,65 @@ test("a decoded ledger state and every decision are deeply frozen", () => {
   assert.ok(Object.isFrozen(reserved.state));
   assert.ok(Object.isFrozen(reserved.decision));
   assert.ok(Object.isFrozen(reserved.decision.lease));
+});
+
+// ===========================================================================
+// Review-fix regressions (PR #48, Copilot review): keep a reservation from
+// holding phantom capacity, keep pool state consistent with real capacity, and
+// exercise releaseReservation.
+// ===========================================================================
+
+test("reserve fails closed on a lease expiry at or before the reservation instant", () => {
+  const base = ledger();
+  // Expiry equal to now: already dead on arrival.
+  const atNow = reserve(base, request({ leaseExpiresAt: NOW }), { nowIso: NOW });
+  assert.equal(atNow.decision.outcome, "ineligible");
+  assert.equal(atNow.decision.reason, "lease_expiry_not_future");
+  assert.equal(Object.keys(atNow.state.leases).length, 0, "a refused request holds nothing");
+  // Expiry strictly in the past.
+  const past = reserve(base, request({ leaseExpiresAt: "2025-12-31T23:00:00Z" }), { nowIso: NOW });
+  assert.equal(past.decision.reason, "lease_expiry_not_future");
+  // A strictly-future expiry still reserves.
+  const ok = reserve(base, request({ leaseExpiresAt: "2026-01-01T01:00:00Z" }), { nowIso: NOW });
+  assert.equal(ok.decision.outcome, "reserved");
+});
+
+test("applyObservation drives the pool overdrawn when a lowered reading no longer covers settled charges", () => {
+  const base = ledger([observation({ amount: 10_000, safetyMargin: 0 })]);
+  const reserved = reserve(base, request({ conservativeMaxCharge: 4_000, hardRequestLimit: 4_000, expectedAverage: 1_000 }), { nowIso: NOW });
+  const authorized = authorize(reserved.state, { requestFingerprint: reserved.decision.lease.requestFingerprint, revision: 1, authorizedAttempt: 1 }, { nowIso: NOW });
+  const settled = reconcile(authorized.state, { requestFingerprint: reserved.decision.lease.requestFingerprint, revision: 1, actualCharge: 4_000 }, { nowIso: NOW });
+  assert.equal(projectPool(settled.state, "kimi-pool").state, "usable", "still solvent after the settled charge");
+  // A fresh, known reading that reports far less capacity than already spent.
+  const lowered = applyObservation(settled.state, observation({ amount: 1_000, safetyMargin: 0, freshnessDeadline: "2026-01-02T00:00:00Z" }), { nowIso: NOW });
+  const pool = projectPool(lowered.state, "kimi-pool");
+  assert.ok(pool.realCapacity < 0, "the lowered reading no longer covers settled charges");
+  assert.equal(pool.state, "overdrawn", "state fails closed rather than reporting usable with negative capacity");
+  const blocked = reserve(lowered.state, request({ identity: { attempt: 2 }, conservativeMaxCharge: 100, hardRequestLimit: 100, expectedAverage: 50 }), { nowIso: NOW });
+  assert.equal(blocked.decision.reason, "pool_overdrawn");
+});
+
+test("adjustPool drives the pool overdrawn when a negative adjustment pushes real capacity below zero", () => {
+  const base = ledger([observation({ amount: 5_000, safetyMargin: 0 })]);
+  const adjusted = adjustPool(base, { poolId: "kimi-pool", audited: true, actor: "billing-ops", reason: "verified provider clawback", capacityDelta: -6_000 }, { nowIso: NOW });
+  const pool = projectPool(adjusted.state, "kimi-pool");
+  assert.ok(pool.realCapacity < 0, "the clawback drives real capacity negative");
+  assert.equal(pool.state, "overdrawn");
+  assert.equal(adjusted.decision.clearedOverdrawn, false);
+});
+
+test("releaseReservation returns a held reservation's capacity and replays idempotently", () => {
+  const base = ledger([observation({ amount: 5_000, safetyMargin: 0 })]);
+  const reserved = reserve(base, request({ conservativeMaxCharge: 4_000, hardRequestLimit: 4_000, expectedAverage: 1_000 }), { nowIso: NOW });
+  const fingerprint = reserved.decision.lease.requestFingerprint;
+  assert.equal(projectPool(reserved.state, "kimi-pool").reservedTotal, 4_000);
+  const released = releaseReservation(reserved.state, { requestFingerprint: fingerprint }, { nowIso: NOW });
+  assert.equal(released.decision.outcome, "released");
+  assert.equal(released.decision.replay, false);
+  assert.equal(released.state.leases[fingerprint].state, "released");
+  assert.equal(projectPool(released.state, "kimi-pool").reservedTotal, 0, "released capacity is no longer held");
+  // Releasing an already-terminal lease is an idempotent replay with no mutation.
+  const replay = releaseReservation(released.state, { requestFingerprint: fingerprint }, { nowIso: NOW });
+  assert.equal(replay.decision.replay, true);
+  assert.equal(replay.state, released.state, "a replay returns the same state object unchanged");
 });
