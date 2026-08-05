@@ -543,6 +543,18 @@ test("adjustPool drives the pool overdrawn when a negative adjustment pushes rea
   assert.equal(adjusted.decision.clearedOverdrawn, false);
 });
 
+test("applyObservation fails closed when the observation's candidate set disagrees with the pool", () => {
+  const base = ledger([observation({ amount: 10_000, safetyMargin: 0, candidates: ["kimi-review"] })]);
+  // Same poolId, same units/kind, but a different candidate membership.
+  assert.throws(
+    () => applyObservation(base, observation({ amount: 20_000, safetyMargin: 0, candidates: ["qwen-review"], freshnessDeadline: "2026-01-02T00:00:00Z" }), { nowIso: NOW }),
+    /candidates do not match pool/u,
+  );
+  // A matching candidate set still updates the reading.
+  const ok = applyObservation(base, observation({ amount: 20_000, safetyMargin: 0, candidates: ["kimi-review"], freshnessDeadline: "2026-01-02T00:00:00Z" }), { nowIso: NOW });
+  assert.equal(projectPool(ok.state, "kimi-pool").authorizedCapacity, 20_000);
+});
+
 test("a prototype-key pool id fails closed as an unknown pool", () => {
   const base = ledger();
   // "constructor" passes the alias charset but must not resolve to an inherited

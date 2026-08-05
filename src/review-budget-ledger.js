@@ -1041,6 +1041,15 @@ export function applyObservation(state, observationValue, { nowIso } = {}) {
   if (observation.kind !== pool.kind) {
     throw new Error(`budgetObservation.kind ${observation.kind} does not match pool kind ${pool.kind}`);
   }
+  // The candidate set is part of a pool's identity. A fresh reading may update
+  // capacity/provider, but a disagreement about which candidates serialize
+  // against this pool is a pool-identity mismatch and fails closed rather than
+  // silently overwriting the balance under a different membership.
+  const observed = [...observation.candidates].sort();
+  const configured = [...pool.candidates].sort();
+  if (observed.length !== configured.length || observed.some((c, i) => c !== configured[i])) {
+    throw new Error(`budgetObservation.candidates do not match pool ${pool.poolId} candidates`);
+  }
   const next = structuredClone(state);
   const nextPool = next.pools[pool.poolId];
   nextPool.authorizedCapacity = observation.amount;
