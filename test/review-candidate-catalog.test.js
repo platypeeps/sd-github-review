@@ -174,6 +174,26 @@ test("projections reject unverifiable capabilities, secrets, endpoints, and bodi
   eachInvalid(invalidProjections, decodeCandidateSafeProjection);
 });
 
+test("a projection fails closed on an inconsistent kind/prompt-profile binding", () => {
+  const base = clone(validProjections[0].value);
+  const external = { ...clone(base), kind: "external", promptProfile: { mode: "handler-managed" } };
+  assert.throws(
+    () => decodeCandidateSafeProjection(external),
+    /must reference a prompt profile for an external candidate/u,
+    "external projection cannot be handler-managed",
+  );
+  const nativeReferenced = {
+    ...clone(base),
+    kind: "native",
+    promptProfile: { mode: "referenced", alias: "p", version: "1.0.0", digest: "1".repeat(64), compatibleHandlers: ["pr-agent"], capabilities: ["diff-review"] },
+  };
+  assert.throws(
+    () => decodeCandidateSafeProjection(nativeReferenced),
+    /must be handler-managed for a native candidate/u,
+    "native projection cannot reference a profile",
+  );
+});
+
 // --- privacy boundary -------------------------------------------------------
 
 test("catalog rejects every forbidden content field without echoing its value", () => {
@@ -249,6 +269,24 @@ test("a quarantine overlay is keyed to an alias and never mutates a pinned versi
     }),
     /replacementModel is valid only for a replaced overlay/u,
   );
+});
+
+test("a quarantine overlay rejects catalog content under any spelling variant", () => {
+  for (const smuggled of ["Candidates", "prompt_profiles", "promptProfiles", "POLICY"]) {
+    assert.throws(
+      () => decodeCandidateQuarantine({
+        schemaMajor: 2,
+        catalogDigest: "1".repeat(64),
+        alias: "kimi-review",
+        state: "quarantined",
+        reason: "bad",
+        effectiveAt: "2026-08-05T00:00:00Z",
+        [smuggled]: [],
+      }),
+      /never mutates a pinned catalog version/u,
+      smuggled,
+    );
+  }
 });
 
 // --- version transition / rollback -----------------------------------------

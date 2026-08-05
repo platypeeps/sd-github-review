@@ -167,6 +167,17 @@ const IDENTIFYING_FIELDS = new Set([
   "provideraccountid",
 ]);
 
+// Catalog-content keys a quarantine overlay must never carry, checked after the
+// same case/separator normalization the privacy walker uses so no spelling
+// variant can imply a mutation of a pinned catalog version.
+const CATALOG_CONTENT_FIELDS = new Set([
+  "candidate",
+  "candidates",
+  "promptprofile",
+  "promptprofiles",
+  "policy",
+]);
+
 // --- primitive validators (matching protocol-v2 / retention semantics) -----
 
 function isPlainObject(value) {
@@ -846,6 +857,16 @@ export function decodeCandidateSafeProjection(value, field = "candidateSafeProje
     throw new Error(`${field}.safetyMargin must be below hardRequestCostLimit`);
   }
   const binding = decodePromptProfileBinding(projection.promptProfile, `${field}.promptProfile`);
+  const projectionKind = enumValue(projection.kind, `${field}.kind`, CANDIDATE_KIND_SET);
+  // The projection carries the same external => referenced / native =>
+  // handler-managed invariant the full candidate record enforces; an
+  // inconsistent public projection must fail closed, not decode.
+  if (projectionKind === "external" && binding.mode !== "referenced") {
+    throw new Error(`${field}.promptProfile must reference a prompt profile for an external candidate`);
+  }
+  if (projectionKind === "native" && binding.mode !== "handler-managed") {
+    throw new Error(`${field}.promptProfile must be handler-managed for a native candidate`);
+  }
   const profileProjection = { mode: binding.mode };
   if (binding.mode === "referenced") {
     profileProjection.alias = binding.alias;
@@ -864,7 +885,7 @@ export function decodeCandidateSafeProjection(value, field = "candidateSafeProje
     schemaMajor: CATALOG_SCHEMA_MAJOR,
     catalogDigest: digestValue(projection.catalogDigest, `${field}.catalogDigest`),
     alias: aliasValue(projection.alias, `${field}.alias`),
-    kind: enumValue(projection.kind, `${field}.kind`, CANDIDATE_KIND_SET),
+    kind: projectionKind,
     handler: targetValue(projection.handler, `${field}.handler`),
     model: targetValue(projection.model, `${field}.model`),
     costTier: enumValue(projection.costTier, `${field}.costTier`, COST_TIER_SET),
@@ -909,9 +930,12 @@ export function decodeCandidateQuarantine(value, field = "candidateQuarantine") 
   assertEncodedSize(value, field, RESPONSE_MAX_BYTES);
   const overlay = objectValue(value, field);
   schemaVersion(overlay.schemaMajor, `${field}.schemaMajor`);
-  for (const forbidden of ["candidates", "promptProfiles", "policy"]) {
-    if (overlay[forbidden] !== undefined) {
-      throw new Error(`${field}.${forbidden} is forbidden; a quarantine overlay never mutates a pinned catalog version`);
+  // Reject embedded catalog content by NORMALIZED key so a separator/casing
+  // variant (e.g. `Candidates`, `prompt_profiles`) cannot smuggle catalog
+  // content past an exact-name check and mutate a pinned version by implication.
+  for (const key of Object.keys(overlay)) {
+    if (CATALOG_CONTENT_FIELDS.has(key.toLowerCase().replace(/[^a-z0-9]/gu, ""))) {
+      throw new Error(`${field}.${key} is forbidden; a quarantine overlay never mutates a pinned catalog version`);
     }
   }
   const state = enumValue(overlay.state, `${field}.state`, QUARANTINE_STATE_SET);
