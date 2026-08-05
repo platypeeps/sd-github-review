@@ -1909,3 +1909,45 @@ Implemented the pure-leaf review budget ledger contract module (observations, sh
 ### Next Steps
 
 - None - task complete
+
+
+## Session 48: Authorize budget-aware review plans (PR #49)
+
+**Date**: 2026-08-05
+**Task**: Authorize budget-aware review plans (PR #49)
+**Branch**: `feat/07-25-authorize-budget-aware-review-plans`
+
+### Summary
+
+Implemented src/review-plan-authorization.js: pure-leaf managed-mode review plan preparation, A-011 trusted-command/route-label precedence, bounded read-only /review options, control-plane request shaping, and idempotent durable authorization. Converged one Copilot review round (3 real bugs fixed).
+
+### Main Changes
+
+- New src/review-plan-authorization.js contract with interpretReviewCommand, resolveSelectionPrecedence, answerOptionsQuery, prepareManagedPlan, authorizePlan; 36-test conformance suite
+- Copilot fixes: budget-exhaustion replay idempotency, fixed-mode source label, non-/review body ignore path; 3 regression tests
+- Updated dependency-boundaries matrix, package.json check chain, backend directory-structure inventory
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d08a37b` | feat: add budget-aware review plan authorization contract |
+| `a37535c` | fix: correct budget-exhaustion replay, fixed-mode source, and non-command ignore |
+| `7dbfa95` | chore: record task branch for authorize-budget-aware-review-plans |
+| `0aea6e5` | chore(task): archive 07-25-authorize-budget-aware-review-plans |
+
+### Testing
+
+- [OK] node --test full suite: 502 pass, 0 fail
+- [OK] npm run check: exit 0
+- [OK] sd-check gate: 7/7 passed
+- [OK] Prism (false-positive verified), Gito clean, Copilot round 2 clean at a37535c
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
