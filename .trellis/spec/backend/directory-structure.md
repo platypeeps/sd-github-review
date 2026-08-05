@@ -21,6 +21,13 @@ fixtures/protocol/   # canonical versioned protocol behavior fixtures
 fixtures/setup/      # read-only setup discovery fixtures
 config/              # published versioned setup capability descriptor
 scripts/             # repository validation, consumer lifecycle, and SD pack helpers
+  install-consumer.mjs        # thin consumer-installer CLI entrypoint (process I/O)
+  consumer-installer.mjs      # consumer lifecycle orchestration + public re-exports
+  consumer-installer/         # decomposed installer boundaries (downhill deps)
+    codecs.mjs                # leaf: constants, manifest/config/CLI codecs, validation
+    transport.mjs             # gh/git subprocess transport, GitHubCli, provenance
+    persistence.mjs           # path-containment guard, atomic write/remove, local state
+    plan.mjs                  # pure lifecycle planning from decoded snapshots
 examples/            # consumer-owned workflow templates
 docs/                # project and release operations
 .github/workflows/   # repository CI only
@@ -96,10 +103,24 @@ single queryable source for priority, ownership, dependencies, and status.
   `test/shared-service-parity.test.js`.
 - Put repository-only validation in `scripts/`; it must not become part of the
   shipped Action runtime.
-- Keep consumer installation lifecycle code in `scripts/consumer-installer.mjs`
-  with a thin `scripts/install-consumer.mjs` entrypoint. It may manage consumer
-  files and bounded GitHub metadata, but must not import into the Action
-  runtime, commit consumer changes, or serialize provider credentials.
+- Keep consumer installation lifecycle code under `scripts/consumer-installer.mjs`
+  and `scripts/consumer-installer/`, with a thin `scripts/install-consumer.mjs`
+  entrypoint. It may manage consumer files and bounded GitHub metadata, but must
+  not import into the Action runtime, commit consumer changes, or serialize
+  provider credentials. The lifecycle is decomposed along one downhill
+  dependency direction: `consumer-installer/codecs.mjs` is the leaf (constants,
+  manifest/config/CLI codecs, `validateConfiguration`, `decodeManifest`);
+  `transport.mjs` (subprocess `gh`/git transport, `GitHubCli`, source
+  provenance), `persistence.mjs` (containment guard, atomic write/remove, local
+  state), and pure `plan.mjs` (resource/manifest planning from decoded
+  snapshots) import only the codec leaf; `consumer-installer.mjs` is
+  orchestration (`resolveTarget`, `applyRemoteActions`, install/update/adopt/
+  check/uninstall, `runConsumerInstaller`) and re-exports every public symbol so
+  the entrypoint and test suite import from it unchanged. `plan.mjs` performs no
+  filesystem, `gh`, git, or environment access.
+  `test/installer-dependency-boundaries.test.js` freezes this import matrix
+  (leaf purity, completeness, and acyclicity) so a future edit cannot re-invert
+  transport/persistence/plan into a cycle.
 
 ## Naming Conventions
 

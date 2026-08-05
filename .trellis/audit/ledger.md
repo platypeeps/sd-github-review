@@ -111,9 +111,9 @@ Committed cross-session audit findings managed by sd-audit-repo.
 - fix: Centralize normalized policy and shared dispatch services behind thin composition roots.
 
 ## A-009 — The consumer installer is an undecomposed lifecycle subsystem
-- status: open
-- notes: Trellis owner `07-25-decompose-consumer-installer-lifecycle`; remediation planning created 2026-07-25.
-- severity: P2 · effort: M · confidence: Plausible
+- status: fixed
+- notes: Trellis owner `07-25-decompose-consumer-installer-lifecycle`; remediation planning created 2026-07-25; verified fixed on the implementation head (branch `refactor/a-009-decompose-consumer-installer`, 2026-08-04). `scripts/consumer-installer.mjs` (1459→488 lines) is now orchestration-only and re-exports every public symbol so the CLI entrypoint and existing suite import unchanged. Lifecycle concerns were split into leaf `scripts/consumer-installer/codecs.mjs` (constants, manifest/config/CLI codecs, validation), `transport.mjs` (subprocess runners + redaction, `GitHubCli`, git provenance), `persistence.mjs` (containment guard, atomic write/remove, local state), and pure `plan.mjs` (resource/manifest planning). Downhill dependency direction (codecs leaf; transport/persistence/plan import only codecs; orchestrator imports the four) is frozen by `test/installer-dependency-boundaries.test.js` (matrix + completeness + leaf-purity + acyclicity); `test/installer-modules.test.js` adds 22 boundary tests. Existing lifecycle/entrypoint/metadata tests unchanged. Gates green: 288/288 tests, coverage OK (global 93.73% L / 84.03% B / 95.02% F), `npm run check`, `validate:metadata`, install-audit, `git diff --check`. No secret/exact-head/ownership/no-duplicate-side-effect regression.
+- severity: P2 · effort: M · confidence: Verified
 - dimension: architecture
 - first-seen: 2026-07-25 @ 2eeca60
 - last-seen: 2026-07-25 @ 2eeca60

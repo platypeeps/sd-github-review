@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 39
+- **Total Sessions**: 40
 - **Last Active**: 2026-08-04
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1587 | Active |
+| `journal-1.md` | ~1626 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 40 | 2026-08-04 | Decompose consumer installer lifecycle (A-009) | `22d4399` | `refactor/a-009-decompose-consumer-installer` |
 | 39 | 2026-08-04 | Consolidate routing policy boundaries (A-008) | `8743298`, `874f47a`, `785bb52`, `deda6a0` | `codex/consolidate-routing-policy-boundaries` |
 | 38 | 2026-08-04 | Bound review remote operations (A-012): request + subprocess timeouts | `a8a9523`, `c91e9e2`, `b48e8a5`, `c44afc1`, `68c4819`, `958c759`, `1436553` | `codex/bound-review-remote-operations` |
 | 37 | 2026-08-04 | Align local full-check with CI package gates (A-017) | `787b8e4`, `5943855`, `37a8d56`, `b376d60`, `01fd778` | `codex/align-local-full-check-with-ci` |

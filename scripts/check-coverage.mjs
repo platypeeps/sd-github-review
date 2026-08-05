@@ -18,13 +18,26 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 
 // Coverage is measured only for shipped product code; test files, fixtures, and
 // dev tooling are excluded so the numbers reflect what consumers actually run.
-const INCLUDES = ["src/**", "scripts/consumer-installer.mjs", "scripts/install-consumer.mjs"];
+const INCLUDES = [
+  "src/**",
+  "scripts/consumer-installer.mjs",
+  "scripts/consumer-installer/**",
+  "scripts/install-consumer.mjs",
+];
 
 // [lines, branches, functions] minimum percentages.
 const GLOBAL_FLOOR = { lines: 88, branches: 77, functions: 88 };
 const FILE_FLOORS = {
   "src/index.js": { lines: 95, branches: 82, functions: 88 },
-  "scripts/consumer-installer.mjs": { lines: 82, branches: 73, functions: 85 },
+  // A-009 split scripts/consumer-installer.mjs into the four focused modules
+  // below. Floors sit a few points under observed coverage (orchestrator
+  // 90.78/81.90/100; codecs 89.02/75.83/95; transport 95.59/83.52/93.55;
+  // persistence 97.69/92.86/92.31; plan 96.89/95.83/100).
+  "scripts/consumer-installer.mjs": { lines: 86, branches: 77, functions: 95 },
+  "scripts/consumer-installer/codecs.mjs": { lines: 84, branches: 70, functions: 90 },
+  "scripts/consumer-installer/transport.mjs": { lines: 90, branches: 78, functions: 88 },
+  "scripts/consumer-installer/persistence.mjs": { lines: 93, branches: 87, functions: 87 },
+  "scripts/consumer-installer/plan.mjs": { lines: 92, branches: 90, functions: 95 },
   "scripts/install-consumer.mjs": { lines: 70, branches: 45, functions: 60 },
 };
 
