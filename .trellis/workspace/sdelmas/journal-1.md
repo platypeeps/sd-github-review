@@ -1865,3 +1865,47 @@ Resumed the work-backlog loop at iteration 5 and shipped the pure deterministic 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 47: Ship review budget ledger contract (PR #48)
+
+**Date**: 2026-08-05
+**Task**: Ship review budget ledger contract (PR #48)
+**Branch**: `feat/07-25-define-review-budget-ledger`
+
+### Summary
+
+Implemented the pure-leaf review budget ledger contract module (observations, shared/independent pools, idempotent reservations/leases, overdrawn/quarantine, standard-v1 retention classification) with a 34-test conformance suite. Addressed 5 Copilot review findings (expiry fail-closed, safe-integer overflow guard, invariant comment, overdrawn-on-lowered-observation/negative-adjustment, releaseReservation coverage). Routed backend absent -> local Prism/Gito + direct Copilot review, all clean.
+
+### Main Changes
+
+- Add src/review-budget-ledger.js pure-leaf contract: bounded authoritative observations, shared/independent pools, idempotent reservations/leases bound to full review identity, explicit overdrawn/quarantine, classifyBudgetRetention for standard-v1
+- Register module in dependency-boundaries ALLOWED matrix and package.json check chain; record in backend directory-structure spec
+- Review hardening: lease_expiry_not_future fail-closed; poolAggregates safe-integer overflow guard; applyObservation/adjustPool set overdrawn when real capacity negative; releaseReservation regression tests
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `694d194` | feat: define review budget ledger contract |
+| `27705c9` | docs: record review-budget-ledger module in backend spec |
+| `36694a1` | fix: harden review budget ledger per PR #48 review |
+| `6aa7452` | chore: record task branch for finalization |
+| `388e830` | chore(task): archive 07-25-define-review-budget-ledger |
+
+### Testing
+
+- [OK] node --test test/review-budget-ledger.test.js — 34/34 pass
+- [OK] npm test — 463/463 pass, 0 fail
+- [OK] npm run check — exit 0
+- [OK] sd-check deterministic gate — 7/7 passed at head 36694a1
+- [OK] Prism + Gito local review — 0 findings; Copilot — no new comments at 36694a1
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
