@@ -21,16 +21,16 @@ Extend v2 configuration and planning contracts for explicit bounded variable rev
 
 ## Acceptance Criteria
 
-- [ ] One-, two-, and three-plus-slot fixtures compile and plan deterministically.
-- [ ] Overlap, invalid threshold, wrong lane, unknown selector, duplicate slot,
+- [x] One-, two-, and three-plus-slot fixtures compile and plan deterministically.
+- [x] Overlap, invalid threshold, wrong lane, unknown selector, duplicate slot,
       and ambiguous override fixtures fail before reservation.
-- [ ] Options fixtures cover zero, one, and many overridable slots, invalid
+- [x] Options fixtures cover zero, one, and many overridable slots, invalid
       aliases, deterministic safe suggestions, and zero plan side effects.
-- [ ] Reserved candidate/slot labels fail while broad lane labels retain their
+- [x] Reserved candidate/slot labels fail while broad lane labels retain their
       existing semantics.
-- [ ] Cheap and deep plans remain independent and never synthesize contextual
+- [x] Cheap and deep plans remain independent and never synthesize contextual
       defaults.
-- [ ] Parent/child identities change only with their documented inputs.
+- [x] Parent/child identities change only with their documented inputs.
 
 ## Dependencies
 
