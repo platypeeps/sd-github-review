@@ -4,9 +4,11 @@ import test from "node:test";
 import {
   ASSURANCE_CHECK_NAME,
   ATTESTED_TRUST_LEVEL,
+  CLEARANCE_DECISIONS,
   GATE_CHECK_NAME,
   NOT_MANAGED_BUDGET_OUTCOME,
   PROTOCOL_V2_SCHEMA_MAJOR,
+  QUARANTINE_STATUS_STATES,
   SELF_REPORTED_LOCAL_SOURCE,
   assertReviewerSelectionLabel,
   assertV2DispatchSelector,
@@ -16,12 +18,15 @@ import {
   decodeCandidateOptionsResponse,
   decodeCandidatePreflight,
   decodeCheckProjection,
+  decodeClearanceRequest,
+  decodeClearanceResponse,
   decodeHistoricalV1Receipt,
   decodeLocalAttestationRequest,
   decodeLocalAttestationStatus,
   decodeLocalReviewAuthorization,
   decodeLocalReviewReceipt,
   decodePromptProfileBinding,
+  decodeQuarantineStatus,
   decodeReviewerCatalog,
   decodeReviewerPlanOptions,
   decodeReviewerPlanSource,
@@ -67,6 +72,12 @@ const validLocalStatuses = await fixture("protocol/v2/local-status.valid.json");
 const invalidLocalStatuses = await fixture("protocol/v2/local-status.invalid.json");
 const validLocalUsage = await fixture("protocol/v2/self-reported-usage.valid.json");
 const invalidLocalUsage = await fixture("protocol/v2/self-reported-usage.invalid.json");
+const validQuarantineStatuses = await fixture("protocol/v2/quarantine-status.valid.json");
+const invalidQuarantineStatuses = await fixture("protocol/v2/quarantine-status.invalid.json");
+const validClearanceRequests = await fixture("protocol/v2/clearance-request.valid.json");
+const invalidClearanceRequests = await fixture("protocol/v2/clearance-request.invalid.json");
+const validClearanceResponses = await fixture("protocol/v2/clearance-response.valid.json");
+const invalidClearanceResponses = await fixture("protocol/v2/clearance-response.invalid.json");
 
 function clone(value) {
   return structuredClone(value);
@@ -896,4 +907,104 @@ test("selection labels accept broad lanes and reject candidate or slot control l
   }
   // A non-lane, non-reserved label is not a broad lane selector.
   assert.throws(() => assertReviewerSelectionLabel("primary-review"), /must be a broad review lane label/u);
+});
+
+// --- quarantine status & clearance contracts (parent AC13) -----------------
+
+test("AC13: quarantine status binds the full audit tuple and enforces the cleared/decisionFingerprint invariant", () => {
+  for (const entry of validQuarantineStatuses) {
+    const decoded = decodeQuarantineStatus(entry.value);
+    assert.equal(decoded.schemaVersion, PROTOCOL_V2_SCHEMA_MAJOR, entry.name);
+    assert.ok(QUARANTINE_STATUS_STATES.includes(decoded.state), entry.name);
+    assert.ok(decoded.candidate, entry.name);
+    assert.equal(decoded.remediationDigest.length, 64, entry.name);
+    assert.equal(decoded.policyDigest.length, 64, entry.name);
+    assert.equal(decoded.configurationDigest.length, 64, entry.name);
+    assert.ok(decoded.auditIdentity && decoded.auditIdentity.publisher, entry.name);
+    assert.ok(decoded.statusFingerprint, entry.name);
+    if (decoded.state === "cleared") {
+      assert.ok(decoded.decisionFingerprint, entry.name);
+    } else {
+      assert.equal(decoded.decisionFingerprint, undefined, entry.name);
+    }
+    // No decoded status ever carries a budget/dispatch authority grant.
+    assert.equal(decoded.budget, undefined, entry.name);
+    assert.equal(decoded.authorization, undefined, entry.name);
+  }
+  eachInvalid(invalidQuarantineStatuses, decodeQuarantineStatus);
+});
+
+test("AC13: clearance request is identity-free and authority-free (recursive rejection)", () => {
+  for (const entry of validClearanceRequests) {
+    const decoded = decodeClearanceRequest(entry.value);
+    assert.equal(decoded.schemaVersion, PROTOCOL_V2_SCHEMA_MAJOR, entry.name);
+    assert.equal(decoded.auditIdentity, undefined, entry.name);
+    assert.ok(decoded.requestFingerprint, entry.name);
+  }
+  // Top-level, nested, and case/separator-variant identity/authority all throw.
+  eachInvalid(invalidClearanceRequests, decodeClearanceRequest);
+});
+
+test("AC13: clearance response audits the requester and binds the request + digests", () => {
+  for (const entry of validClearanceResponses) {
+    const decoded = decodeClearanceResponse(entry.value);
+    assert.equal(decoded.schemaVersion, PROTOCOL_V2_SCHEMA_MAJOR, entry.name);
+    assert.ok(CLEARANCE_DECISIONS.includes(decoded.decision), entry.name);
+    assert.ok(decoded.auditIdentity && decoded.auditIdentity.publisher, entry.name);
+    assert.equal(decoded.requestFingerprint.length, 64, entry.name);
+    assert.ok(decoded.decisionFingerprint, entry.name);
+  }
+  eachInvalid(invalidClearanceResponses, decodeClearanceResponse);
+});
+
+test("AC13: fingerprints bind audit identity (value changes with the actor) and status cites its clearing response", () => {
+  const clearedResponses = validClearanceResponses
+    .filter((e) => e.value.decision === "cleared")
+    .map((e) => decodeClearanceResponse(e.value));
+  const responseFps = new Set(clearedResponses.map((r) => r.decisionFingerprint));
+  // Two cleared responses differing only in auditIdentity.publisher must differ.
+  assert.equal(responseFps.size, clearedResponses.length,
+    "response decisionFingerprint must be sensitive to auditIdentity");
+
+  const clearedStatuses = validQuarantineStatuses
+    .filter((e) => e.value.state === "cleared")
+    .map((e) => decodeQuarantineStatus(e.value));
+  const statusFps = new Set(clearedStatuses.map((s) => s.statusFingerprint));
+  assert.equal(statusFps.size, clearedStatuses.length,
+    "status statusFingerprint must be sensitive to auditIdentity");
+
+  // Cross-link: a cleared status cites a real clearing-response decisionFingerprint.
+  for (const status of clearedStatuses) {
+    assert.ok(responseFps.has(status.decisionFingerprint),
+      "cleared status must cite a clearance response decisionFingerprint");
+  }
+});
+
+test("AC13: historical v1 receipts cannot decode as any quarantine/clearance contract", () => {
+  // Fail-closed is the property: a v1 receipt is rejected by SOME guard (schema
+  // major, privacy/authority walk, or a missing v2 field) — never decoded. The
+  // specific guard that fires first depends on the receipt's fields.
+  for (const { name, value } of validV1Receipts) {
+    assert.throws(() => decodeQuarantineStatus(value), name);
+    assert.throws(() => decodeClearanceRequest(value), name);
+    assert.throws(() => decodeClearanceResponse(value), name);
+  }
+});
+
+test("AC10-residual: every residual reason code decodes as a valid outcome", () => {
+  const residual = ["input_ineligible", "incomplete_token_limit", "budget_overrun", "candidate_quarantined"];
+  for (const code of residual) {
+    const match = validOutcomes.find((e) => e.value.reviewOutcome.reasonCode === code);
+    assert.ok(match, `expected a valid outcome fixture for ${code}`);
+    const decoded = decodeReviewOutcomes(match.value);
+    assert.equal(decoded.reviewOutcome.reasonCode, code);
+    // And each residual code has an invalid fixture proving it is a real failure.
+    assert.ok(
+      invalidOutcomes.some((e) =>
+        e.value.reviewOutcome.reasonCode === code
+        || e.value.assuranceOutcome.reasonCode === code
+        || e.value.gateOutcome.reasonCode === code),
+      `expected an invalid outcome fixture for ${code}`,
+    );
+  }
 });

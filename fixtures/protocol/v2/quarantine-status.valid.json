@@ -1,0 +1,79 @@
+[
+ {
+  "name": "quarantined status binds full audit tuple, no decisionFingerprint",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "state": "quarantined",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "policyDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "auditIdentity": {
+    "publisher": "octo-owner",
+    "association": "OWNER",
+    "isPrAuthor": false,
+    "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+    "runId": 1234567,
+    "runAttempt": 1
+   },
+   "recordedAt": "2026-08-05T00:00:00Z"
+  }
+ },
+ {
+  "name": "cleared status cites the clearing response decisionFingerprint",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "state": "cleared",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "policyDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "auditIdentity": {
+    "publisher": "octo-owner",
+    "association": "OWNER",
+    "isPrAuthor": false,
+    "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+    "runId": 1234567,
+    "runAttempt": 1
+   },
+   "recordedAt": "2026-08-05T00:00:00Z",
+   "decisionFingerprint": "9a47d369ff1c28f899f75b4319b2e1b6d1a9e53d43b0eb4ebf7578b291026b0d"
+  }
+ },
+ {
+  "name": "cleared status differing only in auditIdentity.publisher (fingerprint sensitivity)",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "state": "cleared",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "policyDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "auditIdentity": {
+    "publisher": "second-owner",
+    "association": "OWNER",
+    "isPrAuthor": false,
+    "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+    "runId": 1234567,
+    "runAttempt": 1
+   },
+   "recordedAt": "2026-08-05T00:00:00Z",
+   "decisionFingerprint": "9a47d369ff1c28f899f75b4319b2e1b6d1a9e53d43b0eb4ebf7578b291026b0d"
+  }
+ }
+]

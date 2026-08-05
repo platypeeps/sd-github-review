@@ -225,7 +225,7 @@ function objectValue(value, field) {
   return value;
 }
 
-function rejectForbiddenFields(value, field = "value") {
+function rejectForbiddenFields(value, field = "value", extraForbidden = null) {
   const seen = new WeakSet();
   const pending = [{ value, field, depth: 0 }];
   while (pending.length > 0) {
@@ -264,7 +264,10 @@ function rejectForbiddenFields(value, field = "value") {
     for (let index = entries.length - 1; index >= 0; index -= 1) {
       const [key, item] = entries[index];
       const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/gu, "");
-      if (FORBIDDEN_FIELD_NAMES.has(normalizedKey)) {
+      if (
+        FORBIDDEN_FIELD_NAMES.has(normalizedKey)
+        || (extraForbidden !== null && extraForbidden.has(normalizedKey))
+      ) {
         // Never echo the value: name the field and the boundary only.
         throw new Error(`${current.field}.${key} is forbidden by the v2 privacy boundary`);
       }
@@ -869,6 +872,207 @@ export function decodeReviewOutcomes(value) {
     assuranceOutcome,
     gateOutcome,
   };
+}
+
+// --- quarantine & clearance contracts --------------------------------------
+
+// The adjudicated-clearance lifecycle. Distinct from the catalog overlay
+// (which also models `replaced`) and the ledger record (`released`): a
+// candidate is `quarantined` until a clearance response with decision
+// `cleared` transitions it to `cleared`.
+export const QUARANTINE_STATUS_STATES = Object.freeze(["quarantined", "cleared"]);
+const QUARANTINE_STATUS_STATE_SET = new Set(QUARANTINE_STATUS_STATES);
+
+export const CLEARANCE_DECISIONS = Object.freeze(["cleared", "denied"]);
+const CLEARANCE_DECISION_SET = new Set(CLEARANCE_DECISIONS);
+
+// Budget/dispatch AUTHORITY-GRANT vocabulary (already normalized keys). Sourced
+// from src/review-budget-ledger.js authorize(). Rejected recursively on all
+// three contracts so quarantine/clearance adjudicates eligibility only and
+// never mints budget or dispatch authority. `requestFingerprint` /
+// `decisionFingerprint` are benign correlation digests and are deliberately
+// NOT here.
+const AUTHORITY_FORBIDDEN_FIELD_NAMES = new Set([
+  "authorization",
+  "authorized",
+  "authorizedattempt",
+  "authorizedcapacity",
+  "revision",
+  "lease",
+  "leases",
+  "budget",
+  "budgets",
+  "capacity",
+  "reservation",
+  "reservations",
+  "dispatch",
+  "dispatched",
+  "allowance",
+  "pool",
+  "pools",
+  "quota",
+]);
+
+// Normalized forms of every REQUEST_DERIVED_FORBIDDEN key. Applied RECURSIVELY
+// (via the shared walker) to the clearance request only: the request carries no
+// legitimate identity subtree, so nested/case-variant GitHub-derived identity
+// must be rejected. Status and response carry a legitimate auditIdentity
+// subtree and therefore must never apply this set.
+const REQUEST_DERIVED_FORBIDDEN_NORMALIZED = new Set([
+  "actor",
+  "association",
+  "publisher",
+  "publicationcontext",
+  "workflow",
+  "workflowref",
+  "runid",
+  "runattempt",
+  "authorization",
+  "authorized",
+  "authorizationresult",
+  "trustlevel",
+  "trusted",
+]);
+
+// The clearance request rejects identity AND authority in one recursive pass.
+const CLEARANCE_REQUEST_FORBIDDEN = new Set([
+  ...AUTHORITY_FORBIDDEN_FIELD_NAMES,
+  ...REQUEST_DERIVED_FORBIDDEN_NORMALIZED,
+]);
+
+// The control-plane quarantine status. Ingestion-derived, so it carries audit
+// identity. It binds the candidate, reason, remediation/policy/configuration
+// digests, and audit identity, and grants no budget or dispatch authority. A
+// `cleared` status cites the clearance response that cleared it.
+export function decodeQuarantineStatus(value) {
+  rejectForbiddenFields(value, "quarantineStatus", AUTHORITY_FORBIDDEN_FIELD_NAMES);
+  assertEncodedSize(value, "quarantineStatus", CONTRACT_MAX_BYTES);
+  const status = objectValue(value, "quarantineStatus");
+  schemaVersion(status.schemaVersion, "quarantineStatus.schemaVersion");
+  const repository = repositoryValue(status.repository, "quarantineStatus.repository");
+  const candidate = aliasValue(status.candidate, "quarantineStatus.candidate");
+  const state = enumValue(status.state, "quarantineStatus.state", QUARANTINE_STATUS_STATE_SET);
+  const reasonCode = enumValue(status.reasonCode, "quarantineStatus.reasonCode", OUTCOME_REASON_CODE_SET);
+  const remediationDigest = digestValue(status.remediationDigest, "quarantineStatus.remediationDigest");
+  const policyDigest = digestValue(status.policyDigest, "quarantineStatus.policyDigest");
+  const configurationDigest = digestValue(status.configurationDigest, "quarantineStatus.configurationDigest");
+  const auditIdentity = decodeLocalPublicationContext(status.auditIdentity, "quarantineStatus.auditIdentity");
+  const recordedAt = timestampValue(status.recordedAt, "quarantineStatus.recordedAt");
+  // A cleared status must cite the clearance response that cleared it; a
+  // quarantined status must not carry a decision fingerprint.
+  let decisionFingerprint;
+  if (state === "cleared") {
+    decisionFingerprint = digestValue(status.decisionFingerprint, "quarantineStatus.decisionFingerprint");
+  } else if (status.decisionFingerprint !== undefined) {
+    throw new Error("quarantineStatus.decisionFingerprint is valid only for a cleared status");
+  }
+  const normalized = {
+    schemaVersion: PROTOCOL_V2_SCHEMA_MAJOR,
+    repository,
+    candidate,
+    state,
+    reasonCode,
+    remediationDigest,
+    policyDigest,
+    configurationDigest,
+    auditIdentity,
+    recordedAt,
+  };
+  if (decisionFingerprint !== undefined) {
+    normalized.decisionFingerprint = decisionFingerprint;
+  }
+  normalized.statusFingerprint = deriveV2Fingerprint({
+    repository,
+    candidate,
+    state,
+    reasonCode,
+    remediationDigest,
+    policyDigest,
+    configurationDigest,
+    auditIdentity,
+    recordedAt,
+    decisionFingerprint: decisionFingerprint ?? null,
+  });
+  return Object.freeze(normalized);
+}
+
+// A caller-submitted clearance request. It carries no GitHub-derived identity
+// and no authority: the caller can never mint its own actor, authorization, or
+// dispatch. The requester is audited at the response, not here.
+export function decodeClearanceRequest(value) {
+  rejectForbiddenFields(value, "clearanceRequest", CLEARANCE_REQUEST_FORBIDDEN);
+  assertEncodedSize(value, "clearanceRequest", CONTRACT_MAX_BYTES);
+  const request = objectValue(value, "clearanceRequest");
+  schemaVersion(request.schemaVersion, "clearanceRequest.schemaVersion");
+  const repository = repositoryValue(request.repository, "clearanceRequest.repository");
+  const candidate = aliasValue(request.candidate, "clearanceRequest.candidate");
+  const reasonCode = enumValue(request.reasonCode, "clearanceRequest.reasonCode", OUTCOME_REASON_CODE_SET);
+  const remediationDigest = digestValue(request.remediationDigest, "clearanceRequest.remediationDigest");
+  const requestedAt = timestampValue(request.requestedAt, "clearanceRequest.requestedAt");
+  const normalized = {
+    schemaVersion: PROTOCOL_V2_SCHEMA_MAJOR,
+    repository,
+    candidate,
+    reasonCode,
+    remediationDigest,
+    requestedAt,
+  };
+  // Identity-free by construction: the request fingerprint excludes audit identity.
+  normalized.requestFingerprint = deriveV2Fingerprint({
+    repository,
+    candidate,
+    reasonCode,
+    remediationDigest,
+    requestedAt,
+  });
+  return Object.freeze(normalized);
+}
+
+// The adjudicated clearance decision. Ingestion-derived: it binds the
+// requester's audit identity plus the policy/configuration digests and the
+// exact request it adjudicates, so the requester IS audited. Clearing lifts the
+// quarantine but reserves no budget and dispatches nothing.
+export function decodeClearanceResponse(value) {
+  rejectForbiddenFields(value, "clearanceResponse", AUTHORITY_FORBIDDEN_FIELD_NAMES);
+  assertEncodedSize(value, "clearanceResponse", CONTRACT_MAX_BYTES);
+  const response = objectValue(value, "clearanceResponse");
+  schemaVersion(response.schemaVersion, "clearanceResponse.schemaVersion");
+  const repository = repositoryValue(response.repository, "clearanceResponse.repository");
+  const candidate = aliasValue(response.candidate, "clearanceResponse.candidate");
+  const decision = enumValue(response.decision, "clearanceResponse.decision", CLEARANCE_DECISION_SET);
+  const reasonCode = enumValue(response.reasonCode, "clearanceResponse.reasonCode", OUTCOME_REASON_CODE_SET);
+  const remediationDigest = digestValue(response.remediationDigest, "clearanceResponse.remediationDigest");
+  const policyDigest = digestValue(response.policyDigest, "clearanceResponse.policyDigest");
+  const configurationDigest = digestValue(response.configurationDigest, "clearanceResponse.configurationDigest");
+  const requestFingerprint = digestValue(response.requestFingerprint, "clearanceResponse.requestFingerprint");
+  const auditIdentity = decodeLocalPublicationContext(response.auditIdentity, "clearanceResponse.auditIdentity");
+  const decidedAt = timestampValue(response.decidedAt, "clearanceResponse.decidedAt");
+  const normalized = {
+    schemaVersion: PROTOCOL_V2_SCHEMA_MAJOR,
+    repository,
+    candidate,
+    decision,
+    reasonCode,
+    remediationDigest,
+    policyDigest,
+    configurationDigest,
+    requestFingerprint,
+    auditIdentity,
+    decidedAt,
+  };
+  normalized.decisionFingerprint = deriveV2Fingerprint({
+    repository,
+    candidate,
+    decision,
+    reasonCode,
+    remediationDigest,
+    policyDigest,
+    configurationDigest,
+    requestFingerprint,
+    auditIdentity,
+    decidedAt,
+  });
+  return Object.freeze(normalized);
 }
 
 // --- local-attested review contracts ---------------------------------------

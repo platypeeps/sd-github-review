@@ -1,1 +1,2 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Quality/test conventions for verifying the contract + fixtures"}
+{"file": ".trellis/tasks/08-04-define-v2-quarantine-clearance-contracts/research/quarantine-clearance-gap-analysis.md", "reason": "Verify implementation matches the mapped surface and closes AC13 + AC10-residual"}

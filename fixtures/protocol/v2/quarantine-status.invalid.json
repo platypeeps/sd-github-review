@@ -1,0 +1,245 @@
+[
+ {
+  "name": "unknown state",
+  "error": "quarantineStatus.state",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "state": "released",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "policyDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "auditIdentity": {
+    "publisher": "octo-owner",
+    "association": "OWNER",
+    "isPrAuthor": false,
+    "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+    "runId": 1234567,
+    "runAttempt": 1
+   },
+   "recordedAt": "2026-08-05T00:00:00Z"
+  }
+ },
+ {
+  "name": "unknown reasonCode",
+  "error": "quarantineStatus.reasonCode",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "state": "quarantined",
+   "reasonCode": "not_a_reason",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "policyDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "auditIdentity": {
+    "publisher": "octo-owner",
+    "association": "OWNER",
+    "isPrAuthor": false,
+    "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+    "runId": 1234567,
+    "runAttempt": 1
+   },
+   "recordedAt": "2026-08-05T00:00:00Z"
+  }
+ },
+ {
+  "name": "quarantined status carrying a decisionFingerprint",
+  "error": "decisionFingerprint is valid only for a cleared status",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "state": "quarantined",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "policyDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "auditIdentity": {
+    "publisher": "octo-owner",
+    "association": "OWNER",
+    "isPrAuthor": false,
+    "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+    "runId": 1234567,
+    "runAttempt": 1
+   },
+   "recordedAt": "2026-08-05T00:00:00Z",
+   "decisionFingerprint": "9a47d369ff1c28f899f75b4319b2e1b6d1a9e53d43b0eb4ebf7578b291026b0d"
+  }
+ },
+ {
+  "name": "cleared status missing its decisionFingerprint",
+  "error": "quarantineStatus.decisionFingerprint",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "state": "cleared",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "policyDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "auditIdentity": {
+    "publisher": "octo-owner",
+    "association": "OWNER",
+    "isPrAuthor": false,
+    "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+    "runId": 1234567,
+    "runAttempt": 1
+   },
+   "recordedAt": "2026-08-05T00:00:00Z"
+  }
+ },
+ {
+  "name": "forbidden privacy field (prompt body)",
+  "error": "forbidden by the v2 privacy boundary",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "state": "quarantined",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "policyDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "auditIdentity": {
+    "publisher": "octo-owner",
+    "association": "OWNER",
+    "isPrAuthor": false,
+    "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+    "runId": 1234567,
+    "runAttempt": 1
+   },
+   "recordedAt": "2026-08-05T00:00:00Z",
+   "prompt": "leak"
+  }
+ },
+ {
+  "name": "top-level authority grant field",
+  "error": "forbidden by the v2 privacy boundary",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "state": "quarantined",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "policyDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "auditIdentity": {
+    "publisher": "octo-owner",
+    "association": "OWNER",
+    "isPrAuthor": false,
+    "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+    "runId": 1234567,
+    "runAttempt": 1
+   },
+   "recordedAt": "2026-08-05T00:00:00Z",
+   "budget": {
+    "capacity": 10
+   }
+  }
+ },
+ {
+  "name": "nested authority grant field",
+  "error": "forbidden by the v2 privacy boundary",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "state": "quarantined",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "policyDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "auditIdentity": {
+    "publisher": "octo-owner",
+    "association": "OWNER",
+    "isPrAuthor": false,
+    "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+    "runId": 1234567,
+    "runAttempt": 1
+   },
+   "recordedAt": "2026-08-05T00:00:00Z",
+   "meta": {
+    "lease": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+   }
+  }
+ },
+ {
+  "name": "case-variant authority grant field",
+  "error": "forbidden by the v2 privacy boundary",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "state": "quarantined",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "policyDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "auditIdentity": {
+    "publisher": "octo-owner",
+    "association": "OWNER",
+    "isPrAuthor": false,
+    "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+    "runId": 1234567,
+    "runAttempt": 1
+   },
+   "recordedAt": "2026-08-05T00:00:00Z",
+   "Authorized": true
+  }
+ },
+ {
+  "name": "schema major 1 receipt cannot masquerade",
+  "error": "must use supported schema major 2",
+  "value": {
+   "schemaVersion": 1,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "state": "quarantined",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "policyDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "auditIdentity": {
+    "publisher": "octo-owner",
+    "association": "OWNER",
+    "isPrAuthor": false,
+    "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+    "runId": 1234567,
+    "runAttempt": 1
+   },
+   "recordedAt": "2026-08-05T00:00:00Z"
+  }
+ }
+]
