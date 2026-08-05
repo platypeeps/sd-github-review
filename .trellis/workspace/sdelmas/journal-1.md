@@ -1588,3 +1588,42 @@ Gave routing policy, protocol codecs, risk context, and reviewer dispatch one de
 ### Next Steps
 
 - None - task complete
+
+
+## Session 40: Decompose consumer installer lifecycle (A-009)
+
+**Date**: 2026-08-04
+**Task**: Decompose consumer installer lifecycle (A-009)
+**Branch**: `refactor/a-009-decompose-consumer-installer`
+
+### Summary
+
+Split scripts/consumer-installer.mjs (1459->488 lines) into codecs/transport/persistence/plan submodules with downhill deps enforced by a boundary test; orchestrator re-exports the full public surface so existing tests import unchanged. Closed audit A-009.
+
+### Main Changes
+
+- Created scripts/consumer-installer/{codecs,transport,persistence,plan}.mjs; reduced consumer-installer.mjs to orchestration + re-exports
+- Added test/installer-dependency-boundaries.test.js (import matrix + acyclicity) and test/installer-modules.test.js (22 boundary tests)
+- Updated check-coverage.mjs INCLUDES + per-file floors, package.json check wiring, directory-structure.md spec, and marked A-009 fixed in the audit ledger
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `22d4399` | refactor: decompose consumer installer lifecycle (A-009) |
+
+### Testing
+
+- [OK] npm test: 288 pass / 0 fail
+- [OK] npm run test:coverage: OK (93.73% L / 84.03% B / 95.02% F)
+- [OK] npm run check / validate:metadata / install-audit / git diff --check
+- [OK] sd-check 7/7; gito clean; prism 2 findings verified false-positive; Copilot COMMENTED no comments
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
