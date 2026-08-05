@@ -22,10 +22,10 @@ Audit finding A-009 was recorded at repository head `2eeca60` with the following
 
 ## Acceptance Criteria
 
-- [ ] Module-level tests mirror the new boundaries and existing lifecycle tests pass unchanged.
-- [ ] No provider secret, raw remote payload, or host path enters reports or manifests.
-- [ ] Install/update/check/uninstall outputs and exit semantics remain compatible.
-- [ ] The resulting modules have explicit dependency direction and no cycle.
+- [x] Module-level tests mirror the new boundaries and existing lifecycle tests pass unchanged.
+- [x] No provider secret, raw remote payload, or host path enters reports or manifests.
+- [x] Install/update/check/uninstall outputs and exit semantics remain compatible.
+- [x] The resulting modules have explicit dependency direction and no cycle.
 
 ## Dependencies
 
