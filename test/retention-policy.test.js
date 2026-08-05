@@ -117,6 +117,38 @@ test("a record declares exactly one data class; conflicting classification fails
   );
 });
 
+test("record timestamps must be ordered or classification fails closed", () => {
+  // terminalAt before coverageStart would produce negative lifecycle windows.
+  assert.throws(
+    () => classify({
+      dataClass: "operational_state",
+      createdAt: "2026-01-10T00:00:00Z",
+      coverageStart: "2026-01-10T00:00:00Z",
+      terminalAt: "2026-01-01T00:00:00Z",
+    }),
+    /terminalAt must not precede coverageStart/u,
+  );
+  // coverageEnd before coverageStart is nonsensical.
+  assert.throws(
+    () => classify({
+      dataClass: "bounded_event",
+      createdAt: "2026-01-10T00:00:00Z",
+      coverageStart: "2026-01-10T00:00:00Z",
+      coverageEnd: "2026-01-01T00:00:00Z",
+    }),
+    /coverageEnd must not precede coverageStart/u,
+  );
+  // An adjudication chain's newest event cannot predate its creation.
+  assert.throws(
+    () => classify({
+      dataClass: "adjudication_chain",
+      createdAt: "2026-01-10T00:00:00Z",
+      newestEventAt: "2026-01-01T00:00:00Z",
+    }),
+    /newestEventAt must not precede createdAt/u,
+  );
+});
+
 // --- prohibited content + crash cleanup ------------------------------------
 
 test("prohibited content cannot be persisted and only an ephemeral marker is allowed", () => {
@@ -366,6 +398,28 @@ test("a hold placed after the deletion was already due cannot rehydrate the reco
   assert.equal(projection.lifecycleState, "deleted");
 });
 
+test("a released hold cannot be released after it already expired", () => {
+  // A releasedAt after expiresAt would otherwise pause covered deletion timers
+  // beyond the hold's own expiry and extend retention past the contract.
+  assert.throws(
+    () => decodeLegalHold({
+      schemaVersion: 2,
+      holdId: "9".repeat(64),
+      tenant: "acme",
+      repository: { owner: "octo", name: "demo" },
+      dataClasses: ["bounded_event"],
+      actor: "counsel-a",
+      reason: "release after expiry",
+      authorization: "legal-approval-11",
+      state: "released",
+      startAt: "2026-06-01T00:00:00Z",
+      expiresAt: "2027-06-01T00:00:00Z",
+      releasedAt: "2027-06-02T00:00:00Z",
+    }),
+    /releasedAt must not follow expiresAt/u,
+  );
+});
+
 // --- purge, SLA, backup restore --------------------------------------------
 
 test("a purge request is authorized, confirmed, and yields a deterministic receipt", () => {
@@ -399,7 +453,13 @@ test("a live purge must complete within the seven-day contract", () => {
   assert.equal(assertLivePurgeWithinSla(requested, shift(requested, 7 * DAY_MS)).withinSla, true);
   assert.throws(
     () => assertLivePurgeWithinSla(requested, shift(requested, 7 * DAY_MS + 1)),
-    /exceeded the seven-day completion contract/u,
+    /exceeded the 7-day completion contract/u,
+  );
+  // The message reflects the profile's SLA rather than a hardcoded word, so a
+  // non-standard profile never produces a misleading error.
+  assert.throws(
+    () => assertLivePurgeWithinSla(requested, shift(requested, 4 * DAY_MS), { ...STANDARD_V1, livePurgeSlaDays: 3 }),
+    /exceeded the 3-day completion contract/u,
   );
 });
 
@@ -428,6 +488,15 @@ test("a restore must replay the deletion journal and stay within the 35-day back
       deletionJournalReplayed: true,
     }),
     /exceeded the 35-day hard maximum/u,
+  );
+  // The backup-max message is derived from the profile, not hardcoded.
+  assert.throws(
+    () => authorizeRestoreReads({
+      backupCreatedAt,
+      restoredAt: shift(backupCreatedAt, 11 * DAY_MS),
+      deletionJournalReplayed: true,
+    }, { ...STANDARD_V1, backupHardMaxDays: 10 }),
+    /exceeded the 10-day hard maximum/u,
   );
 });
 

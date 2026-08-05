@@ -639,6 +639,9 @@ export function decodeRecordClassification(value) {
   };
   if (record.coverageEnd !== undefined) {
     normalized.coverageEnd = timestampValue(record.coverageEnd, "recordClassification.coverageEnd");
+    if (Date.parse(normalized.coverageEnd) < Date.parse(normalized.coverageStart)) {
+      throw new Error("recordClassification.coverageEnd must not precede coverageStart");
+    }
   }
   if (record.recordId !== undefined) {
     normalized.recordId = digestValue(record.recordId, "recordClassification.recordId");
@@ -660,6 +663,11 @@ export function decodeRecordClassification(value) {
   if (dataClass === "operational_state" || dataClass === "deferred_review") {
     if (record.terminalAt !== undefined) {
       normalized.terminalAt = timestampValue(record.terminalAt, "recordClassification.terminalAt");
+      // A terminal moment before coverage begins would produce negative or
+      // shifted lifecycle windows in computeRecordLifecycle. Fail closed.
+      if (Date.parse(normalized.terminalAt) < Date.parse(normalized.coverageStart)) {
+        throw new Error("recordClassification.terminalAt must not precede coverageStart");
+      }
     }
   }
   if (dataClass === "deferred_review" && record.resolution !== undefined) {
@@ -671,6 +679,9 @@ export function decodeRecordClassification(value) {
   if (dataClass === "adjudication_chain") {
     normalized.newestEventAt = optionalTimestamp(record.newestEventAt, "recordClassification.newestEventAt")
       ?? createdAt;
+    if (Date.parse(normalized.newestEventAt) < Date.parse(createdAt)) {
+      throw new Error("recordClassification.newestEventAt must not precede createdAt");
+    }
   }
   if (dataClass === "catalog_policy_version" || dataClass === "static_prompt_profile") {
     normalized.referenced = record.referenced === undefined
@@ -723,6 +734,12 @@ export function decodeLegalHold(value) {
     if (Date.parse(normalized.releasedAt) < Date.parse(startAt)) {
       throw new Error("legalHold.releasedAt must not precede startAt");
     }
+    // A hold is expiration-bound: it cannot be released after it already
+    // expired, which would otherwise pause covered deletion timers past the
+    // hold's own expiry. Fail closed instead of extending retention.
+    if (Date.parse(normalized.releasedAt) > Date.parse(expiresAt)) {
+      throw new Error("legalHold.releasedAt must not follow expiresAt");
+    }
   } else if (hold.releasedAt !== undefined) {
     throw new Error("legalHold.releasedAt is valid only for a released hold");
   }
@@ -739,8 +756,14 @@ function holdCovers(hold, dataClass) {
 }
 
 // The moment a hold stops pausing timers: an explicit release, otherwise expiry.
+// A hold is expiration-bound, so the end never falls after expiry even if a
+// release timestamp is somehow later (the decoder already rejects that case).
 function holdEndMs(hold) {
-  return Date.parse(hold.releasedAt ?? hold.expiresAt);
+  const expiresMs = Date.parse(hold.expiresAt);
+  if (hold.releasedAt === undefined) {
+    return expiresMs;
+  }
+  return Math.min(Date.parse(hold.releasedAt), expiresMs);
 }
 
 // Apply a covered hold to a deletion deadline. The hold preserves the time
@@ -1215,7 +1238,7 @@ export function assertLivePurgeWithinSla(requestedAt, completedAt, profile = STA
   const completed = timestampValue(completedAt, "completedAt");
   const deadline = addDays(requested, profile.livePurgeSlaDays);
   if (Date.parse(completed) > Date.parse(deadline)) {
-    throw new Error("live purge exceeded the seven-day completion contract");
+    throw new Error(`live purge exceeded the ${profile.livePurgeSlaDays}-day completion contract`);
   }
   return Object.freeze({ requestedAt: requested, completedAt: completed, deadline, withinSla: true });
 }
@@ -1229,7 +1252,7 @@ export function authorizeRestoreReads(value, profile = STANDARD_V1) {
   const restoredAt = timestampValue(restore.restoredAt, "restore.restoredAt");
   const backupDeadline = addDays(backupCreatedAt, profile.backupHardMaxDays);
   if (Date.parse(restoredAt) > Date.parse(backupDeadline)) {
-    throw new Error("restore rejected: the backup exceeded the 35-day hard maximum");
+    throw new Error(`restore rejected: the backup exceeded the ${profile.backupHardMaxDays}-day hard maximum`);
   }
   if (restore.deletionJournalReplayed !== true) {
     throw new Error("restore must replay the deletion journal before restored data becomes queryable");
