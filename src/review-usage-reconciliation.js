@@ -448,7 +448,14 @@ function identityCore(identity) {
 // Derive the deterministic binding digest over the full identity plus the exact
 // economics the authorization committed to. It detects an authorization
 // fingerprint that is reused across a DIFFERENT identity or economics (a
-// cross-attempt collision) and fails that reconcile closed.
+// cross-attempt collision) and fails that reconcile closed. It binds EVERY
+// committed economics field — including the optional hard input/output/cost
+// limits (which drive the policy_violation classification) and the lease — so a
+// fingerprint replayed with different limits or lease metadata is rejected as a
+// collision even on the unresolved->reconciled advance path, where terminal
+// immutability alone would not catch it. `canonicalize` drops undefined keys, so
+// a reservation that omits an optional limit binds distinctly from one that sets
+// it (Copilot review).
 function deriveBinding(reservation) {
   return deriveUsageReconciliationDigest({
     identity: identityCore(reservation.identity),
@@ -456,6 +463,10 @@ function deriveBinding(reservation) {
     units: reservation.units,
     reservedAmount: reservation.reservedAmount,
     hardRequestLimit: reservation.hardRequestLimit,
+    hardInputLimit: reservation.hardInputLimit,
+    hardOutputLimit: reservation.hardOutputLimit,
+    hardCostLimitMicros: reservation.hardCostLimitMicros,
+    leaseExpiresAt: reservation.leaseExpiresAt,
   });
 }
 

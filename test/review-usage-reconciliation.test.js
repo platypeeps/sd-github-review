@@ -291,6 +291,34 @@ test("AC4 a fingerprint reused across a different attempt cannot spend this rese
   assert.equal(projectReconciledPool(collision.state, "kimi-pool").debitedTotal, 3_000);
 });
 
+test("AC4 same fingerprint replayed with divergent hard economics is a collision, even advancing an unresolved record", () => {
+  // Regression (Copilot review): an unresolved unknown holds its reserve at
+  // rev1. A second callback reuses the SAME fingerprint and identity but a
+  // DIFFERENT hardInputLimit at a higher revision. Because the binding now
+  // covers every committed economics field (not just reservedAmount /
+  // hardRequestLimit), the divergence is caught as a collision instead of
+  // silently advancing the unresolved record with different limits — the one
+  // path terminal-immutability alone does not guard.
+  const base = ledger();
+  const unresolved = reconcileUsage(base, input({ outcome: { usage: { confidence: "unknown" } } }), { nowIso: NOW });
+  assert.equal(unresolved.decision.outcome, "unresolved");
+  const collision = reconcileUsage(
+    unresolved.state,
+    input({
+      revision: 2,
+      reservation: { hardInputLimit: 5_500 },
+      outcome: { usage: { amount: 3_000 } },
+    }),
+    { nowIso: NOW },
+  );
+  assert.equal(collision.decision.outcome, "rejected");
+  assert.equal(collision.decision.reason, "conflicting_facts");
+  assert.equal(collision.state, unresolved.state);
+  // The unresolved reserve is still held; nothing was debited under the
+  // mismatched economics.
+  assert.equal(projectReconciledPool(collision.state, "kimi-pool").debitedTotal, 0);
+});
+
 test("AC4 distinct attempts on a shared pool are accounted independently", () => {
   const shared = ledger([{ poolId: "shared", units: "tokens", usableCapacity: 20_000 }]);
   const a = reconcileUsage(
