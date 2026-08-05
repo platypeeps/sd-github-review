@@ -1742,3 +1742,44 @@ Shipped bounded exact-head local-review attestation contracts (request, authoriz
 ### Next Steps
 
 - None - task complete
+
+
+## Session 44: Define standard-v1 review data retention policy contract
+
+**Date**: 2026-08-05
+**Task**: Define standard-v1 review data retention policy contract
+**Branch**: `feat/07-25-define-review-data-retention-policy`
+
+### Summary
+
+Delivered the pure versioned review-data retention contract this repo owns (schema, standard-v1 profile with deterministic digest, conformance fixtures, bounded status/purge/legal-hold operations); private control plane enforces downstream. Shipped as PR #45 (iteration 3 of work-loop run 0e98a7c).
+
+### Main Changes
+
+- Added src/retention-policy.js: immutable standard-v1 profile + frozen vocabularies + decoders (profile, record classification fail-closed, status/report, purge, legal hold, repo lifecycle) + injected-time lifecycle/expiry computation + coverage-aware summaries + identifier-stripping aggregates + 7-day purge SLA + 35-day backup/restore journal-replay gate. Pure: no network/fs/env/output/route access.
+- Added retention-* fixtures under fixtures/protocol/v2/ and 39-case test/retention-policy.test.js covering all acceptance criteria.
+- Registered module in package.json check gate and test/dependency-boundaries.test.js; documented pure versioned-contract convention in spec directory-structure.md.
+- Rescoped acceptance criterion 11 (private-impl conformance) to the delivered exported suite, with private control-plane activation tracked downstream, per user decision and archived-sibling precedent.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ddeb58e` | feat: define standard-v1 review data retention policy contract |
+| `00f6f58` | chore(task): archive 07-25-define-review-data-retention-policy |
+
+### Testing
+
+- [OK] node --test test/retention-policy.test.js -> tests 39 / pass 39 / fail 0
+- [OK] npm test -> tests 373 / pass 373 / fail 0
+- [OK] npm run check -> exit 0; npm run validate:metadata -> exit 0
+- [OK] sd-review scope=pr -> ready (sd-check passed, local clean; remote optional/skipped)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
