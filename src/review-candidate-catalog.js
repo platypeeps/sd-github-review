@@ -26,6 +26,14 @@ export const CATALOG_SCHEMA_MAJOR = 2;
 
 // --- size and shape bounds -------------------------------------------------
 
+// NOTE: these two bounds are DELIBERATELY inverted relative to the
+// `src/protocol-v2.js` / `src/retention-policy.js` precedents (which cap
+// contract at 16KB and response at 32KB). Here the authored *contract* is the
+// large surface — a full catalog carries up to MAX_COLLECTION_ITEMS candidates
+// plus the prompt-profile registry — while every *response* (the dispatch-safe
+// projection, the quarantine overlay, the retention classification) is a small
+// bounded envelope. Do not copy these values across modules assuming the names
+// carry the same magnitudes everywhere.
 const CONTRACT_MAX_BYTES = 32 * 1024;
 const RESPONSE_MAX_BYTES = 16 * 1024;
 const SHORT_TEXT_MAX_BYTES = 128;
