@@ -3,7 +3,7 @@
   "name": "authorize-budget-aware-review-plans",
   "title": "Authorize budget-aware review plans",
   "description": "Prepare exact-head plans, validate control-plane authorization, and persist authorization before dispatch.",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
