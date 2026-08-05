@@ -478,6 +478,94 @@ const trackedPaths = await gitLsFiles(repositoryRoot);
 const failures = trackedPaths.filter(prohibitedPublishedMetadataReason);
 ```
 
+## Scenario: Compile A Routed Review Configuration
+
+### 1. Scope / Trigger
+
+Use this contract for the pure higher-layer compiler in
+`src/routed-review-compiler.js` that turns a decoded explicit-mode v2 human
+source plus mode-specific inputs into a canonical compiled manifest. It sits one
+layer above the leaf contracts: it imports the v2 source decoder from
+`protocol-v2.js` and the immutable candidate safe projection from
+`review-candidate-catalog.js`, and performs no network, credential, filesystem,
+clock, environment, or output access.
+
+### 2. Signatures
+
+- `compileRoutedReviewConfiguration({ source, catalog, handlerProfiles }) -> frozen manifest`
+- `stableCompiledJson(value) -> canonical JSON string`
+- `candidateProjectionDigest(value) -> content digest a managed lane references`
+- `COMPILER_SCHEMA_MAJOR` equals `PROTOCOL_V2_SCHEMA_MAJOR`.
+
+### 3. Contracts
+
+- Mode comes solely from the decoded source; it is never inferred or rewritten
+  from the presence of an endpoint, credential, catalog, or handler-profile
+  input.
+- Managed mode requires a digest-matching bounded catalog safe projection and
+  validates every lane's candidate reference by exact alias/version/digest,
+  prompt-profile identity, and handler/lane/slot compatibility.
+- Standalone mode requires only setup-discovered fixed handler profiles and
+  rejects every catalog, candidate, and budget field.
+- Composition levers (imports, inheritance, presets, independent overrides,
+  candidate/slot label configuration including `overrides.labels`, chain refs)
+  are rejected by NORMALIZED key at any depth, so a case/separator variant
+  (`Overrides`, `runtime_presets`, `LABELS`) cannot slip a lever past the
+  boundary.
+- `budgetExhaustion.<lane>.merge` is explicit and required with no default;
+  legacy names fail post-cutover.
+- Source is at most 32 KiB, catalog 64 KiB, and each handler profile 16 KiB;
+  short text 128 bytes, collections 32 items, and 32-level nesting are bounded
+  before composition.
+- Output is canonical JSON carrying stable source, catalog, and output digests;
+  diagnostics are field-located and redact the offending value.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required behavior |
+| --- | --- |
+| Reordered equivalent source/catalog | Compile byte-for-byte identically; same output digest |
+| Any semantic source or catalog change | Change the output digest |
+| Stale or substituted catalog projection (managed) | Never satisfy the compilation; throw |
+| Supplied catalog on a standalone source | Never upgrade to managed; reject the field |
+| Supplied handler profiles on a managed source | Never downgrade to standalone |
+| Missing `budgetExhaustion.<lane>.merge` | Throw; no default merge policy |
+| Composition lever under any spelling variant | Reject by normalized key, naming the field, not echoing its value |
+| Endpoint/credential/handler-profile presence | Never infer or rewrite the source mode |
+
+### 5. Good/Base/Bad Cases
+
+- Good: a managed source whose lanes reference candidates by exact
+  `candidateProjectionDigest` compiles to a canonical manifest with no candidate
+  or slot label configuration exposed.
+- Base: an all-local standalone source compiles with no handler profiles.
+- Bad: a lane references a candidate present only in a stale projection, or a
+  standalone source carries a catalog/candidate/budget field.
+
+### 6. Tests Required
+
+- Load every valid/invalid fixture from `fixtures/protocol/v2/`.
+- Assert reproducibility, digest sensitivity, and that a stale/substituted
+  projection can never satisfy a managed compilation.
+- Assert a composition-lever diagnostic names the field and boundary without
+  echoing its value, and that no compiled manifest exposes candidate/slot label
+  configuration.
+- Cover managed/standalone cross-contamination, forbidden levers, no-network and
+  no-filesystem purity, and the full protocol test gate.
+
+### 7. Wrong vs Correct
+
+```js
+// Wrong: infer managed mode from a supplied catalog.
+const mode = catalog ? "managed" : "standalone";
+
+// Correct: take mode from the decoded source; inputs only validate it.
+const decoded = decodeSourceContract(source);
+return decoded.mode === "standalone"
+  ? compileStandalone(decoded, catalog, handlerProfiles)
+  : compileManaged(decoded, catalog, handlerProfiles);
+```
+
 ## Forbidden Patterns
 
 - Do not check out or execute pull-request-authored code in a secret-bearing
