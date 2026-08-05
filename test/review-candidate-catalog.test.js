@@ -144,6 +144,18 @@ test("a candidate record validates its binding shape and hard-limit policy", () 
   assert.ok(Object.isFrozen(record.policy));
 });
 
+test("a profile binding rejects forbidden levers under any spelling variant", () => {
+  for (const smuggled of ["Fallback", "lane_default", "COMMAND_OVERRIDE", "runtime-override"]) {
+    const record = clone(baseCatalog.candidates[0]);
+    record.promptProfile[smuggled] = "x";
+    assert.throws(
+      () => decodeCandidateRecord(record),
+      /a profile binding declares no lane default/u,
+      smuggled,
+    );
+  }
+});
+
 test("policy-incomplete, unknown-lane, and malformed candidates fail closed", () => {
   eachInvalid(failClosed, (value) => decodeCandidateRecord(value));
 });

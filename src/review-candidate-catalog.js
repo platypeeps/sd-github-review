@@ -578,11 +578,18 @@ const FORBIDDEN_BINDING_LEVERS = Object.freeze([
   "override",
 ]);
 
+// Match forbidden levers by NORMALIZED key so a case/separator variant
+// (e.g. `Fallback`, `lane_default`) cannot bypass the exact-name check the way
+// every other boundary guard in this module normalizes.
+const NORMALIZED_FORBIDDEN_BINDING_LEVERS = new Set(
+  FORBIDDEN_BINDING_LEVERS.map((lever) => lever.toLowerCase().replace(/[^a-z0-9]/gu, "")),
+);
+
 function decodePromptProfileBinding(value, field) {
   const binding = objectValue(value, field);
-  for (const forbidden of FORBIDDEN_BINDING_LEVERS) {
-    if (binding[forbidden] !== undefined) {
-      throw new Error(`${field}.${forbidden} is forbidden; a profile binding declares no lane default, inheritance, merge, fallback, substitution, or override`);
+  for (const key of Object.keys(binding)) {
+    if (NORMALIZED_FORBIDDEN_BINDING_LEVERS.has(key.toLowerCase().replace(/[^a-z0-9]/gu, ""))) {
+      throw new Error(`${field}.${key} is forbidden; a profile binding declares no lane default, inheritance, merge, fallback, substitution, or override`);
     }
   }
   const mode = enumValue(binding.mode, `${field}.mode`, PROMPT_PROFILE_MODE_SET);
