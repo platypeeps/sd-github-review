@@ -3,7 +3,7 @@
   "name": "decompose-consumer-installer-lifecycle",
   "title": "Decompose consumer installer lifecycle",
   "description": "Remediate audit finding A-009 by splitting installer codecs, planning, transport, persistence, and orchestration.",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
