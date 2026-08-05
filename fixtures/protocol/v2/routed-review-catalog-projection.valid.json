@@ -1,0 +1,146 @@
+{
+  "schemaMajor": 2,
+  "catalogDigest": "abababababababababababababababababababababababababababababababab",
+  "candidates": [
+    {
+      "schemaMajor": 2,
+      "catalogDigest": "abababababababababababababababababababababababababababababababab",
+      "alias": "kimi-review",
+      "kind": "external",
+      "handler": "pr-agent",
+      "model": "kimi/k2-review",
+      "costTier": "low",
+      "eligibleLanes": [
+        "review",
+        "assurance"
+      ],
+      "eligibleSlots": [
+        "managed",
+        "parallel"
+      ],
+      "units": "tokens",
+      "hardInputLimit": 120000,
+      "hardOutputLimit": 8000,
+      "hardRequestCostLimit": 5000,
+      "safetyMargin": 500,
+      "tokenizer": {
+        "tokenizerId": "cl100k",
+        "counting": "exact",
+        "verified": true
+      },
+      "pricing": {
+        "pricingRef": "price:kimi-2026-08",
+        "verified": true
+      },
+      "finishReason": {
+        "supported": true,
+        "verified": true
+      },
+      "usage": {
+        "supported": true,
+        "verified": true
+      },
+      "promptProfile": {
+        "mode": "referenced",
+        "alias": "thorough-shared",
+        "version": "1.2.0",
+        "digest": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+        "compatibleHandlers": [
+          "pr-agent"
+        ],
+        "capabilities": [
+          "diff-review"
+        ]
+      }
+    },
+    {
+      "schemaMajor": 2,
+      "catalogDigest": "abababababababababababababababababababababababababababababababab",
+      "alias": "assurance-strict",
+      "kind": "external",
+      "handler": "pr-agent",
+      "model": "qwen/qwen3-review",
+      "costTier": "medium",
+      "eligibleLanes": [
+        "assurance"
+      ],
+      "eligibleSlots": [
+        "managed"
+      ],
+      "units": "tokens",
+      "hardInputLimit": 100000,
+      "hardOutputLimit": 6000,
+      "hardRequestCostLimit": 7000,
+      "safetyMargin": 700,
+      "tokenizer": {
+        "tokenizerId": "cl100k",
+        "counting": "exact",
+        "verified": true
+      },
+      "pricing": {
+        "pricingRef": "price:qwen-2026-08",
+        "verified": true
+      },
+      "finishReason": {
+        "supported": true,
+        "verified": true
+      },
+      "usage": {
+        "supported": true,
+        "verified": true
+      },
+      "promptProfile": {
+        "mode": "referenced",
+        "alias": "assurance-strict",
+        "version": "2.0.1",
+        "digest": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "compatibleHandlers": [
+          "pr-agent"
+        ],
+        "capabilities": [
+          "gate-summary"
+        ]
+      }
+    },
+    {
+      "schemaMajor": 2,
+      "catalogDigest": "abababababababababababababababababababababababababababababababab",
+      "alias": "copilot-native",
+      "kind": "native",
+      "handler": "copilot",
+      "model": "copilot/default",
+      "costTier": "unknown",
+      "eligibleLanes": [
+        "gate"
+      ],
+      "eligibleSlots": [
+        "parallel"
+      ],
+      "units": "tokens",
+      "hardInputLimit": 90000,
+      "hardOutputLimit": 4000,
+      "hardRequestCostLimit": 3000,
+      "safetyMargin": 300,
+      "tokenizer": {
+        "tokenizerId": "native-estimate",
+        "counting": "estimated",
+        "verified": true
+      },
+      "pricing": {
+        "pricingRef": "price:copilot-flat",
+        "verified": true
+      },
+      "finishReason": {
+        "supported": true,
+        "verified": true
+      },
+      "usage": {
+        "supported": false,
+        "verified": true
+      },
+      "promptProfile": {
+        "mode": "handler-managed"
+      }
+    }
+  ]
+}
