@@ -40,14 +40,8 @@ is a coordination record, not a second implementation owner.
 - `07-25-decompose-consumer-installer-lifecycle` owns A-009.
 - `07-25-define-operation-specific-action-contract` owns A-010.
 - `07-25-bound-review-remote-operations` owns A-012.
-- `07-25-skip-irrelevant-pr-file-enumeration` owns A-014.
-- `07-25-reuse-receipt-snapshots-during-rerequests` owns A-015.
-- `07-25-resolve-opencode-plugin-dependency` owns A-016.
 - `07-25-align-local-full-check-with-ci` owns A-017.
 - `07-25-adopt-manual-review-installations` owns A-019.
-- `07-25-encapsulate-review-label-registry` owns A-020.
-- `07-25-remove-unused-installer-export` owns A-021.
-- `07-25-parallelize-installer-github-operations` owns A-022.
 
 Dedicated `08-04` children reassigned from the generic 07-25 adapter owners:
 
