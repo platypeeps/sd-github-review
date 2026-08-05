@@ -1085,13 +1085,17 @@ export function applyRepositoryLifecycle(state, value, { nowIso } = {}) {
       record.purgeRequestId = purgeRequestId;
     }
     if (kind === "transfer_cross_tenant") {
-      record.identity = { ...record.identity, tenant: destinationTenant };
+      // Record the destination tenant as non-key audit metadata. `identity`
+      // feeds the digest-addressed `deferralFingerprint`/`headKey` (and every
+      // linked attempt key), so it must stay immutable: mutating `identity.tenant`
+      // without re-keying the maps would desynchronize the stored identity from
+      // the keys derived from it, leaving records undiscoverable by deterministic
+      // derivation and able to collide on a later deferral. Immutable identity
+      // plus an explicit reassignment overlay keeps the state internally
+      // consistent while still reassigning the tenant rather than silently
+      // moving records into the destination namespace.
       record.reassignedFromTenant = tenant;
-    }
-    for (const attempt of Object.values(next.attempts)) {
-      if (attempt.linkedDeferralFingerprint === record.deferralFingerprint && kind === "transfer_cross_tenant") {
-        attempt.identity = { ...attempt.identity, tenant: destinationTenant };
-      }
+      record.reassignedToTenant = destinationTenant;
     }
   }
   const decision = {

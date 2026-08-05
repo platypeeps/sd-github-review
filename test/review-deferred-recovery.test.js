@@ -517,6 +517,37 @@ test("AC5 a cross-tenant transfer reassigns only with authorization, never silen
   assert.equal(transferred.decision.reassignsSilently, false);
 });
 
+test("AC5 a cross-tenant transfer keeps the record digest-addressable and does not desync identity from its keys", () => {
+  const { state, deferralFingerprint } = deferOnce();
+  const transferred = applyRepositoryLifecycle(
+    state,
+    {
+      schemaMajor: DEFERRED_RECOVERY_SCHEMA_MAJOR,
+      kind: "transfer_cross_tenant",
+      tenant: "acme",
+      repository: { owner: "acme", name: "widgets" },
+      destinationTenant: "beta",
+      destinationAuthorization: true,
+      policyRevalidated: true,
+    },
+    { nowIso: NOW },
+  );
+  // The digest-addressed identity feeds deferralFingerprint/headKey, so it must
+  // stay immutable: the record remains findable by its ORIGINAL fingerprint and
+  // its stored tenant still matches the key that was derived from it.
+  const projected = projectDeferredRecord(transferred.state, deferralFingerprint);
+  assert.equal(projected.deferralFingerprint, deferralFingerprint);
+  assert.equal(projected.tenant, "acme");
+  // A later recovery under the original identity still resolves the record
+  // instead of colliding or becoming undiscoverable by deterministic derivation.
+  const recovered = recoverDeferredReview(
+    transferred.state,
+    recoveryInput(deferralFingerprint),
+    { nowIso: "2026-01-02T00:00:00Z" },
+  );
+  assert.equal(recovered.decision.outcome, "recovered");
+});
+
 // ===========================================================================
 // AC6: Fake-clock tests cover the 180-day boundary, 30-day terminal-detail
 // window, compaction, legal hold, purge, and coverage — through the REAL
