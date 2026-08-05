@@ -10,6 +10,8 @@ src/                   # dependency-free Action runtime
   operations.js        # on-demand route/acknowledge/finalize/query orchestration
   router.js            # route-policy owner: routeReview + selectProtocolRoute
   protocol.js          # versioned request/receipt decoding, canonical identity, decodeRoutingInputs
+  protocol-v2.js       # pure v2 budget-aware contracts: decoders, vocabularies, fingerprints
+  retention-policy.js  # pure standard-v1 retention/deletion/legal-hold/purge contracts (injected time)
   receipt.js           # exact-head Check Run receipt storage and reconciliation
   risk-context.js      # shared normalized routing-context builder
   reviewer-dispatch.js # shared Copilot presence probe and reviewer request
@@ -83,6 +85,17 @@ single queryable source for priority, ownership, dependencies, and status.
   receipt envelopes, and the `decodeRoutingInputs` typed routing-input record in
   `src/protocol.js`. It must not access the network, filesystem, environment,
   GitHub output surfaces, or route policy.
+- Put pure versioned contract definitions — v2 budget-aware wire/storage shapes
+  in `src/protocol-v2.js` and the `standard-v1` retention/deletion/legal-hold/
+  purge contracts in `src/retention-policy.js` — in their own leaf modules.
+  Like `src/protocol.js` they must not access the network, filesystem,
+  environment, GitHub output surfaces, or route policy, and they take no
+  ambient time: every lifecycle/expiry computation receives an injected
+  `nowIso` so fake-clock tests are deterministic. Each record carries exactly
+  one retention data class; a conflicting classification fails closed rather
+  than selecting the longer duration. New `src/*.js` modules must be added to
+  the `check` script's `node --check` list and registered in
+  `test/dependency-boundaries.test.js`.
 - Put HTTP mechanics and GitHub endpoint methods in `src/github.js`.
 - Put durable Check Run marker encoding, receipt lookup/reconciliation, and
   trusted successor-compare normalization in `src/receipt.js`; match

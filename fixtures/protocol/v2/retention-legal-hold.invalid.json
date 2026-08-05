@@ -1,0 +1,87 @@
+[
+  {
+    "name": "hold with no data-class scope",
+    "error": "must scope at least one data class",
+    "value": {
+      "schemaVersion": 2,
+      "holdId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "tenant": "acme",
+      "repository": { "owner": "octo", "name": "demo" },
+      "dataClasses": [],
+      "actor": "counsel-a",
+      "reason": "Litigation hold.",
+      "authorization": "legal-approval-114",
+      "state": "active",
+      "startAt": "2026-08-04T00:00:00Z",
+      "expiresAt": "2027-02-04T00:00:00Z"
+    }
+  },
+  {
+    "name": "hold missing its required expiry",
+    "error": "legalHold.expiresAt must be a string",
+    "value": {
+      "schemaVersion": 2,
+      "holdId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "tenant": "acme",
+      "repository": { "owner": "octo", "name": "demo" },
+      "dataClasses": ["bounded_event"],
+      "actor": "counsel-a",
+      "reason": "Litigation hold.",
+      "authorization": "legal-approval-114",
+      "state": "active",
+      "startAt": "2026-08-04T00:00:00Z"
+    }
+  },
+  {
+    "name": "hold expiring before it starts",
+    "error": "legalHold.expiresAt must be after startAt",
+    "value": {
+      "schemaVersion": 2,
+      "holdId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "tenant": "acme",
+      "repository": { "owner": "octo", "name": "demo" },
+      "dataClasses": ["bounded_event"],
+      "actor": "counsel-a",
+      "reason": "Litigation hold.",
+      "authorization": "legal-approval-114",
+      "state": "active",
+      "startAt": "2027-02-04T00:00:00Z",
+      "expiresAt": "2026-08-04T00:00:00Z"
+    }
+  },
+  {
+    "name": "released hold missing its release moment",
+    "error": "legalHold.releasedAt must be a string",
+    "value": {
+      "schemaVersion": 2,
+      "holdId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "tenant": "acme",
+      "repository": { "owner": "octo", "name": "demo" },
+      "dataClasses": ["bounded_event"],
+      "actor": "counsel-a",
+      "reason": "Matter closed.",
+      "authorization": "legal-approval-114",
+      "state": "released",
+      "startAt": "2026-08-04T00:00:00Z",
+      "expiresAt": "2027-02-04T00:00:00Z"
+    }
+  },
+  {
+    "name": "renewed-only field on an active hold",
+    "error": "legalHold.renewedFromHoldId is valid only for a renewed hold",
+    "value": {
+      "schemaVersion": 2,
+      "holdId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "tenant": "acme",
+      "repository": { "owner": "octo", "name": "demo" },
+      "dataClasses": ["bounded_event"],
+      "actor": "counsel-a",
+      "reason": "Litigation hold.",
+      "authorization": "legal-approval-114",
+      "state": "active",
+      "startAt": "2026-08-04T00:00:00Z",
+      "expiresAt": "2027-02-04T00:00:00Z",
+      "renewedFromHoldId": "4444444444444444444444444444444444444444444444444444444444444444"
+    }
+  }
+]

@@ -1,0 +1,58 @@
+{
+  "retentionPolicyId": "standard-v1",
+  "version": "1.0.0",
+  "schemaMajor": 2,
+  "livePurgeSlaDays": 7,
+  "backupHardMaxDays": 35,
+  "classes": {
+    "prohibited_content": {
+      "persist": false,
+      "crashCleanupHours": 24,
+      "finalForm": "none"
+    },
+    "operational_state": {
+      "activeMaxDays": 180,
+      "terminalDays": 90,
+      "unresolvedExpiredState": "expired_unknown",
+      "finalForm": "bounded_receipt"
+    },
+    "deferred_review": {
+      "activeMaxDays": 180,
+      "terminalDays": 30,
+      "expiredState": "expired_unreviewed",
+      "finalForm": "bounded_receipt"
+    },
+    "budget_observation": {
+      "terminalDays": 90,
+      "finalForm": "coverage_aggregate"
+    },
+    "bounded_event": {
+      "retentionMonths": 13,
+      "finalForm": "deleted"
+    },
+    "adjudication_chain": {
+      "retentionMonths": 13,
+      "chainScoped": true,
+      "finalForm": "coverage_aggregate"
+    },
+    "catalog_policy_version": {
+      "referenceGraceMonths": 13,
+      "finalForm": "digest_only"
+    },
+    "static_prompt_profile": {
+      "referenceGraceMonths": 13,
+      "prohibitsPrContent": true,
+      "finalForm": "digest_only"
+    },
+    "anonymous_aggregate": {
+      "retentionMonths": 25,
+      "nonIdentifying": true,
+      "finalForm": "deleted"
+    },
+    "backup": {
+      "hardMaxDays": 35,
+      "finalForm": "deleted"
+    }
+  },
+  "digest": "f5eb685c9ef6af284603b74c915db1e3464f0ac17e0f462b74c40b280da65d64"
+}

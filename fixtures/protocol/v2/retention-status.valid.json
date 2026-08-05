@@ -1,0 +1,67 @@
+[
+  {
+    "name": "terminal operational state with a deletion deadline and no hold",
+    "value": {
+      "schemaVersion": 2,
+      "retentionPolicyId": "standard-v1",
+      "version": "1.0.0",
+      "digest": "f5eb685c9ef6af284603b74c915db1e3464f0ac17e0f462b74c40b280da65d64",
+      "dataClass": "operational_state",
+      "lifecycleState": "terminal",
+      "retainedUntil": "2026-11-02T00:00:00Z",
+      "deletionStatus": "not_requested",
+      "legalHold": { "held": false },
+      "coverageStart": "2026-08-04T00:00:00Z",
+      "coverageEnd": "2026-08-04T12:00:00Z",
+      "githubNativeArtifacts": {
+        "managed": false,
+        "autoDeleted": false,
+        "note": "GitHub controls checks, comments, and reviews; they are not deleted here."
+      }
+    }
+  },
+  {
+    "name": "referenced catalog version retained indefinitely reports a null deadline",
+    "value": {
+      "schemaVersion": 2,
+      "retentionPolicyId": "standard-v1",
+      "version": "1.0.0",
+      "digest": "f5eb685c9ef6af284603b74c915db1e3464f0ac17e0f462b74c40b280da65d64",
+      "dataClass": "catalog_policy_version",
+      "lifecycleState": "active",
+      "retainedUntil": null,
+      "deletionStatus": "not_requested",
+      "legalHold": { "held": false },
+      "coverageStart": "2026-08-04T00:00:00Z",
+      "githubNativeArtifacts": {
+        "managed": false,
+        "autoDeleted": false,
+        "note": "GitHub-native artifacts are unmanaged."
+      }
+    }
+  },
+  {
+    "name": "held record surfaces its hold and its last deletion evidence",
+    "value": {
+      "schemaVersion": 2,
+      "retentionPolicyId": "standard-v1",
+      "version": "1.0.0",
+      "digest": "f5eb685c9ef6af284603b74c915db1e3464f0ac17e0f462b74c40b280da65d64",
+      "dataClass": "bounded_event",
+      "lifecycleState": "terminal",
+      "retainedUntil": null,
+      "deletionStatus": "not_requested",
+      "legalHold": { "held": true, "expiresAt": "2027-01-01T00:00:00Z" },
+      "coverageStart": "2026-08-04T00:00:00Z",
+      "lastDeletion": {
+        "deletionReceiptDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        "deletedAt": "2026-07-01T00:00:00Z"
+      },
+      "githubNativeArtifacts": {
+        "managed": false,
+        "autoDeleted": false,
+        "note": "GitHub-native artifacts are unmanaged."
+      }
+    }
+  }
+]

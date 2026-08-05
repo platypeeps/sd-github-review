@@ -1,0 +1,65 @@
+[
+  {
+    "name": "purge without explicit confirmation",
+    "error": "purgeRequest.confirmed must be explicitly true",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme",
+        "repository": { "owner": "octo", "name": "demo" }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "requestId": "2222222222222222222222222222222222222222222222222222222222222222",
+      "confirmed": false,
+      "requestedAt": "2026-08-04T00:00:00Z"
+    }
+  },
+  {
+    "name": "purge attempting to grant recovery authority",
+    "error": "recoveryAuthority is forbidden",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme",
+        "repository": { "owner": "octo", "name": "demo" }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "requestId": "2222222222222222222222222222222222222222222222222222222222222222",
+      "confirmed": true,
+      "requestedAt": "2026-08-04T00:00:00Z",
+      "recoveryAuthority": true
+    }
+  },
+  {
+    "name": "purge missing tenant authorization",
+    "error": "purgeRequest.authorization.tenant",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "repository": { "owner": "octo", "name": "demo" }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "requestId": "2222222222222222222222222222222222222222222222222222222222222222",
+      "confirmed": true,
+      "requestedAt": "2026-08-04T00:00:00Z"
+    }
+  },
+  {
+    "name": "purge missing request identity",
+    "error": "purgeRequest.requestId",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme",
+        "repository": { "owner": "octo", "name": "demo" }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "confirmed": true,
+      "requestedAt": "2026-08-04T00:00:00Z"
+    }
+  }
+]

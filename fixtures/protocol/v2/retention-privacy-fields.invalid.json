@@ -1,0 +1,41 @@
+{
+  "contentFields": [
+    "prompt",
+    "prompts",
+    "promptBody",
+    "renderedPrompt",
+    "diff",
+    "source",
+    "sourceText",
+    "finding",
+    "findings",
+    "rawFinding",
+    "modelOutput",
+    "output",
+    "transcript",
+    "providerPayload",
+    "rawPayload",
+    "billingPayload",
+    "rawBilling",
+    "credential",
+    "secret",
+    "token",
+    "apiKey",
+    "rawBalance",
+    "privatePolicy",
+    "managementEndpoint",
+    "requestContent"
+  ],
+  "identifyingFields": [
+    "repository",
+    "repositoryId",
+    "pullRequestNumber",
+    "prNumber",
+    "headSha",
+    "attempt",
+    "findingId",
+    "actor",
+    "candidateActor",
+    "providerAccount"
+  ]
+}
