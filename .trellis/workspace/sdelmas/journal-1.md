@@ -1627,3 +1627,41 @@ Split scripts/consumer-installer.mjs (1459->488 lines) into codecs/transport/per
 ### Next Steps
 
 - None - task complete
+
+
+## Session 41: Ship v2 budget-review contract core (07-25) with Copilot CAS + gate-hole fixes
+
+**Date**: 2026-08-04
+**Task**: Ship v2 budget-review contract core (07-25) with Copilot CAS + gate-hole fixes
+**Branch**: `feat/define-budget-review-v2-contracts`
+
+### Summary
+
+Shipped the v2 contract core slice and closed two Copilot review findings on PR #42: authorizeProjectionWrite now enforces a true same-head compare-and-swap on the current projection token, and decodeReviewOutcomes now blocks the gate on any review skipped for a non-budget reason. All 9 core acceptance criteria met; remaining v2 families delegated to four follow-up tasks.
+
+### Main Changes
+
+- src/protocol-v2.js: same-head recovery requires presented token == current.latestAuthorizedAttemptToken (CAS witness), closing a stale-token bypass
+- src/protocol-v2.js: non-budget skipped review now blocks the gate; budget_exhausted_deferred remains the sole gate-free skip
+- Paired reject/accept tests + durable invalid outcomes fixture
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3069c55` | feat: define budget review v2 contract core (07-25-define-budget-review-v2-contracts) |
+| `7e2e3d1` | fix(protocol-v2): close CAS stale-token bypass and non-budget review-skip gate hole |
+
+### Testing
+
+- [OK] node --test test/protocol-v2.test.js: 28 pass, 0 fail
+- [OK] npm run check:full deterministic gates: 316 tests pass, coverage 93.29% lines / 84.54% branches, metadata + ci-parity OK
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
