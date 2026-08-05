@@ -1018,7 +1018,13 @@ export function decodeLocalReviewAuthorization(value) {
   if (authorized && reviewResult !== "clean") {
     throw new Error("localReviewAuthorization may authorize only clean local review evidence");
   }
-  const attemptToken = deriveV2Fingerprint({ ...binding, attestationDigest, trustLevel });
+  const attemptToken = deriveV2Fingerprint({
+    ...binding,
+    attestationDigest,
+    trustLevel,
+    policyDigest,
+    publicationContext,
+  });
   return {
     schemaVersion: PROTOCOL_V2_SCHEMA_MAJOR,
     ...binding,

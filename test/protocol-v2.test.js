@@ -525,6 +525,16 @@ test("the authorization attempt token binds every identity input", () => {
   // Changing the evidence digest changes the token.
   const movedEvidence = { ...clone(base), evidenceDigest: "9".repeat(64) };
   assert.notEqual(decodeLocalReviewAuthorization(movedEvidence).attemptToken, token);
+  // Changing the governing policy digest changes the token.
+  const movedPolicy = { ...clone(base), policyDigest: "8".repeat(64) };
+  assert.notEqual(decodeLocalReviewAuthorization(movedPolicy).attemptToken, token);
+  // Changing the authenticated publication context changes the token.
+  const movedPublication = clone(base);
+  movedPublication.publicationContext = {
+    ...movedPublication.publicationContext,
+    runId: movedPublication.publicationContext.runId + 1,
+  };
+  assert.notEqual(decodeLocalReviewAuthorization(movedPublication).attemptToken, token);
 });
 
 test("local review receipts are immutable and only clean satisfies the gate", () => {
