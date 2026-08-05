@@ -494,6 +494,53 @@ test("AC10 an ambiguous possible dispatch reconciles and never advances to anoth
   assert.equal(result.state, state, "an ambiguous outcome persists no authorization");
 });
 
+// Regression (Copilot review PR #49): replaying a budget-exhaustion response is
+// idempotent. The persisted plan outcome (`deferred`) must be compared to the
+// freshly DERIVED plan outcome, not the raw control-plane outcome
+// (`budget_exhausted`), so a replay reproduces the stored deferral instead of
+// throwing a spurious control-plane-vs-plan outcome-name conflict.
+test("AC10 replaying a proven budget-exhaustion response is idempotent, not a conflict", () => {
+  const prepared = prepare();
+  const exhausted = response(prepared, { outcome: "budget_exhausted", proven: true, poolId: "assurance-pool", reserved: undefined, revision: undefined });
+  const first = authorizePlan({ prepared, response: exhausted, state: createPlanAuthorizationState(), nowIso: NOW });
+  assert.equal(first.decision.outcome, "deferred");
+  assert.ok(Object.hasOwn(first.state.authorizations, prepared.requestFingerprint), "the deferral is persisted");
+
+  const replay = authorizePlan({ prepared, response: exhausted, state: first.state, nowIso: "2026-01-01T00:20:00Z" });
+  assert.equal(replay.decision.outcome, "deferred");
+  assert.equal(replay.decision.replay, true);
+  assert.equal(replay.state, first.state, "an idempotent deferral replay returns the same state object unchanged");
+});
+
+// Regression (Copilot review PR #49): in fixed mode a trusted candidate command
+// selects WHICH candidate but must not relabel the decision source. The source
+// stays `fixed_mode` (the fixed lane is authoritative under fixed_mode >
+// trusted_command) while the command-selected candidate rides in `candidate`.
+test("AC4 fixed mode keeps source fixed_mode while a trusted command still picks the candidate", () => {
+  const resolved = resolveSelectionPrecedence({
+    mode: { kind: "fixed", lane: "assurance" },
+    trustedCommand: { lane: "review", candidate: "kimi-review" },
+    routeLabels: ["gate"],
+  });
+  assert.equal(resolved.source, "fixed_mode", "the fixed lane decision is authoritative");
+  assert.equal(resolved.lane, "assurance", "the fixed lane is not replaced by the command lane");
+  assert.equal(resolved.candidate, "kimi-review", "the command-selected candidate is carried separately");
+  assert.deepEqual(resolved.ignoredLabelLanes, ["gate"]);
+});
+
+// Regression (Copilot review PR #49): a non-/review body is ignored, not
+// rejected. An empty, whitespace-only, undefined, or non-string body returns
+// `ignored` without throwing on strict body validation or dereferencing
+// `compiled` — the common case for a caller that feeds every PR comment through.
+test("AC3 an empty, undefined, or non-string body is ignored without throwing", () => {
+  for (const body of ["", "   ", undefined, null, 42, "hello world"]) {
+    const result = interpretReviewCommand({ body, trusted: true });
+    assert.equal(result.status, "ignored", `body ${JSON.stringify(body)} is ignored`);
+  }
+  // A real /review command is still parsed strictly once the prefix matches.
+  assert.equal(interpretReviewCommand({ body: "/review options", trusted: true, compiled }).status, "command");
+});
+
 // ===========================================================================
 // Shared invariants: managed-only, immutability, bounded request privacy.
 // ===========================================================================

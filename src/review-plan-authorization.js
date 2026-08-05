@@ -524,6 +524,13 @@ function suggestionsFor(laneProjectionLanes, lane, availability) {
 // never a fuzzy match. A reserved candidate/slot/chain control label fails
 // visibly. A non-`/review` body is ignored, not rejected.
 export function interpretReviewCommand({ body, trusted, compiled, availability } = {}) {
+  // A non-`/review` body is ignored, not rejected. Detect that cheaply BEFORE any
+  // strict body validation or `compiled` dereference so an empty, undefined, or
+  // non-string comment (the common case for a comment-processing caller) returns
+  // `ignored` instead of throwing.
+  if (typeof body !== "string" || !/^\s*\/review(?:\s|$)/u.test(body)) {
+    return freezeDeep({ status: "ignored" });
+  }
   const raw = stringValue(body, "body", { maximum: 512 });
   const laneKeys = Object.keys(objectValue(objectValue(compiled, "compiled").lanes, "compiled.lanes"));
   const decodedAvailability = availability === undefined ? undefined : decodeCandidateOptionsResponse(availability);
@@ -618,8 +625,13 @@ export function resolveSelectionPrecedence({ mode, trustedCommand, routeLabels }
     // lane, but the fixed lane and the fixed decision are authoritative. A
     // conflicting broad label is recorded as ignored, never applied.
     const candidate = command && command.candidate ? command.candidate : undefined;
+    // The fixed lane is the authoritative decision, so the source stays
+    // `fixed_mode` even when a trusted command selects WHICH candidate; the
+    // command-selected candidate rides in the separate `candidate` field. Naming
+    // the source `trusted_command` here would contradict the fixed_mode >
+    // trusted_command precedence this function enforces.
     return freezeDeep({
-      source: candidate ? "trusted_command" : "fixed_mode",
+      source: "fixed_mode",
       lane,
       candidate,
       ignoredLabelLanes: distinctLabelLanes.filter((laneName) => laneName !== lane),
@@ -947,17 +959,11 @@ export function authorizePlan({ prepared, response, state, nowIso } = {}) {
     throw new Error("controlPlaneResponse.attempt does not match the prepared attempt");
   }
 
-  // Idempotent replay: an already-persisted authorization must reproduce the same
-  // decision. A response that would change it is a replay conflict and fails
-  // closed rather than authorizing a second, different dispatch.
-  if (Object.hasOwn(state.authorizations, requestFingerprint)) {
-    const stored = state.authorizations[requestFingerprint];
-    if (stored.outcome !== decoded.outcome) {
-      throw new Error("controlPlaneResponse conflicts with the persisted authorization for this request");
-    }
-    return { state, decision: freezeDeep({ ...stored, replay: true }) };
-  }
-
+  // Derive the terminal plan outcome from the response BEFORE the idempotent
+  // replay comparison. The control-plane outcome (`budget_exhausted`) is not the
+  // persisted plan outcome (`deferred`/`blocked`), so comparing the raw control-
+  // plane name to the stored plan outcome would spuriously reject a legitimate
+  // replay of a budget-exhaustion response. Ambiguous/changed-head never persist.
   let record;
   if (decoded.outcome === "authorized") {
     trueValue(decoded.raw.reserved, "controlPlaneResponse.reserved");
@@ -999,6 +1005,19 @@ export function authorizePlan({ prepared, response, state, nowIso } = {}) {
     // Ambiguous possible dispatch: stop and reconcile; never advance to another
     // candidate and never persist an authorization.
     return { state, decision: freezeDeep({ outcome: "reconciliation_required", reason: "ambiguous", dispatchAllowed: false, requestFingerprint }) };
+  }
+
+  // Idempotent replay: a persisted authorization must reproduce the SAME derived
+  // plan outcome. Comparing the freshly derived `record.outcome` (not the raw
+  // control-plane outcome) makes a budget-exhaustion replay that persisted as
+  // `deferred`/`blocked` idempotent, while a response that would change the
+  // decision is still a replay conflict that fails closed.
+  if (Object.hasOwn(state.authorizations, requestFingerprint)) {
+    const stored = state.authorizations[requestFingerprint];
+    if (stored.outcome !== record.outcome) {
+      throw new Error("controlPlaneResponse conflicts with the persisted authorization for this request");
+    }
+    return { state, decision: freezeDeep({ ...stored, replay: true }) };
   }
 
   const nextState = freezeDeep({
