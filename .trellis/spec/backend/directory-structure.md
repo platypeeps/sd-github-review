@@ -13,6 +13,7 @@ src/                   # dependency-free Action runtime
   protocol-v2.js       # pure v2 budget-aware contracts: decoders, vocabularies, fingerprints
   retention-policy.js  # pure standard-v1 retention/deletion/legal-hold/purge contracts (injected time)
   review-candidate-catalog.js # pure immutable candidate/prompt-profile catalog, safe projection, retention classification (injected time)
+  routed-review-compiler.js # pure compiler: explicit-mode v2 source + catalog safe projection/handler profiles -> canonical manifest with source/catalog/output digests
   receipt.js           # exact-head Check Run receipt storage and reconciliation
   risk-context.js      # shared normalized routing-context builder
   reviewer-dispatch.js # shared Copilot presence probe and reviewer request
@@ -91,7 +92,14 @@ single queryable source for priority, ownership, dependencies, and status.
   purge contracts in `src/retention-policy.js`, and the immutable review
   candidate/prompt-profile catalog with its bounded safe projection and
   reference-aware retention classification in
-  `src/review-candidate-catalog.js` — in their own leaf modules.
+  `src/review-candidate-catalog.js` — in their own leaf modules. The pure
+  routed-review configuration compiler in `src/routed-review-compiler.js` sits
+  one layer above those leaves: it imports the v2 source decoder from
+  `src/protocol-v2.js` and the candidate safe projection from
+  `src/review-candidate-catalog.js`, then compiles an explicit-mode v2 source
+  (with a managed catalog safe projection or standalone setup-discovered handler
+  profiles) into a canonical manifest with stable source, catalog, and output
+  digests. It infers no mode and takes no ambient input beyond its arguments.
   Like `src/protocol.js` they must not access the network, filesystem,
   environment, GitHub output surfaces, or route policy, and they take no
   ambient time: every lifecycle/expiry computation receives an injected

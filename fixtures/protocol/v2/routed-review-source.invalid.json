@@ -1,0 +1,246 @@
+[
+  {
+    "name": "missing mode is never inferred",
+    "error": "mode must be a string",
+    "value": {
+      "schemaVersion": 2,
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "review": {
+          "execution": "local-attested",
+          "attestation": {
+            "trustPolicyRef": "repo-attested-v1",
+            "allowedAssociations": ["OWNER"],
+            "allowPrAuthor": false,
+            "maxAgeSeconds": 900
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "mixed standalone source carrying managed lanes",
+    "error": "lanes is forbidden for standalone mode",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "lanes": {
+        "assurance": {
+          "slot": "managed",
+          "budgetExhaustion": { "merge": "allow" },
+          "candidate": {
+            "candidateDigest": "9766e04bbcda0b132a3d86614bacf80585e12dc4040461f1d00b4fb276baf525",
+            "promptProfile": { "mode": "handler-managed" }
+          }
+        }
+      },
+      "routes": {
+        "review": {
+          "execution": "local-attested",
+          "attestation": {
+            "trustPolicyRef": "repo-attested-v1",
+            "allowedAssociations": ["OWNER"],
+            "allowPrAuthor": false,
+            "maxAgeSeconds": 900
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "mixed managed source carrying standalone routes",
+    "error": "routes is forbidden for managed mode",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "managed",
+      "catalogDigest": "abababababababababababababababababababababababababababababababab",
+      "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "routes": {
+        "review": {
+          "execution": "local-attested",
+          "attestation": {
+            "trustPolicyRef": "repo-attested-v1",
+            "allowedAssociations": ["OWNER"],
+            "allowPrAuthor": false,
+            "maxAgeSeconds": 900
+          }
+        }
+      },
+      "lanes": {
+        "assurance": {
+          "slot": "managed",
+          "budgetExhaustion": { "merge": "allow" },
+          "candidate": {
+            "candidateDigest": "9766e04bbcda0b132a3d86614bacf80585e12dc4040461f1d00b4fb276baf525",
+            "promptProfile": { "mode": "handler-managed" }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "legacy overrides.labels field is unsupported",
+    "error": "declares no import, inheritance, preset, override",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "overrides": { "labels": { "review": "candidate:kimi-review" } },
+      "routes": {
+        "review": {
+          "execution": "local-attested",
+          "attestation": {
+            "trustPolicyRef": "repo-attested-v1",
+            "allowedAssociations": ["OWNER"],
+            "allowPrAuthor": false,
+            "maxAgeSeconds": 900
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "import composition lever is unsupported",
+    "error": "declares no import, inheritance, preset, override",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "imports": ["shared/base.yml"],
+      "routes": {
+        "review": {
+          "execution": "local-attested",
+          "attestation": {
+            "trustPolicyRef": "repo-attested-v1",
+            "allowedAssociations": ["OWNER"],
+            "allowPrAuthor": false,
+            "maxAgeSeconds": 900
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "inheritance composition lever under a spelling variant is unsupported",
+    "error": "declares no import, inheritance, preset, override",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "Inheritance": { "from": "base" },
+      "routes": {
+        "review": {
+          "execution": "local-attested",
+          "attestation": {
+            "trustPolicyRef": "repo-attested-v1",
+            "allowedAssociations": ["OWNER"],
+            "allowPrAuthor": false,
+            "maxAgeSeconds": 900
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "a forbidden default lever in a profile binding fails closed",
+    "error": "declares no default, inheritance, fallback",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "review": {
+          "execution": "direct-handler",
+          "handler": "pr-agent",
+          "promptProfile": {
+            "mode": "referenced",
+            "alias": "balanced-review",
+            "version": "1.4.0",
+            "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "default": "cheap"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "an invalid prompt-profile alias fails closed",
+    "error": "alias has an invalid format",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "review": {
+          "execution": "direct-handler",
+          "handler": "pr-agent",
+          "promptProfile": {
+            "mode": "referenced",
+            "alias": "Bad Alias!",
+            "version": "1.4.0",
+            "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "a managed lane missing its budget-exhaustion policy fails closed",
+    "error": "budgetExhaustion must be an object",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "managed",
+      "catalogDigest": "abababababababababababababababababababababababababababababababab",
+      "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "lanes": {
+        "assurance": {
+          "slot": "managed",
+          "candidate": {
+            "candidateDigest": "9766e04bbcda0b132a3d86614bacf80585e12dc4040461f1d00b4fb276baf525",
+            "promptProfile": { "mode": "handler-managed" }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "a legacy budget-exhaustion value is rejected after the v2 cutover",
+    "error": "must be one of: block, allow",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "managed",
+      "catalogDigest": "abababababababababababababababababababababababababababababababab",
+      "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "lanes": {
+        "assurance": {
+          "slot": "managed",
+          "budgetExhaustion": { "merge": "defer" },
+          "candidate": {
+            "candidateDigest": "9766e04bbcda0b132a3d86614bacf80585e12dc4040461f1d00b4fb276baf525",
+            "promptProfile": { "mode": "handler-managed" }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "a managed source missing its configuration digest fails closed",
+    "error": "configurationDigest must be a string",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "managed",
+      "catalogDigest": "abababababababababababababababababababababababababababababababab",
+      "lanes": {
+        "assurance": {
+          "slot": "managed",
+          "budgetExhaustion": { "merge": "allow" },
+          "candidate": {
+            "candidateDigest": "9766e04bbcda0b132a3d86614bacf80585e12dc4040461f1d00b4fb276baf525",
+            "promptProfile": { "mode": "handler-managed" }
+          }
+        }
+      }
+    }
+  }
+]

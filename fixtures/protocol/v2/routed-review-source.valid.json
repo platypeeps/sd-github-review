@@ -1,0 +1,128 @@
+[
+  {
+    "name": "standalone direct-handler and local-attested routes",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "review": {
+          "execution": "direct-handler",
+          "handler": "pr-agent",
+          "promptProfile": {
+            "mode": "referenced",
+            "alias": "balanced-review",
+            "version": "1.4.0",
+            "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        },
+        "assurance": {
+          "execution": "local-attested",
+          "attestation": {
+            "trustPolicyRef": "repo-attested-v1",
+            "allowedAssociations": [
+              "OWNER",
+              "MEMBER"
+            ],
+            "allowPrAuthor": false,
+            "maxAgeSeconds": 3600
+          }
+        }
+      }
+    },
+    "mode": "standalone"
+  },
+  {
+    "name": "standalone direct-handler with handler-managed native profile",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "capabilityUnavailableReason": "not_configured",
+      "routes": {
+        "review": {
+          "execution": "direct-handler",
+          "handler": "copilot",
+          "promptProfile": {
+            "mode": "handler-managed"
+          }
+        }
+      }
+    },
+    "mode": "standalone"
+  },
+  {
+    "name": "standalone all-local routes need no handler profile",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "review": {
+          "execution": "local-attested",
+          "attestation": {
+            "trustPolicyRef": "repo-attested-v1",
+            "allowedAssociations": [
+              "OWNER",
+              "MEMBER",
+              "COLLABORATOR"
+            ],
+            "allowPrAuthor": true,
+            "maxAgeSeconds": 1800
+          }
+        },
+        "gate": {
+          "execution": "local-attested",
+          "attestation": {
+            "trustPolicyRef": "repo-attested-v1",
+            "allowedAssociations": [
+              "OWNER"
+            ],
+            "allowPrAuthor": false,
+            "maxAgeSeconds": 900
+          }
+        }
+      }
+    },
+    "mode": "standalone"
+  },
+  {
+    "name": "managed lanes with shared and candidate-specific profiles",
+    "mode": "managed",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "managed",
+      "catalogDigest": "abababababababababababababababababababababababababababababababab",
+      "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "lanes": {
+        "assurance": {
+          "slot": "managed",
+          "budgetExhaustion": {
+            "merge": "allow"
+          },
+          "candidate": {
+            "candidateDigest": "9766e04bbcda0b132a3d86614bacf80585e12dc4040461f1d00b4fb276baf525",
+            "promptProfile": {
+              "mode": "referenced",
+              "alias": "assurance-strict",
+              "version": "2.0.1",
+              "digest": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            }
+          }
+        },
+        "gate": {
+          "slot": "parallel",
+          "budgetExhaustion": {
+            "merge": "block"
+          },
+          "candidate": {
+            "candidateDigest": "7c634d730a89dbe98c316f5ca021f5ab33637a1dccfe54ad28dfd715f97b3f56",
+            "promptProfile": {
+              "mode": "handler-managed"
+            }
+          }
+        }
+      }
+    }
+  }
+]

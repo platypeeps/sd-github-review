@@ -1,0 +1,20 @@
+{
+  "schemaMajor": 2,
+  "handlers": [
+    {
+      "handler": "pr-agent",
+      "promptProfile": {
+        "mode": "referenced",
+        "alias": "balanced-review",
+        "version": "1.4.0",
+        "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    {
+      "handler": "copilot",
+      "promptProfile": {
+        "mode": "handler-managed"
+      }
+    }
+  ]
+}
