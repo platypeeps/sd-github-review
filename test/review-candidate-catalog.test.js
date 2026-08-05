@@ -378,6 +378,21 @@ test("catalog retention classification drives the reference-aware fake clock", (
   }
 });
 
+test("retention classification bounds encoded size like every other public decoder", () => {
+  assert.throws(
+    () => classifyCatalogRetention({
+      subject: "catalog_version",
+      createdAt: "2026-01-01T00:00:00Z",
+      referenced: true,
+      retentionPolicyId: "standard-v1",
+      version: "1.0.0",
+      digest: STANDARD_V1.digest,
+      note: "x".repeat(20 * 1024),
+    }),
+    /exceeds the \d+-byte limit/u,
+  );
+});
+
 test("a conflicting retention classification fails closed rather than choosing a duration", () => {
   assert.throws(
     () => classifyCatalogRetention({

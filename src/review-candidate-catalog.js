@@ -1017,6 +1017,7 @@ export function describeCatalogTransition(previous, next) {
 // selecting the longer duration.
 export function classifyCatalogRetention(value, field = "catalogRetention") {
   rejectForbiddenContent(value, field);
+  assertEncodedSize(value, field, RESPONSE_MAX_BYTES);
   const input = objectValue(value, field);
   if (input.subjects !== undefined) {
     throw new Error(`${field} must declare a single subject, not a subjects set`);
