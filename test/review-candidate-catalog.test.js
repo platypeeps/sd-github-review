@@ -370,6 +370,34 @@ test("a referenced version rejects a lastReferencedAt and a static profile rejec
   );
 });
 
+test("an unreferenced classification fails closed without an explicit final-reference anchor", () => {
+  // Omitting lastReferencedAt must not silently anchor the 13-month tail on
+  // createdAt, which could purge a long-referenced version months early.
+  assert.throws(
+    () => classifyCatalogRetention({
+      subject: "catalog_version",
+      createdAt: "2026-01-01T00:00:00Z",
+      referenced: false,
+      retentionPolicyId: "standard-v1",
+      version: "1.0.0",
+      digest: STANDARD_V1.digest,
+    }),
+    /lastReferencedAt is required once the version is no longer referenced/u,
+  );
+  assert.throws(
+    () => classifyCatalogRetention({
+      subject: "catalog_version",
+      createdAt: "2026-06-01T00:00:00Z",
+      referenced: false,
+      lastReferencedAt: "2026-01-01T00:00:00Z",
+      retentionPolicyId: "standard-v1",
+      version: "1.0.0",
+      digest: STANDARD_V1.digest,
+    }),
+    /lastReferencedAt must not precede createdAt/u,
+  );
+});
+
 test("no dangling retained receipt survives once the tail elapses", () => {
   const record = classify({ subject: "prompt_profile", referenced: false, lastReferencedAt: "2026-06-01T00:00:00Z" });
   const afterTail = computeRecordLifecycle(record, { nowIso: "2028-01-01T00:00:00Z" });

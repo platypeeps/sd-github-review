@@ -1012,7 +1012,17 @@ export function classifyCatalogRetention(value, field = "catalogRetention") {
     ? true
     : booleanValue(input.referenced, `${field}.referenced`);
   if (!normalized.referenced) {
-    normalized.lastReferencedAt = optionalTimestamp(input.lastReferencedAt, `${field}.lastReferencedAt`) ?? createdAt;
+    // The 13-month tail must anchor on the final reference. Defaulting a missing
+    // anchor to createdAt would start the deletion clock at creation and could
+    // purge a version months before its policy allows, so an unreferenced
+    // classification fails closed until it names when the last reference left.
+    if (input.lastReferencedAt === undefined) {
+      throw new Error(`${field}.lastReferencedAt is required once the version is no longer referenced`);
+    }
+    normalized.lastReferencedAt = timestampValue(input.lastReferencedAt, `${field}.lastReferencedAt`);
+    if (Date.parse(normalized.lastReferencedAt) < Date.parse(createdAt)) {
+      throw new Error(`${field}.lastReferencedAt must not precede createdAt`);
+    }
   } else if (input.lastReferencedAt !== undefined) {
     throw new Error(`${field}.lastReferencedAt is valid only once the version is no longer referenced`);
   }
