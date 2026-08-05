@@ -229,6 +229,35 @@ test("every non-budget failure blocks the gate regardless of the other axes", ()
   assert.equal(decoded.gateOutcome.state, "block");
 });
 
+test("a review skipped for a non-budget reason cannot leave the gate free", () => {
+  // Only the sanctioned budget defer may skip review while the gate passes.
+  const skipped = {
+    schemaVersion: 2,
+    headSha: "a".repeat(40),
+    attempt: 1,
+    logicalDispatchId: "1".repeat(64),
+    reviewOutcome: { state: "skipped", reasonCode: "policy_violation" },
+    assuranceOutcome: { state: "pass", reasonCode: "completed" },
+    gateOutcome: { state: "pass", reasonCode: "completed" },
+  };
+  assert.throws(
+    () => decodeReviewOutcomes(clone(skipped)),
+    /gateOutcome must block when a non-budget failure occurs/u,
+    "a non-budget skipped review must block the gate",
+  );
+  // Blocking the gate makes the same non-budget skip acceptable.
+  const blocked = { ...clone(skipped), gateOutcome: { state: "block", reasonCode: "policy_violation" } };
+  assert.equal(decodeReviewOutcomes(blocked).reviewOutcome.state, "skipped");
+  // The sanctioned budget defer still skips review while the gate passes.
+  const budgetDefer = {
+    ...clone(skipped),
+    reviewOutcome: { state: "skipped", reasonCode: "budget_exhausted_deferred" },
+    assuranceOutcome: { state: "deferred", reasonCode: "budget_exhausted_deferred" },
+    gateOutcome: { state: "pass", reasonCode: "budget_exhausted_deferred" },
+  };
+  assert.equal(decodeReviewOutcomes(budgetDefer).gateOutcome.state, "pass");
+});
+
 // --- Check projection + compare-and-swap -----------------------------------
 
 test("decodes every check projection fixture", () => {
@@ -278,6 +307,24 @@ test("projection compare-and-swap enforces monotonic revision and token", () => 
   assert.throws(
     () => authorizeProjectionWrite(initial, wrongToken, { authorizedAttemptToken: token }),
     /latest authorized attempt token/u,
+  );
+
+  // Same-head recovery is a compare-and-swap on the CURRENT token: a caller
+  // holding a stale token cannot recover the head merely by copying that stale
+  // token into the candidate. Current head is authorized by a fresh token; the
+  // stale write self-certifies with the old token and must be rejected.
+  const rotated = { ...clone(initial), revision: 5, latestAuthorizedAttemptToken: "9".repeat(64) };
+  const staleToken = "1".repeat(64);
+  const staleRecovery = { ...clone(initial), revision: 6, latestAuthorizedAttemptToken: staleToken };
+  assert.throws(
+    () => authorizeProjectionWrite(rotated, staleRecovery, { authorizedAttemptToken: staleToken }),
+    /same-head checkProjection recovery must reuse the current authorized attempt token/u,
+  );
+  // The genuine current token still recovers the same head.
+  const freshRecovery = { ...clone(rotated), revision: 6 };
+  assert.equal(
+    authorizeProjectionWrite(rotated, freshRecovery, { authorizedAttemptToken: "9".repeat(64) }).reason,
+    "same-head-recovery",
   );
 
   assert.throws(

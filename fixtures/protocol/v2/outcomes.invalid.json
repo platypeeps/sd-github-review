@@ -39,6 +39,19 @@
     }
   },
   {
+    "name": "review skipped for a non-budget reason with a passing gate",
+    "error": "gateOutcome must block",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attempt": 1,
+      "logicalDispatchId": "1111111111111111111111111111111111111111111111111111111111111111",
+      "reviewOutcome": { "state": "skipped", "reasonCode": "policy_violation" },
+      "assuranceOutcome": { "state": "pass", "reasonCode": "completed" },
+      "gateOutcome": { "state": "pass", "reasonCode": "completed" }
+    }
+  },
+  {
     "name": "unknown review outcome state",
     "error": "reviewOutcome.state must be one of",
     "value": {

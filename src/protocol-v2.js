@@ -788,9 +788,13 @@ export function decodeReviewOutcomes(value) {
     }
   }
   // Deferred assurance (proven budget exhaustion) is the sole failure that
-  // leaves the gate free. EVERY other non-budget failure axis — a failed review
-  // or a failed assurance — must block the gate, independent of the other axes.
-  const nonBudgetFailure = reviewOutcome.state === "failed" || assuranceOutcome.state === "fail";
+  // leaves the gate free. EVERY other non-budget failure axis must block the
+  // gate, independent of the other axes: a failed review, a failed assurance,
+  // or a review skipped for any reason other than the sanctioned budget defer.
+  const reviewSkippedNonBudget =
+    reviewOutcome.state === "skipped" && reviewOutcome.reasonCode !== "budget_exhausted_deferred";
+  const nonBudgetFailure =
+    reviewOutcome.state === "failed" || assuranceOutcome.state === "fail" || reviewSkippedNonBudget;
   if (nonBudgetFailure && gateOutcome.state !== "block") {
     throw new Error("outcomes.gateOutcome must block when a non-budget failure occurs");
   }
@@ -853,8 +857,17 @@ export function authorizeProjectionWrite(previous, next, { authorizedAttemptToke
   if (candidate.revision <= current.revision) {
     throw new Error("checkProjection revision must strictly increase");
   }
-  const reason = current.headSha === candidate.headSha ? "same-head-recovery" : "changed-head-supersession";
-  return { authorized: true, reason, projection: candidate };
+  if (current.headSha === candidate.headSha) {
+    // Same-head recovery continues the current attempt: the presented token is a
+    // compare-and-swap witness that must match the current projection's latest
+    // authorized attempt token, not merely the token copied into the candidate.
+    // Without this a caller holding a stale token could recover the same head.
+    if (current.latestAuthorizedAttemptToken !== token) {
+      throw new Error("same-head checkProjection recovery must reuse the current authorized attempt token");
+    }
+    return { authorized: true, reason: "same-head-recovery", projection: candidate };
+  }
+  return { authorized: true, reason: "changed-head-supersession", projection: candidate };
 }
 
 // --- setup discovery (v2) ---------------------------------------------------
