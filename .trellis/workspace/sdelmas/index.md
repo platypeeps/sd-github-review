@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 44
+- **Total Sessions**: 45
 - **Last Active**: 2026-08-05
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1782 | Active |
+| `journal-1.md` | ~1823 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 45 | 2026-08-05 | Iteration 4: define review candidate catalog standard-v1 contract | `006cebd`, `502238b`, `d444e24` | `feat/07-25-define-review-candidate-catalog` |
 | 44 | 2026-08-05 | Define standard-v1 review data retention policy contract | `ddeb58e`, `00f6f58` | `feat/07-25-define-review-data-retention-policy` |
 | 43 | 2026-08-05 | Define local review attestation contracts (07-25) — implement + ship PR #44 | `5f80759`, `689d755`, `2170be1`, `58311b0` | `feat/define-local-review-attestation-contracts` |
 | 42 | 2026-08-04 | Compile parallel reviewer plans (07-25) — implement + ship PR #43 | `116e1ca`, `2114409` | `feat/compile-parallel-reviewer-plans` |
