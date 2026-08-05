@@ -1,0 +1,162 @@
+[
+ {
+  "name": "top-level self-asserted authorization",
+  "error": "forbidden by the v2 privacy boundary",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "requestedAt": "2026-08-05T00:00:00Z",
+   "authorized": true
+  }
+ },
+ {
+  "name": "top-level self-asserted actor",
+  "error": "forbidden by the v2 privacy boundary",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "requestedAt": "2026-08-05T00:00:00Z",
+   "actor": "octo-owner"
+  }
+ },
+ {
+  "name": "top-level self-asserted publicationContext",
+  "error": "forbidden by the v2 privacy boundary",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "requestedAt": "2026-08-05T00:00:00Z",
+   "publicationContext": {
+    "publisher": "octo-owner",
+    "association": "OWNER",
+    "isPrAuthor": false,
+    "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+    "runId": 1234567,
+    "runAttempt": 1
+   }
+  }
+ },
+ {
+  "name": "nested self-asserted authorizationResult",
+  "error": "forbidden by the v2 privacy boundary",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "requestedAt": "2026-08-05T00:00:00Z",
+   "meta": {
+    "authorizationResult": "granted"
+   }
+  }
+ },
+ {
+  "name": "case-variant self-asserted actor",
+  "error": "forbidden by the v2 privacy boundary",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "requestedAt": "2026-08-05T00:00:00Z",
+   "Actor": "octo-owner"
+  }
+ },
+ {
+  "name": "case/separator-variant publication_context",
+  "error": "forbidden by the v2 privacy boundary",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "requestedAt": "2026-08-05T00:00:00Z",
+   "publication_context": {
+    "publisher": "octo-owner",
+    "association": "OWNER",
+    "isPrAuthor": false,
+    "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+    "runId": 1234567,
+    "runAttempt": 1
+   }
+  }
+ },
+ {
+  "name": "nested authority grant field",
+  "error": "forbidden by the v2 privacy boundary",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "requestedAt": "2026-08-05T00:00:00Z",
+   "meta": {
+    "lease": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+   }
+  }
+ },
+ {
+  "name": "unknown reasonCode",
+  "error": "clearanceRequest.reasonCode",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "reasonCode": "not_a_reason",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "requestedAt": "2026-08-05T00:00:00Z"
+  }
+ },
+ {
+  "name": "schema major 1 receipt cannot masquerade",
+  "error": "must use supported schema major 2",
+  "value": {
+   "schemaVersion": 1,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "requestedAt": "2026-08-05T00:00:00Z"
+  }
+ }
+]

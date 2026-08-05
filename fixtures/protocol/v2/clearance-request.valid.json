@@ -1,0 +1,16 @@
+[
+ {
+  "name": "identity-free, authority-free clearance request",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "requestedAt": "2026-08-05T00:00:00Z"
+  }
+ }
+]

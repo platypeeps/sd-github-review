@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Quality/test conventions for verifying the contract + fixtures"}
+{"file": ".trellis/tasks/08-04-define-v2-quarantine-clearance-contracts/research/quarantine-clearance-gap-analysis.md", "reason": "Verify implementation matches the mapped surface and closes AC13 + AC10-residual"}

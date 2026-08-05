@@ -154,5 +154,57 @@
       "assuranceOutcome": { "state": "not_applicable", "reasonCode": "review_none" },
       "gateOutcome": { "state": "pass", "reasonCode": "review_none" }
     }
+  },
+  {
+    "name": "residual reason input_ineligible cannot leave the gate free",
+    "error": "gateOutcome must block",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attempt": 1,
+      "logicalDispatchId": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "reviewOutcome": { "state": "skipped", "reasonCode": "input_ineligible" },
+      "assuranceOutcome": { "state": "not_applicable", "reasonCode": "input_ineligible" },
+      "gateOutcome": { "state": "pass", "reasonCode": "input_ineligible" }
+    }
+  },
+  {
+    "name": "residual reason incomplete_token_limit cannot leave the gate free",
+    "error": "gateOutcome must block",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attempt": 1,
+      "logicalDispatchId": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "reviewOutcome": { "state": "skipped", "reasonCode": "incomplete_token_limit" },
+      "assuranceOutcome": { "state": "not_applicable", "reasonCode": "incomplete_token_limit" },
+      "gateOutcome": { "state": "pass", "reasonCode": "incomplete_token_limit" }
+    }
+  },
+  {
+    "name": "residual reason candidate_quarantined cannot leave the gate free",
+    "error": "gateOutcome must block",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attempt": 1,
+      "logicalDispatchId": "9999999999999999999999999999999999999999999999999999999999999999",
+      "reviewOutcome": { "state": "skipped", "reasonCode": "candidate_quarantined" },
+      "assuranceOutcome": { "state": "not_applicable", "reasonCode": "candidate_quarantined" },
+      "gateOutcome": { "state": "pass", "reasonCode": "candidate_quarantined" }
+    }
+  },
+  {
+    "name": "residual reason budget_overrun is not the sanctioned deferrable reason",
+    "error": "deferred requires the budget_exhausted_deferred reason",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attempt": 1,
+      "logicalDispatchId": "0000000000000000000000000000000000000000000000000000000000000000",
+      "reviewOutcome": { "state": "skipped", "reasonCode": "budget_overrun" },
+      "assuranceOutcome": { "state": "deferred", "reasonCode": "budget_overrun" },
+      "gateOutcome": { "state": "block", "reasonCode": "budget_overrun" }
+    }
   }
 ]

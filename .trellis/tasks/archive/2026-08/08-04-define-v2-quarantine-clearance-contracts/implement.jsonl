@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Fail-closed decoder + throw-on-unknown error idioms the three decoders must follow"}
+{"file": ".trellis/tasks/08-04-define-v2-quarantine-clearance-contracts/research/quarantine-clearance-gap-analysis.md", "reason": "Gap analysis: existing decoders, reusable primitives, insertion points, R1-R4 risks"}

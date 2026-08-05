@@ -1,0 +1,80 @@
+[
+ {
+  "name": "cleared decision binds requester audit identity + request",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "decision": "cleared",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "policyDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "requestFingerprint": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+   "auditIdentity": {
+    "publisher": "octo-owner",
+    "association": "OWNER",
+    "isPrAuthor": false,
+    "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+    "runId": 1234567,
+    "runAttempt": 1
+   },
+   "decidedAt": "2026-08-05T00:00:00Z"
+  }
+ },
+ {
+  "name": "cleared decision differing only in auditIdentity.publisher (fingerprint sensitivity)",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "decision": "cleared",
+   "reasonCode": "candidate_quarantined",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "policyDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "requestFingerprint": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+   "auditIdentity": {
+    "publisher": "second-owner",
+    "association": "OWNER",
+    "isPrAuthor": false,
+    "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+    "runId": 1234567,
+    "runAttempt": 1
+   },
+   "decidedAt": "2026-08-05T00:00:00Z"
+  }
+ },
+ {
+  "name": "denied decision",
+  "value": {
+   "schemaVersion": 2,
+   "repository": {
+    "owner": "octo",
+    "name": "demo"
+   },
+   "candidate": "gpt-5-sol",
+   "decision": "denied",
+   "reasonCode": "policy_violation",
+   "remediationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "policyDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+   "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "requestFingerprint": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+   "auditIdentity": {
+    "publisher": "octo-owner",
+    "association": "OWNER",
+    "isPrAuthor": false,
+    "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+    "runId": 1234567,
+    "runAttempt": 1
+   },
+   "decidedAt": "2026-08-05T00:00:00Z"
+  }
+ }
+]

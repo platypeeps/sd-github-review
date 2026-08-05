@@ -130,5 +130,53 @@
       "assuranceOutcome": { "state": "not_applicable", "reasonCode": "review_none" },
       "gateOutcome": { "state": "block", "reasonCode": "review_none" }
     }
+  },
+  {
+    "name": "residual reason input_ineligible: skipped non-budget blocks the gate",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attempt": 1,
+      "logicalDispatchId": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "reviewOutcome": { "state": "skipped", "reasonCode": "input_ineligible" },
+      "assuranceOutcome": { "state": "not_applicable", "reasonCode": "input_ineligible" },
+      "gateOutcome": { "state": "block", "reasonCode": "input_ineligible" }
+    }
+  },
+  {
+    "name": "residual reason incomplete_token_limit: skipped non-budget blocks the gate",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attempt": 1,
+      "logicalDispatchId": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "reviewOutcome": { "state": "skipped", "reasonCode": "incomplete_token_limit" },
+      "assuranceOutcome": { "state": "not_applicable", "reasonCode": "incomplete_token_limit" },
+      "gateOutcome": { "state": "block", "reasonCode": "incomplete_token_limit" }
+    }
+  },
+  {
+    "name": "residual reason budget_overrun: failed review is non-deferrable and blocks the gate",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attempt": 1,
+      "logicalDispatchId": "0000000000000000000000000000000000000000000000000000000000000000",
+      "reviewOutcome": { "state": "failed", "reasonCode": "budget_overrun" },
+      "assuranceOutcome": { "state": "fail", "reasonCode": "budget_overrun" },
+      "gateOutcome": { "state": "block", "reasonCode": "budget_overrun" }
+    }
+  },
+  {
+    "name": "residual reason candidate_quarantined: skipped non-budget blocks the gate",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attempt": 1,
+      "logicalDispatchId": "9999999999999999999999999999999999999999999999999999999999999999",
+      "reviewOutcome": { "state": "skipped", "reasonCode": "candidate_quarantined" },
+      "assuranceOutcome": { "state": "not_applicable", "reasonCode": "candidate_quarantined" },
+      "gateOutcome": { "state": "block", "reasonCode": "candidate_quarantined" }
+    }
   }
 ]

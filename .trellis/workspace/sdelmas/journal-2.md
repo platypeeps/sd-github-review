@@ -87,3 +87,42 @@ Closed the review:none under-enforcement hole in decodeReviewOutcomes with two f
 ### Next Steps
 
 - None - task complete
+
+
+## Session 52: Ship v2 quarantine status and clearance contracts (task 08-04)
+
+**Date**: 2026-08-05
+**Task**: Ship v2 quarantine status and clearance contracts (task 08-04)
+**Branch**: `feat/08-04-define-v2-quarantine-clearance-contracts`
+
+### Summary
+
+Added three fail-closed v2 decoders (quarantine status, clearance request, clearance response) completing parent AC13, plus residual outcome reason-code fixtures for input_ineligible/incomplete_token_limit/budget_overrun/candidate_quarantined (parent AC10 residual). Shipped via PR #53.
+
+### Main Changes
+
+- decodeQuarantineStatus enforces decisionFingerprint<->state invariant and cross-links cleared status to clearing response fingerprint
+- decodeClearanceRequest kept identity-/authority-free via extended forbidden-field walk; decodeClearanceResponse binds audit identity + requestFingerprint
+- Added valid/invalid fixtures for three contracts and four residual outcome reason codes
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `33e31ca` | feat: add v2 quarantine status and clearance contracts |
+| `7c6dfeb` | chore(task): archive 08-04-define-v2-quarantine-clearance-contracts |
+
+### Testing
+
+- [OK] npm test: 588 pass / 0 fail
+- [OK] npm run test:coverage: 93.11% lines / 82.49% branches / 97.17% funcs
+- [OK] check, validate:metadata, validate:ci-parity green; Prism 0 findings; Copilot 0 comments
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

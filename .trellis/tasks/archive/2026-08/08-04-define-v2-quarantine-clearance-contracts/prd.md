@@ -18,12 +18,12 @@ contracts. Completes parent AC13.
 
 ## Acceptance Criteria
 
-- [ ] Quarantine status and clearance request/response fixtures bind candidate,
+- [x] Quarantine status and clearance request/response fixtures bind candidate,
       actor, reason, remediation evidence, policy/configuration digest, and audit
       identity without granting implicit budget or dispatch authority (parent AC13).
-- [ ] Distinct fixtures exercise `input_ineligible`, `incomplete_token_limit`,
+- [x] Distinct fixtures exercise `input_ineligible`, `incomplete_token_limit`,
       `budget_overrun`, and `candidate_quarantined` (parent AC10 residual).
-- [ ] npm test, syntax check, metadata + ci-parity validation, coverage gate green.
+- [x] npm test, syntax check, metadata + ci-parity validation, coverage gate green.
 
 ## Dependencies
 

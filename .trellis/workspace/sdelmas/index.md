@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 51
+- **Total Sessions**: 52
 - **Last Active**: 2026-08-05
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~85 | Active |
+| `journal-2.md` | ~126 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 52 | 2026-08-05 | Ship v2 quarantine status and clearance contracts (task 08-04) | `33e31ca`, `7c6dfeb` | `feat/08-04-define-v2-quarantine-clearance-contracts` |
 | 51 | 2026-08-05 | Ship v2 review:none enforcement + local-attestation envelope proofs (08-04) | `9026211`, `78bb5df`, `338b560` | `feat/08-04-define-v2-local-attestation-envelope` |
 | 50 | 2026-08-05 | Ship deferred review recovery contract (PR #51) | `bbd720a`, `ff20e5a`, `7680c5b39870735a83e701d4918cc2920363fb6f` | `feat/07-25-define-deferred-review-recovery` |
 | 49 | 2026-08-05 | Ship review usage reconciliation contract (PR #50) | `4aa484b`, `eb7f1f4`, `c6bac29` | `feat/07-25-define-review-usage-reconciliation` |
