@@ -204,8 +204,8 @@ Committed cross-session audit findings managed by sd-audit-repo.
 - fix: Reuse one current-head receipt snapshot throughout begin.
 
 ## A-016 — OpenCode plugin dependency is unlocked and apparently unused
-- status: open
-- notes: Trellis owner `07-25-resolve-opencode-plugin-dependency`; remediation planning created 2026-07-25.
+- status: fixed
+- notes: Trellis owner reassigned to `08-04-remove-opencode-plugin-dependency`; verified fixed on main @ 2026-08-04 — `.opencode/package.json` rewritten to `{"type":"module"}`, removing the unlocked unused `@opencode-ai/plugin` declaration; `grep -rn "@opencode-ai/plugin" .opencode/` returns no matches; regression lock in test/metadata.test.js asserts the nested package declares no runtime/dev dependency; full suite 233/233, check:full preflight 0 failures. Verification limit: OpenCode plugin runtime loading is external and not exercised in the Node harness (operator smoke check).
 - severity: P2 · effort: S · confidence: Plausible
 - dimension: dependencies
 - first-seen: 2026-07-25 @ 2eeca60

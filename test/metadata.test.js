@@ -472,6 +472,18 @@ test("rejects floating third-party Action references", async () => {
   );
 });
 
+test("the nested OpenCode package declares no unlocked runtime dependency (A-016)", async () => {
+  const pkg = JSON.parse(
+    await readFile(new URL("../.opencode/package.json", import.meta.url), "utf8"),
+  );
+  const declared = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies });
+  assert.deepEqual(
+    declared,
+    [],
+    "the .opencode runtime must not carry an unlocked nested dependency (no lockfile is committed)",
+  );
+});
+
 test("rejects floating example Actions while allowing documented placeholders", async () => {
   const pinnedAction = "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c";
   const floatingRoot = await mkdtemp(path.join(os.tmpdir(), "sd-review-example-floating-"));

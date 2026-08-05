@@ -41,7 +41,8 @@
     "08-04-apply-control-precedence-before-labels",
     "08-04-resume-interrupted-installer-update",
     "08-04-skip-empty-sensitive-path-enumeration",
-    "08-04-reuse-rerequest-receipt-snapshot"
+    "08-04-reuse-rerequest-receipt-snapshot",
+    "08-04-remove-opencode-plugin-dependency"
   ],
   "parent": null,
   "relatedFiles": [],
