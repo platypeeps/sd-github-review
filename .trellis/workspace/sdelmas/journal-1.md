@@ -1951,3 +1951,42 @@ Implemented src/review-plan-authorization.js: pure-leaf managed-mode review plan
 ### Next Steps
 
 - None - task complete
+
+
+## Session 49: Ship review usage reconciliation contract (PR #50)
+
+**Date**: 2026-08-05
+**Task**: Ship review usage reconciliation contract (PR #50)
+**Branch**: `feat/07-25-define-review-usage-reconciliation`
+
+### Summary
+
+Work-loop iteration 3: implemented src/review-usage-reconciliation.js pure-leaf contract, addressed Copilot round-1 collision-binding finding, shipped.
+
+### Main Changes
+
+- Add pure-leaf review-usage-reconciliation contract: full-actual debit, soft budget_overrun vs hard policy_violation + quarantine, sticky overdrawn pools, preserved unknown usage, idempotent/monotonic reduces, standard-v1 retention classifier
+- Copilot round 1: deriveBinding excluded optional hard limits + lease from the collision digest; bound all committed economics so a fingerprint replayed with divergent limits fails closed on the unresolved->reconciled advance path
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4aa484b` | feat: add review usage reconciliation contract |
+| `eb7f1f4` | fix: bind full reservation economics in reconciliation collision digest |
+| `c6bac29` | chore(task): archive 07-25-define-review-usage-reconciliation |
+
+### Testing
+
+- [OK] node --test: 541 pass, 0 fail (39 in the new suite)
+- [OK] npm run check exit 0; sd-check 7/7 at fix head eb7f1f4
+- [OK] Copilot round 2 clean at fix head; Gito clean; Prism finding verified false positive
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

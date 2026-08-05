@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 48
+- **Total Sessions**: 49
 - **Last Active**: 2026-08-05
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1950 | Active |
+| `journal-1.md` | ~1990 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 49 | 2026-08-05 | Ship review usage reconciliation contract (PR #50) | `4aa484b`, `eb7f1f4`, `c6bac29` | `feat/07-25-define-review-usage-reconciliation` |
 | 48 | 2026-08-05 | Authorize budget-aware review plans (PR #49) | `d08a37b`, `a37535c`, `7dbfa95`, `0aea6e5` | `feat/07-25-authorize-budget-aware-review-plans` |
 | 47 | 2026-08-05 | Ship review budget ledger contract (PR #48) | `694d194`, `27705c9`, `36694a1`, `6aa7452`, `388e830` | `feat/07-25-define-review-budget-ledger` |
 | 46 | 2026-08-05 | Compile routed review configuration (07-25) — ship iteration 5 | `352baa8`, `22b2bae`, `d98c30b`, `17cf1a8` | `feat/07-25-compile-routed-review-configuration` |
