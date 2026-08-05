@@ -11,8 +11,13 @@ import { selectProtocolRoute } from "./router.js";
 import { buildRiskContext } from "./risk-context.js";
 import { requestCopilotReviewer } from "./reviewer-dispatch.js";
 import { normalizeMode, parseList } from "./normalize.js";
+import {
+  operationNames,
+  operationRequiresToken,
+  forbiddenPayloadInputsFor,
+} from "./operation-contract.js";
 
-const OPERATIONS = new Set(["route", "acknowledge", "finalize", "query"]);
+const OPERATION_NAME_SET = new Set(operationNames);
 const ADAPTER_OUTCOMES = new Set(["success", "failure", "cancelled", "skipped"]);
 const FAILED_OUTCOME_CODES = new Map([
   ["failure", "adapter-failed"],
@@ -228,9 +233,8 @@ async function emitDurableResult(
 
 export function normalizeOperation(value) {
   const operation = String(value ?? "standalone").trim().toLowerCase();
-  if (operation === "standalone") return operation;
-  if (!OPERATIONS.has(operation)) {
-    throw new Error("operation must be one of: standalone, route, acknowledge, finalize, query");
+  if (!OPERATION_NAME_SET.has(operation)) {
+    throw new Error(`operation must be one of: ${operationNames.join(", ")}`);
   }
   return operation;
 }
@@ -254,7 +258,22 @@ export function buildAdapterAcknowledgment(adapterRequestValue, outcomeValue, ac
   });
 }
 
+// A-010: acknowledge builds an adapter acknowledgment with no GitHub client and
+// tolerates only its contract inputs (adapter-request, adapter-outcome, plus the
+// operation/github-token envelope). A populated payload input belonging to
+// another operation (e.g. review-request) signals a mis-wired step and is
+// rejected. Only empty-default semantic payload inputs are checked so injected
+// action.yml defaults cannot misfire.
+function assertNoForbiddenAcknowledgeInputs(env) {
+  for (const name of forbiddenPayloadInputsFor("acknowledge")) {
+    if (input(name, "", env).trim()) {
+      throw new Error(`acknowledge does not accept ${name}`);
+    }
+  }
+}
+
 async function runAcknowledgmentAction({ env, outputWriter, summaryWriter, logger, now }) {
+  assertNoForbiddenAcknowledgeInputs(env);
   const acknowledgment = buildAdapterAcknowledgment(
     jsonInput("adapter-request", env),
     input("adapter-outcome", "", env),
@@ -518,8 +537,15 @@ export async function runDurableAction({
     return runAcknowledgmentAction({ env, outputWriter, summaryWriter, logger, now });
   }
   const request = decodeReviewRequest(jsonInput("review-request", env));
+  // A-010: route/finalize/query construct a client eagerly, so github-token is
+  // required at runtime (it is no longer globally required in action.yml). Fail
+  // with a bounded explicit error instead of an opaque downstream client error.
+  const token = input("github-token", "", env);
+  if (operationRequiresToken(normalizedOperation) && !token.trim()) {
+    throw new Error(`operation "${normalizedOperation}" requires github-token`);
+  }
   const client = clientFactory({
-    token: input("github-token", "", env),
+    token,
     repository: env.GITHUB_REPOSITORY,
     apiUrl: env.GITHUB_API_URL,
   });

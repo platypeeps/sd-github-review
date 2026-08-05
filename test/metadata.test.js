@@ -12,6 +12,37 @@ import {
   validateMetadata,
   validateReleaseConsistency,
 } from "../scripts/validate-action-metadata.mjs";
+import {
+  contractInputNames,
+  contractOutputNames,
+} from "../src/operation-contract.js";
+
+// action.yml covering the full operation contract (all inputs/outputs), so a
+// fixture satisfies the A-010 contract cross-check and reaches the assertion
+// the test actually targets.
+function contractActionYaml() {
+  const inputLines = contractInputNames().flatMap((name) => [
+    `  ${name}:`,
+    `    description: ${name}`,
+    "    required: false",
+  ]);
+  const outputLines = contractOutputNames().flatMap((name) => [
+    `  ${name}:`,
+    `    description: ${name}`,
+  ]);
+  return [
+    "name: Fixture",
+    "description: Fixture action",
+    "inputs:",
+    ...inputLines,
+    "outputs:",
+    ...outputLines,
+    "runs:",
+    "  using: node24",
+    "  main: index.js",
+    "",
+  ].join("\n");
+}
 import { SUPPORTED_PROVIDERS } from "../scripts/consumer-installer.mjs";
 
 const execFileAsync = promisify(execFile);
@@ -36,6 +67,12 @@ async function writeMetadataFixture(root, actionReference, options = {}) {
           schemaVersion: 1,
           contractMajor,
           actionReference: `platypeeps/sd-github-review@${descriptorSha}`,
+          supportedOperations: ["route", "finalize", "query"],
+          requiredPermissions: {
+            contents: "read",
+            "pull-requests": "write",
+            checks: "write",
+          },
         },
         null,
         2,
@@ -50,26 +87,17 @@ async function writeMetadataFixture(root, actionReference, options = {}) {
       "utf8",
     );
   }
-  await writeFile(
-    path.join(root, "action.yml"),
-    [
-      "name: Fixture",
-      "description: Fixture action",
-      "inputs: {}",
-      "outputs: {}",
-      "runs:",
-      "  using: node24",
-      "  main: index.js",
-      "",
-    ].join("\n"),
-    "utf8",
-  );
+  await writeFile(path.join(root, "action.yml"), contractActionYaml(), "utf8");
   await writeFile(
     path.join(root, ".github", "workflows", "ci.yml"),
     [
       "name: CI",
       "on:",
       "  push:",
+      "permissions:",
+      "  contents: read",
+      "  pull-requests: write",
+      "  checks: write",
       "jobs:",
       "  test:",
       "    runs-on: ubuntu-latest",
@@ -88,6 +116,10 @@ async function writeExampleFixture(root, actionReference) {
       "name: Example",
       "on:",
       "  workflow_dispatch:",
+      "permissions:",
+      "  contents: read",
+      "  pull-requests: write",
+      "  checks: write",
       "jobs:",
       "  test:",
       "    runs-on: ubuntu-latest",
@@ -481,6 +513,76 @@ test("the nested OpenCode package declares no unlocked runtime dependency (A-016
     declared,
     [],
     "the .opencode runtime must not carry an unlocked nested dependency (no lockfile is committed)",
+  );
+});
+
+const A010_VALID_PIN = `platypeeps/sd-github-review@${"a".repeat(40)}`;
+
+test("rejects an action.yml input used by no operation (A-010)", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-a010-extra-input-"));
+  await writeMetadataFixture(root, A010_VALID_PIN);
+  const drifted = `${contractActionYaml().replace(
+    "outputs:",
+    "  bogus-drift-input:\n    description: drift\n    required: false\noutputs:",
+  )}`;
+  await writeFile(path.join(root, "action.yml"), drifted, "utf8");
+  await assert.rejects(
+    validateMetadata(root),
+    /inputs \[bogus-drift-input\] are used by no operation/u,
+  );
+});
+
+test("rejects a globally-required github-token (A-010)", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-a010-global-required-"));
+  await writeMetadataFixture(root, A010_VALID_PIN);
+  const drifted = contractActionYaml().replace(
+    "  github-token:\n    description: github-token\n    required: false",
+    "  github-token:\n    description: github-token\n    required: true",
+  );
+  await writeFile(path.join(root, "action.yml"), drifted, "utf8");
+  await assert.rejects(
+    validateMetadata(root),
+    /input "github-token" is globally required but not every operation requires it/u,
+  );
+});
+
+test("rejects a route job that under-grants contract permissions (A-010)", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-a010-undergrant-"));
+  await writeMetadataFixture(root, A010_VALID_PIN);
+  await writeFile(
+    path.join(root, ".github", "workflows", "ci.yml"),
+    [
+      "name: CI",
+      "on:",
+      "  workflow_dispatch:",
+      "permissions:",
+      "  contents: read",
+      "  pull-requests: write",
+      "jobs:",
+      "  route:",
+      "    runs-on: ubuntu-latest",
+      "    steps:",
+      `      - uses: ${A010_VALID_PIN}`,
+      "        with:",
+      "          operation: route",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+  await assert.rejects(validateMetadata(root), /needing checks:write but grants checks:none/u);
+});
+
+test("rejects a non-empty default on a semantic payload input (A-010)", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-a010-payload-default-"));
+  await writeMetadataFixture(root, A010_VALID_PIN);
+  const drifted = contractActionYaml().replace(
+    "  cheap-backend:\n    description: cheap-backend\n    required: false",
+    '  cheap-backend:\n    description: cheap-backend\n    required: false\n    default: "{}"',
+  );
+  await writeFile(path.join(root, "action.yml"), drifted, "utf8");
+  await assert.rejects(
+    validateMetadata(root),
+    /semantic payload input "cheap-backend" must declare an empty default/u,
   );
 });
 

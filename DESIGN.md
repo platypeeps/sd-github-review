@@ -153,6 +153,14 @@ caller can instead provide one canonical v1 `review-request` and choose:
 | `finalize` | Validates one external adapter acknowledgment, revalidates the head, and advances that same receipt to failed or observed |
 | `query` | Reads one exact repository/PR/head/logical identity and never dispatches |
 
+These operations, and `standalone`, are defined by one authoritative operation
+contract (`src/operation-contract.js`). It declares, per operation, whether the
+operation constructs a GitHub client/token, the inputs it reads, the outputs it
+emits, and the GITHUB_TOKEN permissions its own API calls require. Runtime
+decoding and `scripts/validate-action-metadata.mjs` both read that contract, so
+`action.yml`, the example workflows, `config/routed-review-setup-v1.json`, and
+this document cannot drift from the runtime independently.
+
 The durable identity is derived from repository, pull request, full head SHA,
 and attempt. Correlation IDs are aliases, not permission to dispatch again. A
 matching retry returns the existing receipt; a conflicting fingerprint fails;
@@ -321,8 +329,23 @@ Durable mode exposes a sensitive-file count but never emits the paths.
 
 - Pin this action and external reviewer actions to full commit SHAs; pin direct
   container adapters to SHA-256 image digests.
-- Grant `contents: read`; add `pull-requests: write` only when Copilot requests
-  are enabled, and add `checks: write` only to a durable receipt workflow.
+- Grant each job at least the permissions the operation contract lists for the
+  operations it runs: `standalone` needs `contents: read` (add
+  `pull-requests: write` only when Copilot requests are enabled); `route` needs
+  `contents: read`, `pull-requests: write`, and `checks: write`; `finalize` and
+  `query` need `contents: read` and `checks: write`/`checks: read`; `acknowledge`
+  needs no token or permission. A job may hold extra permissions its other steps
+  require — the durable receipt jobs carry `issues: write` for the PR-comment
+  side-effect channel, which is job-level and distinct from the receipt
+  operations' contract set, not a claim that `route`/`finalize` need `issues`.
+  `validate:metadata` enforces this as a lower bound and never re-merges the
+  A-004-isolated adapter-container job.
+- `github-token` is not globally required in `action.yml`; it is unused by
+  `acknowledge` and enforced at runtime for `route`, `finalize`, and `query`
+  (which build a GitHub client) with a bounded explicit error when absent.
+- Durable authorization to run an external adapter is the emitted, bounded
+  `adapter-request`; the standalone `run-external-reviewer` output is the
+  event-driven gate, not the durable dispatch authorization.
 - Do not check out or execute pull-request-authored code with secrets in an
   `issue_comment` workflow.
 - Keep provider credentials in the consumer-owned adapter step.

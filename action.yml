@@ -4,8 +4,8 @@ author: platypeeps
 
 inputs:
   github-token:
-    description: "Token used to inspect the pull request, request Copilot, and manage durable receipts. Durable operations require checks: write."
-    required: true
+    description: "Token used to inspect the pull request, request Copilot, and manage durable receipts. Required at runtime for route, finalize, and query (which build a GitHub client); unused by acknowledge. Durable operations require checks: write."
+    required: false
   operation:
     description: "Operation mode: standalone, route, acknowledge, finalize, or query."
     required: false

@@ -265,6 +265,78 @@ test("acknowledge operation does not construct a GitHub client", async () => {
   ]);
 });
 
+test("acknowledge tolerates the github-token envelope (A-010, shipped finalize job shape)", async () => {
+  const request = adapterRequestByName.get("PR-Agent cheap dispatch");
+  const outputs = new Map();
+  const result = await runAction({
+    event: {},
+    eventName: "workflow_dispatch",
+    env: {
+      "INPUT_OPERATION": "acknowledge",
+      "INPUT_GITHUB-TOKEN": "ghs_shipped_example_token",
+      "INPUT_ADAPTER-REQUEST": JSON.stringify(request),
+      "INPUT_ADAPTER-OUTCOME": "success",
+    },
+    clientFactory() {
+      throw new Error("acknowledge must not construct a GitHub client");
+    },
+    outputWriter: (name, value) => outputs.set(name, value),
+    summaryWriter() {},
+    logger() {},
+    now: () => "2026-07-23T12:30:10Z",
+  });
+  assert.equal(result.acknowledgment.status, "acknowledged");
+  assert.equal(outputs.get("operation"), "acknowledge");
+});
+
+test("acknowledge rejects another operation's payload input (A-010)", async () => {
+  const request = adapterRequestByName.get("PR-Agent cheap dispatch");
+  await assert.rejects(
+    runAction({
+      event: {},
+      eventName: "workflow_dispatch",
+      env: {
+        "INPUT_OPERATION": "acknowledge",
+        "INPUT_ADAPTER-REQUEST": JSON.stringify(request),
+        "INPUT_ADAPTER-OUTCOME": "success",
+        "INPUT_REVIEW-REQUEST": JSON.stringify(requestByName.get("explicit cheap")),
+      },
+      clientFactory() {
+        throw new Error("acknowledge must not construct a GitHub client");
+      },
+      outputWriter() {},
+      summaryWriter() {},
+      logger() {},
+      now: () => "2026-07-23T12:30:10Z",
+    }),
+    /acknowledge does not accept review-request/u,
+  );
+});
+
+for (const operation of ["route", "finalize", "query"]) {
+  test(`${operation} without github-token throws a bounded explicit error (A-010)`, async () => {
+    await assert.rejects(
+      runAction({
+        event: {},
+        eventName: "workflow_dispatch",
+        env: {
+          "INPUT_OPERATION": operation,
+          "INPUT_REVIEW-REQUEST": JSON.stringify(requestByName.get("explicit cheap")),
+          "INPUT_ADAPTER-ACKNOWLEDGMENT": operation === "finalize" ? "{}" : "",
+        },
+        clientFactory() {
+          throw new Error("client must not be constructed without a token");
+        },
+        outputWriter() {},
+        summaryWriter() {},
+        logger() {},
+        now: () => "2026-07-23T12:30:10Z",
+      }),
+      new RegExp(`operation "${operation}" requires github-token`, "u"),
+    );
+  });
+}
+
 test("conflicting retries fail while policy-authorized rerequests use a new attempt", async () => {
   const request = clone(requestByName.get("explicit cheap"));
   const client = new FakeGitHubClient(request.headSha);

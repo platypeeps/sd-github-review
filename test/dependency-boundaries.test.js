@@ -19,6 +19,7 @@ const ALLOWED = {
   "path-match.js": [],
   "normalize.js": [],
   "github.js": [],
+  "operation-contract.js": [],
   "protocol.js": ["normalize.js"],
   "receipt.js": ["protocol.js", "path-match.js"],
   "router.js": ["protocol.js", "normalize.js", "path-match.js"],
@@ -32,6 +33,7 @@ const ALLOWED = {
     "reviewer-dispatch.js",
     "normalize.js",
     "path-match.js",
+    "operation-contract.js",
   ],
   "index.js": [
     "github.js",
@@ -44,7 +46,7 @@ const ALLOWED = {
   ],
 };
 
-const LEAVES = ["path-match.js", "normalize.js", "github.js"];
+const LEAVES = ["path-match.js", "normalize.js", "github.js", "operation-contract.js"];
 
 function sourceModules() {
   return readdirSync(SRC_DIR)

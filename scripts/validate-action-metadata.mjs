@@ -4,6 +4,16 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { parseDocument } from "yaml";
+import {
+  PERMISSION_LEVELS,
+  SEMANTIC_PAYLOAD_INPUTS,
+  contractInputNames,
+  contractOutputNames,
+  globallyRequiredInputs,
+  durableOperations,
+  operationNames,
+  unionPermissions,
+} from "../src/operation-contract.js";
 
 const immutableActionReference = /^[^/@\s]+\/[^/@\s]+(?:\/[^@\s]+)?@[0-9a-f]{40}$/u;
 const placeholderActionReference = /^[^/@\s]+\/[^/@\s]+(?:\/[^@\s]+)?@<[^<>\s]+>$/u;
@@ -274,6 +284,152 @@ async function defaultTagExists(repositoryRoot, tag) {
   return stdout.split("\n").map((line) => line.trim()).includes(tag);
 }
 
+// A-010: action.yml inputs/outputs must equal the operation-contract union, and
+// no input may be globally required unless every operation requires it. This is
+// the mechanical alignment the contract exists to guarantee.
+function assertActionContract(action, actionPath) {
+  const metadataInputs = Object.keys(action.inputs).sort();
+  const metadataOutputs = Object.keys(action.outputs).sort();
+  const contractInputs = contractInputNames();
+  const contractOutputs = contractOutputNames();
+  const diff = (a, b) => a.filter((name) => !b.includes(name));
+  const inputExtra = diff(metadataInputs, contractInputs);
+  const inputMissing = diff(contractInputs, metadataInputs);
+  const outputExtra = diff(metadataOutputs, contractOutputs);
+  const outputMissing = diff(contractOutputs, metadataOutputs);
+  if (inputExtra.length) {
+    throw new Error(`${actionPath}: inputs [${inputExtra.join(", ")}] are used by no operation`);
+  }
+  if (inputMissing.length) {
+    throw new Error(`${actionPath}: contract inputs [${inputMissing.join(", ")}] are missing from action.yml`);
+  }
+  if (outputExtra.length) {
+    throw new Error(`${actionPath}: outputs [${outputExtra.join(", ")}] are emitted by no operation`);
+  }
+  if (outputMissing.length) {
+    throw new Error(`${actionPath}: contract outputs [${outputMissing.join(", ")}] are missing from action.yml`);
+  }
+  const allowedRequired = new Set(globallyRequiredInputs());
+  for (const [name, spec] of Object.entries(action.inputs)) {
+    if (spec && spec.required === true && !allowedRequired.has(name)) {
+      throw new Error(
+        `${actionPath}: input "${name}" is globally required but not every operation requires it`,
+      );
+    }
+  }
+  // The acknowledge forbidden-input check treats a non-empty semantic payload
+  // input as a caller override; that only holds while these inputs declare an
+  // empty default. A non-empty default would inject into every job and make the
+  // shipped acknowledge step reject unconditionally, so lock the defaults empty.
+  for (const name of SEMANTIC_PAYLOAD_INPUTS) {
+    const spec = action.inputs[name];
+    if (spec && spec.default !== undefined && String(spec.default).trim() !== "") {
+      throw new Error(
+        `${actionPath}: semantic payload input "${name}" must declare an empty default`,
+      );
+    }
+  }
+}
+
+// A-010: the setup descriptor's operation and permission promises must agree
+// with the contract instead of drifting as an independent copy.
+function assertSetupContract(config, descriptorPath) {
+  const supported = config.supportedOperations;
+  if (!Array.isArray(supported) || supported.length === 0) {
+    throw new Error(`${descriptorPath}: supportedOperations must be a non-empty array`);
+  }
+  for (const name of supported) {
+    if (!durableOperations.includes(name)) {
+      throw new Error(`${descriptorPath}: supportedOperations includes non-durable "${name}"`);
+    }
+  }
+  const expected = unionPermissions(supported);
+  const declared = config.requiredPermissions ?? {};
+  const scopes = new Set([...Object.keys(expected), ...Object.keys(declared)]);
+  for (const scope of scopes) {
+    if (declared[scope] !== expected[scope]) {
+      throw new Error(
+        `${descriptorPath}: requiredPermissions.${scope} is ${declared[scope] ?? "unset"} but the ` +
+          `contract union over supportedOperations needs ${expected[scope] ?? "none"}`,
+      );
+    }
+  }
+}
+
+function referencesThisAction(reference, actionOwnerRepo) {
+  if (reference.startsWith("./")) return true;
+  return (
+    reference.startsWith(`${actionOwnerRepo}@`) || reference.startsWith(`${actionOwnerRepo}/`)
+  );
+}
+
+// Operations a job runs, derived from every step invoking this action. A literal
+// `operation` binds one operation; a `${{ }}` expression binds the union over
+// the workflow-reachable dispatch operations (supportedOperations); an absent
+// input defaults to standalone.
+function jobOperations(job, actionOwnerRepo, supportedOperations) {
+  const steps = Array.isArray(job?.steps) ? job.steps : [];
+  const operations = new Set();
+  for (const step of steps) {
+    if (typeof step?.uses !== "string" || !referencesThisAction(step.uses, actionOwnerRepo)) {
+      continue;
+    }
+    const raw = step.with?.operation;
+    if (raw === undefined || raw === null || raw === "") {
+      operations.add("standalone");
+    } else if (typeof raw === "string" && raw.includes("${{")) {
+      for (const name of supportedOperations) operations.add(name);
+    } else {
+      const name = String(raw).trim().toLowerCase();
+      if (!operationNames.includes(name)) {
+        throw new Error(`operation "${raw}" is not a known operation`);
+      }
+      operations.add(name);
+    }
+  }
+  return operations;
+}
+
+function permissionMap(permissions) {
+  if (permissions === undefined || permissions === null) return null; // inherit
+  if (typeof permissions === "string") {
+    if (permissions === "write-all") return { __all: "write" };
+    if (permissions === "read-all") return { __all: "read" };
+    return {}; // "none" or anything else grants nothing scoped
+  }
+  const out = {};
+  for (const [scope, level] of Object.entries(permissions)) out[scope] = level;
+  return out;
+}
+
+function grantedLevel(effective, scope) {
+  const levels = [effective.__all, effective[scope]]
+    .map((level) => PERMISSION_LEVELS[level] ?? 0);
+  return Math.max(...levels, 0);
+}
+
+// A-010 lower-bound: every job that runs this Action must grant at least the
+// union of its operations' contract permissions. No upper bound — jobs hold
+// extra permissions for comment/side-effect and non-Action steps. Jobs with no
+// step invoking this Action (isolated adapter containers) are out of scope.
+function assertJobPermissions(doc, filePath, actionOwnerRepo, supportedOperations) {
+  const workflowLevel = permissionMap(doc.permissions);
+  for (const [jobName, job] of Object.entries(doc.jobs ?? {})) {
+    const operations = jobOperations(job, actionOwnerRepo, supportedOperations);
+    if (operations.size === 0) continue;
+    const required = unionPermissions([...operations]);
+    const effective = permissionMap(job.permissions) ?? workflowLevel ?? {};
+    for (const [scope, level] of Object.entries(required)) {
+      if (grantedLevel(effective, scope) < PERMISSION_LEVELS[level]) {
+        throw new Error(
+          `${filePath}: job "${jobName}" runs [${[...operations].join(", ")}] needing ` +
+            `${scope}:${level} but grants ${scope}:${effective.__all ?? effective[scope] ?? "none"}`,
+        );
+      }
+    }
+  }
+}
+
 export async function validateMetadata(repositoryRoot = process.cwd()) {
   const actionPath = path.join(repositoryRoot, "action.yml");
   const action = parseYaml(await readFile(actionPath, "utf8"), actionPath);
@@ -283,6 +439,7 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
   }
   assertObject(action.inputs, actionPath, "inputs");
   assertObject(action.outputs, actionPath, "outputs");
+  assertActionContract(action, actionPath);
   assertObject(action.runs, actionPath, "runs");
   if (action.runs.using !== "node24") {
     throw new Error(`${actionPath}: runs.using must be node24`);
@@ -293,6 +450,11 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
   await readFile(path.join(repositoryRoot, action.runs.main), "utf8");
 
   const descriptor = await readSetupDescriptor(repositoryRoot);
+  const setupConfig = JSON.parse(
+    await readFile(path.join(repositoryRoot, setupDescriptorPath), "utf8"),
+  );
+  assertSetupContract(setupConfig, setupDescriptorPath);
+  const supportedOperations = setupConfig.supportedOperations;
   const firstPartyPins = [];
 
   const workflowDirectory = path.join(repositoryRoot, ".github", "workflows");
@@ -310,6 +472,7 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
     assertObject(workflow.on, workflowPath, "on");
     assertObject(workflow.jobs, workflowPath, "jobs");
     validateUsesReferences(workflow, workflowPath, {});
+    assertJobPermissions(workflow, workflowPath, descriptor.actionOwnerRepo, supportedOperations);
     collectFirstPartyPins(workflow, workflowPath, descriptor.actionOwnerRepo, firstPartyPins);
   }
 
@@ -324,6 +487,7 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
     assertObject(example.on, examplePath, "on");
     assertObject(example.jobs, examplePath, "jobs");
     validateUsesReferences(example, examplePath, { allowActionPlaceholder: true });
+    assertJobPermissions(example, examplePath, descriptor.actionOwnerRepo, supportedOperations);
     collectFirstPartyPins(example, examplePath, descriptor.actionOwnerRepo, firstPartyPins);
   }
 
