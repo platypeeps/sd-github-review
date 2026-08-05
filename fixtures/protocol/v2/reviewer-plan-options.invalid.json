@@ -1,0 +1,49 @@
+[
+  {
+    "name": "options carrying an attempt head",
+    "error": "cannot identify an attempt or plan",
+    "value": {
+      "schemaVersion": 2,
+      "lane": "review",
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridableSlots": []
+    }
+  },
+  {
+    "name": "options carrying a parent plan identity",
+    "error": "cannot identify an attempt or plan",
+    "value": {
+      "schemaVersion": 2,
+      "lane": "review",
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "parentId": "2222222222222222222222222222222222222222222222222222222222222222",
+      "overridableSlots": []
+    }
+  },
+  {
+    "name": "invalid safe candidate alias",
+    "error": "has an invalid format",
+    "value": {
+      "schemaVersion": 2,
+      "lane": "review",
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "overridableSlots": [
+        { "slotId": "secondary-review", "safeCandidates": ["not a valid alias"] }
+      ]
+    }
+  },
+  {
+    "name": "duplicate overridable slot IDs",
+    "error": "unique slot IDs",
+    "value": {
+      "schemaVersion": 2,
+      "lane": "review",
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "overridableSlots": [
+        { "slotId": "same", "safeCandidates": ["cheap-a"] },
+        { "slotId": "same", "safeCandidates": ["cheap-b"] }
+      ]
+    }
+  }
+]

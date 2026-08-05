@@ -64,6 +64,13 @@ const REVIEW_LANE_SET = new Set(REVIEW_LANES);
 export const CANDIDATE_SLOTS = Object.freeze(["managed", "parallel"]);
 const CANDIDATE_SLOT_SET = new Set(CANDIDATE_SLOTS);
 
+// A reviewer slot selects one fixed candidate or one named chain. There is no
+// contextual-default or legacy selector kind.
+export const SLOT_SELECTOR_KINDS = Object.freeze(["candidate", "chain"]);
+const SLOT_SELECTOR_KIND_SET = new Set(SLOT_SELECTOR_KINDS);
+const MAX_REVIEWER_SLOTS = 8;
+const MAX_CHAIN_MEMBERS = 8;
+
 export const MERGE_POLICIES = Object.freeze(["block", "allow"]);
 const MERGE_POLICY_SET = new Set(MERGE_POLICIES);
 
@@ -908,6 +915,353 @@ export function decodeSetupDiscoveryV2(value) {
           lower: true,
         }),
   };
+}
+
+// --- parallel reviewer plan compiler ---------------------------------------
+
+// One slot selector: a fixed candidate digest OR one named chain. The two arms
+// are mutually exclusive; carrying the other arm's field is rejected.
+function decodeSlotSelector(value, field) {
+  const selector = objectValue(value, field);
+  const kind = enumValue(selector.kind, `${field}.kind`, SLOT_SELECTOR_KIND_SET);
+  if (kind === "candidate") {
+    if (selector.chain !== undefined) {
+      throw new Error(`${field}.chain is forbidden for a candidate selector`);
+    }
+    return { kind, candidateDigest: digestValue(selector.candidateDigest, `${field}.candidateDigest`) };
+  }
+  if (selector.candidateDigest !== undefined) {
+    throw new Error(`${field}.candidateDigest is forbidden for a chain selector`);
+  }
+  return { kind, chain: aliasValue(selector.chain, `${field}.chain`) };
+}
+
+// One reviewer slot declaration. A slot never carries attempt identity or
+// reservation state — compilation stops before any dispatch or reservation.
+function decodeReviewerSlot(value, field) {
+  const slot = objectValue(value, field);
+  for (const forbidden of ["headSha", "attempt", "logicalDispatchId", "reservation", "reserved"]) {
+    if (slot[forbidden] !== undefined) {
+      throw new Error(`${field}.${forbidden} is forbidden; a slot declaration cannot reserve or identify an attempt`);
+    }
+  }
+  return {
+    slotId: aliasValue(slot.slotId, `${field}.slotId`),
+    lane: enumValue(slot.lane, `${field}.lane`, REVIEW_LANE_SET),
+    selector: decodeSlotSelector(slot.selector, `${field}.selector`),
+    required: booleanValue(slot.required, `${field}.required`),
+    overridable: booleanValue(slot.overridable, `${field}.overridable`),
+    timeoutSeconds: integerValue(slot.timeoutSeconds, `${field}.timeoutSeconds`, {
+      minimum: 1,
+      maximum: 86_400,
+    }),
+    minSuccesses: integerValue(slot.minSuccesses, `${field}.minSuccesses`, {
+      minimum: 1,
+      maximum: MAX_CHAIN_MEMBERS,
+    }),
+  };
+}
+
+// The source-side reviewer plan: one lane and a bounded, variable-length set of
+// slots. Slot IDs are unique and every slot references the plan's lane.
+export function decodeReviewerPlanSource(value) {
+  rejectForbiddenFields(value, "reviewerPlanSource");
+  assertEncodedSize(value, "reviewerPlanSource", CONTRACT_MAX_BYTES);
+  const source = objectValue(value, "reviewerPlanSource");
+  schemaVersion(source.schemaVersion, "reviewerPlanSource.schemaVersion");
+  const lane = enumValue(source.lane, "reviewerPlanSource.lane", REVIEW_LANE_SET);
+  if (!Array.isArray(source.slots)) {
+    throw new Error("reviewerPlanSource.slots must be an array");
+  }
+  // A plan never synthesizes a contextual default: at least one explicit slot,
+  // and no more than the bounded maximum.
+  if (source.slots.length === 0) {
+    throw new Error("reviewerPlanSource.slots must declare at least one slot");
+  }
+  if (source.slots.length > MAX_REVIEWER_SLOTS) {
+    throw new Error(`reviewerPlanSource.slots exceeds the ${MAX_REVIEWER_SLOTS}-slot limit`);
+  }
+  const slots = source.slots.map((slot, index) =>
+    decodeReviewerSlot(slot, `reviewerPlanSource.slots[${index}]`));
+  const slotIds = slots.map((slot) => slot.slotId);
+  if (new Set(slotIds).size !== slotIds.length) {
+    throw new Error("reviewerPlanSource.slots must use unique slot IDs");
+  }
+  for (const slot of slots) {
+    if (slot.lane !== lane) {
+      throw new Error(`reviewerPlanSource slot ${slot.slotId} must reference the plan lane ${lane}`);
+    }
+  }
+  slots.sort((left, right) => (left.slotId < right.slotId ? -1 : left.slotId > right.slotId ? 1 : 0));
+  return { schemaVersion: PROTOCOL_V2_SCHEMA_MAJOR, lane, slots };
+}
+
+// The pinned catalog used to expand chains and prove lane eligibility. It binds
+// candidate aliases to digests and eligible lanes, and named chains to members.
+export function decodeReviewerCatalog(value) {
+  rejectForbiddenFields(value, "reviewerCatalog");
+  assertEncodedSize(value, "reviewerCatalog", RESPONSE_MAX_BYTES);
+  const catalog = objectValue(value, "reviewerCatalog");
+  schemaVersion(catalog.schemaVersion, "reviewerCatalog.schemaVersion");
+  if (!Array.isArray(catalog.candidates) || catalog.candidates.length === 0) {
+    throw new Error("reviewerCatalog.candidates must be a non-empty array");
+  }
+  if (catalog.candidates.length > MAX_COLLECTION_ITEMS) {
+    throw new Error(`reviewerCatalog.candidates exceeds the ${MAX_COLLECTION_ITEMS}-item limit`);
+  }
+  const byAlias = new Map();
+  const byDigest = new Map();
+  for (const [index, entry] of catalog.candidates.entries()) {
+    const field = `reviewerCatalog.candidates[${index}]`;
+    const candidate = objectValue(entry, field);
+    const alias = aliasValue(candidate.alias, `${field}.alias`);
+    const candidateDigest = digestValue(candidate.candidateDigest, `${field}.candidateDigest`);
+    const eligibleLanes = stringArray(candidate.eligibleLanes, `${field}.eligibleLanes`, {
+      allowed: REVIEW_LANE_SET,
+      allowEmpty: false,
+    });
+    if (byAlias.has(alias)) {
+      throw new Error(`reviewerCatalog.candidates alias ${alias} is duplicated`);
+    }
+    if (byDigest.has(candidateDigest)) {
+      throw new Error(`reviewerCatalog.candidates digest for ${alias} is duplicated`);
+    }
+    const record = { alias, candidateDigest, eligibleLanes };
+    byAlias.set(alias, record);
+    byDigest.set(candidateDigest, record);
+  }
+  const chains = new Map();
+  const chainEntries = catalog.chains === undefined
+    ? []
+    : Object.entries(objectValue(catalog.chains, "reviewerCatalog.chains"));
+  if (chainEntries.length > MAX_COLLECTION_ITEMS) {
+    throw new Error(`reviewerCatalog.chains exceeds the ${MAX_COLLECTION_ITEMS}-item limit`);
+  }
+  for (const [name, membersValue] of chainEntries) {
+    const chainName = aliasValue(name, "reviewerCatalog.chains key");
+    // Chain names are case-normalized; two keys that collapse to the same alias
+    // are a duplicate, not a silent overwrite.
+    if (chains.has(chainName)) {
+      throw new Error(`reviewerCatalog.chains name ${chainName} is duplicated`);
+    }
+    const members = stringArray(membersValue, `reviewerCatalog.chains.${chainName}`, {
+      maximumItems: MAX_CHAIN_MEMBERS,
+      allowEmpty: false,
+      pattern: /^[A-Za-z0-9][A-Za-z0-9._-]*$/u,
+      lower: true,
+    });
+    for (const member of members) {
+      if (!byAlias.has(member)) {
+        throw new Error(`reviewerCatalog.chains.${chainName} references unknown candidate ${member}`);
+      }
+    }
+    chains.set(chainName, members);
+  }
+  return {
+    catalogDigest: digestValue(catalog.catalogDigest, "reviewerCatalog.catalogDigest"),
+    byAlias,
+    byDigest,
+    chains,
+  };
+}
+
+// Expand one resolved slot selector to its ordered set of candidate digests,
+// proving each candidate exists in the catalog and is eligible for the lane.
+function expandSlot(slot, catalog, lane) {
+  let digests;
+  if (slot.selector.kind === "candidate") {
+    const record = catalog.byDigest.get(slot.selector.candidateDigest);
+    if (!record) {
+      throw new Error(`slot ${slot.slotId} references a candidate absent from the pinned catalog`);
+    }
+    digests = [record.candidateDigest];
+  } else {
+    const members = catalog.chains.get(slot.selector.chain);
+    if (!members) {
+      throw new Error(`slot ${slot.slotId} references unknown chain ${slot.selector.chain}`);
+    }
+    digests = members.map((alias) => catalog.byAlias.get(alias).candidateDigest);
+  }
+  for (const digest of digests) {
+    const record = catalog.byDigest.get(digest);
+    if (!record.eligibleLanes.includes(lane)) {
+      throw new Error(`slot ${slot.slotId} references a candidate not eligible for lane ${lane}`);
+    }
+  }
+  if (slot.minSuccesses > digests.length) {
+    throw new Error(`slot ${slot.slotId} minSuccesses exceeds its ${digests.length} possible candidate(s)`);
+  }
+  const sorted = [...digests].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+  return sorted;
+}
+
+// Apply explicit overrides. An override names one overridable slot ID; omitting
+// the slot ID is permitted only when exactly one slot is overridable. An
+// override targeting a fixed (non-overridable) slot is rejected.
+function applyOverrides(slots, overrides) {
+  if (overrides === undefined) {
+    return slots;
+  }
+  if (!Array.isArray(overrides)) {
+    throw new Error("overrides must be an array");
+  }
+  const overridable = slots.filter((slot) => slot.overridable);
+  const bySlotId = new Map(slots.map((slot) => [slot.slotId, slot]));
+  const applied = new Map();
+  const resolved = new Map(slots.map((slot) => [slot.slotId, slot]));
+  for (const [index, entry] of overrides.entries()) {
+    const field = `overrides[${index}]`;
+    const override = objectValue(entry, field);
+    let target;
+    if (override.slotId === undefined) {
+      if (overridable.length !== 1) {
+        throw new Error(`${field} omits slotId but ${overridable.length} slots are overridable; the shorthand is ambiguous`);
+      }
+      target = overridable[0];
+    } else {
+      const slotId = aliasValue(override.slotId, `${field}.slotId`);
+      target = bySlotId.get(slotId);
+      if (!target) {
+        throw new Error(`${field} names unknown slot ${slotId}`);
+      }
+      if (!target.overridable) {
+        throw new Error(`${field} targets slot ${slotId}, which is not overridable`);
+      }
+    }
+    if (applied.has(target.slotId)) {
+      throw new Error(`${field} re-overrides slot ${target.slotId}`);
+    }
+    applied.set(target.slotId, true);
+    resolved.set(target.slotId, {
+      ...target,
+      selector: decodeSlotSelector(override.selector, `${field}.selector`),
+    });
+  }
+  return slots.map((slot) => resolved.get(slot.slotId));
+}
+
+// Compile a source reviewer plan against a pinned catalog and one exact head
+// into an immutable parent plan with stable child identities. Pure: no budget
+// reservation, no reviewer dispatch. Overlapping possible candidate sets,
+// invalid thresholds, wrong-lane references, unknown selectors, and ambiguous
+// overrides all fail here, before any reservation.
+export function compileReviewerPlan({ source, catalog, headSha, compiledDigest, overrides } = {}) {
+  const decodedSource = decodeReviewerPlanSource(source);
+  const decodedCatalog = decodeReviewerCatalog(catalog);
+  const boundHead = headShaValue(headSha, "headSha");
+  const boundCompiledDigest = digestValue(compiledDigest, "compiledDigest");
+  const resolvedSlots = applyOverrides(decodedSource.slots, overrides);
+  const seenDigests = new Map();
+  const children = resolvedSlots.map((slot) => {
+    const candidateDigests = expandSlot(slot, decodedCatalog, decodedSource.lane);
+    for (const digest of candidateDigests) {
+      if (seenDigests.has(digest)) {
+        throw new Error(
+          `slot ${slot.slotId} shares candidate with slot ${seenDigests.get(digest)}; possible candidate sets must be pairwise disjoint`,
+        );
+      }
+      seenDigests.set(digest, slot.slotId);
+    }
+    return {
+      slotId: slot.slotId,
+      candidateDigests,
+      minSuccesses: slot.minSuccesses,
+      required: slot.required,
+      timeoutSeconds: slot.timeoutSeconds,
+    };
+  });
+  // Parent identity binds its documented inputs: lane, exact head, compiled
+  // digest, and every per-slot field that resolves the plan's behavior —
+  // candidate set, success threshold, required flag, and timeout. Two plans
+  // that differ in any of these are distinct identities; only representation
+  // (slot order) is canonicalized away.
+  const identitySlots = children.map((child) => ({
+    slotId: child.slotId,
+    candidateDigests: child.candidateDigests,
+    minSuccesses: child.minSuccesses,
+    required: child.required,
+    timeoutSeconds: child.timeoutSeconds,
+  }));
+  const parentId = deriveV2Fingerprint({
+    lane: decodedSource.lane,
+    headSha: boundHead,
+    compiledDigest: boundCompiledDigest,
+    slots: identitySlots,
+  });
+  const bySlotId = new Map(identitySlots.map((slot) => [slot.slotId, slot]));
+  const withChildIds = children.map((child) => ({
+    ...child,
+    childId: deriveV2Fingerprint({ parentId, ...bySlotId.get(child.slotId) }),
+  }));
+  return Object.freeze({
+    schemaVersion: PROTOCOL_V2_SCHEMA_MAJOR,
+    lane: decodedSource.lane,
+    headSha: boundHead,
+    compiledDigest: boundCompiledDigest,
+    catalogDigest: decodedCatalog.catalogDigest,
+    parentId,
+    children: withChildIds,
+  });
+}
+
+// Slot-aware `/review options` view: report the overridable slots and their
+// deterministic safe candidate aliases for a lane. It never binds an attempt
+// and never produces a plan or child identity.
+export function decodeReviewerPlanOptions(value) {
+  rejectForbiddenFields(value, "reviewerPlanOptions");
+  assertEncodedSize(value, "reviewerPlanOptions", RESPONSE_MAX_BYTES);
+  const options = objectValue(value, "reviewerPlanOptions");
+  schemaVersion(options.schemaVersion, "reviewerPlanOptions.schemaVersion");
+  for (const forbidden of ["headSha", "attempt", "logicalDispatchId", "parentId", "childId"]) {
+    if (options[forbidden] !== undefined) {
+      throw new Error(`reviewerPlanOptions.${forbidden} is forbidden; an options view cannot identify an attempt or plan`);
+    }
+  }
+  const lane = enumValue(options.lane, "reviewerPlanOptions.lane", REVIEW_LANE_SET);
+  if (!Array.isArray(options.overridableSlots)) {
+    throw new Error("reviewerPlanOptions.overridableSlots must be an array");
+  }
+  if (options.overridableSlots.length > MAX_REVIEWER_SLOTS) {
+    throw new Error(`reviewerPlanOptions.overridableSlots exceeds the ${MAX_REVIEWER_SLOTS}-slot limit`);
+  }
+  const overridableSlots = options.overridableSlots.map((entry, index) => {
+    const field = `reviewerPlanOptions.overridableSlots[${index}]`;
+    const slot = objectValue(entry, field);
+    return {
+      slotId: aliasValue(slot.slotId, `${field}.slotId`),
+      safeCandidates: stringArray(slot.safeCandidates, `${field}.safeCandidates`, {
+        pattern: /^[A-Za-z0-9][A-Za-z0-9._-]*$/u,
+        lower: true,
+        allowEmpty: false,
+      }),
+    };
+  });
+  const slotIds = overridableSlots.map((slot) => slot.slotId);
+  if (new Set(slotIds).size !== slotIds.length) {
+    throw new Error("reviewerPlanOptions.overridableSlots must use unique slot IDs");
+  }
+  overridableSlots.sort((left, right) => (left.slotId < right.slotId ? -1 : left.slotId > right.slotId ? 1 : 0));
+  return {
+    schemaVersion: PROTOCOL_V2_SCHEMA_MAJOR,
+    lane,
+    catalogDigest: digestValue(options.catalogDigest, "reviewerPlanOptions.catalogDigest"),
+    overridableSlots,
+  };
+}
+
+// A comment-command selection label may name a broad review lane and nothing
+// finer. Reserved candidate/slot/chain control labels are unsupported.
+export function assertReviewerSelectionLabel(value, field = "selectionLabel") {
+  const label = stringValue(value, field, { lower: true });
+  for (const prefix of ["candidate:", "slot:", "chain:"]) {
+    if (label.startsWith(prefix)) {
+      throw new Error(`${field} '${label}' is unsupported; candidate and slot selection is not label-controlled`);
+    }
+  }
+  if (!REVIEW_LANE_SET.has(label)) {
+    throw new Error(`${field} must be a broad review lane label`);
+  }
+  return { lane: label };
 }
 
 // --- historical v1 read-only decoding + v2 dispatch selector ---------------

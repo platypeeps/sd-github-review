@@ -1,0 +1,34 @@
+[
+  {
+    "name": "zero overridable slots",
+    "value": {
+      "schemaVersion": 2,
+      "lane": "review",
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "overridableSlots": []
+    }
+  },
+  {
+    "name": "one overridable slot with safe candidate suggestions",
+    "value": {
+      "schemaVersion": 2,
+      "lane": "review",
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "overridableSlots": [
+        { "slotId": "secondary-review", "safeCandidates": ["cheap-b", "cheap-a"] }
+      ]
+    }
+  },
+  {
+    "name": "many overridable slots",
+    "value": {
+      "schemaVersion": 2,
+      "lane": "assurance",
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "overridableSlots": [
+        { "slotId": "slot-two", "safeCandidates": ["deep-b"] },
+        { "slotId": "slot-one", "safeCandidates": ["deep-a", "deep-b"] }
+      ]
+    }
+  }
+]

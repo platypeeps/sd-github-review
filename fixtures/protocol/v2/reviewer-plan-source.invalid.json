@@ -1,0 +1,74 @@
+[
+  {
+    "name": "duplicate slot IDs",
+    "error": "unique slot IDs",
+    "value": {
+      "schemaVersion": 2,
+      "lane": "review",
+      "slots": [
+        { "slotId": "dup", "lane": "review", "selector": { "kind": "candidate", "candidateDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }, "required": true, "overridable": false, "timeoutSeconds": 300, "minSuccesses": 1 },
+        { "slotId": "dup", "lane": "review", "selector": { "kind": "candidate", "candidateDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }, "required": false, "overridable": false, "timeoutSeconds": 300, "minSuccesses": 1 }
+      ]
+    }
+  },
+  {
+    "name": "slot references a different lane than the plan",
+    "error": "must reference the plan lane review",
+    "value": {
+      "schemaVersion": 2,
+      "lane": "review",
+      "slots": [
+        { "slotId": "wrong-lane", "lane": "assurance", "selector": { "kind": "candidate", "candidateDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }, "required": true, "overridable": false, "timeoutSeconds": 300, "minSuccesses": 1 }
+      ]
+    }
+  },
+  {
+    "name": "unknown selector kind",
+    "error": "selector.kind must be one of",
+    "value": {
+      "schemaVersion": 2,
+      "lane": "review",
+      "slots": [
+        { "slotId": "s", "lane": "review", "selector": { "kind": "default", "candidateDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }, "required": true, "overridable": false, "timeoutSeconds": 300, "minSuccesses": 1 }
+      ]
+    }
+  },
+  {
+    "name": "candidate selector carrying a chain field",
+    "error": "chain is forbidden for a candidate selector",
+    "value": {
+      "schemaVersion": 2,
+      "lane": "review",
+      "slots": [
+        { "slotId": "s", "lane": "review", "selector": { "kind": "candidate", "candidateDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "chain": "cheap-chain" }, "required": true, "overridable": false, "timeoutSeconds": 300, "minSuccesses": 1 }
+      ]
+    }
+  },
+  {
+    "name": "empty slot set synthesizes no default",
+    "error": "must declare at least one slot",
+    "value": { "schemaVersion": 2, "lane": "review", "slots": [] }
+  },
+  {
+    "name": "minSuccesses below the valid range",
+    "error": "minSuccesses must be an integer from 1",
+    "value": {
+      "schemaVersion": 2,
+      "lane": "review",
+      "slots": [
+        { "slotId": "s", "lane": "review", "selector": { "kind": "candidate", "candidateDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }, "required": true, "overridable": false, "timeoutSeconds": 300, "minSuccesses": 0 }
+      ]
+    }
+  },
+  {
+    "name": "slot carrying reservation state",
+    "error": "cannot reserve or identify an attempt",
+    "value": {
+      "schemaVersion": 2,
+      "lane": "review",
+      "slots": [
+        { "slotId": "s", "lane": "review", "selector": { "kind": "candidate", "candidateDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }, "required": true, "overridable": false, "timeoutSeconds": 300, "minSuccesses": 1, "reserved": true }
+      ]
+    }
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "name": "review and assurance candidates with named chains",
+    "value": {
+      "schemaVersion": 2,
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "candidates": [
+        { "alias": "cheap-a", "candidateDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "eligibleLanes": ["review"] },
+        { "alias": "cheap-b", "candidateDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "eligibleLanes": ["review"] },
+        { "alias": "cheap-c", "candidateDigest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "eligibleLanes": ["review"] },
+        { "alias": "deep-a", "candidateDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "eligibleLanes": ["assurance"] },
+        { "alias": "deep-b", "candidateDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "eligibleLanes": ["assurance", "gate"] }
+      ],
+      "chains": {
+        "cheap-chain": ["cheap-a", "cheap-b"],
+        "deep-chain": ["deep-a", "deep-b"]
+      }
+    }
+  }
+]
