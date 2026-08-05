@@ -23,6 +23,7 @@ const ALLOWED = {
   "protocol.js": ["normalize.js"],
   "protocol-v2.js": ["protocol.js"],
   "retention-policy.js": [],
+  "review-budget-ledger.js": [],
   "review-candidate-catalog.js": [],
   "routed-review-compiler.js": ["protocol-v2.js", "review-candidate-catalog.js"],
   "receipt.js": ["protocol.js", "path-match.js"],

@@ -29,18 +29,18 @@ Specify authoritative observations, shared pools, leases, and atomic idempotent 
 
 ## Acceptance Criteria
 
-- [ ] Conformance fixtures cover independent/shared pools, concurrent boundary,
+- [x] Conformance fixtures cover independent/shared pools, concurrent boundary,
       replay, lease expiry, stale/unknown state, and safety margins.
-- [ ] Losing concurrent attempts receive bounded ineligibility without silent
+- [x] Losing concurrent attempts receive bounded ineligibility without silent
       partial mutation.
-- [ ] A timeout before authorization is safely retryable with the same identity.
-- [ ] Reservation fixtures cover conservative maximum cost, hard request limit,
+- [x] A timeout before authorization is safely retryable with the same identity.
+- [x] Reservation fixtures cover conservative maximum cost, hard request limit,
       unit mismatch, missing/unsafe preflight, and refusal to reserve beyond
       usable pool capacity.
-- [ ] Overdrawn pools block new work and recover only through a fresh
+- [x] Overdrawn pools block new work and recover only through a fresh
       authoritative observation or audited adjustment.
-- [ ] Public responses contain no management credential or raw billing payload.
-- [ ] Fake-clock fixtures cover 90-day detail/observation expiry, 180-day
+- [x] Public responses contain no management credential or raw billing payload.
+- [x] Fake-clock fixtures cover 90-day detail/observation expiry, 180-day
       unresolved expiry, 13-month receipts, holds, purge, and coverage.
 
 ## Dependencies
