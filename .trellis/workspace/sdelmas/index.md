@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 42
-- **Last Active**: 2026-08-04
+- **Total Sessions**: 43
+- **Last Active**: 2026-08-05
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1701 | Active |
+| `journal-1.md` | ~1741 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 43 | 2026-08-05 | Define local review attestation contracts (07-25) — implement + ship PR #44 | `5f80759`, `689d755`, `2170be1`, `58311b0` | `feat/define-local-review-attestation-contracts` |
 | 42 | 2026-08-04 | Compile parallel reviewer plans (07-25) — implement + ship PR #43 | `116e1ca`, `2114409` | `feat/compile-parallel-reviewer-plans` |
 | 41 | 2026-08-04 | Ship v2 budget-review contract core (07-25) with Copilot CAS + gate-hole fixes | `3069c55`, `7e2e3d1` | `feat/define-budget-review-v2-contracts` |
 | 40 | 2026-08-04 | Decompose consumer installer lifecycle (A-009) | `22d4399` | `refactor/a-009-decompose-consumer-installer` |

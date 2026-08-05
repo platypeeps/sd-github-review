@@ -1699,3 +1699,46 @@ Added the parallel reviewer-plan compiler to src/protocol-v2.js (slot/selector/c
 ### Next Steps
 
 - None - task complete
+
+
+## Session 43: Define local review attestation contracts (07-25) — implement + ship PR #44
+
+**Date**: 2026-08-05
+**Task**: Define local review attestation contracts (07-25) — implement + ship PR #44
+**Branch**: `feat/define-local-review-attestation-contracts`
+
+### Summary
+
+Shipped bounded exact-head local-review attestation contracts (request, authorization, immutable receipt, setup-discovery, status, outcomes, Check projection) with a strict per-route direct-handler|local-attested union and explicit trust policy. Copilot round 1 flagged attemptToken omitting policyDigest and publicationContext from its identity fingerprint (same completeness family as PR #43's timeoutSeconds); fixed and re-reviewed clean.
+
+### Main Changes
+
+- Added local-attestation contract decoders, forbidden-field validation, canonical fingerprints, and exact-head identity binding in src/protocol-v2.js
+- Added canonical valid/invalid fixtures for attestation request, authorization, receipt, status, outcomes, source route-union, and self-reported usage
+- Fixed attemptToken to fold policyDigest and publicationContext into the identity fingerprint; extended the binding test to cover both
+- Marked all 6 acceptance criteria complete and bound branch metadata for finalization
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5f80759` | feat: define local review attestation contracts (07-25-define-local-review-attestation-contracts) |
+| `689d755` | chore(task): mark local review attestation contract acceptance criteria complete |
+| `2170be1` | fix: bind policyDigest and publicationContext into local authorization attemptToken |
+| `58311b0` | chore(task): bind branch metadata for local review attestation contracts |
+
+### Testing
+
+- [OK] npm test — 334 pass, 0 fail
+- [OK] npm run check — clean
+- [OK] sd-check — 7/7 passed; Gito + Prism local review clean
+- [OK] Copilot review — 2 rounds, converged with no new comments, 0 unresolved threads
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
