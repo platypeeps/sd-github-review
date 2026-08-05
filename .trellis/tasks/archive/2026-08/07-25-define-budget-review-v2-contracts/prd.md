@@ -52,28 +52,28 @@ family and is inherited by the follow-up tasks.
 
 ## Acceptance Criteria
 
-- [ ] Strict standalone/managed union: standalone forbids catalog/control-plane
+- [x] Strict standalone/managed union: standalone forbids catalog/control-plane
       fields and declares `budgetOutcome=not_managed`; managed forbids route/
       standalone fields; missing/unknown/mixed modes rejected.
-- [ ] Prompt-profile binding is a strict referenced-vs-handler-managed union with
+- [x] Prompt-profile binding is a strict referenced-vs-handler-managed union with
       no default/inheritance/fallback/override field, and cross-field forbidden
       fields rejected.
-- [ ] Candidate-options fixtures prove deterministic ordering, privacy/size
+- [x] Candidate-options fixtures prove deterministic ordering, privacy/size
       bounds, and a shape that cannot authorize or identify a review attempt.
-- [ ] Exhaustion fixtures require explicit merge policy, map proven pre-dispatch
+- [x] Exhaustion fixtures require explicit merge policy, map proven pre-dispatch
       budget exhaustion to deferred assurance plus the explicit gate policy, and
       prove every non-budget failure blocks.
-- [ ] Check-projection fixtures cover stable names, conclusions, revision/CAS,
+- [x] Check-projection fixtures cover stable names, conclusions, revision/CAS,
       same-head recovery, changed-head supersession, stale-write rejection, and
       branch-protection readiness.
-- [ ] Setup discovery advertises one active major and exact optional
+- [x] Setup discovery advertises one active major and exact optional
       capabilities.
-- [ ] Historical v1 receipt decoding is read-only and v1/default selectors are
+- [x] Historical v1 receipt decoding is read-only and v1/default selectors are
       rejected for new v2 dispatch.
-- [ ] Unknown additive non-forbidden fields follow an explicit compatibility rule
+- [x] Unknown additive non-forbidden fields follow an explicit compatibility rule
       (decoders project only allow-listed keys); nested forbidden fields and
       oversized inputs fail without echoing values.
-- [ ] `npm test`, syntax check, `validate:metadata`, `validate:ci-parity`, and the
+- [x] `npm test`, syntax check, `validate:metadata`, `validate:ci-parity`, and the
       coverage gate are green.
 
 ## Scope Split
