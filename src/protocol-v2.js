@@ -80,12 +80,39 @@ const COST_TIER_SET = new Set(COST_TIERS);
 export const AVAILABILITY_STATES = Object.freeze(["available", "degraded", "unavailable"]);
 const AVAILABILITY_STATE_SET = new Set(AVAILABILITY_STATES);
 
+// A local publisher reports one of these raw review results. `awaiting` is
+// never publisher-reported; the ingestion boundary derives it when no
+// exact-head evidence exists.
+export const LOCAL_REVIEW_RESULTS = Object.freeze(["clean", "findings", "error"]);
+const LOCAL_REVIEW_RESULT_SET = new Set(LOCAL_REVIEW_RESULTS);
+
+// Durable local-attested review-lane states. Only `completed_local` (clean
+// exact-head evidence) may satisfy assurance and pass the gate; every other
+// state blocks.
+export const LOCAL_REVIEW_OUTCOME_STATES = Object.freeze([
+  "completed_local",
+  "completed_local_findings",
+  "awaiting_local_attestation",
+  "failed_local",
+]);
+const LOCAL_REVIEW_OUTCOME_STATE_SET = new Set(LOCAL_REVIEW_OUTCOME_STATES);
+const LOCAL_BLOCKING_REVIEW_STATES = new Set([
+  "completed_local_findings",
+  "awaiting_local_attestation",
+  "failed_local",
+]);
+
+// The only discriminant value a usage projection may carry. Usage is advisory
+// and never authoritative budget or billing evidence.
+export const SELF_REPORTED_LOCAL_SOURCE = "self_reported_local";
+
 export const REVIEW_OUTCOME_STATES = Object.freeze([
   "pending",
   "completed",
   "skipped",
   "failed",
   "not_managed",
+  ...LOCAL_REVIEW_OUTCOME_STATES,
 ]);
 const REVIEW_OUTCOME_STATE_SET = new Set(REVIEW_OUTCOME_STATES);
 
@@ -112,6 +139,13 @@ export const OUTCOME_REASON_CODES = Object.freeze([
   "candidate_quarantined",
   "pool_overdrawn",
   "budget_exhausted_deferred",
+  "local_clean",
+  "local_findings",
+  "awaiting_local_attestation",
+  "local_head_mismatch",
+  "local_evidence_expired",
+  "local_unauthorized",
+  "local_terminal_error",
 ]);
 const OUTCOME_REASON_CODE_SET = new Set(OUTCOME_REASON_CODES);
 
@@ -800,8 +834,19 @@ export function decodeReviewOutcomes(value) {
   // or a review skipped for any reason other than the sanctioned budget defer.
   const reviewSkippedNonBudget =
     reviewOutcome.state === "skipped" && reviewOutcome.reasonCode !== "budget_exhausted_deferred";
+  // A local-attested review satisfies assurance and the gate ONLY with clean
+  // exact-head evidence (`completed_local`). Findings, a missing/new-head
+  // (awaiting), or a terminal local failure are non-budget failures: they can
+  // never pass assurance and must block the gate.
+  const localBlocking = LOCAL_BLOCKING_REVIEW_STATES.has(reviewOutcome.state);
+  if (localBlocking && assuranceOutcome.state === "pass") {
+    throw new Error("outcomes.assuranceOutcome cannot pass without clean exact-head local review evidence");
+  }
   const nonBudgetFailure =
-    reviewOutcome.state === "failed" || assuranceOutcome.state === "fail" || reviewSkippedNonBudget;
+    reviewOutcome.state === "failed"
+    || assuranceOutcome.state === "fail"
+    || reviewSkippedNonBudget
+    || localBlocking;
   if (nonBudgetFailure && gateOutcome.state !== "block") {
     throw new Error("outcomes.gateOutcome must block when a non-budget failure occurs");
   }
@@ -814,6 +859,250 @@ export function decodeReviewOutcomes(value) {
     assuranceOutcome,
     gateOutcome,
   };
+}
+
+// --- local-attested review contracts ---------------------------------------
+
+// The evidence binding every local-attested contract shares. It binds the exact
+// repository, PR, full head, lane, attempt, configuration, local receipt and
+// content digests, and the evidence fingerprint. Transport correlations and
+// GitHub-derived actor/association fields never appear here.
+function decodeLocalEvidenceBinding(source, field) {
+  return {
+    repository: repositoryValue(source.repository, `${field}.repository`),
+    pullRequestNumber: integerValue(source.pullRequestNumber, `${field}.pullRequestNumber`, {
+      minimum: 1,
+    }),
+    headSha: headShaValue(source.headSha, `${field}.headSha`),
+    lane: enumValue(source.lane, `${field}.lane`, REVIEW_LANE_SET),
+    attempt: integerValue(source.attempt, `${field}.attempt`, { minimum: 1, maximum: 100 }),
+    configurationDigest: digestValue(source.configurationDigest, `${field}.configurationDigest`),
+    localReceiptDigest: digestValue(source.localReceiptDigest, `${field}.localReceiptDigest`),
+    contentDigest: digestValue(source.contentDigest, `${field}.contentDigest`),
+    evidenceDigest: digestValue(source.evidenceDigest, `${field}.evidenceDigest`),
+  };
+}
+
+// The only trust level a repository-attested review may mint. `independent` is
+// reserved for a future independent issuer contract and can never be claimed
+// here; every other value is rejected.
+function decodeAttestedTrustLevel(value, field) {
+  const level = stringValue(value, field, { maximum: SHORT_TEXT_MAX_BYTES, lower: true });
+  if (level === "independent") {
+    throw new Error(`${field} 'independent' is reserved for a future independent issuer contract and cannot be minted here`);
+  }
+  if (level !== ATTESTED_TRUST_LEVEL) {
+    throw new Error(`${field} must be ${ATTESTED_TRUST_LEVEL}`);
+  }
+  return ATTESTED_TRUST_LEVEL;
+}
+
+// Self-reported usage is a separately discriminated, advisory projection. It
+// carries only a coarse token/tier estimate, never a monetary balance
+// (forbidden-field rejection covers balance names), and is stamped
+// non-authoritative so it can never be mistaken for budget or billing evidence.
+export function decodeSelfReportedUsage(value, field = "usage") {
+  rejectForbiddenFields(value, field);
+  const usage = objectValue(value, field);
+  for (const forbidden of ["authoritative", "billed", "billing", "charge", "managed", "budget"]) {
+    if (usage[forbidden] !== undefined) {
+      throw new Error(`${field}.${forbidden} is forbidden; self-reported usage is never authoritative budget or billing evidence`);
+    }
+  }
+  const kind = enumValue(usage.kind, `${field}.kind`, new Set([SELF_REPORTED_LOCAL_SOURCE]));
+  const normalized = { kind, authoritative: false };
+  if (usage.inputTokens !== undefined) {
+    normalized.inputTokens = integerValue(usage.inputTokens, `${field}.inputTokens`, {
+      maximum: 100_000_000,
+    });
+  }
+  if (usage.outputTokens !== undefined) {
+    normalized.outputTokens = integerValue(usage.outputTokens, `${field}.outputTokens`, {
+      maximum: 100_000_000,
+    });
+  }
+  if (usage.costTier !== undefined) {
+    normalized.costTier = enumValue(usage.costTier, `${field}.costTier`, COST_TIER_SET);
+  }
+  return normalized;
+}
+
+// The authenticated GitHub publication context. Every field here is derived by
+// the ingestion boundary from GitHub, never asserted by the caller.
+function decodeLocalPublicationContext(value, field) {
+  const context = objectValue(value, field);
+  return {
+    publisher: aliasValue(context.publisher, `${field}.publisher`),
+    association: enumValue(context.association, `${field}.association`, TRUSTED_ASSOCIATION_SET),
+    isPrAuthor: booleanValue(context.isPrAuthor, `${field}.isPrAuthor`),
+    workflowRef: stringValue(context.workflowRef, `${field}.workflowRef`, {
+      maximum: SHORT_TEXT_MAX_BYTES,
+    }),
+    runId: integerValue(context.runId, `${field}.runId`, { minimum: 1 }),
+    runAttempt: integerValue(context.runAttempt, `${field}.runAttempt`, { minimum: 1, maximum: 1000 }),
+  };
+}
+
+// Fields the ingestion boundary derives from GitHub. A local attestation
+// request that pre-asserts any of them is rejected: a caller can never mint its
+// own actor, association, workflow, authorization, or trust level.
+const REQUEST_DERIVED_FORBIDDEN = Object.freeze([
+  "actor",
+  "association",
+  "publisher",
+  "publicationContext",
+  "workflow",
+  "workflowRef",
+  "runId",
+  "runAttempt",
+  "authorization",
+  "authorized",
+  "authorizationResult",
+  "trustLevel",
+  "trusted",
+]);
+
+// The bounded attestation request a local publisher submits. It binds the exact
+// evidence identity and the raw review result, and may carry only self-reported
+// usage. It never carries GitHub-derived publication context or authorization.
+export function decodeLocalAttestationRequest(value) {
+  rejectForbiddenFields(value, "localAttestationRequest");
+  assertEncodedSize(value, "localAttestationRequest", CONTRACT_MAX_BYTES);
+  const request = objectValue(value, "localAttestationRequest");
+  schemaVersion(request.schemaVersion, "localAttestationRequest.schemaVersion");
+  for (const forbidden of REQUEST_DERIVED_FORBIDDEN) {
+    if (request[forbidden] !== undefined) {
+      throw new Error(`localAttestationRequest.${forbidden} is forbidden; the ingestion boundary derives publication context and authorization from GitHub`);
+    }
+  }
+  const binding = decodeLocalEvidenceBinding(request, "localAttestationRequest");
+  const reviewResult = enumValue(request.reviewResult, "localAttestationRequest.reviewResult", LOCAL_REVIEW_RESULT_SET);
+  const producedAt = timestampValue(request.producedAt, "localAttestationRequest.producedAt");
+  const normalized = {
+    schemaVersion: PROTOCOL_V2_SCHEMA_MAJOR,
+    ...binding,
+    reviewResult,
+    producedAt,
+  };
+  if (request.usage !== undefined) {
+    normalized.usage = decodeSelfReportedUsage(request.usage, "localAttestationRequest.usage");
+  }
+  return normalized;
+}
+
+// The ingestion-derived authorization result. This is where repository-attested
+// trust is minted from the authenticated publisher plus policy. Self-reported
+// usage never enters authorization, and only clean exact-head evidence may be
+// authorized. A derived attempt token binds the whole authorized identity.
+export function decodeLocalReviewAuthorization(value) {
+  rejectForbiddenFields(value, "localReviewAuthorization");
+  assertEncodedSize(value, "localReviewAuthorization", CONTRACT_MAX_BYTES);
+  const auth = objectValue(value, "localReviewAuthorization");
+  schemaVersion(auth.schemaVersion, "localReviewAuthorization.schemaVersion");
+  if (auth.usage !== undefined) {
+    throw new Error("localReviewAuthorization.usage is forbidden; self-reported usage never enters managed authorization or balance");
+  }
+  const binding = decodeLocalEvidenceBinding(auth, "localReviewAuthorization");
+  const trustLevel = decodeAttestedTrustLevel(auth.trustLevel, "localReviewAuthorization.trustLevel");
+  const publicationContext = decodeLocalPublicationContext(
+    auth.publicationContext,
+    "localReviewAuthorization.publicationContext",
+  );
+  const authorized = booleanValue(auth.authorized, "localReviewAuthorization.authorized");
+  const reviewResult = enumValue(auth.reviewResult, "localReviewAuthorization.reviewResult", LOCAL_REVIEW_RESULT_SET);
+  const attestationDigest = digestValue(auth.attestationDigest, "localReviewAuthorization.attestationDigest");
+  const policyDigest = digestValue(auth.policyDigest, "localReviewAuthorization.policyDigest");
+  // Only authorized, exact-head clean evidence may authorize a pass. Findings,
+  // a terminal error, or an unauthorized publisher can never be an authorized
+  // pass.
+  if (authorized && reviewResult !== "clean") {
+    throw new Error("localReviewAuthorization may authorize only clean local review evidence");
+  }
+  const attemptToken = deriveV2Fingerprint({
+    ...binding,
+    attestationDigest,
+    trustLevel,
+    policyDigest,
+    publicationContext,
+  });
+  return {
+    schemaVersion: PROTOCOL_V2_SCHEMA_MAJOR,
+    ...binding,
+    trustLevel,
+    authorized,
+    reviewResult,
+    attestationDigest,
+    policyDigest,
+    publicationContext,
+    attemptToken,
+  };
+}
+
+// The immutable durable receipt for an ingested local review. It records the
+// repository-attested trust level, the governing policy digest, the authenticated
+// publication context, and only a clean outcome class satisfies the gate.
+export function decodeLocalReviewReceipt(value) {
+  rejectForbiddenFields(value, "localReviewReceipt");
+  assertEncodedSize(value, "localReviewReceipt", CONTRACT_MAX_BYTES);
+  const receipt = objectValue(value, "localReviewReceipt");
+  schemaVersion(receipt.schemaVersion, "localReviewReceipt.schemaVersion");
+  if (receipt.usage !== undefined) {
+    throw new Error("localReviewReceipt.usage is forbidden; a durable receipt records no self-reported usage");
+  }
+  const binding = decodeLocalEvidenceBinding(receipt, "localReviewReceipt");
+  const trustLevel = decodeAttestedTrustLevel(receipt.trustLevel, "localReviewReceipt.trustLevel");
+  const outcomeClass = enumValue(receipt.outcomeClass, "localReviewReceipt.outcomeClass", LOCAL_REVIEW_OUTCOME_STATE_SET);
+  const policyDigest = digestValue(receipt.policyDigest, "localReviewReceipt.policyDigest");
+  const attestationDigest = digestValue(receipt.attestationDigest, "localReviewReceipt.attestationDigest");
+  const publicationContext = decodeLocalPublicationContext(
+    receipt.publicationContext,
+    "localReviewReceipt.publicationContext",
+  );
+  const recordedAt = timestampValue(receipt.recordedAt, "localReviewReceipt.recordedAt");
+  return Object.freeze({
+    schemaVersion: PROTOCOL_V2_SCHEMA_MAJOR,
+    ...binding,
+    trustLevel,
+    outcomeClass,
+    gateSatisfied: outcomeClass === "completed_local",
+    policyDigest,
+    attestationDigest,
+    publicationContext,
+    recordedAt,
+  });
+}
+
+// The bounded local-attestation status projection. It carries only identities,
+// counts, timestamps, and (for a settled state) the evidence digest. While
+// awaiting exact-head evidence, no evidence digest is bound.
+export function decodeLocalAttestationStatus(value) {
+  rejectForbiddenFields(value, "localAttestationStatus");
+  assertEncodedSize(value, "localAttestationStatus", CONTRACT_MAX_BYTES);
+  const status = objectValue(value, "localAttestationStatus");
+  schemaVersion(status.schemaVersion, "localAttestationStatus.schemaVersion");
+  const state = enumValue(status.state, "localAttestationStatus.state", LOCAL_REVIEW_OUTCOME_STATE_SET);
+  const normalized = {
+    schemaVersion: PROTOCOL_V2_SCHEMA_MAJOR,
+    repository: repositoryValue(status.repository, "localAttestationStatus.repository"),
+    pullRequestNumber: integerValue(status.pullRequestNumber, "localAttestationStatus.pullRequestNumber", {
+      minimum: 1,
+    }),
+    headSha: headShaValue(status.headSha, "localAttestationStatus.headSha"),
+    lane: enumValue(status.lane, "localAttestationStatus.lane", REVIEW_LANE_SET),
+    attempt: integerValue(status.attempt, "localAttestationStatus.attempt", { minimum: 1, maximum: 100 }),
+    state,
+    updatedAt: timestampValue(status.updatedAt, "localAttestationStatus.updatedAt"),
+  };
+  // Awaiting means no exact-head evidence exists yet: an evidence digest must be
+  // absent. Every settled state must bind the evidence it projects.
+  if (state === "awaiting_local_attestation") {
+    if (status.evidenceDigest !== undefined) {
+      throw new Error("localAttestationStatus.evidenceDigest must be absent while awaiting local attestation");
+    }
+  } else {
+    normalized.evidenceDigest = digestValue(status.evidenceDigest, "localAttestationStatus.evidenceDigest");
+  }
+  return normalized;
 }
 
 // --- exact-head Check projection + compare-and-swap ------------------------

@@ -1,0 +1,120 @@
+[
+  {
+    "name": "receipt claiming independent trust",
+    "error": "reserved for a future independent issuer contract",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lane": "assurance",
+      "attempt": 1,
+      "configurationDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "localReceiptDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "contentDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "evidenceDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "trustLevel": "independent",
+      "outcomeClass": "completed_local",
+      "policyDigest": "6666666666666666666666666666666666666666666666666666666666666666",
+      "attestationDigest": "5555555555555555555555555555555555555555555555555555555555555555",
+      "publicationContext": {
+        "publisher": "octo-owner",
+        "association": "OWNER",
+        "isPrAuthor": false,
+        "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+        "runId": 1234567,
+        "runAttempt": 1
+      },
+      "recordedAt": "2026-08-04T12:10:00Z"
+    }
+  },
+  {
+    "name": "receipt with an unknown outcome class",
+    "error": "outcomeClass must be one of",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lane": "assurance",
+      "attempt": 1,
+      "configurationDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "localReceiptDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "contentDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "evidenceDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "trustLevel": "repository_attested",
+      "outcomeClass": "clean",
+      "policyDigest": "6666666666666666666666666666666666666666666666666666666666666666",
+      "attestationDigest": "5555555555555555555555555555555555555555555555555555555555555555",
+      "publicationContext": {
+        "publisher": "octo-owner",
+        "association": "OWNER",
+        "isPrAuthor": false,
+        "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+        "runId": 1234567,
+        "runAttempt": 1
+      },
+      "recordedAt": "2026-08-04T12:10:00Z"
+    }
+  },
+  {
+    "name": "receipt carrying self-reported usage",
+    "error": "usage is forbidden",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lane": "assurance",
+      "attempt": 1,
+      "configurationDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "localReceiptDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "contentDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "evidenceDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "trustLevel": "repository_attested",
+      "outcomeClass": "completed_local",
+      "policyDigest": "6666666666666666666666666666666666666666666666666666666666666666",
+      "attestationDigest": "5555555555555555555555555555555555555555555555555555555555555555",
+      "usage": { "kind": "self_reported_local", "inputTokens": 10 },
+      "publicationContext": {
+        "publisher": "octo-owner",
+        "association": "OWNER",
+        "isPrAuthor": false,
+        "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+        "runId": 1234567,
+        "runAttempt": 1
+      },
+      "recordedAt": "2026-08-04T12:10:00Z"
+    }
+  },
+  {
+    "name": "receipt smuggling a transcript",
+    "error": "privacy boundary",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lane": "assurance",
+      "attempt": 1,
+      "configurationDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "localReceiptDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "contentDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "evidenceDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "trustLevel": "repository_attested",
+      "outcomeClass": "completed_local",
+      "policyDigest": "6666666666666666666666666666666666666666666666666666666666666666",
+      "attestationDigest": "5555555555555555555555555555555555555555555555555555555555555555",
+      "transcript": "raw model transcript",
+      "publicationContext": {
+        "publisher": "octo-owner",
+        "association": "OWNER",
+        "isPrAuthor": false,
+        "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+        "runId": 1234567,
+        "runAttempt": 1
+      },
+      "recordedAt": "2026-08-04T12:10:00Z"
+    }
+  }
+]

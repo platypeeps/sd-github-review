@@ -107,6 +107,113 @@
     }
   },
   {
+    "name": "standalone local-attested carrying a prompt profile",
+    "error": "promptProfile is forbidden for a local-attested route",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "assurance": {
+          "execution": "local-attested",
+          "promptProfile": { "mode": "handler-managed" },
+          "attestation": { "trustPolicyRef": "t", "allowedAssociations": ["OWNER"], "allowPrAuthor": false, "maxAgeSeconds": 60 }
+        }
+      }
+    }
+  },
+  {
+    "name": "standalone local-attested carrying a provider",
+    "error": "provider is forbidden for a local-attested route",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "assurance": {
+          "execution": "local-attested",
+          "provider": "pr-agent",
+          "attestation": { "trustPolicyRef": "t", "allowedAssociations": ["OWNER"], "allowPrAuthor": false, "maxAgeSeconds": 60 }
+        }
+      }
+    }
+  },
+  {
+    "name": "local-attested missing an actor policy",
+    "error": "allowedAssociations must be an array",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "assurance": {
+          "execution": "local-attested",
+          "attestation": { "trustPolicyRef": "t", "allowPrAuthor": false, "maxAgeSeconds": 60 }
+        }
+      }
+    }
+  },
+  {
+    "name": "local-attested with an empty actor policy",
+    "error": "allowedAssociations must contain at least one item",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "assurance": {
+          "execution": "local-attested",
+          "attestation": { "trustPolicyRef": "t", "allowedAssociations": [], "allowPrAuthor": false, "maxAgeSeconds": 60 }
+        }
+      }
+    }
+  },
+  {
+    "name": "local-attested with an unsupported association",
+    "error": "allowedAssociations\\[0\\] must be one of",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "assurance": {
+          "execution": "local-attested",
+          "attestation": { "trustPolicyRef": "t", "allowedAssociations": ["CONTRIBUTOR"], "allowPrAuthor": false, "maxAgeSeconds": 60 }
+        }
+      }
+    }
+  },
+  {
+    "name": "local-attested with implicit PR-author permission",
+    "error": "allowPrAuthor must be a boolean",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "assurance": {
+          "execution": "local-attested",
+          "attestation": { "trustPolicyRef": "t", "allowedAssociations": ["OWNER"], "maxAgeSeconds": 60 }
+        }
+      }
+    }
+  },
+  {
+    "name": "local-attested with a zero expiry",
+    "error": "maxAgeSeconds must be an integer from 1",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "assurance": {
+          "execution": "local-attested",
+          "attestation": { "trustPolicyRef": "t", "allowedAssociations": ["OWNER"], "allowPrAuthor": false, "maxAgeSeconds": 0 }
+        }
+      }
+    }
+  },
+  {
     "name": "managed lane without explicit merge policy",
     "error": "budgetExhaustion.merge must be a string",
     "value": {

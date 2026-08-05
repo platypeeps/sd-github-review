@@ -1,0 +1,45 @@
+[
+  {
+    "name": "awaiting status carrying an evidence digest",
+    "error": "evidenceDigest must be absent while awaiting local attestation",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lane": "assurance",
+      "attempt": 1,
+      "state": "awaiting_local_attestation",
+      "evidenceDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "updatedAt": "2026-08-04T12:00:00Z"
+    }
+  },
+  {
+    "name": "settled status missing its evidence digest",
+    "error": "evidenceDigest must be a string",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lane": "assurance",
+      "attempt": 1,
+      "state": "completed_local",
+      "updatedAt": "2026-08-04T12:10:00Z"
+    }
+  },
+  {
+    "name": "status with an unknown state",
+    "error": "state must be one of",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lane": "assurance",
+      "attempt": 1,
+      "state": "in_progress",
+      "updatedAt": "2026-08-04T12:10:00Z"
+    }
+  }
+]

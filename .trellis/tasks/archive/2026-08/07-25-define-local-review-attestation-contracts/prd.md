@@ -28,17 +28,17 @@ Define bounded exact-head local-review attestation, trust-policy, receipt, and o
 
 ## Acceptance Criteria
 
-- [ ] Canonical valid/invalid fixtures cover direct-only, all-local, and mixed
+- [x] Canonical valid/invalid fixtures cover direct-only, all-local, and mixed
       standalone routes plus every forbidden mixed union.
-- [ ] Trust-policy fixtures reject missing actor policy, implicit PR-author
+- [x] Trust-policy fixtures reject missing actor policy, implicit PR-author
       permission, unsupported associations, and invalid/zero expiry.
-- [ ] Outcome fixtures prove only authorized exact-head `clean` evidence can
+- [x] Outcome fixtures prove only authorized exact-head `clean` evidence can
       satisfy assurance and pass the gate.
-- [ ] Privacy fixtures recursively reject forbidden fields and oversized
+- [x] Privacy fixtures recursively reject forbidden fields and oversized
       values without echoing them.
-- [ ] Usage fixtures cannot be mistaken for authoritative budget or billing
+- [x] Usage fixtures cannot be mistaken for authoritative budget or billing
       evidence.
-- [ ] Historical v1 local summaries remain read-only routing hints and cannot
+- [x] Historical v1 local summaries remain read-only routing hints and cannot
       be decoded as v2 local attestations.
 
 ## Dependencies

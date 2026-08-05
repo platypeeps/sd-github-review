@@ -76,5 +76,44 @@
       "assuranceOutcome": { "state": "pass", "reasonCode": "completed" },
       "gateOutcome": { "state": "pass", "reasonCode": "completed" }
     }
+  },
+  {
+    "name": "local findings leaving the gate free",
+    "error": "gateOutcome must block",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "attempt": 1,
+      "logicalDispatchId": "8888888888888888888888888888888888888888888888888888888888888888",
+      "reviewOutcome": { "state": "completed_local_findings", "reasonCode": "local_findings" },
+      "assuranceOutcome": { "state": "fail", "reasonCode": "local_findings" },
+      "gateOutcome": { "state": "pass", "reasonCode": "local_findings" }
+    }
+  },
+  {
+    "name": "local findings satisfying assurance",
+    "error": "assuranceOutcome cannot pass without clean exact-head local review evidence",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "attempt": 1,
+      "logicalDispatchId": "8888888888888888888888888888888888888888888888888888888888888888",
+      "reviewOutcome": { "state": "completed_local_findings", "reasonCode": "local_findings" },
+      "assuranceOutcome": { "state": "pass", "reasonCode": "completed" },
+      "gateOutcome": { "state": "block", "reasonCode": "local_findings" }
+    }
+  },
+  {
+    "name": "awaiting local attestation leaving the gate free",
+    "error": "gateOutcome must block",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "cccccccccccccccccccccccccccccccccccccccc",
+      "attempt": 1,
+      "logicalDispatchId": "9999999999999999999999999999999999999999999999999999999999999999",
+      "reviewOutcome": { "state": "awaiting_local_attestation", "reasonCode": "awaiting_local_attestation" },
+      "assuranceOutcome": { "state": "fail", "reasonCode": "awaiting_local_attestation" },
+      "gateOutcome": { "state": "pass", "reasonCode": "awaiting_local_attestation" }
+    }
   }
 ]

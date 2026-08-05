@@ -1,0 +1,15 @@
+[
+  {
+    "name": "self-reported usage with tokens and coarse tier",
+    "value": {
+      "kind": "self_reported_local",
+      "inputTokens": 1200,
+      "outputTokens": 340,
+      "costTier": "low"
+    }
+  },
+  {
+    "name": "minimal self-reported usage",
+    "value": { "kind": "self_reported_local" }
+  }
+]

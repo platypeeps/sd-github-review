@@ -1,0 +1,58 @@
+[
+  {
+    "name": "authorized clean owner attestation",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "lane": "assurance",
+      "attempt": 1,
+      "configurationDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "localReceiptDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "contentDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "evidenceDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+      "trustLevel": "repository_attested",
+      "authorized": true,
+      "reviewResult": "clean",
+      "attestationDigest": "5555555555555555555555555555555555555555555555555555555555555555",
+      "policyDigest": "6666666666666666666666666666666666666666666666666666666666666666",
+      "publicationContext": {
+        "publisher": "octo-owner",
+        "association": "OWNER",
+        "isPrAuthor": false,
+        "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+        "runId": 1234567,
+        "runAttempt": 1
+      }
+    }
+  },
+  {
+    "name": "unauthorized findings attestation",
+    "value": {
+      "schemaVersion": 2,
+      "repository": { "owner": "octo", "name": "demo" },
+      "pullRequestNumber": 7,
+      "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "lane": "review",
+      "attempt": 2,
+      "configurationDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "localReceiptDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "contentDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+      "evidenceDigest": "5555555555555555555555555555555555555555555555555555555555555555",
+      "trustLevel": "repository_attested",
+      "authorized": false,
+      "reviewResult": "findings",
+      "attestationDigest": "5555555555555555555555555555555555555555555555555555555555555555",
+      "policyDigest": "6666666666666666666666666666666666666666666666666666666666666666",
+      "publicationContext": {
+        "publisher": "octo-member",
+        "association": "MEMBER",
+        "isPrAuthor": true,
+        "workflowRef": ".github/workflows/review.yml@refs/heads/main",
+        "runId": 1234568,
+        "runAttempt": 1
+      }
+    }
+  }
+]
