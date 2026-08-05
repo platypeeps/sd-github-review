@@ -608,9 +608,13 @@ function decodeProfileEntry(value, field) {
 // Decode the immutable prompt-profile metadata registry. It carries ONLY
 // alias/version/digest + compatible handler/capabilities; the actual template
 // or PR-Agent configuration is adapter-owned and keyed by the same identity.
-export function decodePromptProfileRegistry(value, field = "promptProfileRegistry") {
-  const isTopLevel = field === "promptProfileRegistry";
-  if (isTopLevel) {
+export function decodePromptProfileRegistry(value, field = "promptProfileRegistry", options = {}) {
+  // The forbidden-content walk + size bound run once at the outermost entry.
+  // `decodeCandidateCatalog` already walked the whole tree, so it passes
+  // `parentGuardedContent` to skip the redundant pass. Every other caller —
+  // including a public call that overrides `field` for a nicer error path —
+  // never sets it, so the fail-closed boundary is applied regardless of `field`.
+  if (!options.parentGuardedContent) {
     rejectForbiddenContent(value, field);
     assertEncodedSize(value, field, CONTRACT_MAX_BYTES);
   }
@@ -688,8 +692,11 @@ function resolveProfileBinding(binding, handler, field, registryIndex) {
 // the catalog decode) cross-checks an external candidate's profile reference;
 // omitted, only the binding SHAPE is validated.
 export function decodeCandidateRecord(value, field = "candidate", options = {}) {
-  const isTopLevel = field === "candidate";
-  if (isTopLevel) {
+  // See decodePromptProfileRegistry: the outermost caller owns the single
+  // forbidden-content walk + size bound. `decodeCandidateCatalog` passes
+  // `parentGuardedContent` after walking the whole tree; every other caller,
+  // whatever `field` it chooses, still gets the fail-closed boundary.
+  if (!options.parentGuardedContent) {
     rejectForbiddenContent(value, field);
     assertEncodedSize(value, field, CONTRACT_MAX_BYTES);
   }
@@ -767,7 +774,7 @@ export function decodeCandidateCatalog(value, field = "candidateCatalog") {
   schemaVersion(catalog.schemaMajor, `${field}.schemaMajor`);
   const name = aliasValue(catalog.name, `${field}.name`);
   const version = semverLikeValue(catalog.version, `${field}.version`);
-  const registry = decodePromptProfileRegistry(catalog.promptProfiles, `${field}.promptProfiles`);
+  const registry = decodePromptProfileRegistry(catalog.promptProfiles, `${field}.promptProfiles`, { parentGuardedContent: true });
   const registryIndex = indexRegistry(registry);
   if (!Array.isArray(catalog.candidates)) {
     throw new Error(`${field}.candidates must be an array`);
@@ -780,7 +787,7 @@ export function decodeCandidateCatalog(value, field = "candidateCatalog") {
   }
   const seenAliases = new Set();
   const candidates = catalog.candidates.map((entry, index) => {
-    const decoded = decodeCandidateRecord(entry, `${field}.candidates[${index}]`, { registryIndex });
+    const decoded = decodeCandidateRecord(entry, `${field}.candidates[${index}]`, { registryIndex, parentGuardedContent: true });
     if (seenAliases.has(decoded.alias)) {
       throw new Error(`${field}.candidates[${index}] duplicates candidate alias ${decoded.alias}`);
     }

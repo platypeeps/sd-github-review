@@ -220,6 +220,28 @@ test("prompt-profile metadata rejects every PR-specific identifier", () => {
   }
 });
 
+test("the exported registry and record decoders fail closed under any field label", () => {
+  // The single forbidden-content walk must not hinge on the caller-supplied
+  // `field`. A public call that overrides `field` (for example to improve an
+  // error path) must still reject an embedded prompt/config/secret body, not
+  // silently ignore it.
+  const poisonedRegistry = [
+    { alias: "p", version: "1.0.0", digest: "1".repeat(64), compatibleHandlers: ["pr-agent"], prompt: "leak-me-please" },
+  ];
+  assert.throws(
+    () => decodePromptProfileRegistry(poisonedRegistry, "customRegistryField"),
+    (error) => /catalog privacy boundary/u.test(error.message) && !error.message.includes("leak-me-please"),
+    "registry decoder with a non-default field",
+  );
+
+  const poisonedRecord = { ...clone(baseCatalog.candidates[0]), config: "leak-me-please" };
+  assert.throws(
+    () => decodeCandidateRecord(poisonedRecord, "customRecordField"),
+    (error) => /catalog privacy boundary/u.test(error.message) && !error.message.includes("leak-me-please"),
+    "record decoder with a non-default field",
+  );
+});
+
 // --- quarantine overlay -----------------------------------------------------
 
 test("a quarantine overlay is keyed to an alias and never mutates a pinned version", () => {
