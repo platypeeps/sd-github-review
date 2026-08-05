@@ -543,6 +543,20 @@ test("adjustPool drives the pool overdrawn when a negative adjustment pushes rea
   assert.equal(adjusted.decision.clearedOverdrawn, false);
 });
 
+test("authorize fails closed when authorizedAttempt disagrees with the lease identity", () => {
+  const base = ledger([observation({ amount: 10_000, safetyMargin: 0 })]);
+  const reserved = reserve(base, request({ identity: { attempt: 1 }, conservativeMaxCharge: 4_000, hardRequestLimit: 4_000, expectedAverage: 1_000 }), { nowIso: NOW });
+  const fingerprint = reserved.decision.lease.requestFingerprint;
+  assert.throws(
+    () => authorize(reserved.state, { requestFingerprint: fingerprint, revision: 1, authorizedAttempt: 999 }, { nowIso: NOW }),
+    /does not match the lease identity attempt 1/u,
+  );
+  // The attempt bound into the lease identity authorizes cleanly.
+  const ok = authorize(reserved.state, { requestFingerprint: fingerprint, revision: 1, authorizedAttempt: 1 }, { nowIso: NOW });
+  assert.equal(ok.decision.outcome, "authorized");
+  assert.equal(projectPool(ok.state, "kimi-pool").latestAuthorizedAttempt, 1);
+});
+
 test("applyObservation fails closed when the observation's candidate set disagrees with the pool", () => {
   const base = ledger([observation({ amount: 10_000, safetyMargin: 0, candidates: ["kimi-review"] })]);
   // Same poolId, same units/kind, but a different candidate membership.

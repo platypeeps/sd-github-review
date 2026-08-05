@@ -882,6 +882,15 @@ export function authorize(state, value, { nowIso } = {}) {
   }
   const pool = requirePool(state, lease.poolId, "authorization.lease.poolId");
 
+  // The attempt is already bound into the lease identity via its request
+  // fingerprint. Fail closed if the caller presents a different one rather than
+  // writing an inconsistent latestAuthorizedAttempt into the lease and pool.
+  if (authorizedAttempt !== lease.identity.attempt) {
+    throw new Error(
+      `authorization.authorizedAttempt ${authorizedAttempt} does not match the lease identity attempt ${lease.identity.attempt}`,
+    );
+  }
+
   // Idempotent re-authorization of the same lease at the same revision/attempt.
   if (lease.state === "authorized" && lease.revision === revision && lease.authorizedAttempt === authorizedAttempt) {
     return {
