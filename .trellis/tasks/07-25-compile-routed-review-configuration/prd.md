@@ -29,19 +29,19 @@ Build the pure deterministic source and catalog compiler with canonical diagnost
 
 ## Acceptance Criteria
 
-- [ ] Equivalent semantic inputs compile byte-for-byte identically across runs.
-- [ ] Every semantic source/catalog change alters the canonical output digest.
-- [ ] Invalid reference, mismatch, composition, and capability fixtures fail
+- [x] Equivalent semantic inputs compile byte-for-byte identically across runs.
+- [x] Every semantic source/catalog change alters the canonical output digest.
+- [x] Invalid reference, mismatch, composition, and capability fixtures fail
       before producing an active manifest.
-- [ ] Shared and candidate-specific profile fixtures compile deterministically;
+- [x] Shared and candidate-specific profile fixtures compile deterministically;
       missing, incompatible, substituted, or digest-mismatched profiles fail.
-- [ ] Candidate/slot label configuration is not representable in compiled v2
+- [x] Candidate/slot label configuration is not representable in compiled v2
       output and legacy `overrides.labels` input fails with a field diagnostic.
-- [ ] The compiler remains pure and testable without filesystem or network
+- [x] The compiler remains pure and testable without filesystem or network
       access.
-- [ ] Standalone compilation succeeds with no catalog input, while managed
+- [x] Standalone compilation succeeds with no catalog input, while managed
       compilation still fails without the exact catalog projection.
-- [ ] Managed fixtures prove explicit block/allow policy changes the canonical
+- [x] Managed fixtures prove explicit block/allow policy changes the canonical
       digest and that no default or contextual inference is synthesized.
 
 ## Dependencies
