@@ -27,6 +27,7 @@ const ALLOWED = {
   "review-candidate-catalog.js": [],
   "routed-review-compiler.js": ["protocol-v2.js", "review-candidate-catalog.js"],
   "review-plan-authorization.js": ["protocol-v2.js", "review-budget-ledger.js"],
+  "review-usage-reconciliation.js": [],
   "receipt.js": ["protocol.js", "path-match.js"],
   "router.js": ["protocol.js", "normalize.js", "path-match.js"],
   "risk-context.js": ["path-match.js", "normalize.js"],

@@ -25,17 +25,17 @@ Specify actual usage and cost reconciliation, reserve release, overruns, and unk
 
 ## Acceptance Criteria
 
-- [ ] Fixtures cover exact use, partial use/release, overrun, zero use, unknown
+- [x] Fixtures cover exact use, partial use/release, overrun, zero use, unknown
       usage, delayed reconciliation, duplicate input, and conflicting input.
-- [ ] Soft-overrun fixtures preserve an otherwise valid review outcome; hard-
+- [x] Soft-overrun fixtures preserve an otherwise valid review outcome; hard-
       limit fixtures produce a policy violation and candidate quarantine.
-- [ ] Full actual usage is debited, negative capacity is represented as
+- [x] Full actual usage is debited, negative capacity is represented as
       `overdrawn`, and future eligibility cannot treat it as available.
-- [ ] Reconciliation is monotonic and cannot spend or release another attempt's
+- [x] Reconciliation is monotonic and cannot spend or release another attempt's
       reservation.
-- [ ] Unknown usage never becomes a fabricated zero-cost success.
-- [ ] Output remains bounded and credential-free.
-- [ ] Fake-clock fixtures cover operational compaction, unresolved expiry,
+- [x] Unknown usage never becomes a fabricated zero-cost success.
+- [x] Output remains bounded and credential-free.
+- [x] Fake-clock fixtures cover operational compaction, unresolved expiry,
       13-month receipt deletion, legal hold, purge, and coverage.
 
 ## Dependencies

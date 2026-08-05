@@ -16,6 +16,7 @@ src/                   # dependency-free Action runtime
   routed-review-compiler.js # pure compiler: explicit-mode v2 source + catalog safe projection/handler profiles -> canonical manifest with source/catalog/output digests
   review-budget-ledger.js # pure leaf: authoritative budget observations, shared/independent pools, idempotent reservations/leases, overdrawn/quarantine, retention classification (injected time)
   review-plan-authorization.js # pure: exact-head managed plan preparation, trusted-command/route-label precedence, bounded /review options discovery, control-plane request shaping, idempotent durable authorization/deferral (injected time)
+  review-usage-reconciliation.js # pure leaf: monotonic reconciliation of an authorized reserve against full actual usage/cost, soft budget_overrun vs hard policy_violation classification, overdrawn/quarantine, preserved unknown usage, retention classification (injected time)
   receipt.js           # exact-head Check Run receipt storage and reconciliation
   risk-context.js      # shared normalized routing-context builder
   reviewer-dispatch.js # shared Copilot presence probe and reviewer request
