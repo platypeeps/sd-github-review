@@ -34,23 +34,23 @@ bindings, capabilities, and policy versioning.
 
 ## Acceptance Criteria
 
-- [ ] Catalog fixtures prove immutability, digest verification, alias stability,
+- [x] Catalog fixtures prove immutability, digest verification, alias stability,
       lane/capability validation, and portable model replacement.
-- [ ] Prompt-profile fixtures prove reuse and candidate-specific binding,
+- [x] Prompt-profile fixtures prove reuse and candidate-specific binding,
       handler compatibility, native handler-managed prompting, and rejection
       of missing, unknown, duplicate, mismatched, or substituted profiles.
-- [ ] Projection fixtures contain no credential, billing payload, or private
+- [x] Projection fixtures contain no credential, billing payload, or private
       endpoint.
-- [ ] Unknown, duplicate, disabled, malformed, or policy-incomplete candidates
+- [x] Unknown, duplicate, disabled, malformed, or policy-incomplete candidates
       fail closed.
-- [ ] Safe-projection fixtures include only the non-secret facts required for
+- [x] Safe-projection fixtures include only the non-secret facts required for
       request preflight and hard-limit enforcement and reject unverifiable token,
       price, unit, finish-reason, or usage capabilities.
-- [ ] Safe projections expose profile alias/version/digest and compatibility
+- [x] Safe projections expose profile alias/version/digest and compatibility
       facts but no prompt body or configuration value.
-- [ ] Kimi, Qwen, Copilot, and providers remain consumer choices, not protocol
+- [x] Kimi, Qwen, Copilot, and providers remain consumer choices, not protocol
       constants.
-- [ ] Fake-clock fixtures cover active references, final-reference removal, the
+- [x] Fake-clock fixtures cover active references, final-reference removal, the
       13-month tail, hold/purge interaction, and no dangling retained receipt.
 
 ## Dependencies
