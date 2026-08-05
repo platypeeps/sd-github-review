@@ -269,8 +269,8 @@ Committed cross-session audit findings managed by sd-audit-repo.
 - fix: Export a predicate or immutable collection instead.
 
 ## A-021 — `hasManagedFiles` is an unreachable public export
-- status: open
-- notes: Trellis owner `07-25-remove-unused-installer-export`; remediation planning created 2026-07-25.
+- status: fixed
+- notes: Trellis owner reassigned to `08-04-remove-unused-installer-export`; verified fixed on main @ 2026-08-04 — deleted the unreachable exported `hasManagedFiles` and its sole-consumer private helper `pathExists` from scripts/consumer-installer.mjs (adversarial host review caught that removing only the export would orphan `pathExists`; both removed together). `readFile` stays in use via `readOptional`. Regression lock in test/consumer-installer.test.js asserts the installer module namespace does not export `hasManagedFiles`; full suite 234/234, check:full whitespace clean and preflight 0 failures. Pure dead-code deletion, no runtime call sites, no external gap.
 - severity: P3 · effort: S · confidence: Plausible
 - dimension: bloat
 - first-seen: 2026-07-25 @ 2eeca60

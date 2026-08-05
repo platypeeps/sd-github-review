@@ -383,16 +383,6 @@ export function parseGitHubRemote(remote) {
   return null;
 }
 
-async function pathExists(filePath) {
-  try {
-    await readFile(filePath);
-    return true;
-  } catch (error) {
-    if (error.code === "ENOENT") return false;
-    throw error;
-  }
-}
-
 async function readOptional(filePath) {
   try {
     return await readFile(filePath, "utf8");
@@ -1403,12 +1393,4 @@ export function parseArguments(argv) {
     throw new Error(`${command} does not accept source provenance overrides`);
   }
   return options;
-}
-
-export async function hasManagedFiles(target) {
-  const root = path.resolve(target);
-  return {
-    manifest: await pathExists(path.join(root, MANIFEST_PATH)),
-    workflow: await pathExists(path.join(root, WORKFLOW_PATH)),
-  };
 }

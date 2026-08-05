@@ -58,6 +58,7 @@ Dedicated `08-04` children reassigned from the generic 07-25 adapter owners:
 - `08-04-skip-empty-sensitive-path-enumeration` owns A-014.
 - `08-04-reuse-rerequest-receipt-snapshot` owns A-015.
 - `08-04-remove-opencode-plugin-dependency` owns A-016.
+- `08-04-remove-unused-installer-export` owns A-021.
 
 ## Acceptance Criteria
 

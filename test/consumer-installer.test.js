@@ -30,6 +30,7 @@ import {
   runConsumerInstaller,
 } from "../scripts/consumer-installer.mjs";
 import { reviewLabels } from "../src/normalize.js";
+import * as installerModule from "../scripts/consumer-installer.mjs";
 
 const REPOSITORY = "acme/consumer";
 
@@ -143,6 +144,17 @@ async function makeTarget() {
 async function readManifest(target) {
   return JSON.parse(await readFile(path.join(target, MANIFEST_PATH), "utf8"));
 }
+
+test("the installer does not export the unreachable hasManagedFiles helper (A-021)", () => {
+  // A-021: hasManagedFiles had no in-repo caller — a public surface that served
+  // no behavior. This locks it out so a future dead export cannot slip back in
+  // (and reasserts the module's presence checks flow through readOptional).
+  assert.equal(
+    "hasManagedFiles" in installerModule,
+    false,
+    "hasManagedFiles must not be re-exported; it had no caller and only widened the installer surface",
+  );
+});
 
 test("parses supported GitHub origin shapes and rejects unrelated remotes", () => {
   assert.equal(parseGitHubRemote("https://github.com/acme/consumer.git"), REPOSITORY);
