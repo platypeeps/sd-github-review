@@ -1,7 +1,10 @@
 import { createHash, randomBytes } from "node:crypto";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFile, execFileSync, spawnSync } from "node:child_process";
 import { lstat, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 
 export const MANIFEST_PATH = ".github/sd-github-review.json";
 export const WORKFLOW_PATH = ".github/workflows/ai-review-router.yml";
@@ -134,18 +137,10 @@ function commandTimeout(command, args, timeoutMs, secret, readOnly) {
   );
 }
 
-function runCommand(command, args, options = {}) {
-  const spawnImpl = options.spawnImpl ?? spawnSync;
-  const timeoutMs = options.timeoutMs ?? GH_COMMAND_TIMEOUT_MS;
-  const result = spawnImpl(command, args, {
-    cwd: options.cwd,
-    encoding: "utf8",
-    env: process.env,
-    input: options.input,
-    stdio: options.inherit ? "inherit" : undefined,
-    timeout: timeoutMs,
-    killSignal: "SIGTERM",
-  });
+// Shared interpretation of a spawnSync-shaped result. Both the synchronous
+// runCommand and the asynchronous runCommandAsync route through this so the
+// timeout wording, secret redaction, and failure mapping cannot diverge.
+function interpretCommandResult(command, args, result, options, timeoutMs) {
   if (result.error) {
     if (result.error.code === "ETIMEDOUT") {
       throw commandTimeout(command, args, timeoutMs, options.secret, options.readOnly);
@@ -158,11 +153,83 @@ function runCommand(command, args, options = {}) {
   return result.stdout ?? "";
 }
 
+function parseCommandJson(command, args, output) {
+  try {
+    return JSON.parse(output);
+  } catch {
+    throw new Error(`${command} ${args.join(" ")} returned invalid JSON`);
+  }
+}
+
+function runCommand(command, args, options = {}) {
+  const spawnImpl = options.spawnImpl ?? spawnSync;
+  const timeoutMs = options.timeoutMs ?? GH_COMMAND_TIMEOUT_MS;
+  const result = spawnImpl(command, args, {
+    cwd: options.cwd,
+    encoding: "utf8",
+    env: process.env,
+    input: options.input,
+    stdio: options.inherit ? "inherit" : undefined,
+    timeout: timeoutMs,
+    killSignal: "SIGTERM",
+  });
+  return interpretCommandResult(command, args, result, options, timeoutMs);
+}
+
+// execFile represents a timeout in two ways across Node versions: a string code
+// "ETIMEDOUT", or a killSignal-kill (killed + signal === killSignal) with NO
+// error code. execFile ALSO kills the child with killSignal on a maxBuffer
+// overflow, but that rejection carries a string code
+// ("ERR_CHILD_PROCESS_STDIO_MAXBUFFER"); requiring the code to be absent keeps a
+// maxBuffer (or any other coded kill) from being misreported as a timeout.
+function isTimeoutKill(error, killSignal) {
+  if (error.code === "ETIMEDOUT") return true;
+  return Boolean(error.killed) && error.signal === killSignal && error.code == null;
+}
+
+// Asynchronous sibling of runCommand for independent read-only queries that can
+// overlap. It maps execFile's rejection into the same spawnSync-shaped result
+// interpretCommandResult understands. Not used for mutations, which stay on the
+// ordered synchronous path.
+async function runCommandAsync(command, args, options = {}) {
+  const execImpl = options.execImpl ?? execFileAsync;
+  const timeoutMs = options.timeoutMs ?? GH_COMMAND_TIMEOUT_MS;
+  let result;
+  try {
+    const { stdout } = await execImpl(command, args, {
+      cwd: options.cwd,
+      encoding: "utf8",
+      env: process.env,
+      timeout: timeoutMs,
+      killSignal: "SIGTERM",
+    });
+    result = { error: null, status: 0, stdout, stderr: "" };
+  } catch (error) {
+    if (isTimeoutKill(error, "SIGTERM")) {
+      result = {
+        error: Object.assign(new Error("timed out"), { code: "ETIMEDOUT" }),
+        status: null,
+        stdout: "",
+        stderr: error.stderr ?? "",
+      };
+    } else if (typeof error.code === "number") {
+      result = { error: null, status: error.code, stdout: error.stdout ?? "", stderr: error.stderr ?? "" };
+    } else {
+      result = { error, status: null, stdout: "", stderr: "" };
+    }
+  }
+  return interpretCommandResult(command, args, result, options, timeoutMs);
+}
+
 export class GitHubCli {
   // spawnImpl/timeoutMs are injectable so fake-child-process tests can drive the
   // timeout, redaction, and recovery-guidance paths without a real subprocess.
-  constructor({ spawnImpl = spawnSync, timeoutMs = GH_COMMAND_TIMEOUT_MS } = {}) {
+  // execImpl is the async execFile seam used only by the concurrent read path
+  // (inspect); spawnImpl remains the synchronous seam for all mutations, so
+  // installation state transitions stay ordered. Both are injectable for tests.
+  constructor({ spawnImpl = spawnSync, execImpl = execFileAsync, timeoutMs = GH_COMMAND_TIMEOUT_MS } = {}) {
     this.spawnImpl = spawnImpl;
+    this.execImpl = execImpl;
     this.timeoutMs = timeoutMs;
   }
 
@@ -178,40 +245,36 @@ export class GitHubCli {
     // runJson only wraps read-only list/view queries, so a timeout gets the
     // plain-retry guidance rather than the mutation reconciliation wording.
     const output = this.run(command, args, { readOnly: true });
-    try {
-      return JSON.parse(output);
-    } catch {
-      throw new Error(`${command} ${args.join(" ")} returned invalid JSON`);
-    }
+    return parseCommandJson(command, args, output);
+  }
+
+  // Asynchronous read used by inspect so its independent queries can overlap.
+  async #runJsonAsync(command, args) {
+    const output = await runCommandAsync(command, args, {
+      readOnly: true,
+      execImpl: this.execImpl,
+      timeoutMs: this.timeoutMs,
+    });
+    return parseCommandJson(command, args, output);
   }
 
   async inspect(repository) {
-    const repo = this.runJson("gh", ["repo", "view", repository, "--json", "nameWithOwner"]);
-    const variables = this.runJson("gh", [
-      "variable",
-      "list",
-      "--repo",
-      repository,
-      "--json",
-      "name,value",
-    ]);
-    const secrets = this.runJson("gh", [
-      "secret",
-      "list",
-      "--repo",
-      repository,
-      "--json",
-      "name",
-    ]);
-    const labels = this.runJson("gh", [
-      "label",
-      "list",
-      "--repo",
-      repository,
-      "--limit",
-      "1000",
-      "--json",
-      "name,color,description",
+    // Four independent, read-only queries — a fixed, bounded fan-out with no
+    // cross-dependency, so they run concurrently rather than summing round trips.
+    const [repo, variables, secrets, labels] = await Promise.all([
+      this.#runJsonAsync("gh", ["repo", "view", repository, "--json", "nameWithOwner"]),
+      this.#runJsonAsync("gh", ["variable", "list", "--repo", repository, "--json", "name,value"]),
+      this.#runJsonAsync("gh", ["secret", "list", "--repo", repository, "--json", "name"]),
+      this.#runJsonAsync("gh", [
+        "label",
+        "list",
+        "--repo",
+        repository,
+        "--limit",
+        "1000",
+        "--json",
+        "name,color,description",
+      ]),
     ]);
     return {
       repository: repo.nameWithOwner,

@@ -60,6 +60,7 @@ Dedicated `08-04` children reassigned from the generic 07-25 adapter owners:
 - `08-04-remove-opencode-plugin-dependency` owns A-016.
 - `08-04-remove-unused-installer-export` owns A-021.
 - `08-04-encapsulate-review-label-registry` owns A-020.
+- `08-04-parallelize-installer-github-reads` owns A-022.
 
 ## Acceptance Criteria
 

@@ -44,7 +44,8 @@
     "08-04-reuse-rerequest-receipt-snapshot",
     "08-04-remove-opencode-plugin-dependency",
     "08-04-remove-unused-installer-export",
-    "08-04-encapsulate-review-label-registry"
+    "08-04-encapsulate-review-label-registry",
+    "08-04-parallelize-installer-github-reads"
   ],
   "parent": null,
   "relatedFiles": [],

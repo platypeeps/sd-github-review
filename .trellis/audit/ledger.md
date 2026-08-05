@@ -281,8 +281,8 @@ Committed cross-session audit findings managed by sd-audit-repo.
 - fix: Delete the unused export.
 
 ## A-022 — Consumer installation serializes independent GitHub CLI calls
-- status: open
-- notes: Trellis owner `07-25-parallelize-installer-github-operations`; remediation planning created 2026-07-25.
+- status: fixed
+- notes: Trellis owner reassigned to `08-04-parallelize-installer-github-reads`; verified fixed on main @ 2026-08-04 — added an async execFile seam (`runCommandAsync` + injectable `GitHubCli.execImpl`, default `promisify(execFile)`) so `inspect`'s four independent read-only gh queries (repo view, variable/secret/label list) run via `Promise.all` instead of serial `spawnSync`. Extracted `interpretCommandResult`/`parseCommandJson` shared by the sync and async paths so timeout wording and secret redaction cannot diverge; all mutations stay on the ordered synchronous path. Adversarial host review C-1: execFile also kills the child with killSignal on a maxBuffer overflow, so timeout detection (`isTimeoutKill`) requires the error code to be absent (or `ETIMEDOUT`), preventing a maxBuffer/other coded-kill from being misreported as a timeout — locked by a dedicated test. Full suite 240/240 (5 new), check:full whitespace clean and preflight 0 failures. Verification limit: overlap proven via injected fake exec (max-in-flight = 4); live wall-clock gain is an operator observation. (Prism flagged the mapping area HIGH; assessed as false positives — the branches are covered by timeout/nonzero-exit/ENOENT/maxBuffer tests.)
 - severity: P3 · effort: M · confidence: Plausible
 - dimension: performance
 - first-seen: 2026-07-25 @ 2eeca60

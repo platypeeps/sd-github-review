@@ -1317,12 +1317,13 @@ test("gh subprocess timeout raises a bounded error with recovery guidance", asyn
   assert.equal(calls[0].options.killSignal, "SIGTERM");
 });
 
-test("gh read-only query timeout advises a plain retry, not reconciliation", async () => {
+test("gh read-only runJson timeout advises a plain retry, not reconciliation", () => {
   const github = new GitHubCli({ spawnImpl: timedOutSpawn([]) });
-  // inspect() reaches gh only through runJson (repo/variable/secret/label list),
-  // which carries no side effect, so a timeout must not claim a partial change.
-  await assert.rejects(
-    github.inspect(REPOSITORY),
+  // A read-only query carries no side effect, so a timeout must not claim a
+  // partial change. inspect() now uses the async seam (covered separately); this
+  // pins the read-only wording on the synchronous runJson path.
+  assert.throws(
+    () => github.runJson("gh", ["repo", "view", REPOSITORY, "--json", "nameWithOwner"]),
     (error) => {
       assert.match(error.message, new RegExp(`timed out after ${GH_COMMAND_TIMEOUT_MS}ms`, "u"));
       assert.match(error.message, /the read was interrupted — retry once GitHub is responsive/u);
@@ -1372,6 +1373,113 @@ test("gh non-timeout spawn error is not misreported as a timeout", async () => {
       return true;
     },
   );
+});
+
+// A-022: inspect() fans its four independent reads out through the async
+// execFile seam. This fake resolves per-query JSON after yielding, and tracks
+// how many reads are in flight at once so the test can prove they overlap.
+function concurrentInspectExec(inFlight) {
+  return async (command, args) => {
+    inFlight.now += 1;
+    inFlight.max = Math.max(inFlight.max, inFlight.now);
+    await Promise.resolve();
+    await Promise.resolve();
+    inFlight.now -= 1;
+    const subcommand = args[0];
+    if (subcommand === "repo") {
+      return { stdout: JSON.stringify({ nameWithOwner: REPOSITORY }), stderr: "" };
+    }
+    if (subcommand === "variable") {
+      return { stdout: JSON.stringify([{ name: "PR_AGENT_ROUTING_CONFIG", value: "cfg" }]), stderr: "" };
+    }
+    if (subcommand === "secret") {
+      return { stdout: JSON.stringify([{ name: SECRET_NAME }]), stderr: "" };
+    }
+    if (subcommand === "label") {
+      return { stdout: JSON.stringify([{ name: "review:auto", color: "ededed", description: "d" }]), stderr: "" };
+    }
+    throw new Error(`unexpected gh read: ${subcommand}`);
+  };
+}
+
+test("inspect issues its four reads concurrently through the async seam (A-022)", async () => {
+  const inFlight = { now: 0, max: 0 };
+  const github = new GitHubCli({
+    execImpl: concurrentInspectExec(inFlight),
+    // inspect must go through the async seam, never the synchronous mutation path.
+    spawnImpl: () => {
+      throw new Error("inspect must not use the synchronous spawn path");
+    },
+  });
+  const snapshot = await github.inspect(REPOSITORY);
+  assert.equal(inFlight.max, 4, "all four inspect reads should be in flight at once");
+  assert.equal(snapshot.repository, REPOSITORY);
+  assert.equal(snapshot.variables.get("PR_AGENT_ROUTING_CONFIG"), "cfg");
+  assert.equal(snapshot.secrets.has(SECRET_NAME), true);
+  assert.equal(snapshot.labels.get("review:auto").color, "ededed");
+});
+
+test("inspect async read timeout advises a plain retry, not reconciliation (A-022)", async () => {
+  // The read-only timeout guidance (A-012) must survive the move to the async
+  // seam: a killSignal-timeout carries no error code.
+  const github = new GitHubCli({
+    execImpl: async () => {
+      throw Object.assign(new Error("timed out"), { killed: true, signal: "SIGTERM" });
+    },
+  });
+  await assert.rejects(
+    github.inspect(REPOSITORY),
+    (error) => {
+      assert.match(error.message, new RegExp(`timed out after ${GH_COMMAND_TIMEOUT_MS}ms`, "u"));
+      assert.match(error.message, /the read was interrupted — retry once GitHub is responsive/u);
+      assert.doesNotMatch(error.message, /verify no partial change/u);
+      return true;
+    },
+  );
+});
+
+test("inspect async nonzero exit surfaces a command failure, not a timeout (A-022)", async () => {
+  const github = new GitHubCli({
+    execImpl: async () => {
+      throw Object.assign(new Error("gh failed"), { code: 1, stdout: "", stderr: "denied" });
+    },
+  });
+  await assert.rejects(github.inspect(REPOSITORY), (error) => {
+    assert.doesNotMatch(error.message, /timed out/u);
+    return true;
+  });
+});
+
+test("inspect async maxBuffer kill is not misreported as a timeout (A-022 C-1)", async () => {
+  // execFile kills the child with killSignal on a maxBuffer overflow too, but
+  // that rejection carries a string code — it must not be read as a timeout.
+  const github = new GitHubCli({
+    execImpl: async () => {
+      throw Object.assign(new Error("stdout maxBuffer length exceeded"), {
+        killed: true,
+        signal: "SIGTERM",
+        code: "ERR_CHILD_PROCESS_STDIO_MAXBUFFER",
+      });
+    },
+  });
+  await assert.rejects(github.inspect(REPOSITORY), (error) => {
+    assert.doesNotMatch(error.message, /timed out/u);
+    assert.match(error.message, /could not start/u);
+    return true;
+  });
+});
+
+test("inspect async ENOENT is reported as could-not-start, not a timeout (A-022)", async () => {
+  const github = new GitHubCli({
+    execImpl: async () => {
+      throw Object.assign(new Error("spawn gh ENOENT"), { code: "ENOENT" });
+    },
+  });
+  await assert.rejects(github.inspect(REPOSITORY), (error) => {
+    assert.match(error.message, /could not start/u);
+    assert.doesNotMatch(error.message, /timed out/u);
+    return true;
+  });
 });
 
 test("git subprocess timeout raises a bounded error with recovery guidance", () => {
