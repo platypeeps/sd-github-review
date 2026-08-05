@@ -1823,3 +1823,45 @@ Delivered src/review-candidate-catalog.js (pure leaf): immutable content-address
 ### Next Steps
 
 - None - task complete
+
+
+## Session 46: Compile routed review configuration (07-25) — ship iteration 5
+
+**Date**: 2026-08-05
+**Task**: Compile routed review configuration (07-25) — ship iteration 5
+**Branch**: `feat/07-25-compile-routed-review-configuration`
+
+### Summary
+
+Resumed the work-backlog loop at iteration 5 and shipped the pure deterministic routed-review configuration compiler through review to finalization. Added a code-spec scenario, marked the 8 verified acceptance criteria, and archived the task after a clean local gate and an approved Copilot review.
+
+### Main Changes
+
+- src/routed-review-compiler.js: pure explicit-mode v2 compiler with managed digest-matching projection vs standalone handler profiles, forbidden composition levers by normalized key, required explicit budgetExhaustion merge, and reproducible source/catalog/output digests
+- backend/quality-guidelines.md: added the 7-section 'Compile A Routed Review Configuration' code-spec scenario
+- Marked all 8 acceptance criteria complete after verifying each against the passing compiler test suite
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `352baa8` | feat: compile routed review configuration (pure deterministic compiler) |
+| `22b2bae` | docs: add routed-review compiler code-spec scenario |
+| `d98c30b` | chore: mark compile-routed-review-configuration acceptance criteria complete |
+| `17cf1a8` | chore: archive compile-routed-review-configuration task |
+
+### Testing
+
+- [OK] npm test: 429 pass / 0 fail
+- [OK] sd-check: 7/7 builtin checks passed
+- [OK] Gito + Prism local review: clean (0 findings)
+- [OK] Copilot review at 22b2bae: APPROVED, 0 inline comments
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
