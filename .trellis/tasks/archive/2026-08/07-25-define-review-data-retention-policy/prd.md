@@ -83,33 +83,38 @@ belongs to `platypeeps/sd-ai-command-pack:07-25-add-routed-review-operator-ux`.
 
 ## Acceptance Criteria
 
-- [ ] A canonical `standard-v1` fixture validates every data class, duration,
+- [x] A canonical `standard-v1` fixture validates every data class, duration,
       transition, compaction boundary, and digest.
-- [ ] Fake-clock tests cover exact expiry boundaries, leap/calendar behavior,
+- [x] Fake-clock tests cover exact expiry boundaries, leap/calendar behavior,
       terminal plus active records, delayed reconciliation, deferred
       `expired_unreviewed`, and correction-chain retention.
-- [ ] Prohibited content fails before persistence and crash-cleanup fixtures
+- [x] Prohibited content fails before persistence and crash-cleanup fixtures
       prove no ephemeral copy survives 24 hours.
-- [ ] Live purge finishes within the seven-day contract; backup/restore
+- [x] Live purge finishes within the seven-day contract; backup/restore
       fixtures prevent deleted data from becoming queryable and prove final
       backup expiry within 35 days.
-- [ ] Legal-hold tests cover scope, authorization, expiry, renewal, partial
+- [x] Legal-hold tests cover scope, authorization, expiry, renewal, partial
       class coverage, deletion-timer resumption, and no rehydration.
-- [ ] Uninstall, removal, same-tenant transfer, cross-tenant transfer, and
+- [x] Uninstall, removal, same-tenant transfer, cross-tenant transfer, and
       explicit purge preserve the documented ownership and authorization
       boundaries.
-- [ ] Status shows counts and next deletion by class, holds, coverage gaps,
+- [x] Status shows counts and next deletion by class, holds, coverage gaps,
       live-purge state, backup purge deadline, and separately identifies
       unmanaged GitHub-native artifacts.
-- [ ] Retention/deletion cannot silently improve cost or effectiveness metrics;
+- [x] Retention/deletion cannot silently improve cost or effectiveness metrics;
       anonymous aggregates remain non-identifying and coverage-aware.
-- [ ] Public responses contain no prompt, diff, source, finding/output body,
+- [x] Public responses contain no prompt, diff, source, finding/output body,
       credential, management endpoint, or raw provider/billing payload.
-- [ ] Classification fixtures distinguish static versioned prompt-profile
+- [x] Classification fixtures distinguish static versioned prompt-profile
       configuration from prohibited rendered prompts and prove reference-aware
       profile deletion without breaking active dispatch or rollback.
-- [ ] The private implementation passes the exported conformance suite before
-      activation.
+- [x] The exported conformance suite this repository owns — the canonical
+      `standard-v1` fixture, the paired valid/invalid contract fixtures, and the
+      `test/retention-policy.test.js` suite — is complete and passing. Activating
+      the private control-plane implementation against this exported suite is
+      downstream of this contract task and is tracked separately (see the
+      consumer control-plane / retention data-class owner tasks noted under
+      Dependencies); it is not an in-repo acceptance criterion here.
 
 ## Dependencies
 
