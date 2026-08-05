@@ -578,6 +578,52 @@ test("historical v1 receipts cannot be decoded as v2 local attestations", () => 
   }
 });
 
+// --- task 08-04: v2 local-attestation envelope (AC1) + review:none / v1 (AC2)
+
+test("AC1: local attestation envelope binds exact-head evidence, authenticated publication context, and repository_attested trust", () => {
+  const cases = [
+    ["authorization", validLocalAuthorizations, decodeLocalReviewAuthorization],
+    ["receipt", validLocalReceipts, decodeLocalReviewReceipt],
+  ];
+  for (const [label, entries, decode] of cases) {
+    for (const entry of entries) {
+      const decoded = decode(entry.value);
+      const where = `${label}:${entry.name}`;
+      assert.match(decoded.headSha, /^[a-f0-9]{40,64}$/u, where);
+      assert.match(decoded.evidenceDigest, /^[a-f0-9]{64}$/u, where);
+      assert.equal(decoded.trustLevel, ATTESTED_TRUST_LEVEL, where);
+      const pc = decoded.publicationContext;
+      for (const key of ["publisher", "association", "isPrAuthor", "workflowRef", "runId"]) {
+        assert.notEqual(pc[key], undefined, `${where}: publicationContext.${key}`);
+      }
+    }
+  }
+});
+
+test("AC2a: review:none can neither satisfy assurance nor free the gate", () => {
+  const sanctioned = validOutcomes.find((entry) => entry.name.startsWith("review:none"));
+  assert.ok(sanctioned, "a sanctioned review:none valid outcome fixture must exist");
+  const decoded = decodeReviewOutcomes(sanctioned.value);
+  assert.equal(decoded.reviewOutcome.reasonCode, "review_none");
+  assert.notEqual(decoded.assuranceOutcome.state, "pass");
+  assert.equal(decoded.gateOutcome.state, "block");
+  // Every invalid review_none outcome — including {completed, review_none} — throws.
+  const reviewNoneInvalid = invalidOutcomes.filter(
+    (entry) => entry.value.reviewOutcome.reasonCode === "review_none",
+  );
+  assert.equal(reviewNoneInvalid.length, 3, "the three review_none invalid cases must be present");
+  eachInvalid(reviewNoneInvalid, decodeReviewOutcomes);
+});
+
+test("AC2b: real historical v1 receipts cannot decode as a v2 local authorization or receipt", () => {
+  for (const { name, value } of validV1Receipts) {
+    // The decoders take the object directly; a v1 (schemaVersion:1) receipt
+    // fails the v2 schema-major gate on both.
+    assert.throws(() => decodeLocalReviewAuthorization(value), /must use supported schema major 2/u, name);
+    assert.throws(() => decodeLocalReviewReceipt(value), /must use supported schema major 2/u, name);
+  }
+});
+
 // --- parallel reviewer plan compiler ---------------------------------------
 
 const HEAD_A = "a".repeat(40);

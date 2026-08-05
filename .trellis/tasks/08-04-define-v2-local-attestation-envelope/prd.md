@@ -20,11 +20,11 @@ or satisfy v2 assurance. Completes parent AC8.
 
 ## Acceptance Criteria
 
-- [ ] Local-attestation fixtures bind exact-head evidence and authenticated
+- [x] Local-attestation fixtures bind exact-head evidence and authenticated
       publication context and use `repository_attested` trust (parent AC8).
-- [ ] Fixtures prove `review:none` and v1 local summaries cannot satisfy v2
+- [x] Fixtures prove `review:none` and v1 local summaries cannot satisfy v2
       assurance.
-- [ ] npm test, syntax check, metadata + ci-parity validation, coverage gate green.
+- [x] npm test, syntax check, metadata + ci-parity validation, coverage gate green.
 
 ## Dependencies
 

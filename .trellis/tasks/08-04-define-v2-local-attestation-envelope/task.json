@@ -3,7 +3,7 @@
   "name": "define-v2-local-attestation-envelope",
   "title": "Define v2 local-attestation evidence envelope",
   "description": "Define the v2 bounded local-attestation evidence envelope decoder with authenticated actor/workflow enrichment and the review:none / v1-summary trust proofs (parent AC8).",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
