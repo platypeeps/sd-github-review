@@ -28,17 +28,17 @@ Specify deferred record lifecycle, exact-head recovery, retention, authorization
 
 ## Acceptance Criteria
 
-- [ ] Tests cover unchanged/changed head, closed PR, duplicate retry, unavailable
+- [x] Tests cover unchanged/changed head, closed PR, duplicate retry, unavailable
       budget, ambiguous prior dispatch, supersession, expiry, and deletion.
-- [ ] Recovery is explicit and idempotent; no automatic review occurs unless a
+- [x] Recovery is explicit and idempotent; no automatic review occurs unless a
       separate repository policy later authorizes it.
-- [ ] Deferred assurance remains distinguishable from completed review
+- [x] Deferred assurance remains distinguishable from completed review
       assurance regardless of whether merge policy passes or blocks the gate.
-- [ ] Same-head recovery updates only the latest authorized Check projection;
+- [x] Same-head recovery updates only the latest authorized Check projection;
       changed-head recovery creates new Checks, and late older results cannot
       overwrite either projection.
-- [ ] Cross-tenant and stale authorization attempts fail closed.
-- [ ] Fake-clock tests cover the exact 180-day actionable boundary, 30-day
+- [x] Cross-tenant and stale authorization attempts fail closed.
+- [x] Fake-clock tests cover the exact 180-day actionable boundary, 30-day
       terminal-detail window, compaction, legal hold, purge, and coverage
       effects.
 
