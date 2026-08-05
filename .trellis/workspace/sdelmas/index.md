@@ -7,8 +7,8 @@
 ## Current Status
 
 <!-- @@@auto:current-status -->
-- **Active File**: `journal-1.md`
-- **Total Sessions**: 49
+- **Active File**: `journal-2.md`
+- **Total Sessions**: 50
 - **Last Active**: 2026-08-05
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,8 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1990 | Active |
+| `journal-2.md` | ~44 | Active |
+| `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 50 | 2026-08-05 | Ship deferred review recovery contract (PR #51) | `bbd720a`, `ff20e5a`, `7680c5b39870735a83e701d4918cc2920363fb6f` | `feat/07-25-define-deferred-review-recovery` |
 | 49 | 2026-08-05 | Ship review usage reconciliation contract (PR #50) | `4aa484b`, `eb7f1f4`, `c6bac29` | `feat/07-25-define-review-usage-reconciliation` |
 | 48 | 2026-08-05 | Authorize budget-aware review plans (PR #49) | `d08a37b`, `a37535c`, `7dbfa95`, `0aea6e5` | `feat/07-25-authorize-budget-aware-review-plans` |
 | 47 | 2026-08-05 | Ship review budget ledger contract (PR #48) | `694d194`, `27705c9`, `36694a1`, `6aa7452`, `388e830` | `feat/07-25-define-review-budget-ledger` |
