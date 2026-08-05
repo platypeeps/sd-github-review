@@ -1039,6 +1039,11 @@ export function decodeReviewerCatalog(value) {
   }
   for (const [name, membersValue] of chainEntries) {
     const chainName = aliasValue(name, "reviewerCatalog.chains key");
+    // Chain names are case-normalized; two keys that collapse to the same alias
+    // are a duplicate, not a silent overwrite.
+    if (chains.has(chainName)) {
+      throw new Error(`reviewerCatalog.chains name ${chainName} is duplicated`);
+    }
     const members = stringArray(membersValue, `reviewerCatalog.chains.${chainName}`, {
       maximumItems: MAX_CHAIN_MEMBERS,
       allowEmpty: false,
@@ -1165,26 +1170,28 @@ export function compileReviewerPlan({ source, catalog, headSha, compiledDigest, 
       timeoutSeconds: slot.timeoutSeconds,
     };
   });
-  // Parent identity binds only its documented inputs: lane, exact head,
-  // compiled digest, and the resolved per-slot candidate resolution.
+  // Parent identity binds its documented inputs: lane, exact head, compiled
+  // digest, and every per-slot field that resolves the plan's behavior —
+  // candidate set, success threshold, required flag, and timeout. Two plans
+  // that differ in any of these are distinct identities; only representation
+  // (slot order) is canonicalized away.
+  const identitySlots = children.map((child) => ({
+    slotId: child.slotId,
+    candidateDigests: child.candidateDigests,
+    minSuccesses: child.minSuccesses,
+    required: child.required,
+    timeoutSeconds: child.timeoutSeconds,
+  }));
   const parentId = deriveV2Fingerprint({
     lane: decodedSource.lane,
     headSha: boundHead,
     compiledDigest: boundCompiledDigest,
-    slots: children.map((child) => ({
-      slotId: child.slotId,
-      candidateDigests: child.candidateDigests,
-      minSuccesses: child.minSuccesses,
-      required: child.required,
-    })),
+    slots: identitySlots,
   });
+  const bySlotId = new Map(identitySlots.map((slot) => [slot.slotId, slot]));
   const withChildIds = children.map((child) => ({
     ...child,
-    childId: deriveV2Fingerprint({
-      parentId,
-      slotId: child.slotId,
-      candidateDigests: child.candidateDigests,
-    }),
+    childId: deriveV2Fingerprint({ parentId, ...bySlotId.get(child.slotId) }),
   }));
   return Object.freeze({
     schemaVersion: PROTOCOL_V2_SCHEMA_MAJOR,

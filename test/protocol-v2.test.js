@@ -498,6 +498,11 @@ test("decodes the reviewer catalog and rejects chains naming unknown candidates"
   const broken = clone(reviewerCatalog);
   broken.chains["cheap-chain"] = ["cheap-a", "ghost"];
   assert.throws(() => decodeReviewerCatalog(broken), /references unknown candidate ghost/u);
+  // Chain names collapse under case normalization; a case-only duplicate must
+  // be rejected rather than silently overwriting the earlier entry.
+  const collided = clone(reviewerCatalog);
+  collided.chains = { "Cheap-Chain": ["cheap-a"], "cheap-chain": ["cheap-b"] };
+  assert.throws(() => decodeReviewerCatalog(collided), /chains name cheap-chain is duplicated/u);
 });
 
 test("one, two, and three-plus-slot plans compile deterministically", () => {
@@ -654,6 +659,17 @@ test("parent and child identities change only with their documented inputs", () 
     compiledDigest: COMPILED_DIGEST,
   });
   assert.notEqual(base.parentId, swapped.parentId);
+  const baseChildS1 = base.children.find((c) => c.slotId === "s1").childId;
+  assert.notEqual(baseChildS1, swapped.children.find((c) => c.slotId === "s1").childId);
+  // A slot timeout resolves the plan's behavior, so it is bound into identity.
+  const retimed = compileReviewerPlan({
+    source: reviewSource([candidateSlot("s1", CHEAP_A, { timeoutSeconds: 600 }), candidateSlot("s2", CHEAP_B)]),
+    catalog: reviewerCatalog,
+    headSha: HEAD_A,
+    compiledDigest: COMPILED_DIGEST,
+  });
+  assert.notEqual(base.parentId, retimed.parentId);
+  assert.notEqual(baseChildS1, retimed.children.find((c) => c.slotId === "s1").childId);
 });
 
 test("cheap and deep plans remain independent and synthesize no default", () => {
