@@ -1,0 +1,26 @@
+[
+  {
+    "name": "advertises more than one active major",
+    "error": "activeMajor must be an integer from 2 through 2",
+    "value": {
+      "schemaVersion": 2,
+      "activeMajor": 3,
+      "checks": {
+        "assurance": { "name": "sd-review / assurance", "branchProtectionRequired": false },
+        "gate": { "name": "sd-review / gate", "branchProtectionRequired": true }
+      }
+    }
+  },
+  {
+    "name": "wrong assurance check name",
+    "error": "checks.assurance.name must be one of",
+    "value": {
+      "schemaVersion": 2,
+      "activeMajor": 2,
+      "checks": {
+        "assurance": { "name": "sd-review / verify", "branchProtectionRequired": false },
+        "gate": { "name": "sd-review / gate", "branchProtectionRequired": true }
+      }
+    }
+  }
+]

@@ -1,0 +1,25 @@
+[
+  {
+    "name": "gate-only branch protection with optional capabilities",
+    "value": {
+      "schemaVersion": 2,
+      "activeMajor": 2,
+      "checks": {
+        "assurance": { "name": "sd-review / assurance", "branchProtectionRequired": false },
+        "gate": { "name": "sd-review / gate", "branchProtectionRequired": true }
+      },
+      "optionalCapabilities": ["local-attested", "managed-budget", "retention-standard-v1"]
+    }
+  },
+  {
+    "name": "no branch protection required and no optional capabilities",
+    "value": {
+      "schemaVersion": 2,
+      "activeMajor": 2,
+      "checks": {
+        "assurance": { "name": "sd-review / assurance", "branchProtectionRequired": false },
+        "gate": { "name": "sd-review / gate", "branchProtectionRequired": false }
+      }
+    }
+  }
+]

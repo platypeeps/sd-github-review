@@ -1,0 +1,30 @@
+[
+  {
+    "name": "two available candidates with reordered options",
+    "value": {
+      "schemaVersion": 2,
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "configurationDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "options": [
+        {
+          "alias": "thorough-review",
+          "displayName": "Thorough Review",
+          "handler": "pr-agent",
+          "costTier": "high",
+          "eligibleLanes": ["review", "assurance"],
+          "eligibleSlots": ["managed"],
+          "availability": { "state": "available" }
+        },
+        {
+          "alias": "balanced-review",
+          "displayName": "Balanced Review",
+          "handler": "pr-agent",
+          "costTier": "medium",
+          "eligibleLanes": ["review"],
+          "eligibleSlots": ["managed", "parallel"],
+          "availability": { "state": "degraded", "reason": "provider latency elevated" }
+        }
+      ]
+    }
+  }
+]

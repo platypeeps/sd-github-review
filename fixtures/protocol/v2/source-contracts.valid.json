@@ -1,0 +1,79 @@
+[
+  {
+    "name": "standalone direct-handler and local-attested routes",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "routes": {
+        "review": {
+          "execution": "direct-handler",
+          "handler": "pr-agent",
+          "promptProfile": {
+            "mode": "referenced",
+            "alias": "balanced-review",
+            "version": "1.4.0",
+            "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        },
+        "assurance": {
+          "execution": "local-attested",
+          "attestation": {
+            "trustPolicyRef": "repo-attested-v1",
+            "allowedAssociations": ["OWNER", "MEMBER"],
+            "allowPrAuthor": false,
+            "maxAgeSeconds": 3600
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "standalone direct-handler with handler-managed native profile",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "standalone",
+      "budgetOutcome": "not_managed",
+      "capabilityUnavailableReason": "not_configured",
+      "routes": {
+        "review": {
+          "execution": "direct-handler",
+          "handler": "copilot",
+          "promptProfile": { "mode": "handler-managed" }
+        }
+      }
+    }
+  },
+  {
+    "name": "managed lanes with explicit exhaustion merge policy",
+    "value": {
+      "schemaVersion": 2,
+      "mode": "managed",
+      "catalogDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "configurationDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "lanes": {
+        "assurance": {
+          "slot": "managed",
+          "budgetExhaustion": { "merge": "allow" },
+          "candidate": {
+            "candidateDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "promptProfile": {
+              "mode": "referenced",
+              "alias": "assurance-strict",
+              "version": "2.0.1",
+              "digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+            }
+          }
+        },
+        "gate": {
+          "slot": "parallel",
+          "budgetExhaustion": { "merge": "block" },
+          "candidate": {
+            "candidateDigest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "promptProfile": { "mode": "handler-managed" }
+          }
+        }
+      }
+    }
+  }
+]
