@@ -1,0 +1,83 @@
+[
+  {
+    "name": "one fixed-candidate slot",
+    "value": {
+      "schemaVersion": 2,
+      "lane": "review",
+      "slots": [
+        {
+          "slotId": "primary-review",
+          "lane": "review",
+          "selector": { "kind": "candidate", "candidateDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+          "required": true,
+          "overridable": false,
+          "timeoutSeconds": 300,
+          "minSuccesses": 1
+        }
+      ]
+    }
+  },
+  {
+    "name": "two slots with a fixed candidate and a named chain",
+    "value": {
+      "schemaVersion": 2,
+      "lane": "review",
+      "slots": [
+        {
+          "slotId": "secondary-review",
+          "lane": "review",
+          "selector": { "kind": "chain", "chain": "cheap-chain" },
+          "required": false,
+          "overridable": true,
+          "timeoutSeconds": 120,
+          "minSuccesses": 1
+        },
+        {
+          "slotId": "primary-review",
+          "lane": "review",
+          "selector": { "kind": "candidate", "candidateDigest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" },
+          "required": true,
+          "overridable": false,
+          "timeoutSeconds": 300,
+          "minSuccesses": 1
+        }
+      ]
+    }
+  },
+  {
+    "name": "three fixed-candidate slots",
+    "value": {
+      "schemaVersion": 2,
+      "lane": "review",
+      "slots": [
+        {
+          "slotId": "slot-a",
+          "lane": "review",
+          "selector": { "kind": "candidate", "candidateDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+          "required": true,
+          "overridable": false,
+          "timeoutSeconds": 300,
+          "minSuccesses": 1
+        },
+        {
+          "slotId": "slot-b",
+          "lane": "review",
+          "selector": { "kind": "candidate", "candidateDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+          "required": false,
+          "overridable": true,
+          "timeoutSeconds": 300,
+          "minSuccesses": 1
+        },
+        {
+          "slotId": "slot-c",
+          "lane": "review",
+          "selector": { "kind": "candidate", "candidateDigest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" },
+          "required": false,
+          "overridable": false,
+          "timeoutSeconds": 300,
+          "minSuccesses": 1
+        }
+      ]
+    }
+  }
+]

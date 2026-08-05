@@ -6,14 +6,19 @@ import {
   GATE_CHECK_NAME,
   NOT_MANAGED_BUDGET_OUTCOME,
   PROTOCOL_V2_SCHEMA_MAJOR,
+  assertReviewerSelectionLabel,
   assertV2DispatchSelector,
   authorizeProjectionWrite,
   boundedOutput,
+  compileReviewerPlan,
   decodeCandidateOptionsResponse,
   decodeCandidatePreflight,
   decodeCheckProjection,
   decodeHistoricalV1Receipt,
   decodePromptProfileBinding,
+  decodeReviewerCatalog,
+  decodeReviewerPlanOptions,
+  decodeReviewerPlanSource,
   decodeReviewOutcomes,
   decodeSetupDiscoveryV2,
   decodeSourceContract,
@@ -40,6 +45,11 @@ const validDiscovery = await fixture("setup/v2/discovery.valid.json");
 const invalidDiscovery = await fixture("setup/v2/discovery.invalid.json");
 const forbiddenPrivacyFields = await fixture("protocol/v2/privacy-fields.invalid.json");
 const validV1Receipts = await fixture("protocol/v1/receipts.valid.json");
+const validReviewerSources = await fixture("protocol/v2/reviewer-plan-source.valid.json");
+const invalidReviewerSources = await fixture("protocol/v2/reviewer-plan-source.invalid.json");
+const reviewerCatalog = (await fixture("protocol/v2/reviewer-catalog.valid.json"))[0].value;
+const validReviewerOptions = await fixture("protocol/v2/reviewer-plan-options.valid.json");
+const invalidReviewerOptions = await fixture("protocol/v2/reviewer-plan-options.invalid.json");
 
 function clone(value) {
   return structuredClone(value);
@@ -446,4 +456,262 @@ test("v2 dispatch selector rejects v1, default, and absent selectors", () => {
     () => assertV2DispatchSelector({ contractMajor: 2, default: true }),
     /must not rely on a default selector/u,
   );
+});
+
+// --- parallel reviewer plan compiler ---------------------------------------
+
+const HEAD_A = "a".repeat(40);
+const COMPILED_DIGEST = "9".repeat(64);
+const CHEAP_A = "a".repeat(64);
+const CHEAP_B = "b".repeat(64);
+const CHEAP_C = "f".repeat(64);
+
+function reviewSource(slots) {
+  return { schemaVersion: 2, lane: "review", slots };
+}
+function candidateSlot(slotId, candidateDigest, extra = {}) {
+  return {
+    slotId,
+    lane: "review",
+    selector: { kind: "candidate", candidateDigest },
+    required: false,
+    overridable: false,
+    timeoutSeconds: 300,
+    minSuccesses: 1,
+    ...extra,
+  };
+}
+
+test("decodes every reviewer plan source fixture and rejects the invalid ones", () => {
+  for (const entry of validReviewerSources) {
+    const decoded = decodeReviewerPlanSource(entry.value);
+    assert.equal(decoded.lane, "review", entry.name);
+    assert.ok(decoded.slots.length >= 1, entry.name);
+  }
+  eachInvalid(invalidReviewerSources, decodeReviewerPlanSource);
+});
+
+test("decodes the reviewer catalog and rejects chains naming unknown candidates", () => {
+  const decoded = decodeReviewerCatalog(reviewerCatalog);
+  assert.equal(decoded.byAlias.size, 5);
+  assert.deepEqual(decoded.chains.get("cheap-chain"), ["cheap-a", "cheap-b"]);
+  const broken = clone(reviewerCatalog);
+  broken.chains["cheap-chain"] = ["cheap-a", "ghost"];
+  assert.throws(() => decodeReviewerCatalog(broken), /references unknown candidate ghost/u);
+});
+
+test("one, two, and three-plus-slot plans compile deterministically", () => {
+  const scenarios = [
+    reviewSource([candidateSlot("s1", CHEAP_A)]),
+    reviewSource([candidateSlot("s1", CHEAP_A), candidateSlot("s2", CHEAP_B)]),
+    reviewSource([
+      candidateSlot("s1", CHEAP_A),
+      candidateSlot("s2", CHEAP_B),
+      candidateSlot("s3", CHEAP_C),
+    ]),
+  ];
+  for (const source of scenarios) {
+    const plan = compileReviewerPlan({
+      source,
+      catalog: reviewerCatalog,
+      headSha: HEAD_A,
+      compiledDigest: COMPILED_DIGEST,
+    });
+    assert.equal(plan.children.length, source.slots.length);
+    // Deterministic: recompiling equivalent input yields the same identities.
+    const again = compileReviewerPlan({
+      source,
+      catalog: reviewerCatalog,
+      headSha: HEAD_A,
+      compiledDigest: COMPILED_DIGEST,
+    });
+    assert.equal(plan.parentId, again.parentId);
+    assert.deepEqual(
+      plan.children.map((c) => c.childId),
+      again.children.map((c) => c.childId),
+    );
+  }
+});
+
+test("a chain slot expands to its member candidates and honors minSuccesses", () => {
+  const source = reviewSource([
+    { ...candidateSlot("chained", CHEAP_A), selector: { kind: "chain", chain: "cheap-chain" }, minSuccesses: 2 },
+  ]);
+  const plan = compileReviewerPlan({
+    source,
+    catalog: reviewerCatalog,
+    headSha: HEAD_A,
+    compiledDigest: COMPILED_DIGEST,
+  });
+  assert.deepEqual(plan.children[0].candidateDigests, [CHEAP_A, CHEAP_B]);
+  assert.equal(plan.children[0].minSuccesses, 2);
+});
+
+test("compilation rejects overlap, bad threshold, wrong lane, unknown selector, and ambiguous override before reservation", () => {
+  const base = { catalog: reviewerCatalog, headSha: HEAD_A, compiledDigest: COMPILED_DIGEST };
+  // Overlap: a fixed candidate that is also a chain member.
+  assert.throws(
+    () => compileReviewerPlan({
+      ...base,
+      source: reviewSource([
+        candidateSlot("s1", CHEAP_A),
+        { ...candidateSlot("s2", CHEAP_A), selector: { kind: "chain", chain: "cheap-chain" } },
+      ]),
+    }),
+    /pairwise disjoint/u,
+  );
+  // Invalid threshold: minSuccesses beyond the expanded set.
+  assert.throws(
+    () => compileReviewerPlan({
+      ...base,
+      source: reviewSource([candidateSlot("s1", CHEAP_A, { minSuccesses: 2 })]),
+    }),
+    /minSuccesses exceeds its 1 possible candidate/u,
+  );
+  // Wrong lane: an assurance-only candidate used in a review plan.
+  assert.throws(
+    () => compileReviewerPlan({
+      ...base,
+      source: reviewSource([candidateSlot("s1", "c".repeat(64))]),
+    }),
+    /not eligible for lane review/u,
+  );
+  // Unknown selector: a candidate digest absent from the catalog.
+  assert.throws(
+    () => compileReviewerPlan({
+      ...base,
+      source: reviewSource([candidateSlot("s1", "0".repeat(64))]),
+    }),
+    /absent from the pinned catalog/u,
+  );
+  // Ambiguous override: no slotId while two slots are overridable.
+  assert.throws(
+    () => compileReviewerPlan({
+      ...base,
+      source: reviewSource([
+        candidateSlot("s1", CHEAP_A, { overridable: true }),
+        candidateSlot("s2", CHEAP_B, { overridable: true }),
+      ]),
+      overrides: [{ selector: { kind: "candidate", candidateDigest: CHEAP_C } }],
+    }),
+    /shorthand is ambiguous/u,
+  );
+});
+
+test("an override applies only to the named overridable slot", () => {
+  const base = { catalog: reviewerCatalog, headSha: HEAD_A, compiledDigest: COMPILED_DIGEST };
+  const source = reviewSource([
+    candidateSlot("fixed", CHEAP_A, { overridable: false }),
+    candidateSlot("open", CHEAP_B, { overridable: true }),
+  ]);
+  const overridden = compileReviewerPlan({
+    ...base,
+    source,
+    overrides: [{ slotId: "open", selector: { kind: "candidate", candidateDigest: CHEAP_C } }],
+  });
+  const open = overridden.children.find((c) => c.slotId === "open");
+  assert.deepEqual(open.candidateDigests, [CHEAP_C]);
+  // Overriding a non-overridable slot is rejected.
+  assert.throws(
+    () => compileReviewerPlan({
+      ...base,
+      source,
+      overrides: [{ slotId: "fixed", selector: { kind: "candidate", candidateDigest: CHEAP_C } }],
+    }),
+    /not overridable/u,
+  );
+});
+
+test("parent and child identities change only with their documented inputs", () => {
+  const source = reviewSource([candidateSlot("s1", CHEAP_A), candidateSlot("s2", CHEAP_B)]);
+  const base = compileReviewerPlan({
+    source,
+    catalog: reviewerCatalog,
+    headSha: HEAD_A,
+    compiledDigest: COMPILED_DIGEST,
+  });
+  // Reordering slots (canonical input) does not change identity.
+  const reordered = compileReviewerPlan({
+    source: reviewSource([candidateSlot("s2", CHEAP_B), candidateSlot("s1", CHEAP_A)]),
+    catalog: reviewerCatalog,
+    headSha: HEAD_A,
+    compiledDigest: COMPILED_DIGEST,
+  });
+  assert.equal(base.parentId, reordered.parentId);
+  // Changing the head changes the parent identity.
+  const movedHead = compileReviewerPlan({
+    source,
+    catalog: reviewerCatalog,
+    headSha: "b".repeat(40),
+    compiledDigest: COMPILED_DIGEST,
+  });
+  assert.notEqual(base.parentId, movedHead.parentId);
+  // Changing a candidate changes both the parent and that child identity.
+  const swapped = compileReviewerPlan({
+    source: reviewSource([candidateSlot("s1", CHEAP_C), candidateSlot("s2", CHEAP_B)]),
+    catalog: reviewerCatalog,
+    headSha: HEAD_A,
+    compiledDigest: COMPILED_DIGEST,
+  });
+  assert.notEqual(base.parentId, swapped.parentId);
+});
+
+test("cheap and deep plans remain independent and synthesize no default", () => {
+  const cheap = compileReviewerPlan({
+    source: reviewSource([candidateSlot("s1", CHEAP_A)]),
+    catalog: reviewerCatalog,
+    headSha: HEAD_A,
+    compiledDigest: COMPILED_DIGEST,
+  });
+  const deep = compileReviewerPlan({
+    source: {
+      schemaVersion: 2,
+      lane: "assurance",
+      slots: [{
+        slotId: "deep",
+        lane: "assurance",
+        selector: { kind: "candidate", candidateDigest: "c".repeat(64) },
+        required: true,
+        overridable: false,
+        timeoutSeconds: 300,
+        minSuccesses: 1,
+      }],
+    },
+    catalog: reviewerCatalog,
+    headSha: HEAD_A,
+    compiledDigest: COMPILED_DIGEST,
+  });
+  assert.notEqual(cheap.parentId, deep.parentId);
+  assert.equal(cheap.lane, "review");
+  assert.equal(deep.lane, "assurance");
+  // No contextual default: an empty slot set is rejected, never filled in.
+  assert.throws(
+    () => compileReviewerPlan({
+      source: reviewSource([]),
+      catalog: reviewerCatalog,
+      headSha: HEAD_A,
+      compiledDigest: COMPILED_DIGEST,
+    }),
+    /must declare at least one slot/u,
+  );
+});
+
+test("reviewer plan options list overridable slots without any plan side effect", () => {
+  for (const entry of validReviewerOptions) {
+    const decoded = decodeReviewerPlanOptions(entry.value);
+    assert.ok(Array.isArray(decoded.overridableSlots), entry.name);
+    assert.equal(decoded.parentId, undefined, entry.name);
+    assert.equal(decoded.headSha, undefined, entry.name);
+  }
+  eachInvalid(invalidReviewerOptions, decodeReviewerPlanOptions);
+});
+
+test("selection labels accept broad lanes and reject candidate or slot control labels", () => {
+  assert.deepEqual(assertReviewerSelectionLabel("review"), { lane: "review" });
+  assert.deepEqual(assertReviewerSelectionLabel("gate"), { lane: "gate" });
+  for (const reserved of ["candidate:cheap-a", "slot:primary", "chain:cheap-chain"]) {
+    assert.throws(() => assertReviewerSelectionLabel(reserved), /is unsupported/u, reserved);
+  }
+  // A non-lane, non-reserved label is not a broad lane selector.
+  assert.throws(() => assertReviewerSelectionLabel("primary-review"), /must be a broad review lane label/u);
 });
