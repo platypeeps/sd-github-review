@@ -942,6 +942,14 @@ export function decodeCandidateSafeProjection(value, field = "candidateSafeProje
       ...(profileProjection.capabilities ? { capabilities: Object.freeze(profileProjection.capabilities) } : {}),
     }),
   };
+  // A referenced projection must be self-consistent: the profile it names must
+  // list the candidate's own handler as compatible, mirroring the full
+  // catalog's resolveProfileBinding compatibility check. Otherwise a public,
+  // dispatch-safe shape could advertise a profile incompatible with the very
+  // handler it dispatches to.
+  if (profileProjection.mode === "referenced" && !profileProjection.compatibleHandlers.includes(normalized.handler)) {
+    throw new Error(`${field}.promptProfile.compatibleHandlers must include the candidate handler for a referenced projection`);
+  }
   return Object.freeze({
     ...normalized,
     eligibleLanes: Object.freeze(normalized.eligibleLanes),

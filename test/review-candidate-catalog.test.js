@@ -206,6 +206,19 @@ test("a projection fails closed on an inconsistent kind/prompt-profile binding",
   );
 });
 
+test("a referenced projection fails closed when its profile excludes the candidate handler", () => {
+  const base = clone(validProjections[0].value);
+  const mismatched = {
+    ...base,
+    handler: "pr-agent",
+    promptProfile: { ...base.promptProfile, mode: "referenced", compatibleHandlers: ["pr-agent-lite"] },
+  };
+  assert.throws(
+    () => decodeCandidateSafeProjection(mismatched),
+    /compatibleHandlers must include the candidate handler/u,
+  );
+});
+
 // --- privacy boundary -------------------------------------------------------
 
 test("catalog rejects every forbidden content field without echoing its value", () => {
