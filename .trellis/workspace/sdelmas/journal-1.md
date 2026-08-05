@@ -1783,3 +1783,43 @@ Delivered the pure versioned review-data retention contract this repo owns (sche
 ### Next Steps
 
 - None - task complete
+
+
+## Session 45: Iteration 4: define review candidate catalog standard-v1 contract
+
+**Date**: 2026-08-05
+**Task**: Iteration 4: define review candidate catalog standard-v1 contract
+**Branch**: `feat/07-25-define-review-candidate-catalog`
+
+### Summary
+
+Delivered src/review-candidate-catalog.js (pure leaf): immutable content-addressed catalog identity, candidate records, prompt-profile registry, safe projection, quarantine overlay, version transition/rollback, and standard-v1 13-month reference-aware retention classification. Reviewed via sd-check + local providers + Copilot; fixed 3 real findings (retention anchor, projection kind/mode invariant, quarantine normalized-key rejection). Unblocks 8 downstream review-configuration tasks.
+
+### Main Changes
+
+- New pure leaf contract module with 19 exports, mirroring retention-policy.js conventions (frozen vocabularies, injected nowIso, no local imports)
+- 10 fixtures + 27 node:test cases; registered in check script, dependency-boundary matrix, and directory-structure spec
+- Review fixes: fail-closed final-reference anchor, projection binding invariant, normalized-key quarantine content rejection
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `006cebd` | feat: define review candidate catalog standard-v1 contract |
+| `502238b` | fix: fail closed when an unreferenced catalog retention lacks a final-reference anchor |
+| `d444e24` | fix: fail closed on inconsistent projection binding and smuggled quarantine content |
+
+### Testing
+
+- [OK] node --test test/review-candidate-catalog.test.js: 27/27 pass
+- [OK] npm test full suite: 402/402 pass, 0 fail
+- [OK] npm run check: exit 0; sd-check gate: 7/7 passed; Copilot: 2 findings fixed+resolved, re-review clean
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

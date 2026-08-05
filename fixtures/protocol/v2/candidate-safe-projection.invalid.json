@@ -1,0 +1,133 @@
+[
+  {
+    "name": "projection exposes an unverifiable token capability",
+    "error": "tokenizer must be verified",
+    "value": {
+      "schemaMajor": 2,
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+      "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+      "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": false },
+      "pricing": { "pricingRef": "price:a", "verified": true },
+      "finishReason": { "supported": true, "verified": true },
+      "usage": { "supported": true, "verified": true },
+      "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+    }
+  },
+  {
+    "name": "projection exposes an unverifiable price capability",
+    "error": "pricing must be verified",
+    "value": {
+      "schemaMajor": 2,
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+      "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+      "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+      "pricing": { "pricingRef": "price:a", "verified": false },
+      "finishReason": { "supported": true, "verified": true },
+      "usage": { "supported": true, "verified": true },
+      "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+    }
+  },
+  {
+    "name": "projection exposes an unverifiable finish-reason capability",
+    "error": "finishReason must be verified",
+    "value": {
+      "schemaMajor": 2,
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+      "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+      "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+      "pricing": { "pricingRef": "price:a", "verified": true },
+      "finishReason": { "supported": true, "verified": false },
+      "usage": { "supported": true, "verified": true },
+      "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+    }
+  },
+  {
+    "name": "projection carries an unknown unit",
+    "error": "units must be one of",
+    "value": {
+      "schemaMajor": 2,
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+      "units": "dollars", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+      "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+      "pricing": { "pricingRef": "price:a", "verified": true },
+      "finishReason": { "supported": true, "verified": true },
+      "usage": { "supported": true, "verified": true },
+      "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+    }
+  },
+  {
+    "name": "projection leaks a credential",
+    "error": "catalog privacy boundary",
+    "value": {
+      "schemaMajor": 2,
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+      "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+      "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+      "pricing": { "pricingRef": "price:a", "verified": true },
+      "finishReason": { "supported": true, "verified": true },
+      "usage": { "supported": true, "verified": true },
+      "credential": "sk-secret",
+      "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+    }
+  },
+  {
+    "name": "projection leaks a billing payload",
+    "error": "catalog privacy boundary",
+    "value": {
+      "schemaMajor": 2,
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+      "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+      "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+      "pricing": { "pricingRef": "price:a", "verified": true },
+      "finishReason": { "supported": true, "verified": true },
+      "usage": { "supported": true, "verified": true },
+      "billingPayload": { "amount": 12 },
+      "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+    }
+  },
+  {
+    "name": "projection leaks a management endpoint",
+    "error": "catalog privacy boundary",
+    "value": {
+      "schemaMajor": 2,
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+      "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+      "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+      "pricing": { "pricingRef": "price:a", "verified": true },
+      "finishReason": { "supported": true, "verified": true },
+      "usage": { "supported": true, "verified": true },
+      "managementEndpoint": "https://control.example/admin",
+      "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+    }
+  },
+  {
+    "name": "projection leaks a prompt body inside the profile",
+    "error": "catalog privacy boundary",
+    "value": {
+      "schemaMajor": 2,
+      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+      "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+      "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+      "pricing": { "pricingRef": "price:a", "verified": true },
+      "finishReason": { "supported": true, "verified": true },
+      "usage": { "supported": true, "verified": true },
+      "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"], "promptBody": "leak" }
+    }
+  }
+]
