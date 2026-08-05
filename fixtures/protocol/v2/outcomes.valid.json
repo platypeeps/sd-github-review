@@ -118,5 +118,17 @@
       "assuranceOutcome": { "state": "fail", "reasonCode": "local_terminal_error" },
       "gateOutcome": { "state": "block", "reasonCode": "local_terminal_error" }
     }
+  },
+  {
+    "name": "review:none blocks the gate and does not satisfy assurance",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "1111111111111111111111111111111111111111",
+      "attempt": 1,
+      "logicalDispatchId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "reviewOutcome": { "state": "skipped", "reasonCode": "review_none" },
+      "assuranceOutcome": { "state": "not_applicable", "reasonCode": "review_none" },
+      "gateOutcome": { "state": "block", "reasonCode": "review_none" }
+    }
   }
 ]

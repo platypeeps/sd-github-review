@@ -115,5 +115,44 @@
       "assuranceOutcome": { "state": "fail", "reasonCode": "awaiting_local_attestation" },
       "gateOutcome": { "state": "pass", "reasonCode": "awaiting_local_attestation" }
     }
+  },
+  {
+    "name": "review:none cannot satisfy assurance (skipped)",
+    "error": "assuranceOutcome cannot pass when the review reason is review_none",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "1111111111111111111111111111111111111111",
+      "attempt": 1,
+      "logicalDispatchId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "reviewOutcome": { "state": "skipped", "reasonCode": "review_none" },
+      "assuranceOutcome": { "state": "pass", "reasonCode": "review_none" },
+      "gateOutcome": { "state": "pass", "reasonCode": "review_none" }
+    }
+  },
+  {
+    "name": "review:none cannot satisfy assurance or free the gate (completed)",
+    "error": "assuranceOutcome cannot pass when the review reason is review_none",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "2222222222222222222222222222222222222222",
+      "attempt": 1,
+      "logicalDispatchId": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "reviewOutcome": { "state": "completed", "reasonCode": "review_none" },
+      "assuranceOutcome": { "state": "pass", "reasonCode": "review_none" },
+      "gateOutcome": { "state": "pass", "reasonCode": "review_none" }
+    }
+  },
+  {
+    "name": "review:none cannot free the gate",
+    "error": "gateOutcome must block when the review reason is review_none",
+    "value": {
+      "schemaVersion": 2,
+      "headSha": "3333333333333333333333333333333333333333",
+      "attempt": 1,
+      "logicalDispatchId": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "reviewOutcome": { "state": "skipped", "reasonCode": "review_none" },
+      "assuranceOutcome": { "state": "not_applicable", "reasonCode": "review_none" },
+      "gateOutcome": { "state": "pass", "reasonCode": "review_none" }
+    }
   }
 ]

@@ -842,6 +842,16 @@ export function decodeReviewOutcomes(value) {
   if (localBlocking && assuranceOutcome.state === "pass") {
     throw new Error("outcomes.assuranceOutcome cannot pass without clean exact-head local review evidence");
   }
+  // review:none means no managed review was performed. Keyed on the reason
+  // (not the review state), it can neither satisfy assurance nor free the gate,
+  // regardless of which review-axis state carries it.
+  const reviewNone = reviewOutcome.reasonCode === "review_none";
+  if (reviewNone && assuranceOutcome.state === "pass") {
+    throw new Error("outcomes.assuranceOutcome cannot pass when the review reason is review_none");
+  }
+  if (reviewNone && gateOutcome.state !== "block") {
+    throw new Error("outcomes.gateOutcome must block when the review reason is review_none");
+  }
   const nonBudgetFailure =
     reviewOutcome.state === "failed"
     || assuranceOutcome.state === "fail"
