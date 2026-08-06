@@ -1,15 +1,13 @@
 # Design: v2 receipt and cross-contract identity contracts
 
-> **PLANNING PARKED — do not `task.py start` yet.** Adversarial review reached the
-> 3-round limit with one unresolved blocker **B2**: `decodeAttemptReceipt` and
-> `decodeDurableAuthorization` carry a `promptProfile` but no candidate identity
-> (`alias`/`candidateDigest`), so their profile reference cannot participate in the
-> catalog full-record membership check that `prd.md` (unknown/incompatible "across
-> ...authorization/receipt") requires. Catalog↔compiled coverage is complete;
-> receipt/authorization is not. Proposed fix (pending owner decision): add
-> `alias` + `candidateDigest` to both decoders so their profile reference locates a
-> catalog record. Owner paused iteration 8 before adopting the fix. Resume by
-> deciding B2, then re-verifying (host + Codex) before `task.py start`.
+> **B2 RESOLVED (owner decision, iteration 8).** Adversarial review had parked this
+> plan on one blocker: `decodeAttemptReceipt` and `decodeDurableAuthorization`
+> carried a `promptProfile` but no candidate identity, so their profile reference
+> could not participate in the catalog full-record membership check that `prd.md`
+> (unknown/incompatible "across ...authorization/receipt") requires. **Adopted
+> fix:** both decoders now carry `alias` + `candidateDigest`, so a receipt's or
+> authorization's profile reference locates a catalog candidate record. Rationale
+> and rejected alternative are recorded in §3 "Candidate identity (B2)".
 
 Code-spec for the residual v2 receipt + identity work. Builds on the v2 core in
 `src/protocol-v2.js`. Context order for implementation: this file, `prd.md`,
@@ -47,14 +45,15 @@ full normalized body → `Object.freeze`). Template: `decodeLocalReviewReceipt`
 
 ```
 export function decodeAttemptReceipt(value): frozen {
-  schemaVersion, ...identityTuple, promptProfile:{mode,alias?,version?,digest?},
+  schemaVersion, ...identityTuple, alias, candidateDigest,
+  promptProfile:{mode,alias?,version?,digest?},
   retentionPolicyId, retentionPolicyVersion, retentionPolicyDigest,
   dataClass, lifecycleState, deletionStatus, legalHold:{held, expiresAt?},
   coverageStart, coverageEnd?, retainedUntil|null, recordedAt, receiptFingerprint }
 
 export function decodeDurableAuthorization(value): frozen {   // AUTHORITY-forbidden
-  schemaVersion, ...identityTuple, promptProfile:{...}, authorizedAt,
-  authorizationFingerprint }
+  schemaVersion, ...identityTuple, alias, candidateDigest, promptProfile:{...},
+  authorizedAt, authorizationFingerprint }
 
 export function decodeAdapterAcknowledgment(value): frozen {
   schemaVersion, ...identityTuple, adapter, authorizationFingerprint,
@@ -88,6 +87,56 @@ Passing the whole decoded object as the binding `value` places identity fields a
 the object's top level (mirroring `decodeLocalReviewReceipt`'s
 `decodeLocalEvidenceBinding(receipt, ...)` at `:1266`; confirmed `mutableBinding`
 reads `binding.repository` etc. off that object, `:469`).
+
+### Candidate identity (B2)
+
+`decodeAttemptReceipt` and `decodeDurableAuthorization` each carry `alias`
+(`aliasValue`) + `candidateDigest` (`digestValue`) alongside the identity tuple.
+These name WHICH reviewer candidate the attempt ran / the authorization
+authorizes, and they are the join key that lets the contract's `promptProfile`
+be checked against the safe catalog's full candidate record (§6 AC2).
+
+**Why the identity tuple alone is insufficient.** The tuple's
+`candidatePlanFingerprint` is an opaque `digestValue` (`:481`) — not
+decomposable — and plan identity binds SLOTS whose `candidateDigests` is an
+ARRAY (`compileReviewerPlan` `:1658-1675`). A slot may hold several candidates,
+so neither the fingerprint nor the plan structure pins a single candidate.
+Without `alias` + `candidateDigest` a receipt's profile reference cannot be
+located in the catalog, and prd's "unknown/incompatible across
+...authorization/receipt" is unprovable.
+
+**Why this is privacy-safe (AC5).** Neither `alias` nor `candidateDigest` is in
+`FORBIDDEN_FIELD_NAMES` (`:168`, 42 entries — verified); `alias` already
+surfaces in the projections and in every referenced prompt profile, and
+`candidateDigest` is a 64-hex digest, not content.
+
+**Adapter-acknowledgment is deliberately excluded.** It carries no `alias` /
+`candidateDigest`; it reaches candidate identity transitively through the
+`authorizationFingerprint` it references. Adding them there would duplicate
+state already bound by that fingerprint and create a divergence surface.
+
+**Rejected alternative.** Narrowing AC2 so unknown/incompatible are proven only
+on catalog↔compiled would have required editing prd requirement line 27, which
+names authorization and receipt explicitly. Rejected: weakens a stated
+requirement to avoid two additive fields.
+
+### Projection authority — scope bound (C-1)
+
+§6 calls the safe-catalog projection "the authority" for profile membership. That
+authority is **contract-local**: `decodeSafeCatalogProjection` is a NEW decoder
+whose `candidates[]` carry `promptProfile`, whereas the shipped
+`decodeReviewerCatalog` builds records of `{alias, candidateDigest,
+eligibleLanes}` (`:1532`) and carries NO per-candidate prompt profile anywhere
+(`promptProfile` occurs only at `:494`, `:557`, `:562`, `:587-589`, `:714`).
+
+So nothing here asserts the projection was faithfully derived from a real
+reviewer catalog — the AC2 tests compare a projection against compiled/receipt/
+authorization records, all fixture-authored. Deriving the projection from
+`decodeReviewerCatalog` output is compiler work and is out of scope per prd
+("Compiler, network transport, storage, or workflow implementation"). Recorded so
+no reader mistakes contract-local membership for end-to-end catalog validation.
+The projection deliberately drops `eligibleLanes`: prd scopes projections to
+carry only the profile mode/alias/version/digest.
 
 ### Prompt-profile binding (receipt / authorization / projections)
 
@@ -154,6 +203,8 @@ None. Pure in-process contract module.
 | forbidden content/config field (any nesting) | `rejectForbiddenFields` message (never echoes value) |
 | budget/dispatch authority field on authorization | `rejectForbiddenFields(..., AUTHORITY_FORBIDDEN_FIELD_NAMES)` recursive rejection (pattern `:948`) |
 | bad identity field (repo/PR/head/attempt/digest) | the tuple validator message via `mutableBinding` |
+| missing/malformed `alias` on receipt or authorization | `aliasValue` message (B2 join key is required, not optional) |
+| missing/malformed `candidateDigest` on receipt or authorization | `digestValue` message (64-hex) |
 | schemaVersion !== 2 | existing `schemaVersion` message |
 | oversize (>16 KiB) | existing `assertEncodedSize` message |
 | unknown dataClass/lifecycleState/deletionStatus | `enumValue` against the protocol-local set built from the shared frozen array |
@@ -209,22 +260,27 @@ assert `Object.isFrozen` + domain checks; invalid loops via `eachInvalid`.
   projection is the authority; each compiled entry / receipt / authorization
   profile reference is checked against the catalog's **complete candidate record**
   `(alias, candidateDigest, promptProfile)` (the whole binding, not the digest
-  alone — digest-only membership misses an unknown alias reusing a known digest):
+  alone — digest-only membership misses an unknown alias reusing a known digest).
+  Receipt and authorization participate on equal footing with compiled entries
+  because B2 gives them the `(alias, candidateDigest)` join key; every case below
+  is asserted for a compiled entry AND for a receipt AND for an authorization, so
+  prd line 27's "across the catalog/compiled/authorization/receipt contracts" is
+  covered by construction:
   - **missing / malformed** → a referenced-mode profile lacking `alias`/`version`/
     `digest` (or handler-managed carrying them) → the decoder rejects on shape.
   - **shared vs candidate-specific** → two candidates citing the same profile
     record vs distinct records → both decode; the test asserts the sharing/
     distinctness by comparing full records.
-  - **digest-mismatched** → a compiled entry whose `(alias, candidateDigest)`
-    matches a catalog record but whose `promptProfile.digest` differs → full-record
-    set-membership fails.
-  - **unknown** → a compiled entry whose `(alias, candidateDigest)` pair is absent
-    from the catalog (including an unknown alias reusing a known digest) →
-    full-record membership fails.
-  - **incompatible** → a compiled entry that pairs a candidate with a profile
-    record the safe catalog does NOT authorize for that candidate (the catalog's
-    record for that `alias`/`candidateDigest` carries a different profile) →
-    per-candidate full-record membership fails.
+  - **digest-mismatched** → a compiled entry / receipt / authorization whose
+    `(alias, candidateDigest)` matches a catalog record but whose
+    `promptProfile.digest` differs → full-record set-membership fails.
+  - **unknown** → a compiled entry / receipt / authorization whose
+    `(alias, candidateDigest)` pair is absent from the catalog (including an
+    unknown alias reusing a known digest) → full-record membership fails.
+  - **incompatible** → a compiled entry / receipt / authorization that pairs a
+    candidate with a profile record the safe catalog does NOT authorize for that
+    candidate (the catalog's record for that `alias`/`candidateDigest` carries a
+    different profile) → per-candidate full-record membership fails.
 
   All five are proven by cross-artifact full-record set-membership assertions in
   the test, never a decoder registry/handler-resolution call. **Out of scope
@@ -254,8 +310,11 @@ const receiptFingerprint = deriveV2Fingerprint({ repository, deletionStatus });
 
 ```js
 const binding = mutableBinding(receipt, "attemptReceipt"); // == decodeMutableBinding export
+const alias = aliasValue(receipt.alias, "attemptReceipt.alias");                     // B2 join key
+const candidateDigest = digestValue(receipt.candidateDigest, "attemptReceipt.candidateDigest");
 const promptProfile = decodePromptProfileBinding(receipt.promptProfile, "attemptReceipt.promptProfile");
-const body = { schemaVersion: PROTOCOL_V2_SCHEMA_MAJOR, ...binding, promptProfile,
+const body = { schemaVersion: PROTOCOL_V2_SCHEMA_MAJOR, ...binding, alias, candidateDigest,
+  promptProfile,
   retentionPolicyId, retentionPolicyVersion, retentionPolicyDigest, dataClass,
   lifecycleState, deletionStatus, legalHold, coverageStart, retainedUntil, recordedAt };
 if (coverageEnd !== undefined) body.coverageEnd = coverageEnd;
