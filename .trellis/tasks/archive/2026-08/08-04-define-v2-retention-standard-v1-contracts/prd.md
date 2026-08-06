@@ -38,12 +38,12 @@ This task is now scoped to the residual gaps below, not a re-delivery.
 
 ## Acceptance Criteria
 
-- [ ] `deletion-receipt` decoder added to `src/retention-policy.js` with
+- [x] `deletion-receipt` decoder added to `src/retention-policy.js` with
       privacy/ordering validation matching the existing decoder conventions and
       a valid/invalid fixture pair.
-- [ ] Fixtures added for destructive-authorization, transfer/removal, deletion-
+- [x] Fixtures added for destructive-authorization, transfer/removal, deletion-
       journal restore, and coverage-gaps (parent retention AC completeness).
-- [ ] npm test, syntax check, metadata + ci-parity validation, coverage gate green.
+- [x] npm test, syntax check, metadata + ci-parity validation, coverage gate green.
 
 ## Dependencies
 
