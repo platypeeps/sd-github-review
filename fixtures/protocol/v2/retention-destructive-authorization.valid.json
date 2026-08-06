@@ -1,0 +1,20 @@
+[
+  {
+    "name": "confirmed, fully-identified purge authorization",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme",
+        "repository": {
+          "owner": "octo",
+          "name": "demo"
+        }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "requestId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "confirmed": true,
+      "requestedAt": "2026-08-04T00:00:00Z"
+    }
+  }
+]

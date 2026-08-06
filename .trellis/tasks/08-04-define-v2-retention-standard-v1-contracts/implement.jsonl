@@ -1,1 +1,2 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Input/API failure contracts — fail-closed decoder error strings + validation ordering"}
+{"file": ".trellis/tasks/08-04-define-v2-retention-standard-v1-contracts/research/deletion-receipt-gap-analysis.md", "reason": "file:line gap analysis: decoder conventions, digest-recompute reconciliation, fixture families"}

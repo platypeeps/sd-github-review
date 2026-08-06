@@ -1,0 +1,67 @@
+[
+  {
+    "name": "uninstall stops collection but retains",
+    "value": {
+      "schemaVersion": 2,
+      "kind": "uninstall",
+      "tenant": "acme",
+      "repository": {
+        "owner": "octo",
+        "name": "demo"
+      }
+    }
+  },
+  {
+    "name": "removal marks inactive",
+    "value": {
+      "schemaVersion": 2,
+      "kind": "removal",
+      "tenant": "acme",
+      "repository": {
+        "owner": "octo",
+        "name": "demo"
+      }
+    }
+  },
+  {
+    "name": "same-tenant transfer with revalidated identity",
+    "value": {
+      "schemaVersion": 2,
+      "kind": "transfer_same_tenant",
+      "tenant": "acme",
+      "repository": {
+        "owner": "octo",
+        "name": "demo"
+      },
+      "revalidatedRepositoryIdentity": true
+    }
+  },
+  {
+    "name": "cross-tenant transfer authorized and revalidated",
+    "value": {
+      "schemaVersion": 2,
+      "kind": "transfer_cross_tenant",
+      "tenant": "acme",
+      "repository": {
+        "owner": "octo",
+        "name": "demo"
+      },
+      "destinationTenant": "beta",
+      "destinationAuthorization": true,
+      "policyRevalidated": true
+    }
+  },
+  {
+    "name": "authorized purge binds a purge request id",
+    "value": {
+      "schemaVersion": 2,
+      "kind": "authorized_purge",
+      "tenant": "acme",
+      "repository": {
+        "owner": "octo",
+        "name": "demo"
+      },
+      "purgeRequestId": "4444444444444444444444444444444444444444444444444444444444444444"
+    }
+  }
+]

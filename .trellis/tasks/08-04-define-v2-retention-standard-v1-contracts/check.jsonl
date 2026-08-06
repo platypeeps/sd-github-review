@@ -1,1 +1,2 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Code standards, tests, Action safety — fixture/test wiring conventions"}
+{"file": ".trellis/tasks/08-04-define-v2-retention-standard-v1-contracts/research/deletion-receipt-gap-analysis.md", "reason": "Test wiring idiom (eachInvalid, digest lock-step, privacy non-echo) + de-dup analysis"}

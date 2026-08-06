@@ -11,6 +11,7 @@ import {
   authorizeRestoreReads,
   buildAnonymousAggregate,
   computeRecordLifecycle,
+  decodeDeletionReceipt,
   decodeLegalHold,
   decodePurgeRequest,
   decodeRecordClassification,
@@ -36,6 +37,16 @@ const invalidPurges = await fixture("protocol/v2/retention-purge.invalid.json");
 const validHolds = await fixture("protocol/v2/retention-legal-hold.valid.json");
 const invalidHolds = await fixture("protocol/v2/retention-legal-hold.invalid.json");
 const privacyFields = await fixture("protocol/v2/retention-privacy-fields.invalid.json");
+const validDeletionReceipts = await fixture("protocol/v2/retention-deletion-receipt.valid.json");
+const invalidDeletionReceipts = await fixture("protocol/v2/retention-deletion-receipt.invalid.json");
+const validDestructiveAuth = await fixture("protocol/v2/retention-destructive-authorization.valid.json");
+const invalidDestructiveAuth = await fixture("protocol/v2/retention-destructive-authorization.invalid.json");
+const validLifecycle = await fixture("protocol/v2/retention-lifecycle.valid.json");
+const invalidLifecycle = await fixture("protocol/v2/retention-lifecycle.invalid.json");
+const validRestores = await fixture("protocol/v2/retention-restore.valid.json");
+const invalidRestores = await fixture("protocol/v2/retention-restore.invalid.json");
+const validCoverage = await fixture("protocol/v2/retention-coverage.valid.json");
+const invalidCoverage = await fixture("protocol/v2/retention-coverage.invalid.json");
 
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
@@ -736,4 +747,91 @@ test("active and terminal records of the same class coexist under one profile", 
   const now = "2026-06-15T00:00:00Z";
   assert.equal(computeRecordLifecycle(active, { nowIso: now }).lifecycleState, "active");
   assert.equal(computeRecordLifecycle(terminal, { nowIso: now }).lifecycleState, "terminal");
+});
+
+// --- residual v2 standard-v1 contracts (task 08-04) ------------------------
+
+test("AC1: deletion receipts decode to a frozen, self-verifying envelope", () => {
+  for (const entry of validDeletionReceipts) {
+    const decoded = decodeDeletionReceipt(entry.value);
+    assert.ok(Object.isFrozen(decoded), entry.name);
+    assert.equal(decoded.deletionReceiptDigest, entry.value.deletionReceiptDigest, entry.name);
+    if (entry.value.deletionStatus === "purge_pending") {
+      assert.equal(decoded.deletedAt, undefined, entry.name);
+    } else {
+      assert.equal(decoded.deletedAt, entry.value.deletedAt, entry.name);
+    }
+  }
+});
+
+test("AC1: a deletion receipt digest is idempotent with the purge that mints it", () => {
+  // Lock-step: the standalone receipt's digest must equal the digest the purge
+  // decoder derives over the same authorized identity — no hand-coded sha256.
+  const minted = decodePurgeRequest({
+    schemaVersion: RETENTION_SCHEMA_MAJOR,
+    authorization: { tenant: "acme", repository: { owner: "octo", name: "demo" } },
+    actor: "operator-a",
+    reason: "Customer requested deletion.",
+    requestId: "2".repeat(64),
+    confirmed: true,
+    requestedAt: "2026-08-04T00:00:00Z",
+  });
+  const pending = validDeletionReceipts.find((e) => e.value.deletionStatus === "purge_pending");
+  assert.ok(pending, "a pending receipt fixture exists");
+  assert.equal(
+    decodeDeletionReceipt(pending.value).deletionReceiptDigest,
+    minted.deletionReceipt.deletionReceiptDigest,
+    "standalone receipt digest matches the purge-minted receipt",
+  );
+});
+
+test("AC1: invalid deletion receipts are rejected fail-closed without echoing content", () => {
+  eachInvalid(invalidDeletionReceipts, decodeDeletionReceipt);
+  const leak = { ...clone(validDeletionReceipts[0].value), prompt: "leak-me-please" };
+  assert.throws(
+    () => decodeDeletionReceipt(leak),
+    (error) => /retention privacy boundary/u.test(error.message) && !error.message.includes("leak-me-please"),
+    "the privacy boundary never echoes the offending value",
+  );
+});
+
+test("AC2: destructive-authorization purge requests enforce confirmation, identity, and no authority grant", () => {
+  for (const entry of validDestructiveAuth) {
+    const decoded = decodePurgeRequest(entry.value);
+    assert.ok(Object.isFrozen(decoded), entry.name);
+    assert.equal(decoded.confirmed, true, entry.name);
+    assert.equal(decoded.grantsLedgerAuthority, false, entry.name);
+    assert.equal(decoded.grantsDispatchAuthority, false, entry.name);
+    assert.equal(decoded.grantsRecoveryAuthority, false, entry.name);
+  }
+  eachInvalid(invalidDestructiveAuth, decodePurgeRequest);
+});
+
+test("AC2: repository lifecycle transfer/removal events decode with the correct boundary flags", () => {
+  for (const entry of validLifecycle) {
+    const decoded = decodeRepositoryLifecycleEvent(entry.value);
+    assert.ok(Object.isFrozen(decoded), entry.name);
+    assert.equal(decoded.purges, entry.value.kind === "authorized_purge", entry.name);
+    assert.equal(decoded.marksInactive, entry.value.kind === "removal", entry.name);
+  }
+  eachInvalid(invalidLifecycle, decodeRepositoryLifecycleEvent);
+});
+
+test("AC2: deletion-journal restore authorization enforces replay and the 35-day backup max", () => {
+  for (const entry of validRestores) {
+    const decoded = authorizeRestoreReads(entry.value);
+    assert.ok(Object.isFrozen(decoded), entry.name);
+    assert.equal(decoded.queryable, true, entry.name);
+  }
+  eachInvalid(invalidRestores, authorizeRestoreReads);
+});
+
+test("AC2: coverage summaries partition the denominator and surface incomplete gaps", () => {
+  for (const entry of validCoverage) {
+    const decoded = summarizeCoverage(entry.value);
+    assert.ok(Object.isFrozen(decoded), entry.name);
+    const complete = entry.value.expired === 0 && entry.value.purged === 0 && entry.value.unknown === 0;
+    assert.equal(decoded.complete, complete, entry.name);
+  }
+  eachInvalid(invalidCoverage, summarizeCoverage);
 });
