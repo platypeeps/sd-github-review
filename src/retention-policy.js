@@ -1253,15 +1253,15 @@ export function decodePurgeRequest(value) {
 // authority.
 export function decodeDeletionReceipt(value) {
   rejectForbiddenContent(value, "deletionReceipt");
+  // Reject authority-grant field names at ANY depth (e.g. nested under
+  // authorization), not just at the top level. The rebuilt output drops unknown
+  // nested keys, so a top-level-only check would silently accept a smuggled
+  // grant instead of failing closed; the recursive walk keeps the deny-list a
+  // hard rejection everywhere.
+  rejectFieldNames(value, "deletionReceipt", DELETION_RECEIPT_FORBIDDEN_AUTHORITY, "deletion-receipt authority boundary");
   assertEncodedSize(value, "deletionReceipt", CONTRACT_MAX_BYTES);
   const receipt = objectValue(value, "deletionReceipt");
   schemaVersion(receipt.schemaVersion, "deletionReceipt.schemaVersion");
-  for (const key of Object.keys(receipt)) {
-    const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/gu, "");
-    if (DELETION_RECEIPT_FORBIDDEN_AUTHORITY.has(normalizedKey)) {
-      throw new Error(`deletionReceipt.${key} is forbidden; a deletion receipt never grants ledger, dispatch, or recovery authority`);
-    }
-  }
   const authorization = objectValue(receipt.authorization, "deletionReceipt.authorization");
   const tenant = aliasValue(authorization.tenant, "deletionReceipt.authorization.tenant");
   const repository = repositoryValue(authorization.repository, "deletionReceipt.authorization.repository");

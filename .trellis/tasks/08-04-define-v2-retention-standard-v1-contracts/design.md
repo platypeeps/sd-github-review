@@ -148,7 +148,7 @@ None. Pure ESM contract module; no env, network, or storage.
 | Condition | Error (regex source) |
 |---|---|
 | forbidden content field (any nesting) | `retention privacy boundary` (never echoes value) |
-| authority-grant field present — request-form (`ledgerAuthority`/`dispatchAuthority`/`recoveryAuthority`/`grantLedger`/`grantDispatch`/`grantRecovery`) OR result-form (`grantsLedgerAuthority`/`grantsDispatchAuthority`/`grantsRecoveryAuthority`), any case/separator variant | `deletionReceipt.<field> is forbidden; a deletion receipt never grants ledger, dispatch, or recovery authority` |
+| authority-grant field present at ANY nesting depth — request-form (`ledgerAuthority`/`dispatchAuthority`/`recoveryAuthority`/`grantLedger`/`grantDispatch`/`grantRecovery`) OR result-form (`grantsLedgerAuthority`/`grantsDispatchAuthority`/`grantsRecoveryAuthority`), any case/separator variant | `deletionReceipt.<path> is forbidden by the deletion-receipt authority boundary` (recursive walk, so a grant nested under `authorization` fails closed too) |
 | oversize (>16 KiB) | existing `assertEncodedSize` message |
 | wrong schema major | `must use supported schema major 2` |
 | bad tenant/actor alias | existing `aliasValue` message |
