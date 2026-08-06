@@ -126,3 +126,45 @@ Added three fail-closed v2 decoders (quarantine status, clearance request, clear
 ### Next Steps
 
 - None - task complete
+
+
+## Session 53: Ship v2 standard-v1 deletion-receipt decoder + residual retention fixtures (PR #54)
+
+**Date**: 2026-08-05
+**Task**: Ship v2 standard-v1 deletion-receipt decoder + residual retention fixtures (PR #54)
+**Branch**: `feat/08-04-define-v2-retention-standard-v1-contracts`
+
+### Summary
+
+Added decodeDeletionReceipt (idempotent, digest-self-verifying, status-gated deadlines, recursive authority deny-list) and the four residual AC2 fixture families to complete the parent retention contract. Converged Copilot review: fixed nested-authority bypass and size-gate ordering.
+
+### Main Changes
+
+- decodeDeletionReceipt: digest recompute over {tenant,repository,actor,reason,requestId,requestedAt}; status-gated deletedAt (live 7d / backup 35d); deadlines hard-asserted to standard-v1
+- Recursive authority deny-list (rejectFieldNames) rejects request-form + result-form grants at any nesting depth; size-gate runs first
+- Residual AC2 fixtures: destructive-authorization, transfer/removal lifecycle, deletion-journal restore, coverage-gaps (5 valid/invalid pairs, self-validated)
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `94edfac` | feat: add v2 standard-v1 deletion-receipt decoder and residual retention fixtures |
+| `b704e95` | fix: reject deletion-receipt authority grants at any nesting depth |
+| `5a9fd57` | refactor: size-gate deletion-receipt before the authority walk |
+| `391ed90` | chore(task): archive 08-04-define-v2-retention-standard-v1-contracts |
+
+### Testing
+
+- [OK] npm test — 595 pass / 0 fail
+- [OK] npm run test:coverage — 93.22% lines / 82.76% branches / 97.18% funcs
+- [OK] check + validate:metadata + validate:ci-parity + review-preflight (0 fail)
+- [OK] Copilot PR #54 — APPROVED after 2 verified fixes
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
