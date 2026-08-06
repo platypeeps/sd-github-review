@@ -22,6 +22,11 @@ Ordered plan. Context order: this file, `design.md`, `prd.md`,
    - `const binding = mutableBinding(receipt, "attemptReceipt")` — this internal
      function IS the `decodeMutableBinding` export (`:1801`), so calling it
      consumes the AC-target export.
+   - Candidate identity (B2, required — not optional):
+     `const alias = aliasValue(receipt.alias, "attemptReceipt.alias")` and
+     `const candidateDigest = digestValue(receipt.candidateDigest,
+     "attemptReceipt.candidateDigest")`. These are the join key that locates the
+     catalog candidate record in the step-7 AC2 assertions.
    - `const promptProfile = decodePromptProfileBinding(receipt.promptProfile,
      "attemptReceipt.promptProfile")` (AC5/AC2 receipt-level profile — C-2).
    - Retention projection: `retentionPolicyId` (`aliasValue`),
@@ -32,19 +37,24 @@ Ordered plan. Context order: this file, `design.md`, `prd.md`,
      the new invariant `Date.parse(coverageEnd) >= Date.parse(coverageStart)` else
      `attemptReceipt.coverageEnd must not precede coverageStart` (C-8);
      `retainedUntil` (explicit `null` branch, else timestamp); `recordedAt`.
-   - Assemble `body = {schemaVersion, ...binding, promptProfile, <retention
-     fields>}` (add `coverageEnd` only when present), then
+   - Assemble `body = {schemaVersion, ...binding, alias, candidateDigest,
+     promptProfile, <retention fields>}` (add `coverageEnd` only when present), then
      `return Object.freeze({...body, receiptFingerprint: deriveV2Fingerprint(body)})`
      — fingerprint over the FULL body so any emitted-field change alters it (C-5).
 
 3. **`decodeDurableAuthorization`** (new export). Prologue with the AUTHORITY extra
    set: `rejectForbiddenFields(value, "durableAuthorization",
    AUTHORITY_FORBIDDEN_FIELD_NAMES)` (arity confirmed `:228`; pattern `:948`). Then
-   `mutableBinding` spread + `promptProfile: decodePromptProfileBinding(...)` +
-   `authorizedAt` (`timestampValue`). `body` = all of that; return frozen
+   `mutableBinding` spread + `alias` (`aliasValue`) + `candidateDigest`
+   (`digestValue`) — the same required B2 join key as the receipt — +
+   `promptProfile: decodePromptProfileBinding(...)` + `authorizedAt`
+   (`timestampValue`). `body` = all of that; return frozen
    `{...body, authorizationFingerprint: deriveV2Fingerprint(body)}` (full-body).
 
-4. **`decodeAdapterAcknowledgment`** (new export). Prologue; `mutableBinding`
+4. **`decodeAdapterAcknowledgment`** (new export). Do NOT add `alias` /
+   `candidateDigest` here — the ack reaches candidate identity transitively via the
+   `authorizationFingerprint` it references (design §3 "Candidate identity (B2)");
+   duplicating them would create a divergence surface. Prologue; `mutableBinding`
    spread; `adapter` (use an existing adapter/alias validator — `aliasValue` if no
    dedicated one); `authorizationFingerprint` (`digestValue`) — the fingerprint of
    the authorization being acknowledged (the AC1 ack↔authorization linkage);
@@ -71,7 +81,9 @@ Ordered plan. Context order: this file, `design.md`, `prd.md`,
    schema major 1, unknown enum, `legalHold.expiresAt` with `held:false`,
    `coverageEnd` before `coverageStart`, bad `retainedUntil`,
    handler-managed-with-reference, referenced-missing-field, empty/oversize array,
-   duplicate alias/digest.
+   duplicate alias/digest, plus (B2) missing `alias`, malformed `alias`, missing
+   `candidateDigest`, and non-64-hex `candidateDigest` on BOTH the receipt and the
+   durable-authorization invalid fixtures.
 
 7. **Wire tests** in `test/protocol-v2.test.js`: one `fixture(...)` per file; valid
    loops assert `Object.isFrozen` + domain checks; invalid loops via `eachInvalid`.
@@ -88,8 +100,12 @@ Ordered plan. Context order: this file, `design.md`, `prd.md`,
      missing/malformed → decoder rejects; shared-vs-specific → full-record compare;
      digest-mismatch / unknown (incl. unknown alias reusing a known digest) /
      incompatible (per-candidate profile divergence) → full-record set-membership
-     fails. Registry/handler `compatibleHandlers` resolution is out of scope; do
-     not add a handler set to the projections.
+     fails. Assert each of those three membership-failure cases three times — once
+     for a compiled entry, once for a receipt, once for a durable authorization —
+     so prd line 27's "across the catalog/compiled/authorization/receipt contracts"
+     is covered explicitly, not by implication. Registry/handler
+     `compatibleHandlers` resolution is out of scope; do not add a handler set to
+     the projections.
    - Cross-contract digest consistency (receipt/catalog/compiled).
 
 ## Validation commands (gate — prd AC)
