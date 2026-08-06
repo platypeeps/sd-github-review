@@ -1,0 +1,22 @@
+[
+  {
+    "name": "exact partition, complete coverage",
+    "value": {
+      "eligible": 100,
+      "retained": 100,
+      "expired": 0,
+      "purged": 0,
+      "unknown": 0
+    }
+  },
+  {
+    "name": "exact partition with unknown surfaces an incomplete gap",
+    "value": {
+      "eligible": 100,
+      "retained": 80,
+      "expired": 10,
+      "purged": 5,
+      "unknown": 5
+    }
+  }
+]

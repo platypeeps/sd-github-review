@@ -1,0 +1,265 @@
+[
+  {
+    "name": "confirmation is mandatory (missing)",
+    "error": "purgeRequest.confirmed must be explicitly true",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme",
+        "repository": {
+          "owner": "octo",
+          "name": "demo"
+        }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "requestId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "requestedAt": "2026-08-04T00:00:00Z"
+    }
+  },
+  {
+    "name": "confirmation is mandatory (false)",
+    "error": "purgeRequest.confirmed must be explicitly true",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme",
+        "repository": {
+          "owner": "octo",
+          "name": "demo"
+        }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "requestId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "confirmed": false,
+      "requestedAt": "2026-08-04T00:00:00Z"
+    }
+  },
+  {
+    "name": "missing tenant authorization",
+    "error": "purgeRequest.authorization.tenant",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "repository": {
+          "owner": "octo",
+          "name": "demo"
+        }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "requestId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "confirmed": true,
+      "requestedAt": "2026-08-04T00:00:00Z"
+    }
+  },
+  {
+    "name": "missing repository authorization",
+    "error": "purgeRequest.authorization.repository",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme"
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "requestId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "confirmed": true,
+      "requestedAt": "2026-08-04T00:00:00Z"
+    }
+  },
+  {
+    "name": "missing actor",
+    "error": "purgeRequest.actor",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme",
+        "repository": {
+          "owner": "octo",
+          "name": "demo"
+        }
+      },
+      "reason": "Customer requested deletion.",
+      "requestId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "confirmed": true,
+      "requestedAt": "2026-08-04T00:00:00Z"
+    }
+  },
+  {
+    "name": "missing reason",
+    "error": "purgeRequest.reason",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme",
+        "repository": {
+          "owner": "octo",
+          "name": "demo"
+        }
+      },
+      "actor": "operator-a",
+      "requestId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "confirmed": true,
+      "requestedAt": "2026-08-04T00:00:00Z"
+    }
+  },
+  {
+    "name": "missing request identity",
+    "error": "purgeRequest.requestId",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme",
+        "repository": {
+          "owner": "octo",
+          "name": "demo"
+        }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "confirmed": true,
+      "requestedAt": "2026-08-04T00:00:00Z"
+    }
+  },
+  {
+    "name": "may not grant ledger authority (ledgerAuthority)",
+    "error": "is forbidden; a purge never grants",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme",
+        "repository": {
+          "owner": "octo",
+          "name": "demo"
+        }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "requestId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "confirmed": true,
+      "requestedAt": "2026-08-04T00:00:00Z",
+      "ledgerAuthority": true
+    }
+  },
+  {
+    "name": "may not grant dispatch authority (dispatchAuthority)",
+    "error": "is forbidden; a purge never grants",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme",
+        "repository": {
+          "owner": "octo",
+          "name": "demo"
+        }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "requestId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "confirmed": true,
+      "requestedAt": "2026-08-04T00:00:00Z",
+      "dispatchAuthority": true
+    }
+  },
+  {
+    "name": "may not grant recovery authority (recoveryAuthority)",
+    "error": "is forbidden; a purge never grants",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme",
+        "repository": {
+          "owner": "octo",
+          "name": "demo"
+        }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "requestId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "confirmed": true,
+      "requestedAt": "2026-08-04T00:00:00Z",
+      "recoveryAuthority": true
+    }
+  },
+  {
+    "name": "may not grant ledger (grantLedger)",
+    "error": "is forbidden; a purge never grants",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme",
+        "repository": {
+          "owner": "octo",
+          "name": "demo"
+        }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "requestId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "confirmed": true,
+      "requestedAt": "2026-08-04T00:00:00Z",
+      "grantLedger": true
+    }
+  },
+  {
+    "name": "may not grant dispatch (grantDispatch)",
+    "error": "is forbidden; a purge never grants",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme",
+        "repository": {
+          "owner": "octo",
+          "name": "demo"
+        }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "requestId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "confirmed": true,
+      "requestedAt": "2026-08-04T00:00:00Z",
+      "grantDispatch": true
+    }
+  },
+  {
+    "name": "may not grant recovery (grantRecovery)",
+    "error": "is forbidden; a purge never grants",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme",
+        "repository": {
+          "owner": "octo",
+          "name": "demo"
+        }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "requestId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "confirmed": true,
+      "requestedAt": "2026-08-04T00:00:00Z",
+      "grantRecovery": true
+    }
+  },
+  {
+    "name": "schema major 1 cannot masquerade",
+    "error": "must use supported schema major 2",
+    "value": {
+      "schemaVersion": 1,
+      "authorization": {
+        "tenant": "acme",
+        "repository": {
+          "owner": "octo",
+          "name": "demo"
+        }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "requestId": "3333333333333333333333333333333333333333333333333333333333333333",
+      "confirmed": true,
+      "requestedAt": "2026-08-04T00:00:00Z"
+    }
+  }
+]

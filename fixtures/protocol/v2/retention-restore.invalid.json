@@ -1,0 +1,20 @@
+[
+  {
+    "name": "backup exceeds the 35-day hard maximum",
+    "error": "the backup exceeded the 35-day hard maximum",
+    "value": {
+      "backupCreatedAt": "2026-08-01T00:00:00Z",
+      "restoredAt": "2026-09-30T00:00:00Z",
+      "deletionJournalReplayed": true
+    }
+  },
+  {
+    "name": "reads refused until the deletion journal is replayed",
+    "error": "must replay the deletion journal before restored data becomes queryable",
+    "value": {
+      "backupCreatedAt": "2026-08-01T00:00:00Z",
+      "restoredAt": "2026-08-20T00:00:00Z",
+      "deletionJournalReplayed": false
+    }
+  }
+]

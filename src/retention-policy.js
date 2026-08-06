@@ -187,6 +187,18 @@ const PURGE_FORBIDDEN_AUTHORITY = Object.freeze([
   "grantRecovery",
 ]);
 
+// A deletion receipt never grants authority either. It must reject BOTH the
+// request-form names a purge forbids and the result-form flags the purge output
+// emits as hard-false, so a supplied grant is rejected rather than silently
+// dropped. Compared against normalized keys so case/separator variants are
+// caught.
+const DELETION_RECEIPT_FORBIDDEN_AUTHORITY = new Set([
+  ...PURGE_FORBIDDEN_AUTHORITY,
+  "grantsLedgerAuthority",
+  "grantsDispatchAuthority",
+  "grantsRecoveryAuthority",
+].map((name) => name.toLowerCase().replace(/[^a-z0-9]/gu, "")));
+
 // --- primitive validators (matching protocol-v2 semantics) -----------------
 
 function isPlainObject(value) {
@@ -1229,6 +1241,95 @@ export function decodePurgeRequest(value) {
       note: "GitHub controls its checks, comments, and reviews; they are not deleted by this purge.",
     }),
   });
+}
+
+// Decode a standalone, idempotent deletion-receipt envelope. Unlike the nested
+// receipt minted by decodePurgeRequest, this envelope carries the full
+// authorized identity so the receipt is self-verifying: the digest is recomputed
+// over {tenant, repository, actor, reason, requestId, requestedAt} and must equal
+// the supplied deletionReceiptDigest, exactly as decodePurgeRequest mints it. The
+// deadlines are bound to the standard-v1 schedule, and the deletion outcome
+// (deletedAt) is gated on the deletion status. Read-only: it never grants
+// authority.
+export function decodeDeletionReceipt(value) {
+  rejectForbiddenContent(value, "deletionReceipt");
+  assertEncodedSize(value, "deletionReceipt", CONTRACT_MAX_BYTES);
+  // Reject authority-grant field names at ANY depth (e.g. nested under
+  // authorization), not just at the top level. The rebuilt output drops unknown
+  // nested keys, so a top-level-only check would silently accept a smuggled
+  // grant instead of failing closed; the recursive walk keeps the deny-list a
+  // hard rejection everywhere. Runs after the size gate so an oversized payload
+  // fails fast, matching the sibling decoders' ordering.
+  rejectFieldNames(value, "deletionReceipt", DELETION_RECEIPT_FORBIDDEN_AUTHORITY, "deletion-receipt authority boundary");
+  const receipt = objectValue(value, "deletionReceipt");
+  schemaVersion(receipt.schemaVersion, "deletionReceipt.schemaVersion");
+  const authorization = objectValue(receipt.authorization, "deletionReceipt.authorization");
+  const tenant = aliasValue(authorization.tenant, "deletionReceipt.authorization.tenant");
+  const repository = repositoryValue(authorization.repository, "deletionReceipt.authorization.repository");
+  const actor = aliasValue(receipt.actor, "deletionReceipt.actor");
+  const reason = stringValue(receipt.reason, "deletionReceipt.reason", { maximum: REASON_MAX_BYTES });
+  const requestId = digestValue(receipt.requestId, "deletionReceipt.requestId");
+  const requestedAt = timestampValue(receipt.requestedAt, "deletionReceipt.requestedAt");
+  const deletionStatus = enumValue(receipt.deletionStatus, "deletionReceipt.deletionStatus", DELETION_STATUS_SET);
+  if (deletionStatus === "not_requested") {
+    throw new Error("deletionReceipt.deletionStatus must be a requested deletion state");
+  }
+  const liveDeletionDeadline = timestampValue(receipt.liveDeletionDeadline, "deletionReceipt.liveDeletionDeadline");
+  const backupPurgeDeadline = timestampValue(receipt.backupPurgeDeadline, "deletionReceipt.backupPurgeDeadline");
+  if (liveDeletionDeadline !== addDays(requestedAt, STANDARD_V1.livePurgeSlaDays)) {
+    throw new Error("deletionReceipt.liveDeletionDeadline must be seven days after requestedAt");
+  }
+  if (backupPurgeDeadline !== addDays(requestedAt, STANDARD_V1.backupHardMaxDays)) {
+    throw new Error("deletionReceipt.backupPurgeDeadline must be thirty-five days after requestedAt");
+  }
+  const deletedAt = optionalTimestamp(receipt.deletedAt, "deletionReceipt.deletedAt");
+  if (deletionStatus === "purge_pending") {
+    if (deletedAt !== undefined) {
+      throw new Error("deletionReceipt.deletedAt is not permitted while the deletion is still pending");
+    }
+  } else {
+    if (deletedAt === undefined) {
+      throw new Error("deletionReceipt.deletedAt is required once the deletion has occurred");
+    }
+    if (Date.parse(deletedAt) < Date.parse(requestedAt)) {
+      throw new Error("deletionReceipt.deletedAt must not precede requestedAt");
+    }
+    if (deletionStatus === "live_deleted") {
+      if (Date.parse(deletedAt) > Date.parse(liveDeletionDeadline)) {
+        throw new Error("deletionReceipt.deletedAt must not follow the live deletion deadline");
+      }
+    } else if (Date.parse(deletedAt) > Date.parse(backupPurgeDeadline)) {
+      throw new Error("deletionReceipt.deletedAt must not follow the backup purge deadline");
+    }
+  }
+  const deletionReceiptDigest = digestValue(receipt.deletionReceiptDigest, "deletionReceipt.deletionReceiptDigest");
+  const canonicalDigest = deriveRetentionDigest({
+    tenant,
+    repository,
+    actor,
+    reason,
+    requestId,
+    requestedAt,
+  });
+  if (deletionReceiptDigest !== canonicalDigest) {
+    throw new Error("deletionReceipt.deletionReceiptDigest does not match its canonical content");
+  }
+  const normalized = {
+    schemaVersion: RETENTION_SCHEMA_MAJOR,
+    authorization: Object.freeze({ tenant, repository }),
+    actor,
+    reason,
+    requestId,
+    requestedAt,
+    deletionStatus,
+    liveDeletionDeadline,
+    backupPurgeDeadline,
+    deletionReceiptDigest,
+  };
+  if (deletedAt !== undefined) {
+    normalized.deletedAt = deletedAt;
+  }
+  return Object.freeze(normalized);
 }
 
 // Assert an authorized live purge completed within the seven-day SLA. Injected

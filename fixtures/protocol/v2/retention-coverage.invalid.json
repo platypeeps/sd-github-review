@@ -1,0 +1,24 @@
+[
+  {
+    "name": "buckets do not partition the denominator",
+    "error": "coverage buckets must partition the eligible denominator exactly",
+    "value": {
+      "eligible": 100,
+      "retained": 80,
+      "expired": 10,
+      "purged": 5,
+      "unknown": 0
+    }
+  },
+  {
+    "name": "a bucket is not a valid count",
+    "error": "coverage.retained must be an integer",
+    "value": {
+      "eligible": 100,
+      "retained": -1,
+      "expired": 0,
+      "purged": 0,
+      "unknown": 101
+    }
+  }
+]

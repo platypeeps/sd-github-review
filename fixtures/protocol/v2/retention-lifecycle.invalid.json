@@ -1,0 +1,100 @@
+[
+  {
+    "name": "unknown lifecycle kind",
+    "error": "repositoryLifecycleEvent.kind must be one of",
+    "value": {
+      "schemaVersion": 2,
+      "kind": "sold",
+      "tenant": "acme",
+      "repository": {
+        "owner": "octo",
+        "name": "demo"
+      }
+    }
+  },
+  {
+    "name": "same-tenant transfer without identity revalidation",
+    "error": "revalidatedRepositoryIdentity must be explicitly true",
+    "value": {
+      "schemaVersion": 2,
+      "kind": "transfer_same_tenant",
+      "tenant": "acme",
+      "repository": {
+        "owner": "octo",
+        "name": "demo"
+      }
+    }
+  },
+  {
+    "name": "cross-tenant transfer with same destination tenant",
+    "error": "must name a distinct destination tenant",
+    "value": {
+      "schemaVersion": 2,
+      "kind": "transfer_cross_tenant",
+      "tenant": "acme",
+      "repository": {
+        "owner": "octo",
+        "name": "demo"
+      },
+      "destinationTenant": "acme",
+      "destinationAuthorization": true,
+      "policyRevalidated": true
+    }
+  },
+  {
+    "name": "cross-tenant transfer missing destination authorization",
+    "error": "destinationAuthorization must be explicitly true",
+    "value": {
+      "schemaVersion": 2,
+      "kind": "transfer_cross_tenant",
+      "tenant": "acme",
+      "repository": {
+        "owner": "octo",
+        "name": "demo"
+      },
+      "destinationTenant": "beta",
+      "policyRevalidated": true
+    }
+  },
+  {
+    "name": "cross-tenant transfer missing policy revalidation",
+    "error": "policyRevalidated must be explicitly true",
+    "value": {
+      "schemaVersion": 2,
+      "kind": "transfer_cross_tenant",
+      "tenant": "acme",
+      "repository": {
+        "owner": "octo",
+        "name": "demo"
+      },
+      "destinationTenant": "beta",
+      "destinationAuthorization": true
+    }
+  },
+  {
+    "name": "authorized purge missing purge request id",
+    "error": "repositoryLifecycleEvent.purgeRequestId",
+    "value": {
+      "schemaVersion": 2,
+      "kind": "authorized_purge",
+      "tenant": "acme",
+      "repository": {
+        "owner": "octo",
+        "name": "demo"
+      }
+    }
+  },
+  {
+    "name": "schema major 1 cannot masquerade",
+    "error": "must use supported schema major 2",
+    "value": {
+      "schemaVersion": 1,
+      "kind": "uninstall",
+      "tenant": "acme",
+      "repository": {
+        "owner": "octo",
+        "name": "demo"
+      }
+    }
+  }
+]

@@ -1,0 +1,89 @@
+[
+  {
+    "name": "pending receipt carries no deletion outcome",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme",
+        "repository": {
+          "owner": "octo",
+          "name": "demo"
+        }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "requestId": "2222222222222222222222222222222222222222222222222222222222222222",
+      "requestedAt": "2026-08-04T00:00:00Z",
+      "liveDeletionDeadline": "2026-08-11T00:00:00.000Z",
+      "backupPurgeDeadline": "2026-09-08T00:00:00.000Z",
+      "deletionReceiptDigest": "eac31c4bf8dcc6657fa772cf3d6cae144ec080d3e55d2e72a3c5160a16863be5",
+      "deletionStatus": "purge_pending"
+    }
+  },
+  {
+    "name": "live deletion within the seven-day SLA",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme",
+        "repository": {
+          "owner": "octo",
+          "name": "demo"
+        }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "requestId": "2222222222222222222222222222222222222222222222222222222222222222",
+      "requestedAt": "2026-08-04T00:00:00Z",
+      "liveDeletionDeadline": "2026-08-11T00:00:00.000Z",
+      "backupPurgeDeadline": "2026-09-08T00:00:00.000Z",
+      "deletionReceiptDigest": "eac31c4bf8dcc6657fa772cf3d6cae144ec080d3e55d2e72a3c5160a16863be5",
+      "deletionStatus": "live_deleted",
+      "deletedAt": "2026-08-06T00:00:00Z"
+    }
+  },
+  {
+    "name": "backup expired within the 35-day hard max",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme",
+        "repository": {
+          "owner": "octo",
+          "name": "demo"
+        }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "requestId": "2222222222222222222222222222222222222222222222222222222222222222",
+      "requestedAt": "2026-08-04T00:00:00Z",
+      "liveDeletionDeadline": "2026-08-11T00:00:00.000Z",
+      "backupPurgeDeadline": "2026-09-08T00:00:00.000Z",
+      "deletionReceiptDigest": "eac31c4bf8dcc6657fa772cf3d6cae144ec080d3e55d2e72a3c5160a16863be5",
+      "deletionStatus": "backup_expired",
+      "deletedAt": "2026-09-01T00:00:00Z"
+    }
+  },
+  {
+    "name": "complete deletion within the window",
+    "value": {
+      "schemaVersion": 2,
+      "authorization": {
+        "tenant": "acme",
+        "repository": {
+          "owner": "octo",
+          "name": "demo"
+        }
+      },
+      "actor": "operator-a",
+      "reason": "Customer requested deletion.",
+      "requestId": "2222222222222222222222222222222222222222222222222222222222222222",
+      "requestedAt": "2026-08-04T00:00:00Z",
+      "liveDeletionDeadline": "2026-08-11T00:00:00.000Z",
+      "backupPurgeDeadline": "2026-09-08T00:00:00.000Z",
+      "deletionReceiptDigest": "eac31c4bf8dcc6657fa772cf3d6cae144ec080d3e55d2e72a3c5160a16863be5",
+      "deletionStatus": "complete",
+      "deletedAt": "2026-09-01T00:00:00Z"
+    }
+  }
+]
