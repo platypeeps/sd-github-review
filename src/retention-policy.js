@@ -1253,13 +1253,14 @@ export function decodePurgeRequest(value) {
 // authority.
 export function decodeDeletionReceipt(value) {
   rejectForbiddenContent(value, "deletionReceipt");
+  assertEncodedSize(value, "deletionReceipt", CONTRACT_MAX_BYTES);
   // Reject authority-grant field names at ANY depth (e.g. nested under
   // authorization), not just at the top level. The rebuilt output drops unknown
   // nested keys, so a top-level-only check would silently accept a smuggled
   // grant instead of failing closed; the recursive walk keeps the deny-list a
-  // hard rejection everywhere.
+  // hard rejection everywhere. Runs after the size gate so an oversized payload
+  // fails fast, matching the sibling decoders' ordering.
   rejectFieldNames(value, "deletionReceipt", DELETION_RECEIPT_FORBIDDEN_AUTHORITY, "deletion-receipt authority boundary");
-  assertEncodedSize(value, "deletionReceipt", CONTRACT_MAX_BYTES);
   const receipt = objectValue(value, "deletionReceipt");
   schemaVersion(receipt.schemaVersion, "deletionReceipt.schemaVersion");
   const authorization = objectValue(receipt.authorization, "deletionReceipt.authorization");
