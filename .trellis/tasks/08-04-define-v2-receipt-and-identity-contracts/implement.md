@@ -4,7 +4,9 @@ Ordered plan. Context order: this file, `design.md`, `prd.md`,
 `research/v2-receipt-identity-surface.md`. Reuse existing helpers in
 `src/protocol-v2.js`; add no new primitives. Mirror `decodeLocalReviewReceipt`
 (`:1258`) for the spread-binding pattern and `decodeRetentionStatus`
-(`retention-policy.js:1032`) for the retention field set.
+(`retention-policy.js:1032`) for the retention VOCABULARY and validation shape —
+not as a field list to copy: it also emits `githubNativeArtifacts` (`:1057`) and
+optional `lastDeletion` (`:1072`), which the receipt does not carry (design §3).
 
 ## Steps
 
@@ -69,7 +71,8 @@ Ordered plan. Context order: this file, `design.md`, `prd.md`,
    `{alias: aliasValue(...), candidateDigest: digestValue(...), promptProfile:
    decodePromptProfileBinding(item.promptProfile, ...)}` — naming matches the
    existing `decodeReviewerCatalog` (`:1520`/`:1532`). Reject duplicate
-   alias/candidateDigest (mirror `:1526`). Freeze.
+   alias/candidateDigest (mirror `:1526-1531` — the alias guard is at `:1526-1528`
+   and the digest guard at `:1529-1531`; they are two separate checks). Freeze.
 
 6. **Fixtures.** Add valid/invalid pairs under `fixtures/protocol/v2/`:
    `v2-attempt-receipt`, `v2-durable-authorization`, `v2-adapter-acknowledgment`,
@@ -97,7 +100,10 @@ Ordered plan. Context order: this file, `design.md`, `prd.md`,
    - AC5 privacy non-echo; profile exposes only mode/alias/version/digest.
    - AC2 residual (design §6 taxonomy): membership is over the FULL catalog
      candidate record `(alias, candidateDigest, promptProfile)`, not digest alone.
-     missing/malformed → decoder rejects; shared-vs-specific → full-record compare;
+     missing/malformed → decoder rejects; shared-vs-specific → compare the
+     `promptProfile` BINDINGS ONLY, never the full triples (two distinct
+     candidates always differ in alias/candidateDigest, so a triple compare can
+     never prove sharing — C-2);
      digest-mismatch / unknown (incl. unknown alias reusing a known digest) /
      incompatible (per-candidate profile divergence) → full-record set-membership
      fails. Assert each of those three membership-failure cases three times — once

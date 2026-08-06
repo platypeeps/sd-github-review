@@ -156,9 +156,17 @@ Retention IDENTITY + coarse state only, never private content. Top-level fields:
 `deletionStatus` via the shared vocabulary; `legalHold:{held, expiresAt?}`
 (expiresAt valid only when held); `coverageStart` (required), `coverageEnd`
 (optional, and — new receipt invariant — must not precede `coverageStart`);
-`retainedUntil` (nullable); `recordedAt`. This mirrors the field set of
+`retainedUntil` (nullable); `recordedAt`. This draws on the field set of
 `decodeRetentionStatus` (`retention-policy.js:1032`) but is validated inline (the
 receipt is a projection; it does not re-run `decodePolicyBinding`'s digest-match).
+
+**"Mirrors" is directional, not literal (C-3).** The receipt is NOT a copy of
+`decodeRetentionStatus`'s field set. That decoder also emits
+`githubNativeArtifacts` (`:1057`) and an optional `lastDeletion`
+(`:1072`), neither of which the receipt carries; the receipt in turn adds
+`recordedAt` and renames the policy triad (see "Field naming" below). Treat
+`decodeRetentionStatus` as the vocabulary and validation-shape reference, not as
+a field list to reproduce.
 
 **Design decision — retention vocabulary source (C-6).** The enum SETs in
 `retention-policy.js` are mutable `new Set(...)` objects; exporting a `Set` is
@@ -191,6 +199,41 @@ fingerprint (`deriveV2Fingerprint` = `sha256(canonicalize(fields))`, `:449`).
 - authorization: `authorizationFingerprint` over the whole authorization body.
 - adapter-ack: `acknowledgmentFingerprint` over its body (which INCLUDES the
   `authorizationFingerprint` it references — see identity matrix).
+
+### Freeze depth — known limitation, not blocking (C-4)
+
+`Object.freeze` is shallow, so a decoded receipt's nested `repository`,
+`promptProfile`, `legalHold`, and the projections' `candidates`/`entries` arrays
+stay mutable after decode. For the three fingerprinted contracts (receipt,
+authorization, adapter-ack) a post-decode caller could mutate nested state while
+the `*Fingerprint` — computed once at decode time — keeps its original value. The
+two projections emit no fingerprint, so for them the exposure is plain nested
+mutability, not fingerprint divergence.
+
+**Not blocking, and deliberately not fixed here.** This is the shipped
+convention for the entire module: 27 `Object.freeze` call sites in
+`protocol-v2.js`, no `deepFreeze` helper in either contract module, and shared
+builders such as `repositoryValue` (`:410`) return plain unfrozen objects. The
+module's own tests define "immutable" as top-level `Object.isFrozen`
+(`test/protocol-v2.test.js:551`), and this task carries no deep-immutability
+acceptance criterion. Deep freezing only the five new decoders would make them
+silently inconsistent with every sibling contract, and module-wide is a
+cross-cutting change
+that breaks this task's "purely additive, revert = drop the new symbols"
+rollback shape.
+
+On the threat model: these decoders are the validation boundary for UNTRUSTED
+INPUT, and `rejectForbiddenFields` runs over the whole input tree before decode,
+so forbidden fields cannot enter through the boundary — only through post-decode
+mutation by code already inside it. Deep freeze would not stop a determined
+in-process caller, who can simply construct a different object. It WOULD catch
+*accidental* post-validation mutation, though, which is a real if smaller
+benefit — the deferral below is a scope and consistency judgment, not a claim
+that the limitation is worthless.
+
+**Follow-up (separate task):** module-wide deep-freeze for `protocol-v2.js` and
+`retention-policy.js`, with mutation-resistance tests. Track independently; do
+not fold into this task.
 
 ### Environment keys
 
@@ -268,9 +311,14 @@ assert `Object.isFrozen` + domain checks; invalid loops via `eachInvalid`.
   covered by construction:
   - **missing / malformed** → a referenced-mode profile lacking `alias`/`version`/
     `digest` (or handler-managed carrying them) → the decoder rejects on shape.
-  - **shared vs candidate-specific** → two candidates citing the same profile
-    record vs distinct records → both decode; the test asserts the sharing/
-    distinctness by comparing full records.
+  - **shared vs candidate-specific** → two candidates citing the same profile vs
+    distinct profiles → both decode; the test asserts sharing/distinctness by
+    comparing **the `promptProfile` bindings only**, NOT the full
+    `(alias, candidateDigest, promptProfile)` triples. Two distinct candidates
+    necessarily differ in `alias` and `candidateDigest`, so a full-triple compare
+    can never show them sharing a profile and would silently pass for the wrong
+    reason (C-2). Full-record compare is for MEMBERSHIP (below); profile-binding
+    compare is for SHARING. Do not conflate them.
   - **digest-mismatched** → a compiled entry / receipt / authorization whose
     `(alias, candidateDigest)` matches a catalog record but whose
     `promptProfile.digest` differs → full-record set-membership fails.
@@ -282,8 +330,11 @@ assert `Object.isFrozen` + domain checks; invalid loops via `eachInvalid`.
     candidate (the catalog's record for that `alias`/`candidateDigest` carries a
     different profile) → per-candidate full-record membership fails.
 
-  All five are proven by cross-artifact full-record set-membership assertions in
-  the test, never a decoder registry/handler-resolution call. **Out of scope
+  These five use three distinct mechanisms, not one: **missing/malformed** is
+  proven by decoder rejection, **shared vs candidate-specific** by comparing
+  `promptProfile` bindings, and **digest-mismatched / unknown / incompatible** by
+  cross-artifact full-record set-membership. None uses a decoder
+  registry/handler-resolution call. **Out of scope
   (prd):** live registry resolution and handler `compatibleHandlers` matching are
   compiler/runtime concerns; the projections deliberately carry no handler set, so
   "incompatible" is defined here strictly as catalog-vs-compiled projection-record
