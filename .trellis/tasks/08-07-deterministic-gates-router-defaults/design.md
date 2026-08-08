@@ -195,7 +195,13 @@ goes. It goes here:
 - `src/operations.js:381` calls `selectProtocolRoute`, having read
   `independent-review-floor`, `local-confidence-threshold`, and
   `local-evidence-route` at `src/operations.js:390-401`;
-- `src/operations.js:539` consumes the resulting decision.
+- `src/operations.js:539` is where `runOperation` decodes the `review-request`
+  input; it is the **entry** point, not the consume point. Textually it sits
+  below `:381`/`:405` because `runOperation` calls `runRouteAction`, so reading
+  the file top-down inverts the actual order.
+- `src/router.js:161` evaluates `request.localReview`.
+- `src/operations.js:405` consumes the resulting decision
+  (`selectedBackend(decision.route, env)`).
 
 This is **durable-operations-path only**. The standalone path
 (`src/index.js:254`, `routeReview`) has no local-evidence concept, so a
@@ -223,8 +229,11 @@ coordinator already emits exactly this `localReview` summary shape
   `high-risk-route: copilot`. This goes in the `CHANGELOG.md` entry verbatim.
 - Consumers on the shipped PR-Agent profiles are unaffected; those profiles
   already set `deep` explicitly (`test/metadata.test.js:354-355`).
-- Rollback is a revert of the two default sites. The documentation and example
-  changes are additive and safe to leave in place.
+- Rollback is a revert of the **five** default sites — `action.yml:81`,
+  `src/index.js:249`, `src/operations.js:376`, `src/protocol.js:969`,
+  `src/router.js:34` — together with the Step 2/3 test edits that pin them.
+  Reverting a subset produces the split-brain this design exists to avoid. The
+  documentation and example changes are additive and safe to leave in place.
 
 ## Rejected alternatives
 
