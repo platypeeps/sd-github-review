@@ -1,4 +1,4 @@
-# Integrate authorized review adapters
+# PARKED: Integrate authorized review adapters
 
 ## Goal
 

@@ -1,1 +1,0 @@
-{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "Apply atomic batch reservation and shared-pool concurrency guidance."}

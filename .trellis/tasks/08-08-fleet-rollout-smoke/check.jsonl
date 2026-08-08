@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/backend/consumer-installer.md", "reason": "The rollout must install through the documented installer contract rather than hand-placing files."}

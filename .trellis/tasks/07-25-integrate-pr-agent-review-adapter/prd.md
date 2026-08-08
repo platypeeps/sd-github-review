@@ -1,4 +1,4 @@
-# Integrate PR-Agent review adapter
+# PARKED: Integrate PR-Agent review adapter
 
 ## Goal
 

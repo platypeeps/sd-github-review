@@ -1,4 +1,4 @@
-# Support local-attested reviews
+# PARKED: Support local-attested reviews
 
 ## Goal
 

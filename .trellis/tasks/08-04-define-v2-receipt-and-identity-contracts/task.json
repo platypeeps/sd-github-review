@@ -1,7 +1,7 @@
 {
   "id": "define-v2-receipt-and-identity-contracts",
   "name": "define-v2-receipt-and-identity-contracts",
-  "title": "Define v2 receipt and cross-contract identity contracts",
+  "title": "PARKED: Define v2 receipt and cross-contract identity contracts",
   "description": "Complete the immutable v2 per-attempt receipt schema, safe-catalog/compiled-manifest projections, durable authorization and adapter-acknowledgment decoders, the cross-contract identity fixture matrix, and residual prompt-profile fixtures (parent AC1/AC2/AC5).",
   "status": "planning",
   "dev_type": null,

@@ -1,1 +1,0 @@
-{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "Use the persistence guidance when specifying ledger, reservation, and deferred-record semantics."}

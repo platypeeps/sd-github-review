@@ -1,7 +1,7 @@
 {
   "id": "bound-cheap-review-token-usage",
   "name": "bound-cheap-review-token-usage",
-  "title": "Bound cheap review token usage",
+  "title": "PARKED: Bound cheap review token usage",
   "description": "Add enforceable input and output token controls for the cheap PR-Agent lane.",
   "status": "planning",
   "dev_type": null,

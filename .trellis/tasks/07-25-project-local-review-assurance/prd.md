@@ -1,4 +1,4 @@
-# Project local review assurance and gate
+# PARKED: Project local review assurance and gate
 
 ## Goal
 

@@ -1,4 +1,4 @@
-# Deliver routed review configuration lifecycle
+# PARKED: Deliver routed review configuration lifecycle
 
 ## Goal
 

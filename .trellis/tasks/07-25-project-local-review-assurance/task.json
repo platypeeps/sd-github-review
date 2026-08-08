@@ -1,7 +1,7 @@
 {
   "id": "project-local-review-assurance",
   "name": "project-local-review-assurance",
-  "title": "Project local review assurance and gate",
+  "title": "PARKED: Project local review assurance and gate",
   "description": "Project valid local-review attestations into truthful assurance and merge-gate Checks with stale-head invalidation.",
   "status": "planning",
   "dev_type": null,
