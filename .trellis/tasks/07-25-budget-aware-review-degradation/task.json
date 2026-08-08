@@ -1,7 +1,7 @@
 {
   "id": "budget-aware-review-degradation",
   "name": "budget-aware-review-degradation",
-  "title": "Implement ordered budget-aware review chains",
+  "title": "PARKED: Implement ordered budget-aware review chains",
   "description": "Run cheap and deep reviews through consumer-configurable candidate chains with explicit overrides, budget-aware selection, merge policy, and recoverable deferrals.",
   "status": "planning",
   "dev_type": null,
@@ -21,7 +21,6 @@
   "children": [
     "07-25-deliver-routed-review-configuration",
     "07-25-compile-and-execute-budget-aware-review-plans",
-    "07-25-define-consumer-review-control-plane",
     "07-25-integrate-authorized-review-adapters"
   ],
   "parent": null,

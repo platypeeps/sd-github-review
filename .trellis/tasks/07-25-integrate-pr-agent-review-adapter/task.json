@@ -1,7 +1,7 @@
 {
   "id": "integrate-pr-agent-review-adapter",
   "name": "integrate-pr-agent-review-adapter",
-  "title": "Integrate PR-Agent review adapter",
+  "title": "PARKED: Integrate PR-Agent review adapter",
   "description": "Prepare and execute one external candidate with secret isolation and exact model/profile provenance.",
   "status": "planning",
   "dev_type": null,

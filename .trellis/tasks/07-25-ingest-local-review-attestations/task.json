@@ -1,7 +1,7 @@
 {
   "id": "ingest-local-review-attestations",
   "name": "ingest-local-review-attestations",
-  "title": "Ingest and authorize local review attestations",
+  "title": "PARKED: Ingest and authorize local review attestations",
   "description": "Accept authorized local-review evidence idempotently, validate trust and exact-head identity, and prohibit reviewer dispatch.",
   "status": "planning",
   "dev_type": null,

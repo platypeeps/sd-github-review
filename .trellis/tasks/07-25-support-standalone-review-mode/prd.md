@@ -1,4 +1,4 @@
-# Support standalone review mode
+# PARKED: Support standalone review mode
 
 ## Goal
 

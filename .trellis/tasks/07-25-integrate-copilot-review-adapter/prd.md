@@ -1,4 +1,4 @@
-# Integrate Copilot review adapter
+# PARKED: Integrate Copilot review adapter
 
 ## Goal
 
