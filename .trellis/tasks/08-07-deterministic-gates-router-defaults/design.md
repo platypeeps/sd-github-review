@@ -18,17 +18,19 @@ it is used.
 ## Change 1 — the default flip
 
 > **Correction.** An earlier draft of this design claimed the default was
-> declared in two places, `action.yml:78` and `src/index.js:249`. That was wrong.
+> declared in two places, `action.yml:81` and `src/index.js:249`. That was wrong.
 > It was derived from `grep -rn "high-risk-route\|highRiskRoute"`, which finds
 > only sites that spell the input name — and three of the five spell the
 > *value*. The enumerating search that finds them all is
-> `grep -rn '"copilot"' src/ action.yml`.
+> `grep -rn copilot src/ action.yml` — **unquoted**. A second draft used
+> `grep -rn '"copilot"'`, which still misses the metadata site: `action.yml:81`
+> is `default: copilot` with no quotes.
 
 Five sites, across three layers:
 
 | Site | Layer | Applies when |
 | --- | --- | --- |
-| `action.yml:78` `default: copilot` | metadata | runner materializes `INPUT_HIGH_RISK_ROUTE` |
+| `action.yml:81` `default: copilot` | metadata | runner materializes `INPUT_HIGH_RISK_ROUTE` |
 | `src/index.js:249` `input("high-risk-route", "copilot", env)` | standalone input fallback | env var absent |
 | `src/operations.js:376` `input("high-risk-route", "copilot", env)` | durable input fallback | env var absent on the operations path |
 | `src/protocol.js:969` `context.highRiskRoute ?? "copilot"` | protocol decode fallback | routing context omits the field |
@@ -65,7 +67,8 @@ Sites found by the name search:
 
 - `action.yml:75` — description of `changed-line-threshold` that references the
   input by name. No default asserted. **No change.**
-- `action.yml:78-81` — the declaration. **Change the default.**
+- `action.yml:78-81` — the input declaration; the `default:` value is on
+  **`:81`**. **Change the default.**
 - `action.yml:83` — `sensitive-paths` description. **No change.**
 - `src/index.js:249` — the fallback. **Change.**
 - `DESIGN.md:212-213` — routing table rows 5 and 6 say "`high-risk-route`,

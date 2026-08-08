@@ -11,7 +11,8 @@ runs at all.
 
 Three cost leaks exist in the shipped router today.
 
-1. `action.yml:78` defaults `high-risk-route: copilot`. Every pull request that
+1. `action.yml:81` defaults `high-risk-route: copilot` (`:78` is where the
+   input block opens; `:81` is the `default:` line). Every pull request that
    touches a `sensitive-paths` glob, and every pull request at or above the
    `changed-line-threshold` (default `800`), selects native Copilot. A consumer
    who installs the generic profile and never sets the input pays Copilot for
@@ -44,7 +45,7 @@ Three cost leaks exist in the shipped router today.
 
 - R1. Change the `high-risk-route` default from `copilot` to `deep` in every
   place that declares it:
-  - `action.yml:78` — the Action metadata default;
+  - `action.yml:81` — the Action metadata default (`default: copilot`);
   - `src/index.js:249` — the standalone-path input fallback;
   - `src/operations.js:376` — the durable-path input fallback;
   - `src/protocol.js:969` — the `context.highRiskRoute ?? "copilot"` fallback;

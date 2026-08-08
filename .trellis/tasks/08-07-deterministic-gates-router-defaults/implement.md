@@ -25,7 +25,7 @@ into this task's diff.
 The default is declared across three layers. Changing a subset produces a
 split-brain where one layer proves `copilot` while another ships `deep`.
 
-- [ ] `action.yml:78` — `default: deep`
+- [ ] `action.yml:81` — `default: deep`
 - [ ] `src/index.js:249` — `input("high-risk-route", "deep", env)`
 - [ ] `src/operations.js:376` — `input("high-risk-route", "deep", env)`
 - [ ] `src/protocol.js:969` — `context.highRiskRoute ?? "deep"`
@@ -34,8 +34,8 @@ split-brain where one layer proves `copilot` while another ships `deep`.
 `src/router.js:34` is a one-token edit in a parameter destructuring list. It is
 not a logic change; R6 permits it.
 
-Note `action.yml`'s default value is on line **81**, not 78 — 78 is where the
-input block begins.
+`action.yml:78` is where the input block opens; `:81` is the `default:` line.
+Every reference in these artifacts points at `:81` for that reason.
 
 Validation — search for the **value**, not the input name. Three of the five
 sites never spell `high-risk-route`. The pattern must be **unquoted**:
