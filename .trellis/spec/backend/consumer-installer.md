@@ -217,9 +217,10 @@ node scripts/install-consumer.mjs uninstall [options]
 ### 5. Good/Base/Bad Cases
 
 - Good: a fresh target uses `--set-secret`; the command writes the pending
-  manifest and workflow, creates the default OpenRouter/Qwen-cheap/Kimi-deep
-  variables plus missing labels/secret, then marks the manifest active. A
-  second install performs no remote mutations.
+  manifest, the event-driven workflow, the durable workflow, and the descriptor,
+  creates the default OpenRouter/Qwen-cheap/Kimi-deep variables plus missing
+  labels/secret, then marks the manifest active. A second install performs no
+  remote mutations and no filesystem writes.
 - Base: a target already has matching variables, labels, or secret. The
   installer records them as unowned, leaves them unchanged, and later
   uninstall preserves them. A managed consumer update without provider/model
@@ -306,6 +307,39 @@ for (const label of manifest.resources.labels) await deleteLabel(label.name);
 for (const label of manifest.resources.labels) {
   if (label.owned && snapshot.labels.has(label.name)) await deleteLabel(label.name);
 }
+```
+
+```js
+// Wrong: gate a schema's invariants on equality with the current constant. It
+// reads as "validate the current schema" and behaves as "stop validating every
+// older one" the moment the constant is bumped — silently unvalidating the
+// provenance fields on every manifest the fleet is actually running.
+if (value.schemaVersion === MANIFEST_SCHEMA_VERSION) {
+  assertProvenance(value.source);
+}
+
+// Correct: gate on the version the requirement was introduced at, so bumping
+// the constant adds a tier instead of narrowing an existing one.
+if (value.schemaVersion >= PROVENANCE_MIN_SCHEMA_VERSION) {
+  assertProvenance(value.source);
+}
+```
+
+```js
+// Wrong: treat "the recorded hashes match disk" as convergence. It suppresses
+// the mutation a provider/model change and a source-commit advance must still
+// cause, because neither of those changes any managed file's bytes.
+const converged = managedFiles.every((file) => sha256(file.bytes) === file.recorded);
+
+// Correct: compare the manifest that *would* be written against the one on
+// disk. Configuration and provenance are inputs to it, so both fall out of the
+// comparison without predicates of their own.
+const converged =
+  local.manifest?.state === "active" &&
+  local.manifest.schemaVersion === MANIFEST_SCHEMA_VERSION &&
+  actions.length === 0 &&
+  JSON.stringify(activeManifest) === JSON.stringify(local.manifest) &&
+  managedFiles.every((file) => sha256(file.bytes) === file.recorded);
 ```
 
 ```js
