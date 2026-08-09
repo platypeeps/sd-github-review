@@ -585,6 +585,27 @@ test("none and query operations mirror durable receipt state without dispatch", 
   assert.equal(harness.outputs.get("receipt"), "");
 });
 
+// Pins the src/operations.js:376 durable-path fallback. This is a distinct
+// fallback site from the standalone path's, so a test on either alone leaves
+// the other unpinned.
+test("omitting high-risk-route routes durable sensitive paths to deep", async () => {
+  const request = clone(requestByName.get("automatic with exact-head local evidence"));
+  const client = new FakeGitHubClient(request.headSha);
+  client.fileNames = ["src/auth/session.js"];
+  const harness = createHarness(client);
+
+  const result = await harness.run("route", request, {
+    "INPUT_SENSITIVE-PATHS": "**/auth/**",
+    // Required because the route now resolves to deep: selectedBackend demands a
+    // {route}-backend for every non-copilot route (src/operations.js:134), while
+    // the copilot route synthesizes its own. This is the migration cost of the
+    // default flip on the durable path.
+    "INPUT_DEEP-BACKEND": JSON.stringify(backendByName.get("external check backend")),
+  });
+
+  assert.equal(result.receipt.selectedRoute, "deep");
+});
+
 test("automatic routing never mirrors sensitive paths into durable outputs", async () => {
   const request = clone(requestByName.get("automatic with exact-head local evidence"));
   const client = new FakeGitHubClient(request.headSha);
@@ -593,6 +614,7 @@ test("automatic routing never mirrors sensitive paths into durable outputs", asy
 
   const result = await harness.run("route", request, {
     "INPUT_SENSITIVE-PATHS": "**/auth/**",
+    "INPUT_HIGH-RISK-ROUTE": "copilot",
   });
 
   assert.equal(result.receipt.selectedRoute, "copilot");

@@ -31,7 +31,7 @@ export function routeReview({
   changedLines,
   changedLineThreshold,
   sensitiveFiles,
-  highRiskRoute = "copilot",
+  highRiskRoute = "deep",
   confidence,
   lowConfidenceRoute,
 }) {

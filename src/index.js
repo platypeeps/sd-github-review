@@ -246,7 +246,7 @@ export async function runAction({
     sensitivePaths: patterns,
     confidence: input("confidence", "unknown", env),
     lowConfidenceRoute: input("low-confidence-route", "deep", env),
-    highRiskRoute: input("high-risk-route", "copilot", env),
+    highRiskRoute: input("high-risk-route", "deep", env),
     draft: Boolean(pullRequest.draft),
     reviewDrafts,
   });

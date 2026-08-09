@@ -78,7 +78,7 @@ inputs:
   high-risk-route:
     description: Route used for sensitive paths and changes at the line threshold. One of deep or copilot.
     required: false
-    default: copilot
+    default: deep
   sensitive-paths:
     description: Comma- or newline-separated glob patterns that select high-risk-route in auto mode.
     required: false
