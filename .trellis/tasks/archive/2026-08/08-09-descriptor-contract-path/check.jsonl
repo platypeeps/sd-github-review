@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "verify the contract/ entry replaced config/ and describes the published descriptor accurately"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "governs the published setup descriptor contract; confirm nothing there still asserts the old path"}

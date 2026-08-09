@@ -343,9 +343,13 @@ repository's `issue_comment` workflow without checking out contributor code.
    `costTier` and `qualityTier` are declared policy metadata; make them match
    the selected model. The complete supported shapes are demonstrated in
    [`fixtures/protocol/v1/supporting.valid.json`](fixtures/protocol/v1/supporting.valid.json).
-6. Publish [`config/routed-review-setup-v1.json`](config/routed-review-setup-v1.json)
-   with the workflow and replace its action-reference placeholder with the
-   same full commit SHA.
+6. Publish the setup capability descriptor with the workflow and replace its
+   action-reference placeholder with the same full commit SHA. Copy this
+   repository's published
+   [`contract/routed-review-setup-v1.json`](contract/routed-review-setup-v1.json)
+   into your repository as `config/routed-review-setup-v1.json`. The two paths
+   differ on purpose: `contract/` is where this repository publishes the
+   reference copy, and `config/` is the only path setup discovery probes.
 
 Each manual dispatch also exposes two repository-policy controls:
 

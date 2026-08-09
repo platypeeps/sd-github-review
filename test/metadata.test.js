@@ -63,9 +63,9 @@ async function writeMetadataFixture(root, actionReference, options = {}) {
   await mkdir(path.join(root, "examples"), { recursive: true });
   await writeFile(path.join(root, "index.js"), "", "utf8");
   if (writeDescriptor) {
-    await mkdir(path.join(root, "config"), { recursive: true });
+    await mkdir(path.join(root, "contract"), { recursive: true });
     await writeFile(
-      path.join(root, "config", "routed-review-setup-v1.json"),
+      path.join(root, "contract", "routed-review-setup-v1.json"),
       `${JSON.stringify(
         {
           schemaVersion: 1,
@@ -395,7 +395,7 @@ test("publishes pinned standalone and durable PR-Agent workflows", async () => {
 test("publishes consistent read-only setup discovery and a no-checkout durable workflow", async () => {
   const root = path.resolve(import.meta.dirname, "..");
   const descriptor = JSON.parse(
-    await readFile(path.join(root, "config", "routed-review-setup-v1.json"), "utf8"),
+    await readFile(path.join(root, "contract", "routed-review-setup-v1.json"), "utf8"),
   );
   const discovery = JSON.parse(
     await readFile(path.join(root, "fixtures", "setup", "v1", "discovery.json"), "utf8"),
@@ -863,7 +863,7 @@ test("rejects a missing supportedContractMajors array", async () => {
   await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c");
   // A pre-R2 descriptor has no such key at all. Passing `undefined` through the
   // fixture would hit its default and write a valid descriptor instead.
-  const descriptorPath = path.join(root, "config", "routed-review-setup-v1.json");
+  const descriptorPath = path.join(root, "contract", "routed-review-setup-v1.json");
   const descriptor = JSON.parse(await readFile(descriptorPath, "utf8"));
   delete descriptor.supportedContractMajors;
   await writeFile(descriptorPath, `${JSON.stringify(descriptor, null, 2)}\n`, "utf8");

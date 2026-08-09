@@ -128,9 +128,13 @@ receipt instead of the standalone event outputs.
 
 The Copilot and PR-Agent setup guides contain their respective durable
 installation steps. Other adapters should replace the generic workflow's
-adapter placeholder, keep provider secrets only on that step, and publish
-[`config/routed-review-setup-v1.json`](config/routed-review-setup-v1.json) so
-clients can perform read-only setup discovery before dispatch.
+adapter placeholder, keep provider secrets only on that step, and publish the
+setup capability descriptor so clients can perform read-only setup discovery
+before dispatch. Copy this repository's published
+[`contract/routed-review-setup-v1.json`](contract/routed-review-setup-v1.json)
+into your repository as `config/routed-review-setup-v1.json`. The two paths
+differ on purpose: `contract/` is where this repository publishes the reference
+copy, and `config/` is the only path setup discovery probes.
 
 The durable receipt operations are `route`, `finalize`, and `query`. Every
 durable call accepts the canonical `review-request` JSON. `route` performs at

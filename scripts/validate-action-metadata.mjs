@@ -23,7 +23,7 @@ const semverPattern =
   /^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
 const releaseTagPattern =
   /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
-const setupDescriptorPath = "config/routed-review-setup-v1.json";
+const setupDescriptorPath = "contract/routed-review-setup-v1.json";
 // Contract majors this release can compatibly serve. Drift beyond this set is a
 // classification the release gate must reject rather than silently ship.
 const knownContractMajors = new Set([1]);

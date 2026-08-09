@@ -158,7 +158,7 @@ contract (`src/operation-contract.js`). It declares, per operation, whether the
 operation constructs a GitHub client/token, the inputs it reads, the outputs it
 emits, and the GITHUB_TOKEN permissions its own API calls require. Runtime
 decoding and `scripts/validate-action-metadata.mjs` both read that contract, so
-`action.yml`, the example workflows, `config/routed-review-setup-v1.json`, and
+`action.yml`, the example workflows, `contract/routed-review-setup-v1.json`, and
 this document cannot drift from the runtime independently.
 
 The durable identity is derived from repository, pull request, full head SHA,
@@ -192,12 +192,18 @@ validated attempt greater than one; `independent-review-floor` defaults to
 initial route/query operation and never alter the canonical finalization
 identity.
 
-[`config/routed-review-setup-v1.json`](config/routed-review-setup-v1.json)
+[`contract/routed-review-setup-v1.json`](contract/routed-review-setup-v1.json)
 declares the workflow identity, contract major, supported intents and
 operations, Check Run capability, permissions, and immutable Action
 placeholder. Read-only clients combine that declaration with GitHub workflow
 metadata to classify `ready`, `absent`, `invalid`, `incompatible`, or
 `unavailable` before any dispatch.
+
+`contract/` is where this repository publishes the reference descriptor;
+`config/routed-review-setup-v1.json` is the single path setup discovery probes
+in the repository being classified. The two are deliberately different: a
+reference copy on the probe path would make this repository classify itself as
+having the durable lane installed.
 
 ## Automatic Selection
 
@@ -466,7 +472,7 @@ The planned contract and delivery split live under
 - [`examples/gated-review-router.yml`](examples/gated-review-router.yml) —
   cost-optimized profile running free deterministic gates ahead of routing, so
   AI review is never billed for a change a lint or test failure would reject
-- [`config/routed-review-setup-v1.json`](config/routed-review-setup-v1.json) —
+- [`contract/routed-review-setup-v1.json`](contract/routed-review-setup-v1.json) —
   read-only setup capability descriptor
 - [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) — candidate, pilot,
   and release gates
