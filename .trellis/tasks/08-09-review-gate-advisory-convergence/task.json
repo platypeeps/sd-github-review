@@ -26,8 +26,8 @@
     ".prism/rules.json",
     ".claude/skills/sd-review/SKILL.md"
   ],
-  "notes": "2026-08-09: same vendoring boundary as 08-09-review-coordinator-stale-check. See that task for the pack.install-audit evidence.",
+  "notes": "2026-08-09: filed upstream, not fixable here. Upstream 08-07-local-finding-rebuttal-channel covers the disposition channel and PR #402 already shipped _local_outstanding, which this repo's 0.64.3 predates. The non-convergence failure mode and the severity/category requirement were appended upstream in PR #406.",
   "meta": {},
   "blocked": true,
-  "blockedOn": "upstream pull request against sd-ai-command-pack; the _remote_gate fix lives in the vendored scripts/sd-ai-command-pack-review-local.py"
+  "blockedOn": "upstream sd-ai-command-pack task 08-07-local-finding-rebuttal-channel; evidence sent as platypeeps/sd-ai-command-pack#406; resumes on a pack refresh carrying a category-aware gate"
 }

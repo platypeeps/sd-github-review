@@ -154,3 +154,53 @@ for the next operator.
 
 Found while shipping `08-09-descriptor-contract-path`; the workaround used there was a fresh
 `--attempt-id`, recorded in PR #68.
+
+## Upstream: already filed there, and this task's design is superseded (2026-08-09)
+
+The upstream task exists and predates this one: `08-07-review-check-stale-cache`
+in `sd-ai-command-pack`, P1, `planning`, filed 2026-08-07 from a different
+consumer (`platypeeps/se-ai-command-pack`). It reaches the same defect from the
+same call site and is more thorough — it pins citations to `v0.64.27`, identifies
+`pack.review-scope` as the one genuinely blocking live-input check, and notes
+that `7865666c` (first in `v0.64.22`) already downgrades an external-symlink
+`knowledge.obsidian-kb` failure to `skipped`. Under that change the four
+`.obsidian-kb` recurrences recorded above would no longer block; only the fifth,
+`pack.review-scope` on PR #71, would.
+
+This repository's evidence was appended to that task rather than duplicated:
+platypeeps/sd-ai-command-pack#406.
+
+### The design here is rejected upstream — do not implement it as written
+
+`design.md` and `implement.md` specify **pass-only reuse**: keep serving a cached
+`passed` report, refuse a cached failure. The upstream PRD requires the opposite
+and says so explicitly — "the source's cached-pass-reuse AC ... is superseded by
+this task's recompute contract — recompute wins, correctness over reuse. Do not
+resurrect the reuse AC." It requires recomputing the deterministic check on
+**every** invocation, and carries an acceptance criterion for the stale-**pass**
+direction, which pass-only reuse leaves unfixed.
+
+So AC 3 above ("a resume at an unchanged head with a cached passing check does
+not re-run the suite") also conflicts with the upstream contract and does not
+survive. Treat both design artifacts as a recorded, refuted alternative: the
+validated implementation in scratchpad is evidence that the smaller change works,
+not a patch to submit. The reference implementation upstream will build from is
+`bc01bc2` in `se-ai-command-pack`, which extracts a `_resolve_check` helper.
+
+Two findings from the work here do carry forward and were sent upstream:
+
+- The failing report must stay in the emitted result. The coordinator's `check`
+  diagnostics are how all five recurrences here were identified, and a naive fix
+  that emits `check: null` on a failure would destroy that.
+- Escaping a replay must cost no numbered attempt. The `roundLimit` refusal fires
+  before the state file is loaded, so attempts spent proving a replay are spent
+  anyway — which is how PR #71 reached the attempt-6 `review.round-extension`
+  demand for an already-remediated check.
+
+### What unblocks this now
+
+Not a fix PR from here. The remedy is upstream's to design under its own
+recompute contract. This task resumes when a pack release carrying that fix is
+refreshed into this repository; at that point the local
+`test/review-coordinator-contract.test.js` and the `error-handling.md` spec
+section can follow, if they still add anything the upstream tests do not.

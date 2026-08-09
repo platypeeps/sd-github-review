@@ -97,3 +97,37 @@ The available exits are all wrong:
 Related but distinct from `08-09-review-coordinator-stale-check`, which is about a *stale* check
 result replaying. This one is about a *live, correct* result that has no terminating disposition.
 Both surfaced on PR #70 in the same session.
+
+## Upstream: already filed, and partly fixed since 0.64.3 (2026-08-09)
+
+The upstream task is `08-07-local-finding-rebuttal-channel` in
+`sd-ai-command-pack` (PARKED), filed 2026-08-07 from PR #353 there. It covers the
+missing local-finding disposition channel — the first three requirements above,
+essentially — from the false-positive angle: a provider that misread quoted
+source inside a Markdown PRD, and a hallucinated typo finding, neither of which
+had any exit.
+
+Upstream PR #402 has since shipped `_local_outstanding`, a rebuttal gate. This
+repository is on `0.64.3` and predates it, so the gate observed here is the
+pre-#402 one.
+
+This repository's evidence was appended to that task rather than duplicated:
+platypeeps/sd-ai-command-pack#406. What it adds is a failure mode the upstream
+PRD does not cover — **non-convergence is distinct from false positives**. Every
+PR #70 finding was individually defensible; rounds 1 and 2 still shared no
+finding at all, so per-finding rebuttal disposes of one round's set while the
+next invocation produces a different one. A rebuttal channel is necessary and
+not sufficient. The severity/category requirement above is the part that closes
+it, and was sent upstream as a new requirement plus acceptance criterion.
+
+Also sent: the escape hatch is structurally unreachable in this topology. The
+router is `absent`/`setup-descriptor-absent` by design after
+`08-09-descriptor-contract-path`, so routing is optional but the receipt can
+never be clean.
+
+### What unblocks this
+
+A pack release carrying both the rebuttal channel and a category-aware gate,
+refreshed into this repository. `.prism/rules.json` is repo-owned and could be
+narrowed here unilaterally, but that would suppress signal rather than fix a gate
+that blocks on any finding regardless of rule configuration.

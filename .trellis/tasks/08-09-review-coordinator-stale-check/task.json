@@ -21,8 +21,8 @@
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "2026-08-09: implementation written and validated, then reverted \u2014 the file is vendored from sd-ai-command-pack. Needs explicit approval for an upstream PR. See the BLOCKED section in prd.md.",
+  "notes": "2026-08-09: filed upstream, not fixable here. scripts/sd-ai-command-pack-review.py is vendored and pack.install-audit blocks a local edit. Upstream 08-07-review-check-stale-cache predates this task and requires recompute-every-run, which SUPERSEDES this task's pass-only-reuse design.md/implement.md and its AC 3 -- do not implement those as written. Evidence appended upstream in PR #406.",
   "meta": {},
   "blocked": true,
-  "blockedOn": "upstream pull request against sd-ai-command-pack; scripts/sd-ai-command-pack-review.py is vendored and pack.install-audit blocks any local edit"
+  "blockedOn": "upstream sd-ai-command-pack task 08-07-review-check-stale-cache; evidence sent as platypeeps/sd-ai-command-pack#406; resumes on a pack refresh carrying the fix"
 }
