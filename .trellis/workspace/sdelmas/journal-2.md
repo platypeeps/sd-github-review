@@ -303,3 +303,42 @@ Added the durable workflow_dispatch lane and the setup discovery descriptor to t
 ### Next Steps
 
 - None - task complete
+
+
+## Session 57: Record the two review-gate defects surfaced by PR #70
+
+**Date**: 2026-08-09
+**Task**: Record the two review-gate defects surfaced by PR #70
+**Branch**: `docs/08-09-pr70-followups`
+
+### Summary
+
+Captured the follow-up defects PR #70 exposed as Trellis task records: a fourth recurrence of the review coordinator replaying a stale sd-check failure, and a new task for the local review gate that cannot converge when providers emit advisory-only findings. Filled the new task's context manifests with the specs a sub-agent needs.
+
+### Main Changes
+
+- Added a fourth-recurrence section to 08-09-review-coordinator-stale-check documenting the per-attempt cache evidence from PR #70 and correcting the record: --attempt-id is a real CLI flag, just undocumented in the sd-review skill.
+- Created task 08-09-review-gate-advisory-convergence for the _remote_gate blocking-on-any-finding defect, with the 3-round/30-finding/0-defect evidence table from PR #70.
+- Replaced the generated _example scaffold rows in the new task's check.jsonl and implement.jsonl with real spec references (directory-structure, error-handling, quality-guidelines).
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `34a5372` | chore(task): record the two review-gate defects PR #70 surfaced |
+| `0e89282` | docs(task): fill review-gate-advisory-convergence context manifests |
+
+### Testing
+
+- [OK] sd-review scope=pr attempt 2: status ready, sd-check passed, 0 findings, remoteGate eligible
+- [OK] node scripts/sd-ai-command-pack-review-preflight.mjs: 0 failures, 1 warning (two task directories in one PR)
+- [OK] every spec path referenced by the two manifests resolves to an existing file
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
