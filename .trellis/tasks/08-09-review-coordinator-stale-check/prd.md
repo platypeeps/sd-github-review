@@ -49,6 +49,21 @@ proceeded through housekeeping. That diagnosis was wrong: `_run_check` shells ou
 inherits the ambient environment except for cache variables. The cause is the state replay
 above, and the identical `durationMs` across invocations is the evidence.
 
+**Fourth recurrence: PR #70, 2026-08-09.** Same shape, same trigger. A spec edit made the KB
+stale and `knowledge.obsidian-kb` failed correctly at `copies: 496 / expected 497`. After
+`sd-ai-command-pack-update-spec-kb.py` reported `copies: 497 / conflicts: none` and the
+standalone `--check` exited 0, the coordinator replayed the identical failure — same
+`durationMs: 258`, same `copies: 496` — while the live gate reported 497. Two data points this
+run make the replay unambiguous: the *preceding* attempt at the parent head had recorded
+`durationMs: 196 / copies: 497 / passed`, so the cache is per-attempt state rather than a
+global one, and the two attempt-2 invocations were byte-identical to each other.
+
+The exit used was `--attempt-id <fresh>`. Correcting one detail in the problem statement above:
+`--attempt-id` *is* a real coordinator CLI flag (`sd-ai-command-pack-review.py --help` lists it),
+it is simply undocumented in `sd-review`'s public control list — so the workaround requires
+reading the script rather than the skill. That gap is part of what this task should close: the
+documented `--attempt N` control is the one that does not work.
+
 ## Requirements
 
 - A remediated check must be re-runnable without inventing an undocumented `--attempt-id`, and
