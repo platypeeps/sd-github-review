@@ -93,13 +93,20 @@ collaboration review.
       `{'state': 'unavailable', 'reason': 'failed to read routed-review workflow metadata: gh:
       Not Found (HTTP 404)'}` — past the descriptor, stopped at the live lookup, exactly as
       design D5 predicted. No green probe is claimed.
-- [ ] ~~Running the probe against `sd-github-review` itself no longer matches this
-      repository's own published descriptor.~~ **Moved to
-      `08-09-descriptor-contract-path`,** which owns the descriptor move.
-- [ ] ~~A repo-wide grep shows no producer still writing this repository's own published
-      descriptor to the discovery path.~~ **Moved to `08-09-descriptor-contract-path`.** What
-      remains here is the inverse: after this change the installer *does* write
-      `config/routed-review-setup-v1.json` into consumers, which is correct and expected.
+- [x] Running the probe against `sd-github-review` itself no longer matches this
+      repository's own published descriptor. **Delivered by
+      `08-09-descriptor-contract-path` (PR #68),** which owns the descriptor move;
+      reconfirmed live here, on every review-coordinator run against this branch:
+      `routerCapability: {state: "absent", reason: "setup-descriptor-absent"}`.
+- [x] A repo-wide grep shows no producer still writing this repository's own published
+      descriptor to the discovery path. **Delivered by `08-09-descriptor-contract-path`;**
+      reverified at this head: five remaining `config/routed-review-setup-v1.json` hits, all
+      readers or the consumer *destination* constant — `sd-ai-command-pack-review.py:31`
+      (`DEFAULT_DESCRIPTOR_PATH`), `sd-ai-command-pack-review-local.py:274,323`, and
+      `codecs.mjs:23,130`. `config/routed-review-setup-v1.json` is absent from this
+      repository and `contract/routed-review-setup-v1.json` is present. The inverse now
+      holds here: the installer *does* write `config/routed-review-setup-v1.json` into
+      consumers, which is correct and expected.
 - [x] A second installer run against an already-installed repository reports no change —
       an empty `actions` array and no filesystem writes, not merely no additional GitHub calls.
       The existing idempotency test was strengthened to assert both, and it fails against the
