@@ -110,7 +110,7 @@ test("no input is required by every operation (github-token cannot be globally r
 });
 
 test("permission union over supportedOperations matches the setup config", async () => {
-  const url = new URL("../config/routed-review-setup-v1.json", import.meta.url);
+  const url = new URL("../contract/routed-review-setup-v1.json", import.meta.url);
   const config = JSON.parse(await readFile(url, "utf8"));
   for (const name of config.supportedOperations) {
     assert.ok(durableOperations.includes(name), `${name} must be a durable operation`);

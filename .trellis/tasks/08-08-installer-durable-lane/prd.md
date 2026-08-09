@@ -3,8 +3,10 @@
 ## Goal
 
 Make the consumer installer deliver both halves of the routed review contract — the discovery
-descriptor and the durable `workflow_dispatch` lane — and move this repository's own published
-descriptor off the path consumers probe.
+descriptor and the durable `workflow_dispatch` lane.
+
+Moving this repository's own published descriptor off the path consumers probe was originally
+part of this goal; it is now `08-09-descriptor-contract-path`, which this task is `blockedOn`.
 
 ## Problem
 
@@ -56,16 +58,17 @@ collaboration review.
 
 - Add an `examples/sd-review.yml` template for the `workflow_dispatch` durable lane, pinned
   consistently with every other first-party reference.
-- Change `WORKFLOW_PATH` and `TEMPLATE_PATH` in `scripts/consumer-installer/codecs.mjs` so the
-  installer writes .github/workflows/sd-review.yml from that template, matching what the
-  descriptor declares.
+- Make the installer write .github/workflows/sd-review.yml from that template, matching what
+  the descriptor declares. This bullet originally said to change `WORKFLOW_PATH` and
+  `TEMPLATE_PATH`; design D2 rejected that mechanism, because repointing the constants removes
+  the event-driven lane every existing consumer relies on and orphans every live manifest on
+  four separate exact-equality checks. The durable lane is added alongside the existing one
+  instead. The outcome this bullet asks for is unchanged.
 - Have the installer write the discovery descriptor into each consumer at
   `config/routed-review-setup-v1.json`, with the consumer-facing values the probe expects.
-- Move this repository's own published descriptor to a path that is not the consumer discovery
-  path, and update every producer and validator that reads it — at minimum
-  `scripts/validate-action-metadata.mjs`, `test/metadata.test.js`,
-  `test/operation-contract.test.js`, `README.md`, `DESIGN.md`, `SETUP-COPILOT.md`,
-  `SETUP-PR-AGENT.md`, and `.trellis/spec/backend/consumer-installer.md` (contract item R1).
+- ~~Move this repository's own published descriptor off the consumer discovery path (contract
+  item R1).~~ **Split out into `08-09-descriptor-contract-path`;** this task is `blockedOn` it
+  and consumes its output as the install source. See design D1.
 - Keep the installer idempotent: a second run against an already-installed consumer must be a
   no-op rather than a duplicate write.
 
@@ -76,13 +79,27 @@ collaboration review.
 - [ ] The installed workflow's path equals the `workflow.path` the installed descriptor
       declares — asserted by a test, not by inspection.
 - [ ] Running the probe against that scratch repository returns a state other than
-      `absent`/`setup-descriptor-absent`.
-- [ ] Running the probe against `sd-github-review` itself no longer matches this repository's
-      own published descriptor.
-- [ ] `grep -rn "config/routed-review-setup-v1.json"` over tracked non-`.trellis` files shows
-      no producer still writing this repository's published descriptor to the discovery path.
-- [ ] A second installer run against an already-installed repository reports no change.
-- [ ] `npm test` stays at 0 failures (595 passing before this change).
+      `absent`/`setup-descriptor-absent`. **Deferred to `08-08-fleet-rollout-smoke`.** Once the
+      descriptor exists the probe continues to GitHub workflow metadata and only succeeds after
+      validating the active path and name (`sd-ai-command-pack-review.py:797-816`), which needs
+      a live registered workflow this task does not produce. This task verifies only that the
+      local branch no longer returns `setup-descriptor-absent`, and says so.
+- [ ] ~~Running the probe against `sd-github-review` itself no longer matches this
+      repository's own published descriptor.~~ **Moved to
+      `08-09-descriptor-contract-path`,** which owns the descriptor move.
+- [ ] ~~A repo-wide grep shows no producer still writing this repository's own published
+      descriptor to the discovery path.~~ **Moved to `08-09-descriptor-contract-path`.** What
+      remains here is the inverse: after this change the installer *does* write
+      `config/routed-review-setup-v1.json` into consumers, which is correct and expected.
+- [ ] A second installer run against an already-installed repository reports no change —
+      an empty `actions` array and no filesystem writes, not merely no additional GitHub calls.
+      This is not satisfied today: `consumer-installer.mjs:195-199` writes unconditionally and
+      the existing test at `test/consumer-installer.test.js:242-247` only counts remote calls.
+      Design D4 owns it.
+- [ ] The event-driven lane is unchanged: a fresh install still produces
+      .github/workflows/ai-review-router.yml from `examples/pr-agent-router.yml`, and existing
+      schema-1 and schema-2 manifests still decode.
+- [ ] `npm test` stays at 0 failures (608 passing before this change, on `main` at `053f156`).
 
 ## Notes
 

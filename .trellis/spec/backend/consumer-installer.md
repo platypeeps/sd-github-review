@@ -115,7 +115,7 @@ node scripts/install-consumer.mjs uninstall [options]
   check. Its always-on tier (folded into `validateMetadata`, run by CI) asserts
   every first-party `platypeeps/sd-github-review@<40-hex>` pin across
   workflows/examples plus the descriptor `actionReference` in
-  `config/routed-review-setup-v1.json` are mutually equal, the descriptor
+  `contract/routed-review-setup-v1.json` are mutually equal, the descriptor
   declares a known `contractMajor`, and `package.json` `version` is valid
   semver. Its opt-in tier additionally requires `releaseTag === v<version>` and
   a not-yet-existing tag. It never requires a pin to equal the release commit

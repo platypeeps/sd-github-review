@@ -27,7 +27,9 @@ src/                   # dependency-free Action runtime
 test/                # node:test suites mirroring runtime boundaries
 fixtures/protocol/   # canonical versioned protocol behavior fixtures
 fixtures/setup/      # read-only setup discovery fixtures
-config/              # published versioned setup capability descriptor
+contract/            # published versioned setup capability descriptor; deliberately
+                     # NOT config/, which is the path consumers install their own
+                     # copy to and the vendored probe reads (R1)
 scripts/             # repository validation, consumer lifecycle, and SD pack helpers
   install-consumer.mjs        # thin consumer-installer CLI entrypoint (process I/O)
   consumer-installer.mjs      # consumer lifecycle orchestration + public re-exports

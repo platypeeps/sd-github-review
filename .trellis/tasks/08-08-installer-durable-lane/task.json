@@ -22,5 +22,6 @@
   "parent": null,
   "relatedFiles": [],
   "notes": "Unblocked 2026-08-09: 08-08-release-v0-3-0-pin-freshness merged in PR #66, so examples/sd-review.yml will carry the current v0.3.0 pin rather than baking v0.1.0 into the fleet rollout.",
-  "meta": {}
+  "meta": {},
+  "blockedOn": "08-09-descriptor-contract-path"
 }
