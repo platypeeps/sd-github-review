@@ -132,8 +132,9 @@ adapter placeholder, keep provider secrets only on that step, and publish the
 setup capability descriptor so clients can perform read-only setup discovery
 before dispatch. Copy this repository's published
 [`contract/routed-review-setup-v1.json`](contract/routed-review-setup-v1.json)
-to `config/routed-review-setup-v1.json` in your repository: `config/` is the
-only path setup discovery probes.
+into your repository as `config/routed-review-setup-v1.json`. The two paths
+differ on purpose: `contract/` is where this repository publishes the reference
+copy, and `config/` is the only path setup discovery probes.
 
 The durable receipt operations are `route`, `finalize`, and `query`. Every
 durable call accepts the canonical `review-request` JSON. `route` performs at

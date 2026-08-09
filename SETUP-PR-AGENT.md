@@ -347,8 +347,9 @@ repository's `issue_comment` workflow without checking out contributor code.
    action-reference placeholder with the same full commit SHA. Copy this
    repository's published
    [`contract/routed-review-setup-v1.json`](contract/routed-review-setup-v1.json)
-   to `config/routed-review-setup-v1.json` in your repository — `config/` is
-   the only path setup discovery probes.
+   into your repository as `config/routed-review-setup-v1.json`. The two paths
+   differ on purpose: `contract/` is where this repository publishes the
+   reference copy, and `config/` is the only path setup discovery probes.
 
 Each manual dispatch also exposes two repository-policy controls:
 
