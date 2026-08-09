@@ -578,9 +578,11 @@ function compareReleaseTags(left, right) {
 // This deliberately lives BESIDE validateMetadata rather than inside it. Twenty
 // fixture call sites in test/metadata.test.js pass synthetic roots that are not
 // git repositories; a tag lookup against those would throw on the repository
-// probe instead of on staleness. It is called from the CLI entrypoint (what CI
-// runs) and from validateReleaseConsistency, so every path CI executes is
-// covered.
+// probe instead of on staleness.
+//
+// Its one caller is the CLI entrypoint, which is what `npm run validate:metadata`
+// runs and what CI gates on. It is NOT called from validateReleaseConsistency —
+// see the comment at that call site for why.
 //
 // Zero tags is a hard failure, never a skip. A skip would make the gate a no-op
 // under a default fetch-depth:1 checkout, which is the one environment where it
