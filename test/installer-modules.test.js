@@ -7,8 +7,13 @@ import test from "node:test";
 
 import {
   DEFAULT_CONFIG,
+  DESCRIPTOR_PATH,
+  DESCRIPTOR_SOURCE_PATH,
+  DURABLE_TEMPLATE_PATH,
+  DURABLE_WORKFLOW_PATH,
   HISTORICAL_TEMPLATE_HASHES,
   MANIFEST_PATH,
+  MANIFEST_SCHEMA_VERSION,
   ROUTING_LABELS,
   SECRET_NAME,
   WORKFLOW_PATH,
@@ -48,6 +53,154 @@ import {
 } from "../scripts/consumer-installer/plan.mjs";
 
 const sha256Hex = (value) => createHash("sha256").update(value).digest("hex");
+
+// Fully-formed manifest bodies for the decoder tests below. Built as literals
+// rather than through createManifest so a decoder regression cannot be masked
+// by the constructor changing in the same direction.
+function manifestBody(schemaVersion, overrides = {}) {
+  const configuration = { ...DEFAULT_CONFIG };
+  const body = {
+    schemaVersion,
+    tool: "sd-github-review",
+    state: "active",
+    repository: "acme/consumer",
+    workflow: { path: WORKFLOW_PATH, sha256: "a".repeat(64) },
+    source: { template: "examples/pr-agent-router.yml", sha256: "a".repeat(64) },
+    configuration,
+    resources: {
+      variables: Object.fromEntries(
+        Object.entries(variableValues(configuration)).map(([name, value]) => [
+          name,
+          { value, owned: true },
+        ]),
+      ),
+      secret: { name: SECRET_NAME, owned: true },
+      labels: ROUTING_LABELS.map(({ name }) => ({ name, owned: true })),
+    },
+  };
+  if (schemaVersion >= 2) {
+    body.source.commit = "b".repeat(40);
+    body.source.tag = "v1.0.0";
+    body.source.released = true;
+  }
+  if (schemaVersion >= 3) {
+    body.descriptor = {
+      path: DESCRIPTOR_PATH,
+      source: DESCRIPTOR_SOURCE_PATH,
+      sha256: "c".repeat(64),
+    };
+    body.durableWorkflow = {
+      path: DURABLE_WORKFLOW_PATH,
+      source: DURABLE_TEMPLATE_PATH,
+      sha256: "d".repeat(64),
+    };
+  }
+  return { ...body, ...overrides };
+}
+
+test("codecs: schema 1, 2, and 3 manifests all decode at the current schema version", () => {
+  // The fleet-breaking direction. Bumping MANIFEST_SCHEMA_VERSION must not stop
+  // a live schema-1 or schema-2 manifest from decoding.
+  assert.equal(MANIFEST_SCHEMA_VERSION, 3);
+  for (const version of [1, 2, 3]) {
+    const decoded = decodeManifest(JSON.stringify(manifestBody(version)));
+    assert.equal(decoded.schemaVersion, version, `schema ${version} must decode as itself`);
+    assert.equal(decoded.repository, "acme/consumer");
+  }
+  assert.throws(
+    () => decodeManifest(JSON.stringify(manifestBody(4))),
+    /unsupported or malformed manifest header/u,
+  );
+});
+
+test("codecs: schema-2 provenance stays validated after the schema-3 bump", () => {
+  // Gating provenance on `=== MANIFEST_SCHEMA_VERSION` would make every one of
+  // these pass silently while the fleet's schema-2 manifests go unchecked.
+  const missingCommit = manifestBody(2);
+  delete missingCommit.source.commit;
+  assert.throws(
+    () => decodeManifest(JSON.stringify(missingCommit)),
+    /source commit must be a 40-character hex commit/u,
+  );
+
+  const badTag = manifestBody(2);
+  badTag.source.tag = "0.1.0";
+  assert.throws(
+    () => decodeManifest(JSON.stringify(badTag)),
+    /source tag must be a v<semver> release tag or null/u,
+  );
+
+  const releasedWithoutTag = manifestBody(2);
+  releasedWithoutTag.source.tag = null;
+  assert.throws(
+    () => decodeManifest(JSON.stringify(releasedWithoutTag)),
+    /a released manifest must record a release tag/u,
+  );
+
+  // The same invariants at schema 3, so the widened condition covers both.
+  const missingCommitV3 = manifestBody(3);
+  delete missingCommitV3.source.commit;
+  assert.throws(
+    () => decodeManifest(JSON.stringify(missingCommitV3)),
+    /source commit must be a 40-character hex commit/u,
+  );
+});
+
+test("codecs: schema-3 validates the descriptor and durableWorkflow blocks by exact equality", () => {
+  for (const field of ["descriptor", "durableWorkflow"]) {
+    const missing = manifestBody(3);
+    delete missing[field];
+    assert.throws(
+      () => decodeManifest(JSON.stringify(missing)),
+      new RegExp(`${field} ownership is malformed`, "u"),
+      `${field} must be required at schema 3`,
+    );
+
+    const wrongPath = manifestBody(3);
+    wrongPath[field] = { ...wrongPath[field], path: ".github/workflows/elsewhere.yml" };
+    assert.throws(
+      () => decodeManifest(JSON.stringify(wrongPath)),
+      new RegExp(`${field} ownership is malformed`, "u"),
+    );
+
+    const wrongSource = manifestBody(3);
+    wrongSource[field] = { ...wrongSource[field], source: "examples/somewhere-else.yml" };
+    assert.throws(
+      () => decodeManifest(JSON.stringify(wrongSource)),
+      new RegExp(`${field} ownership is malformed`, "u"),
+    );
+
+    const badHash = manifestBody(3);
+    badHash[field] = { ...badHash[field], sha256: "not-a-hash" };
+    assert.throws(
+      () => decodeManifest(JSON.stringify(badHash)),
+      new RegExp(`${field} ownership is malformed`, "u"),
+    );
+  }
+
+  // A schema-2 manifest carrying the blocks is still a schema-2 manifest: the
+  // blocks are not validated, and `check` reports the migration instead.
+  const early = manifestBody(2);
+  early.descriptor = { path: "wrong", source: "wrong", sha256: "wrong" };
+  assert.equal(decodeManifest(JSON.stringify(early)).schemaVersion, 2);
+});
+
+test("codecs: the durable template declares the workflow name and path the descriptor does", async () => {
+  // Two files with no compile-time link: GitHub derives the workflow metadata
+  // name from the template's own `name:` field, and the probe rejects a
+  // mismatch against the descriptor as `workflow-name-mismatch`. Assert against
+  // the parsed descriptor, never a repeated literal — a test that restates the
+  // string passes when both sides drift together.
+  const repositoryRoot = new URL("../", import.meta.url);
+  const descriptor = JSON.parse(
+    await readFile(new URL(DESCRIPTOR_SOURCE_PATH, repositoryRoot), "utf8"),
+  );
+  const template = await readFile(new URL(DURABLE_TEMPLATE_PATH, repositoryRoot), "utf8");
+  const declaredName = template.match(/^name:[ \t]*(.+?)[ \t]*$/mu)?.[1];
+
+  assert.equal(declaredName, descriptor.workflow.name);
+  assert.equal(DURABLE_WORKFLOW_PATH, descriptor.workflow.path);
+});
 
 function snapshot({ variables = {}, secrets = [], labels = [] } = {}) {
   return {
@@ -117,13 +270,15 @@ test("codecs: recognizeTemplate matches the current template and allow-listed hi
   assert.equal(recognizeTemplate("unknown", "abc", HISTORICAL_TEMPLATE_HASHES), null);
 });
 
-test("codecs: decodeManifest round-trips a schema-2 manifest and rejects a foreign label", () => {
+test("codecs: decodeManifest round-trips a schema-3 manifest and rejects a foreign label", () => {
   const templateSha = sha256Hex("workflow-body");
   const configuration = { ...DEFAULT_CONFIG };
   const manifest = createManifest({
     state: "active",
     repository: "acme/consumer",
     templateSha,
+    descriptorSha: sha256Hex("descriptor-body"),
+    durableTemplateSha: sha256Hex("durable-body"),
     configuration,
     resources: {
       variables: Object.fromEntries(
@@ -392,6 +547,8 @@ test("persistence: loadLocalState decodes an existing managed manifest", async (
     state: "active",
     repository: "acme/consumer",
     templateSha,
+    descriptorSha: sha256Hex("descriptor-body"),
+    durableTemplateSha: sha256Hex("durable-body"),
     configuration,
     resources: {
       variables: Object.fromEntries(

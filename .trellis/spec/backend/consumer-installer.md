@@ -13,8 +13,10 @@ the source workflow template, a consumer checkout, GitHub repository metadata,
 and provider-secret handling, so filesystem and remote mutations must remain
 recoverable and credential-safe.
 
-Durable on-demand workflows, Copilot account settings, branch protection,
-commits, pushes, and pull requests are outside this command boundary.
+The command installs the durable on-demand lane as well: the setup discovery
+descriptor and the `workflow_dispatch` workflow it declares. Copilot account
+settings, branch protection, commits, pushes, and pull requests remain outside
+this command boundary.
 
 ### 2. Signatures
 
@@ -39,9 +41,28 @@ node scripts/install-consumer.mjs uninstall [options]
 - `--target` resolves to a Git root. `--github OWNER/REPO`, when supplied,
   must match a GitHub `origin`; the authenticated GitHub response must resolve
   to the same repository identity.
-- `install` and `update` copy `examples/pr-agent-router.yml` exactly to the
-  consumer's GitHub workflows file named ai-review-router.yml and manage its
-  consumer-side sd-github-review.json ownership manifest atomically.
+- `install` and `update` copy three source artifacts exactly and manage the
+  consumer-side sd-github-review.json ownership manifest atomically:
+  `examples/pr-agent-router.yml` to the consumer's GitHub workflows file named
+  ai-review-router.yml, `examples/sd-review.yml` to the workflows file named
+  sd-review.yml, and `contract/routed-review-setup-v1.json` to
+  `config/routed-review-setup-v1.json`. The descriptor's source and destination
+  paths differ deliberately: this repository publishes its reference copy under
+  `contract/`, and `config/` is the only path setup discovery probes in a
+  consumer. `examples/sd-review.yml` must declare the `name:` the descriptor's
+  `workflow.name` declares, because GitHub derives the workflow metadata name
+  from that field and the probe rejects a mismatch.
+- The durable lane is an additional managed resource, never a replacement:
+  repointing the event-driven workflow's path or template would remove
+  automatic on-PR review from every existing consumer and orphan every live
+  manifest on the exact-equality `workflow.path` and `source.template` checks.
+- A fully converged `install` or `update` performs no work: an empty `actions`
+  array, no GitHub calls, and no filesystem write. Convergence requires all of
+  an `active` manifest already at `MANIFEST_SCHEMA_VERSION`, a would-be-written
+  manifest deep-equal to the one on disk, zero planned remote actions, and every
+  managed file's bytes matching its recorded hash. Comparing recorded hashes
+  alone is not sufficient and must not be used: it would suppress the mutation a
+  provider/model change and a source-commit advance are both required to cause.
 - `adopt` brings an unmanaged, manually copied workflow under installer
   ownership. It is explicit only and never inferred during install or update. It
   refuses when a manifest already exists (the installation is already managed;
@@ -51,21 +72,39 @@ node scripts/install-consumer.mjs uninstall [options]
   fuzzy or semantic matching); an unrecognized workflow is rejected with a
   bounded manual-reconciliation message that never embeds the workflow content.
   A recognized workflow is converged to the current source, and provenance is
-  recorded exactly as `install` records it. `adopt` plans ownership without
+  recorded exactly as `install` records it. Because the adopted installation
+  must behave exactly like a fresh one afterwards, `adopt` also applies the
+  collision guard to, writes, and records the descriptor and the durable
+  workflow; recording manifest blocks for files it never wrote would leave the
+  adopted install immediately unhealthy. `adopt` plans ownership without
   claiming pre-existing unowned GitHub resources — only resources it creates are
   owned — so a conflicting unowned variable stops it before any mutation and a
   later `uninstall`/`check`/`update` behaves as for a fresh install. It requires
   confirmation (interactive `confirm` seam or `--yes`), honors `--dry-run`, and
   writes `pending` then `active` so a partial GitHub failure is resumable
   through the normal lifecycle.
-- The manifest schema is version `2` (`MANIFEST_SCHEMA_VERSION`), tool
+- The manifest schema is version `3` (`MANIFEST_SCHEMA_VERSION`), tool
   `sd-github-review`, and state `pending`, `active`, or `uninstalling`. It
   records repository, workflow and source SHA-256, source provenance
-  (`source.commit`, `source.tag`, `source.released`), provider/models, and exact
+  (`source.commit`, `source.tag`, `source.released`), the `descriptor` and
+  `durableWorkflow` blocks (each with destination `path`, the `source` path it
+  was copied from, and `sha256`), provider/models, and exact
   variable/secret/label ownership. Source and workflow hashes must match. Extra
-  owned resources are forbidden. A legacy schema-`1` manifest decodes as a
-  pre-provenance install (no `source.commit/tag/released`); it is read-only and
-  `update` rewrites it to schema 2.
+  owned resources are forbidden.
+- The decoder admits schema 1, 2, and 3, and validates by version rather than
+  by equality with the current constant:
+
+  | Version | `workflow` + `source` | provenance (`commit`, `tag`, `released`) | `descriptor` + `durableWorkflow` |
+  | --- | --- | --- | --- |
+  | 1 | required | not present | not present |
+  | 2 | required | **required** | not present |
+  | 3 | required | required | required |
+
+  Gating provenance validation on `schemaVersion === MANIFEST_SCHEMA_VERSION`
+  is forbidden: it silently stops validating `source.commit`/`tag`/`released`
+  on every schema-2 manifest in the fleet. A legacy schema-`1` manifest decodes
+  as a pre-provenance install and a schema-`2` one as a pre-durable install;
+  each is read-only at its own version and `update` rewrites it to schema 3.
 - Source provenance is resolved from the installer's own source root, not the
   consumer. `source.commit` is always a 40-hex commit. The `(released, tag)`
   pair encodes the source unambiguously: `(true, v<semver>)` is the single
@@ -107,9 +146,24 @@ node scripts/install-consumer.mjs uninstall [options]
   relative to the root and never embed a symlink target or other unrelated host
   path.
 - `check` is read-only and exits nonzero for local, source-template, variable,
-  secret-presence, or label drift. It additionally reports a schema-1 migration
-  issue, a newer-source-commit issue, and a released-tag-drift issue when the
-  recorded provenance no longer matches the resolved source identity.
+  secret-presence, or label drift. Each managed resource gets both signals:
+  local drift against the recorded hash, and a newer source than the one
+  recorded. It additionally reports a schema-1 migration issue, a distinct
+  schema-2 durable-lane migration issue, a newer-source-commit issue, and a
+  released-tag-drift issue when the recorded provenance no longer matches the
+  resolved source identity.
+- `released: true` requires a clean working tree for **every** copied source
+  artifact — the event-driven template, the durable template, and the
+  descriptor source — not the event-driven template alone. A dirty copy of any
+  one of them would otherwise install under a manifest asserting a release the
+  bytes did not come from.
+- Migrating a schema-1 or schema-2 installation applies the **collision** guard
+  to each newly managed resource, not the modification guard: the old manifest
+  records no hash to compare, so the modification guard cannot fire and the
+  write path would clobber a hand-placed file. A destination whose bytes differ
+  from the source is refused before any mutation with reconcile guidance; a
+  byte-identical destination is adopted — its hash is recorded and the file is
+  not rewritten.
 - The release gate `validateReleaseConsistency({ repositoryRoot, releaseTag,
   gitImpl })` in `scripts/validate-action-metadata.mjs` is a two-tier hygiene
   check. Its always-on tier (folded into `validateMetadata`, run by CI) asserts
@@ -123,7 +177,10 @@ node scripts/install-consumer.mjs uninstall [options]
   `ci.yml`.
 - Uninstall requires confirmation or `--yes`, removes only owned variables,
   and preserves secrets and labels unless explicit cleanup flags authorize
-  them. `--remove-labels` still removes only installer-created labels.
+  them. `--remove-labels` still removes only installer-created labels. It
+  removes each managed file the manifest records — so a schema-2 installation
+  loses only its event-driven workflow — and refuses when any of them was
+  modified after installation.
 
 ### 4. Validation & Error Matrix
 
@@ -133,6 +190,12 @@ node scripts/install-consumer.mjs uninstall [options]
 | Explicit repository differs from GitHub origin | Fail with both bounded identities |
 | Unsupported provider or malformed model | Fail before writing managed files |
 | Unmanaged workflow has different content | Refuse `install` overwrite; `adopt` if recognized |
+| Unmanaged descriptor or durable workflow has different content | Refuse `install`/`adopt` before any mutation; the file is byte-unchanged |
+| Migrating a schema-1/2 install whose descriptor or durable workflow is hand-placed and differs | Refuse before any mutation; the manifest stays at its old schema |
+| Migrating a schema-1/2 install whose descriptor or durable workflow is byte-identical to the source | Record its hash; do not rewrite the file |
+| Managed descriptor or durable workflow differs from recorded hash | Preserve operator edit and refuse update/uninstall |
+| A copied source artifact is dirty at a release tag | Record `released: false` and `tag: null` |
+| `install`/`update` is fully converged | Empty `actions`, no GitHub calls, no filesystem write |
 | `adopt` workflow is unrecognized (not current or an allow-listed historical hash) | Reject with bounded reconciliation guidance before any mutation |
 | `adopt` target already has a manifest | Refuse; direct the operator to `update` |
 | `adopt` without confirmation or `--yes` | Cancel before writing the pending manifest or mutating GitHub |
@@ -183,10 +246,27 @@ node scripts/install-consumer.mjs uninstall [options]
   installer-created labels.
 - Assert installer provider and label allowlists remain aligned with workflow
   metadata and router exports.
-- Assert schema-2 provenance capture (git-verified `released:true`, dirty
-  template or mismatched tag falling back to `released:false`, and the
-  `.git`-less override recording `(false, v-tag)`); a schema-1 manifest decodes
-  as pre-provenance and `update` rewrites it to schema 2 with a recorded commit.
+- Assert schema-2 provenance capture (git-verified `released:true`, a dirty
+  copy of *any* copied source artifact or a mismatched tag falling back to
+  `released:false`, and the `.git`-less override recording `(false, v-tag)`); a
+  schema-1 manifest decodes as pre-provenance and a schema-2 one as pre-durable,
+  and `update` rewrites each to schema 3 with a recorded commit.
+- Assert schema 1, 2, and 3 manifests all decode, that a malformed schema-2
+  manifest is still rejected on each provenance invariant, and that the
+  schema-3 `descriptor`/`durableWorkflow` blocks are validated by exact
+  equality on `path` and `source` plus `SHA256_PATTERN` on `sha256`.
+- Assert the durable template's `name:` equals the descriptor's `workflow.name`
+  and that the managed durable-workflow path equals its `workflow.path`, read
+  from the parsed descriptor rather than repeated as a literal.
+- Cover all five guards for both the descriptor and the durable workflow:
+  collision on install, `check` drift, `check` source freshness, `update`
+  refusing an operator-modified file, and `uninstall` refusing to remove one.
+- Assert a converged second `install` plans no actions and leaves every managed
+  file's bytes and mtime unchanged, while a provider/model change and a
+  source-commit advance still mutate a byte-identical installation.
+- Assert an adopted installation holds all three managed files and reports no
+  `check` issues, and that a fresh install followed by `uninstall` creates and
+  then removes all three.
 - Assert a symlinked `.github/workflows` or `.github` manifest ancestor fails
   install/check/dry-run before writing outside the target with a bounded error
   that omits the symlink target, that a regular pre-existing `.github` directory

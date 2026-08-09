@@ -5,7 +5,13 @@
 import { randomBytes } from "node:crypto";
 import { lstat, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { MANIFEST_PATH, WORKFLOW_PATH, decodeManifest } from "./codecs.mjs";
+import {
+  DESCRIPTOR_PATH,
+  DURABLE_WORKFLOW_PATH,
+  MANIFEST_PATH,
+  WORKFLOW_PATH,
+  decodeManifest,
+} from "./codecs.mjs";
 
 export async function readOptional(filePath) {
   try {
@@ -158,16 +164,35 @@ export async function removeOptional(guard, filePath) {
   }
 }
 
+// Write only when the destination bytes differ from what we intend to store. A
+// converged run must leave managed files untouched (D4), and adopting a
+// hand-placed file whose bytes already match the source must record ownership
+// without rewriting it (D3b); an unconditional write satisfies neither.
+export async function atomicWriteIfChanged(guard, filePath, content) {
+  await guard.assert(filePath);
+  if ((await readOptional(filePath)) === content) return false;
+  await atomicWrite(guard, filePath, content);
+  return true;
+}
+
 export async function loadLocalState(guard, root) {
   const manifestFile = path.join(root, MANIFEST_PATH);
   const workflowFile = path.join(root, WORKFLOW_PATH);
+  const descriptorFile = path.join(root, DESCRIPTOR_PATH);
+  const durableWorkflowFile = path.join(root, DURABLE_WORKFLOW_PATH);
   await guard.assert(manifestFile);
   await guard.assert(workflowFile);
+  await guard.assert(descriptorFile);
+  await guard.assert(durableWorkflowFile);
   const manifestSource = await readOptional(manifestFile);
   return {
     manifestFile,
     workflowFile,
+    descriptorFile,
+    durableWorkflowFile,
     manifest: manifestSource === null ? null : decodeManifest(manifestSource, manifestFile),
     workflow: await readOptional(workflowFile),
+    descriptor: await readOptional(descriptorFile),
+    durableWorkflow: await readOptional(durableWorkflowFile),
   };
 }

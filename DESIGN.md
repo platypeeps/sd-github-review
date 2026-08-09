@@ -458,7 +458,10 @@ The planned contract and delivery split live under
 - [`SETUP-PR-AGENT.md`](SETUP-PR-AGENT.md) — standalone and durable PR-Agent
   setup, including the event-driven lifecycle installer
 - [`scripts/install-consumer.mjs`](scripts/install-consumer.mjs) — safe
-  install, update, check, and uninstall entrypoint for event-driven PR-Agent
+  install, update, check, and uninstall entrypoint for the event-driven
+  PR-Agent workflow, the durable `sd-review.yml` lane, and the setup descriptor
+- [`examples/sd-review.yml`](examples/sd-review.yml) — the durable
+  `workflow_dispatch` lane the setup descriptor declares
 - [`examples/review-router.yml`](examples/review-router.yml) — production
   adapter skeleton
 - [`examples/pr-agent-router.yml`](examples/pr-agent-router.yml) — PR-Agent

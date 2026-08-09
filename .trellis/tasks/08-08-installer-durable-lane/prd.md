@@ -6,7 +6,9 @@ Make the consumer installer deliver both halves of the routed review contract �
 descriptor and the durable `workflow_dispatch` lane.
 
 Moving this repository's own published descriptor off the path consumers probe was originally
-part of this goal; it is now `08-09-descriptor-contract-path`, which this task is `blockedOn`.
+part of this goal; it became `08-09-descriptor-contract-path`, which shipped in PR #68 and
+unblocked this task. Its output — the published descriptor at
+`contract/routed-review-setup-v1.json` — is this task's install source.
 
 ## Problem
 
@@ -74,16 +76,23 @@ collaboration review.
 
 ## Acceptance Criteria
 
-- [ ] A fresh install into a scratch repository produces both
+- [x] A fresh install into a scratch repository produces both
       `config/routed-review-setup-v1.json` and .github/workflows/sd-review.yml.
-- [ ] The installed workflow's path equals the `workflow.path` the installed descriptor
-      declares — asserted by a test, not by inspection.
-- [ ] Running the probe against that scratch repository returns a state other than
-      `absent`/`setup-descriptor-absent`. **Deferred to `08-08-fleet-rollout-smoke`.** Once the
-      descriptor exists the probe continues to GitHub workflow metadata and only succeeds after
-      validating the active path and name (`sd-ai-command-pack-review.py:797-816`), which needs
-      a live registered workflow this task does not produce. This task verifies only that the
-      local branch no longer returns `setup-descriptor-absent`, and says so.
+      Verified end to end with this repository as the installer source root: both files land,
+      byte-identical to `contract/routed-review-setup-v1.json` and `examples/sd-review.yml`.
+- [x] The installed workflow's path equals the `workflow.path` the installed descriptor
+      declares — asserted by a test, not by inspection. Two tests: one reads the descriptor a
+      real install wrote into the consumer, one binds `DURABLE_WORKFLOW_PATH` and the template's
+      `name:` to the published descriptor. Mutating the template's `name:` fails the second.
+- [x] Running the probe against that scratch repository returns a state other than
+      `absent`/`setup-descriptor-absent`. **Local half only; the live half is deferred to
+      `08-08-fleet-rollout-smoke`.** Once the descriptor exists the probe continues to GitHub
+      workflow metadata and only succeeds after validating the active path and name
+      (`sd-ai-command-pack-review.py:797-816`), which needs a live registered workflow this task
+      does not produce. Measured against an installer-provisioned scratch consumer:
+      `{'state': 'unavailable', 'reason': 'failed to read routed-review workflow metadata: gh:
+      Not Found (HTTP 404)'}` — past the descriptor, stopped at the live lookup, exactly as
+      design D5 predicted. No green probe is claimed.
 - [ ] ~~Running the probe against `sd-github-review` itself no longer matches this
       repository's own published descriptor.~~ **Moved to
       `08-09-descriptor-contract-path`,** which owns the descriptor move.
@@ -91,15 +100,21 @@ collaboration review.
       descriptor to the discovery path.~~ **Moved to `08-09-descriptor-contract-path`.** What
       remains here is the inverse: after this change the installer *does* write
       `config/routed-review-setup-v1.json` into consumers, which is correct and expected.
-- [ ] A second installer run against an already-installed repository reports no change —
+- [x] A second installer run against an already-installed repository reports no change —
       an empty `actions` array and no filesystem writes, not merely no additional GitHub calls.
-      This is not satisfied today: `consumer-installer.mjs:195-199` writes unconditionally and
-      the existing test at `test/consumer-installer.test.js:242-247` only counts remote calls.
-      Design D4 owns it.
-- [ ] The event-driven lane is unchanged: a fresh install still produces
+      The existing idempotency test was strengthened to assert both, and it fails against the
+      pre-D4 code. Mutating the predicate to the naive hash-only form fails six tests including
+      the provider/model change and the source-commit advance, which is the evidence that
+      conditions 1-3 are load-bearing rather than decorative.
+- [x] The event-driven lane is unchanged: a fresh install still produces
       .github/workflows/ai-review-router.yml from `examples/pr-agent-router.yml`, and existing
-      schema-1 and schema-2 manifests still decode.
-- [ ] `npm test` stays at 0 failures (608 passing before this change, on `main` at `053f156`).
+      schema-1 and schema-2 manifests still decode. `WORKFLOW_PATH`, `TEMPLATE_PATH`,
+      `examples/pr-agent-router.yml`, and `HISTORICAL_TEMPLATE_HASHES` are untouched. Gating
+      provenance on `=== MANIFEST_SCHEMA_VERSION` instead of `>= 2` fails the schema-2
+      provenance test, which is the evidence the D3a split is real.
+- [x] `npm test` stays at 0 failures: 634 passing / 0 failing, up from the 608/0 baseline
+      measured on this branch's parent. Coverage, `check`, `validate:metadata`, and
+      `validate:ci-parity` all pass.
 
 ## Notes
 

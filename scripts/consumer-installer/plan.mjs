@@ -4,6 +4,10 @@
 // snapshots and options — no filesystem, `gh`, git, or environment access — so
 // it imports only the codecs leaf.
 import {
+  DESCRIPTOR_PATH,
+  DESCRIPTOR_SOURCE_PATH,
+  DURABLE_TEMPLATE_PATH,
+  DURABLE_WORKFLOW_PATH,
   MANIFEST_PATH,
   MANIFEST_SCHEMA_VERSION,
   ROUTING_LABELS,
@@ -58,6 +62,58 @@ export function assertWorkflowCanBeManaged(command, local, templateSource) {
   }
 }
 
+// The two resources the durable lane adds, in the shape the guards below need:
+// which manifest block records ownership, which consumer path holds the bytes,
+// and which key on the loaded local state carries the current content.
+export const DURABLE_RESOURCES = Object.freeze([
+  Object.freeze({ field: "descriptor", destination: DESCRIPTOR_PATH }),
+  Object.freeze({ field: "durableWorkflow", destination: DURABLE_WORKFLOW_PATH }),
+]);
+
+// The workflow guard above covers the event-driven lane only. The descriptor
+// and the durable workflow get the same protection, plus one case the workflow
+// never has: a schema-1/2 manifest records no hash for either resource, so the
+// modification guard has nothing to compare and a hand-placed file would be
+// clobbered by the unconditional write path. That case (D3b) is a *collision*,
+// resolved by refusing on differing bytes and adopting identical ones.
+export function assertDurableResourcesCanBeManaged(local, sources) {
+  for (const { field, destination } of DURABLE_RESOURCES) {
+    const content = local[field] ?? null;
+    const source = sources[field];
+    const recorded = local.manifest?.[field] ?? null;
+    if (!local.manifest) {
+      if (content !== null && content !== source) {
+        throw new Error(`${destination} exists and is not managed by sd-github-review`);
+      }
+      continue;
+    }
+    if (recorded === null) {
+      // Migration from a pre-durable manifest: first install of this resource.
+      if (content !== null && content !== source) {
+        throw new Error(
+          `${destination} exists and is not managed by sd-github-review; ` +
+            "back up and remove it, then rerun update to reconcile it manually",
+        );
+      }
+      continue;
+    }
+    if (content === null && local.manifest.state !== "pending") {
+      throw new Error(`${destination} is missing from an active managed installation`);
+    }
+    if (
+      content !== null &&
+      // Same A-013 reasoning as the workflow: a pending manifest is interrupted
+      // state to resume, not operator drift to refuse.
+      local.manifest.state !== "pending" &&
+      sha256(content) !== recorded.sha256
+    ) {
+      throw new Error(
+        `${destination} was modified after installation; preserve or reconcile it manually before update`,
+      );
+    }
+  }
+}
+
 export function planResources(configuration, snapshot, existingManifest, setSecretRequested) {
   const actions = [];
   const variables = {};
@@ -101,7 +157,16 @@ export function planResources(configuration, snapshot, existingManifest, setSecr
   return { actions, resources: { variables, secret, labels } };
 }
 
-export function createManifest({ state, repository, templateSha, configuration, resources, release }) {
+export function createManifest({
+  state,
+  repository,
+  templateSha,
+  descriptorSha,
+  durableTemplateSha,
+  configuration,
+  resources,
+  release,
+}) {
   return {
     schemaVersion: MANIFEST_SCHEMA_VERSION,
     tool: "sd-github-review",
@@ -114,6 +179,19 @@ export function createManifest({ state, repository, templateSha, configuration, 
       commit: release.commit,
       tag: release.tag,
       released: release.released,
+    },
+    // Schema-3 durable-lane resources. Each records the consumer destination,
+    // the installed bytes, and the source path in this repository it was copied
+    // from; the source path is what `check` compares against for freshness.
+    descriptor: {
+      path: DESCRIPTOR_PATH,
+      source: DESCRIPTOR_SOURCE_PATH,
+      sha256: descriptorSha,
+    },
+    durableWorkflow: {
+      path: DURABLE_WORKFLOW_PATH,
+      source: DURABLE_TEMPLATE_PATH,
+      sha256: durableTemplateSha,
     },
     configuration,
     resources,

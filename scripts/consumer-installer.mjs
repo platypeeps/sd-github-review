@@ -7,6 +7,10 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import {
   DEFAULT_CONFIG,
+  DESCRIPTOR_PATH,
+  DESCRIPTOR_SOURCE_PATH,
+  DURABLE_TEMPLATE_PATH,
+  DURABLE_WORKFLOW_PATH,
   HELP,
   HISTORICAL_TEMPLATE_HASHES,
   MANIFEST_PATH,
@@ -40,11 +44,14 @@ import {
 } from "./consumer-installer/transport.mjs";
 import {
   atomicWrite,
+  atomicWriteIfChanged,
   loadLocalState,
   makePathGuard,
   removeOptional,
 } from "./consumer-installer/persistence.mjs";
 import {
+  DURABLE_RESOURCES,
+  assertDurableResourcesCanBeManaged,
   assertManifestRepository,
   assertWorkflowCanBeManaged,
   createManifest,
@@ -57,6 +64,10 @@ import {
 // (scripts/install-consumer.mjs and the test suite) keep working unchanged.
 export {
   DEFAULT_CONFIG,
+  DESCRIPTOR_PATH,
+  DESCRIPTOR_SOURCE_PATH,
+  DURABLE_TEMPLATE_PATH,
+  DURABLE_WORKFLOW_PATH,
   GH_COMMAND_TIMEOUT_MS,
   GIT_COMMAND_TIMEOUT_MS,
   GitHubCli,
@@ -142,9 +153,43 @@ async function applyRemoteActions(github, repository, actions, options) {
   }
 }
 
+// Every source artifact the installer copies into a consumer, keyed the way the
+// loaded local state and the manifest blocks are keyed.
+async function readManagedSources(sourceRoot) {
+  const [workflow, durableWorkflow, descriptor] = await Promise.all([
+    readFile(path.join(sourceRoot, TEMPLATE_PATH), "utf8"),
+    readFile(path.join(sourceRoot, DURABLE_TEMPLATE_PATH), "utf8"),
+    readFile(path.join(sourceRoot, DESCRIPTOR_SOURCE_PATH), "utf8"),
+  ]);
+  return { workflow, durableWorkflow, descriptor };
+}
+
+// D4. A converged run writes nothing at all, which is strictly narrower than
+// "the recorded hashes match disk": installOrUpdate also derives the resolved
+// configuration, the planned remote actions, and the source release identity
+// before it writes, and a change in any of those must still mutate a consumer
+// whose files are byte-identical. Condition 2 is what buys that — the manifest
+// that *would* be written is compared whole, so provider/model changes and
+// source-commit advances fall out of it without predicates of their own.
+function isConverged(local, activeManifest, actions) {
+  if (!local.manifest || local.manifest.state !== "active") return false;
+  if (local.manifest.schemaVersion !== MANIFEST_SCHEMA_VERSION) return false;
+  if (actions.length > 0) return false;
+  if (JSON.stringify(activeManifest) !== JSON.stringify(local.manifest)) return false;
+  for (const [content, recorded] of [
+    [local.workflow, local.manifest.workflow.sha256],
+    [local.descriptor, local.manifest.descriptor.sha256],
+    [local.durableWorkflow, local.manifest.durableWorkflow.sha256],
+  ]) {
+    if (content === null || sha256(content) !== recorded) return false;
+  }
+  return true;
+}
+
 async function installOrUpdate(command, options, dependencies) {
   const sourceRoot = dependencies.sourceRoot ?? path.resolve(import.meta.dirname, "..");
-  const templateSource = await readFile(path.join(sourceRoot, TEMPLATE_PATH), "utf8");
+  const sources = await readManagedSources(sourceRoot);
+  const templateSource = sources.workflow;
   const templateSha = sha256(templateSource);
   const version = await readSourceVersion(sourceRoot);
   const release = resolveSourceRelease({
@@ -159,6 +204,7 @@ async function installOrUpdate(command, options, dependencies) {
   const local = await loadLocalState(guard, target.root);
   assertManifestRepository(local.manifest, target.repository);
   assertWorkflowCanBeManaged(command, local, templateSource);
+  assertDurableResourcesCanBeManaged(local, sources);
   const configuration = resolveConfiguration(options, local.manifest);
   const setSecretRequested = options.secretMode === "interactive" || options.secretMode === "stdin";
   const { actions, resources } = planResources(
@@ -171,16 +217,24 @@ async function installOrUpdate(command, options, dependencies) {
     state: "pending",
     repository: target.repository,
     templateSha,
+    descriptorSha: sha256(sources.descriptor),
+    durableTemplateSha: sha256(sources.durableWorkflow),
     configuration,
     resources,
     release,
   });
-  const actionDescriptions = [
-    `write ${MANIFEST_PATH} with pending state`,
-    `write ${WORKFLOW_PATH}`,
-    ...actions.map(publicAction),
-    `write ${MANIFEST_PATH} with active state`,
-  ];
+  const activeManifest = { ...pendingManifest, state: "active" };
+  const converged = isConverged(local, activeManifest, actions);
+  const actionDescriptions = converged
+    ? []
+    : [
+        `write ${MANIFEST_PATH} with pending state`,
+        `write ${WORKFLOW_PATH}`,
+        `write ${DESCRIPTOR_PATH}`,
+        `write ${DURABLE_WORKFLOW_PATH}`,
+        ...actions.map(publicAction),
+        `write ${MANIFEST_PATH} with active state`,
+      ];
   const report = {
     command,
     ok: true,
@@ -190,16 +244,17 @@ async function installOrUpdate(command, options, dependencies) {
     configuration,
     actions: actionDescriptions,
   };
-  if (options.dryRun) return report;
+  if (options.dryRun || converged) return report;
 
   await atomicWrite(guard, local.manifestFile, manifestJson(pendingManifest));
-  await atomicWrite(guard, local.workflowFile, templateSource);
+  // Write each managed file only when its bytes would change, so a run that is
+  // not fully converged still leaves the already-matching files — including a
+  // hand-placed copy this run is adopting (D3b) — untouched on disk.
+  await atomicWriteIfChanged(guard, local.workflowFile, templateSource);
+  await atomicWriteIfChanged(guard, local.descriptorFile, sources.descriptor);
+  await atomicWriteIfChanged(guard, local.durableWorkflowFile, sources.durableWorkflow);
   await applyRemoteActions(github, target.repository, actions, options);
-  await atomicWrite(
-    guard,
-    local.manifestFile,
-    manifestJson({ ...pendingManifest, state: "active" }),
-  );
+  await atomicWrite(guard, local.manifestFile, manifestJson(activeManifest));
   return report;
 }
 
@@ -210,7 +265,8 @@ async function installOrUpdate(command, options, dependencies) {
 // exactly like install so check/update/rollback/uninstall work afterward.
 async function adoptInstallation(options, dependencies) {
   const sourceRoot = dependencies.sourceRoot ?? path.resolve(import.meta.dirname, "..");
-  const templateSource = await readFile(path.join(sourceRoot, TEMPLATE_PATH), "utf8");
+  const sources = await readManagedSources(sourceRoot);
+  const templateSource = sources.workflow;
   const templateSha = sha256(templateSource);
   const version = await readSourceVersion(sourceRoot);
   const release = resolveSourceRelease({
@@ -242,6 +298,11 @@ async function adoptInstallation(options, dependencies) {
         "back up and remove it, then run install to reconcile it manually",
     );
   }
+  // adopt promises the result behaves exactly like install afterwards, so it
+  // owes the durable resources the same collision guard install gives them: a
+  // pre-existing file whose bytes differ from the source is refused before any
+  // mutation rather than silently overwritten.
+  assertDurableResourcesCanBeManaged(local, sources);
   const refreshWorkflow = recognized.label !== "current source";
   const configuration = resolveConfiguration(options, null);
   const setSecretRequested = options.secretMode === "interactive" || options.secretMode === "stdin";
@@ -255,6 +316,8 @@ async function adoptInstallation(options, dependencies) {
     state: "pending",
     repository: target.repository,
     templateSha,
+    descriptorSha: sha256(sources.descriptor),
+    durableTemplateSha: sha256(sources.durableWorkflow),
     configuration,
     resources,
     release,
@@ -264,6 +327,8 @@ async function adoptInstallation(options, dependencies) {
     refreshWorkflow
       ? `refresh ${WORKFLOW_PATH} from adopted ${recognized.label} to current source`
       : `record ${WORKFLOW_PATH} ownership`,
+    `write ${DESCRIPTOR_PATH}`,
+    `write ${DURABLE_WORKFLOW_PATH}`,
     ...actions.map(publicAction),
     `write ${MANIFEST_PATH} with active state`,
   ];
@@ -289,7 +354,9 @@ async function adoptInstallation(options, dependencies) {
   await atomicWrite(guard, local.manifestFile, manifestJson(pendingManifest));
   // Converge the workflow to the current source. For a current-template adoption
   // these bytes already match; for a historical one this refreshes it in place.
-  await atomicWrite(guard, local.workflowFile, templateSource);
+  await atomicWriteIfChanged(guard, local.workflowFile, templateSource);
+  await atomicWriteIfChanged(guard, local.descriptorFile, sources.descriptor);
+  await atomicWriteIfChanged(guard, local.durableWorkflowFile, sources.durableWorkflow);
   await applyRemoteActions(github, target.repository, actions, options);
   await atomicWrite(
     guard,
@@ -301,7 +368,8 @@ async function adoptInstallation(options, dependencies) {
 
 async function checkInstallation(options, dependencies) {
   const sourceRoot = dependencies.sourceRoot ?? path.resolve(import.meta.dirname, "..");
-  const templateSource = await readFile(path.join(sourceRoot, TEMPLATE_PATH), "utf8");
+  const sources = await readManagedSources(sourceRoot);
+  const templateSource = sources.workflow;
   const templateSha = sha256(templateSource);
   const version = await readSourceVersion(sourceRoot);
   let release = null;
@@ -343,10 +411,31 @@ async function checkInstallation(options, dependencies) {
   if (local.manifest && local.manifest.source.sha256 !== templateSha) {
     issues.push("a newer source workflow is available; run update");
   }
+  // The durable resources, once the manifest records them. Each gets the same
+  // pair of signals the event-driven workflow gets: local drift against the
+  // recorded hash, and a newer source than the one that was installed.
+  for (const { field, destination } of DURABLE_RESOURCES) {
+    const recorded = local.manifest?.[field];
+    if (!recorded) continue;
+    const content = local[field];
+    if (content === null) {
+      issues.push(`${destination} is missing`);
+    } else if (sha256(content) !== recorded.sha256) {
+      issues.push(`${destination} differs from its managed hash`);
+    }
+    if (recorded.sha256 !== sha256(sources[field])) {
+      issues.push(`a newer source ${recorded.source} is available; run update`);
+    }
+  }
   if (local.manifest) {
-    if (local.manifest.schemaVersion !== MANIFEST_SCHEMA_VERSION) {
+    if (local.manifest.schemaVersion < 2) {
       issues.push("manifest predates provenance tracking; run update to record provenance");
-    } else if (release) {
+    } else if (local.manifest.schemaVersion < MANIFEST_SCHEMA_VERSION) {
+      issues.push(
+        "manifest predates the durable review lane; run update to install the descriptor and sd-review.yml",
+      );
+    }
+    if (release && local.manifest.schemaVersion >= 2) {
       if (local.manifest.source.commit !== release.commit) {
         issues.push("a newer source commit is available; run update");
       } else if (
@@ -394,8 +483,14 @@ async function uninstall(options, dependencies) {
   const guard = makePathGuard(target.root, dependencies.lstat);
   const local = await loadLocalState(guard, target.root);
   if (!local.manifest) {
-    if (local.workflow !== null) {
-      throw new Error(`${WORKFLOW_PATH} exists without ${MANIFEST_PATH}; refusing to remove it`);
+    for (const [content, destination] of [
+      [local.workflow, WORKFLOW_PATH],
+      [local.descriptor, DESCRIPTOR_PATH],
+      [local.durableWorkflow, DURABLE_WORKFLOW_PATH],
+    ]) {
+      if (content !== null) {
+        throw new Error(`${destination} exists without ${MANIFEST_PATH}; refusing to remove it`);
+      }
     }
     return {
       command: "uninstall",
@@ -412,6 +507,13 @@ async function uninstall(options, dependencies) {
     sha256(local.workflow) !== local.manifest.workflow.sha256
   ) {
     throw new Error(`${WORKFLOW_PATH} was modified; refusing to remove operator changes`);
+  }
+  for (const { field, destination } of DURABLE_RESOURCES) {
+    const recorded = local.manifest[field];
+    const content = local[field];
+    if (recorded && content !== null && sha256(content) !== recorded.sha256) {
+      throw new Error(`${destination} was modified; refusing to remove operator changes`);
+    }
   }
   if (!options.dryRun && !options.yes) {
     const confirm = dependencies.confirm;
@@ -436,10 +538,16 @@ async function uninstall(options, dependencies) {
       }
     }
   }
+  const removals = [`remove ${WORKFLOW_PATH}`];
+  for (const { field, destination } of DURABLE_RESOURCES) {
+    // A schema-1/2 installation never had these files; only remove what the
+    // manifest records as owned.
+    if (local.manifest[field]) removals.push(`remove ${destination}`);
+  }
   const actionDescriptions = [
     `write ${MANIFEST_PATH} with uninstalling state`,
     ...actions.map(publicAction),
-    `remove ${WORKFLOW_PATH}`,
+    ...removals,
     `remove ${MANIFEST_PATH}`,
   ];
   const report = {
@@ -459,6 +567,8 @@ async function uninstall(options, dependencies) {
   );
   await applyRemoteActions(github, target.repository, actions, options);
   await removeOptional(guard, local.workflowFile);
+  if (local.manifest.descriptor) await removeOptional(guard, local.descriptorFile);
+  if (local.manifest.durableWorkflow) await removeOptional(guard, local.durableWorkflowFile);
   await removeOptional(guard, local.manifestFile);
   return report;
 }

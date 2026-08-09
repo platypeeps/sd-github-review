@@ -8,8 +8,9 @@ mode, label, command, or durable request.
 
 The supplied workflows automate routing and PR-Agent execution after they are
 installed. The lifecycle installer can provision the supported event-driven
-workflow, Actions settings, and labels. Durable setup and branch rules remain
-manual.
+workflow, the durable `sd-review.yml` lane and its setup discovery descriptor,
+Actions settings, and labels. The durable lane's PR-Agent adapter steps and
+branch rules remain manual.
 
 ## How this integration runs
 
@@ -100,14 +101,17 @@ the managed template.
 
 `check` is read-only and returns nonzero for local or GitHub drift. Add `--json`
 for machine-readable output. It also reports a migration issue for a manifest
-written before provenance tracking (schema 1) and a newer-source-commit or
-release-tag-drift issue when the recorded provenance no longer matches this
-source checkout; `update` records the current provenance and rewrites a schema-1
-manifest to schema 2.
+written before provenance tracking (schema 1) or before the durable review lane
+(schema 2), and a newer-source-commit or release-tag-drift issue when the
+recorded provenance no longer matches this source checkout; `update` records the
+current provenance, adds any missing managed files, and rewrites an older
+manifest to schema 3. A hand-placed durable workflow or descriptor whose bytes
+differ from this release's is refused rather than overwritten; a byte-identical
+one is adopted in place.
 
 ### Source provenance
 
-The installer records which source release produced an install in the schema-2
+The installer records which source release produced an install in the schema-3
 manifest under `source.commit`, `source.tag`, and `source.released`. When you
 run the installer from a `git clone` checked out at a release tag, this
 resolves automatically: a clean checkout of an exact `v<version>` tag records
@@ -414,14 +418,17 @@ The `v0.1.0` release predates `scripts/consumer-installer.mjs`; it has no
 installer. If you set a consumer up under the older manual or `docker run`
 guidance, move it onto the installer flow by running the current release's
 `install` from a checkout of that release tag. The installer adopts the managed
-workflow and writes a schema-2 manifest, so subsequent `check`/`update` keep it
+workflow and writes a schema-3 manifest, so subsequent `check`/`update` keep it
 traceable. This is a forward migration, not a downgrade.
 
 ### Rollback bounds
 
-Rolling an installer-managed install back is a clean `uninstall` at the current
-release: it removes the managed workflow and the schema-2 manifest so no older
-decoder ever sees a schema-2 file. Reinstalling a *prior* release requires a
+Rolling an installer-managed install back is a clean `uninstall` run from **the
+release that performed the install**, not from whatever release is current: the
+manifest schema is forward-only, `uninstall` decodes the manifest before doing
+anything, and an older decoder rejects a newer schema. Run from the installing
+release it removes every managed file and the manifest, so no older decoder ever
+sees a newer-schema file. Reinstalling a *prior* release requires a
 prior installer-bearing release. `v0.1.0` ships no installer, so it is not a
 rollback target; `v0.2.0` is the earliest installer-bearing release, and
 rolling back from `v0.3.0` means reinstalling from a checkout of `v0.2.0`.

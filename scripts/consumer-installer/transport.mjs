@@ -8,11 +8,22 @@ import path from "node:path";
 import { promisify } from "node:util";
 import {
   COMMIT_PATTERN,
+  DESCRIPTOR_SOURCE_PATH,
+  DURABLE_TEMPLATE_PATH,
   RELEASE_TAG_PATTERN,
   SECRET_NAME,
   TEMPLATE_PATH,
   resolveOverride,
 } from "./codecs.mjs";
+
+// Every source artifact `install` copies into a consumer. `released: true`
+// asserts the installed bytes came from the tagged release, so a dirty copy of
+// *any* of these invalidates that claim, not just the event-driven template.
+const COPIED_SOURCE_PATHS = Object.freeze([
+  TEMPLATE_PATH,
+  DURABLE_TEMPLATE_PATH,
+  DESCRIPTOR_SOURCE_PATH,
+]);
 
 const execFileAsync = promisify(execFile);
 
@@ -285,7 +296,13 @@ export function makeSourceGit(sourceRoot, execImpl = execFileSync) {
       }
     },
     templateDirty() {
-      return gitOutput(sourceRoot, ["status", "--porcelain", "--", TEMPLATE_PATH], execImpl).length > 0;
+      return (
+        gitOutput(
+          sourceRoot,
+          ["status", "--porcelain", "--", ...COPIED_SOURCE_PATHS],
+          execImpl,
+        ).length > 0
+      );
     },
   };
 }
