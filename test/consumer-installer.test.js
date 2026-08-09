@@ -7,6 +7,7 @@ import {
   mkdtemp,
   mkdir,
   readFile,
+  rm,
   symlink,
   writeFile,
 } from "node:fs/promises";
@@ -14,10 +15,15 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
+  DESCRIPTOR_PATH,
+  DESCRIPTOR_SOURCE_PATH,
+  DURABLE_TEMPLATE_PATH,
+  DURABLE_WORKFLOW_PATH,
   GH_COMMAND_TIMEOUT_MS,
   GIT_COMMAND_TIMEOUT_MS,
   GitHubCli,
   HISTORICAL_TEMPLATE_HASHES,
+  MANAGED_RESOURCES,
   MANIFEST_PATH,
   MANIFEST_SCHEMA_VERSION,
   ROUTING_LABELS,
@@ -112,10 +118,26 @@ function gitCommit(root, message) {
 // The installer source root is a git checkout in production, so resolveSourceRelease
 // reads real git here. Provenance-specific tests pass { tag, version } to exercise
 // the released path; the default is an untagged dev checkout (released:false).
-async function makeSource(workflow = "name: managed workflow\n", { tag, version } = {}) {
+async function makeSource(
+  workflow = "name: managed workflow\n",
+  {
+    tag,
+    version,
+    durableWorkflow = "name: SD routed review\n",
+    descriptor =
+      '{"integrationId":"sd-github-review","workflow":' +
+      '{"name":"SD routed review","path":".github/workflows/sd-review.yml",' +
+      '"dispatchEvent":"workflow_dispatch"}}\n',
+  } = {},
+) {
   const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-source-"));
   await mkdir(path.join(root, "examples"));
+  await mkdir(path.join(root, "contract"));
   await writeFile(path.join(root, "examples", "pr-agent-router.yml"), workflow, "utf8");
+  // The durable lane's two additional source artifacts. Distinct bytes per
+  // source so a test that dirties one cannot be satisfied by another.
+  await writeFile(path.join(root, DURABLE_TEMPLATE_PATH), durableWorkflow, "utf8");
+  await writeFile(path.join(root, DESCRIPTOR_SOURCE_PATH), descriptor, "utf8");
   if (version !== undefined) {
     await writeFile(
       path.join(root, "package.json"),
@@ -144,6 +166,70 @@ async function makeTarget() {
 async function readManifest(target) {
   return JSON.parse(await readFile(path.join(target, MANIFEST_PATH), "utf8"));
 }
+
+// Every path a complete installation owns: the manifest plus each managed
+// resource's destination, derived from the production table so a resource added
+// there is asserted on by the idempotency and uninstall checks below without a
+// second edit here.
+const MANAGED_PATHS = [MANIFEST_PATH, ...MANAGED_RESOURCES.map((r) => r.destination)];
+
+async function writeManagedFile(target, relativePath, content) {
+  await mkdir(path.dirname(path.join(target, relativePath)), { recursive: true });
+  await writeFile(path.join(target, relativePath), content, "utf8");
+}
+
+// Bytes plus mtime for every file the installer manages, so a test can assert
+// that a run left them untouched rather than merely rewrote identical bytes.
+async function managedFileState(target) {
+  const state = {};
+  for (const relativePath of MANAGED_PATHS) {
+    const absolute = path.join(target, relativePath);
+    try {
+      state[relativePath] = {
+        content: await readFile(absolute, "utf8"),
+        mtimeMs: (await realLstat(absolute)).mtimeMs,
+      };
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+      state[relativePath] = null;
+    }
+  }
+  return state;
+}
+
+// The durable resources, parameterizing the guard tests so each one is asserted
+// for both rather than for the workflow and by assumption for the descriptor.
+// The set, its destinations, and its source paths are read from the production
+// table rather than restated, so adding a resource there extends this coverage
+// instead of silently leaving the new resource untested. Only the per-resource
+// replacement bytes are test-owned, since no production value supplies them.
+const FRESH_BYTES = {
+  descriptor: '{"integrationId":"sd-github-review","revised":true}\n',
+  durableWorkflow: "name: SD routed review\n# revised\n",
+};
+const DURABLE_CASES = MANAGED_RESOURCES.filter((resource) => resource.durable).map(
+  ({ field, destination, source }) => ({
+    field,
+    destination,
+    sourcePath: source,
+    sourceOption: field,
+    freshBytes: FRESH_BYTES[field],
+  }),
+);
+
+test("every durable managed resource is covered by the parameterized guard cases", () => {
+  // The coverage that makes the derivation above load-bearing: a resource added
+  // to MANAGED_RESOURCES without replacement bytes here would otherwise produce
+  // a case with `freshBytes: undefined` and quietly assert nothing.
+  assert.deepEqual(
+    DURABLE_CASES.map((item) => item.field).sort(),
+    ["descriptor", "durableWorkflow"],
+  );
+  for (const item of DURABLE_CASES) {
+    assert.equal(typeof item.freshBytes, "string", `${item.field} needs replacement bytes`);
+    assert.notEqual(item.freshBytes, "");
+  }
+});
 
 test("the installer does not export the unreachable hasManagedFiles helper (A-021)", () => {
   // A-021: hasManagedFiles had no in-repo caller — a public surface that served
@@ -240,12 +326,23 @@ test("installs, checks, and repeats without leaking secret input", async () => {
   assert.equal(github.calls.some((call) => JSON.stringify(call).includes(secret)), false);
 
   const callsAfterFirst = github.calls.length;
+  // AC 6 / D4. Counting GitHub calls alone passed while every managed file was
+  // rewritten on every run, which is how this looked satisfied when it was not.
+  // A converged second run must perform no work at all: no planned actions and
+  // no filesystem write, asserted through both bytes and mtime.
+  const managedBefore = await managedFileState(target);
   const second = await runConsumerInstaller(
     { command: "install", target },
     { sourceRoot, github },
   );
   assert.equal(second.ok, true);
   assert.equal(github.calls.length, callsAfterFirst);
+  assert.deepEqual(second.actions, [], "a converged second run plans no actions");
+  assert.deepEqual(
+    await managedFileState(target),
+    managedBefore,
+    "a converged second run rewrites no managed file",
+  );
 
   const checked = await runConsumerInstaller(
     { command: "check", target },
@@ -1517,3 +1614,304 @@ test("git non-timeout failure keeps its diagnostic and is not a timeout", () => 
     },
   );
 });
+
+// ---------------------------------------------------------------------------
+// Durable lane: the descriptor and .github/workflows/sd-review.yml. Every guard
+// below is asserted for both resources, because "handled exactly like the
+// workflow" is a claim about five separate mechanisms, not one.
+// ---------------------------------------------------------------------------
+
+test("a fresh install writes the descriptor and the durable workflow beside the event-driven one", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+
+  assert.equal(
+    await readFile(path.join(target, DESCRIPTOR_PATH), "utf8"),
+    await readFile(path.join(sourceRoot, DESCRIPTOR_SOURCE_PATH), "utf8"),
+    "the descriptor is installed verbatim, not rendered",
+  );
+  assert.equal(
+    await readFile(path.join(target, DURABLE_WORKFLOW_PATH), "utf8"),
+    await readFile(path.join(sourceRoot, DURABLE_TEMPLATE_PATH), "utf8"),
+  );
+  // D2 non-regression: the event-driven lane every existing consumer relies on
+  // is still installed from its own template, unchanged.
+  assert.equal(
+    await readFile(path.join(target, WORKFLOW_PATH), "utf8"),
+    await readFile(path.join(sourceRoot, "examples", "pr-agent-router.yml"), "utf8"),
+  );
+
+  const manifest = await readManifest(target);
+  assert.equal(manifest.schemaVersion, MANIFEST_SCHEMA_VERSION);
+  assert.equal(manifest.descriptor.path, DESCRIPTOR_PATH);
+  assert.equal(manifest.descriptor.source, DESCRIPTOR_SOURCE_PATH);
+  assert.equal(manifest.durableWorkflow.path, DURABLE_WORKFLOW_PATH);
+  assert.equal(manifest.durableWorkflow.source, DURABLE_TEMPLATE_PATH);
+});
+
+test("the installed durable workflow sits at the path the installed descriptor declares", async () => {
+  // AC 2. Read both from the consumer after install and compare them to each
+  // other; a literal on either side would pass while the two drifted together.
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+
+  const installed = JSON.parse(await readFile(path.join(target, DESCRIPTOR_PATH), "utf8"));
+  assert.equal(DURABLE_WORKFLOW_PATH, installed.workflow.path);
+  assert.equal(existsSync(path.join(target, installed.workflow.path)), true);
+});
+
+for (const { field, destination, sourceOption, freshBytes } of DURABLE_CASES) {
+  test(`install refuses a pre-existing unmanaged ${destination}`, async () => {
+    const sourceRoot = await makeSource();
+    const target = await makeTarget();
+    const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+    await writeManagedFile(target, destination, "operator content\n");
+
+    await assert.rejects(
+      runConsumerInstaller({ command: "install", target }, { sourceRoot, github }),
+      new RegExp(`${destination.replace(/[./]/gu, "\\$&")} exists and is not managed`, "u"),
+    );
+    assert.equal(await readFile(path.join(target, destination), "utf8"), "operator content\n");
+    assert.equal(existsSync(path.join(target, MANIFEST_PATH)), false);
+    assert.deepEqual(github.calls, [], "the collision is refused before any mutation");
+  });
+
+  test(`check reports ${destination} drift against its managed hash`, async () => {
+    const sourceRoot = await makeSource();
+    const target = await makeTarget();
+    const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+    await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+    await writeManagedFile(target, destination, "operator edit\n");
+
+    const checked = await runConsumerInstaller({ command: "check", target }, { sourceRoot, github });
+    assert.equal(checked.ok, false);
+    assert.ok(
+      checked.issues.includes(`${destination} differs from its managed hash`),
+      checked.issues.join("\n"),
+    );
+  });
+
+  test(`update refuses to clobber an operator-modified ${destination}`, async () => {
+    // Separate from the check-drift guard: check reporting drift does nothing to
+    // stop a direct update from overwriting the file.
+    const sourceRoot = await makeSource();
+    const target = await makeTarget();
+    const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+    await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+    await writeManagedFile(target, destination, "operator edit\n");
+
+    await assert.rejects(
+      runConsumerInstaller({ command: "update", target }, { sourceRoot, github }),
+      /was modified after installation/u,
+    );
+    assert.equal(
+      await readFile(path.join(target, destination), "utf8"),
+      "operator edit\n",
+      "the operator edit survives the refused update byte-for-byte",
+    );
+  });
+
+  test(`uninstall refuses to remove an operator-modified ${destination}`, async () => {
+    const sourceRoot = await makeSource();
+    const target = await makeTarget();
+    const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+    await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+    await writeManagedFile(target, destination, "operator edit\n");
+
+    await assert.rejects(
+      runConsumerInstaller({ command: "uninstall", target, yes: true }, { sourceRoot, github }),
+      /was modified; refusing to remove operator changes/u,
+    );
+    assert.equal(existsSync(path.join(target, destination)), true);
+    assert.equal(existsSync(path.join(target, MANIFEST_PATH)), true);
+  });
+
+  test(`check reports a newer source for ${destination}`, async () => {
+    // Without this, a consumer stays "healthy" on an obsolete descriptor or
+    // durable workflow after a later release changes it.
+    const sourceRoot = await makeSource();
+    const target = await makeTarget();
+    const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+    await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+
+    const manifest = await readManifest(target);
+    await writeFile(path.join(sourceRoot, manifest[field].source), freshBytes, "utf8");
+
+    const checked = await runConsumerInstaller({ command: "check", target }, { sourceRoot, github });
+    assert.equal(checked.ok, false);
+    assert.ok(
+      checked.issues.includes(`a newer source ${manifest[field].source} is available; run update`),
+      checked.issues.join("\n"),
+    );
+    assert.equal(
+      checked.issues.includes(`${destination} differs from its managed hash`),
+      false,
+      "a newer source is not local drift",
+    );
+  });
+
+  test(`a dirty ${sourceOption} source records released:false`, async () => {
+    // released:true asserts the installed bytes came from the tagged release.
+    // Checking only the event-driven template would let a dirty copy of this
+    // source ship under a clean tagged provenance claim.
+    const sourceRoot = await makeSource("name: clean\n", { tag: "v0.9.9", version: "0.9.9" });
+    const manifestSourcePath = field === "descriptor" ? DESCRIPTOR_SOURCE_PATH : DURABLE_TEMPLATE_PATH;
+    await writeFile(path.join(sourceRoot, manifestSourcePath), freshBytes, "utf8");
+    const target = await makeTarget();
+    const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+    await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+
+    const manifest = await readManifest(target);
+    assert.equal(manifest.source.released, false);
+    assert.equal(manifest.source.tag, null);
+  });
+}
+
+test("uninstall removes the manifest and every managed file", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "uninstall", target, yes: true }, { sourceRoot, github });
+
+  for (const relativePath of MANAGED_PATHS) {
+    assert.equal(existsSync(path.join(target, relativePath)), false, `${relativePath} must be removed`);
+  }
+});
+
+test("adopt installs the durable resources and finishes with no check issues", async () => {
+  // adopt promises the adopted install behaves exactly like a fresh one. Under
+  // schema 3 that means writing the two resources it never used to write, or the
+  // manifest records blocks for files that are not there.
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  await placeManualWorkflow(target, await readFile(path.join(sourceRoot, "examples", "pr-agent-router.yml"), "utf8"));
+
+  await runConsumerInstaller({ command: "adopt", target, yes: true }, { sourceRoot, github });
+
+  assert.equal(existsSync(path.join(target, DESCRIPTOR_PATH)), true);
+  assert.equal(existsSync(path.join(target, DURABLE_WORKFLOW_PATH)), true);
+  const checked = await runConsumerInstaller({ command: "check", target }, { sourceRoot, github });
+  assert.deepEqual(checked.issues, []);
+});
+
+test("adopt refuses a pre-existing unmanaged durable workflow before any mutation", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  await placeManualWorkflow(target, await readFile(path.join(sourceRoot, "examples", "pr-agent-router.yml"), "utf8"));
+  await writeManagedFile(target, DURABLE_WORKFLOW_PATH, "hand-placed\n");
+
+  await assert.rejects(
+    runConsumerInstaller({ command: "adopt", target, yes: true }, { sourceRoot, github }),
+    /exists and is not managed by sd-github-review/u,
+  );
+  assert.equal(await readFile(path.join(target, DURABLE_WORKFLOW_PATH), "utf8"), "hand-placed\n");
+  assert.equal(existsSync(path.join(target, MANIFEST_PATH)), false);
+});
+
+// --- D3b: migrating a schema-2 installation, where no hash is recorded yet ---
+
+// Reduce a freshly installed schema-3 consumer to the schema-2 shape a live
+// fleet consumer actually has: provenance recorded, durable resources absent.
+async function downgradeToSchema2(target) {
+  const manifest = await readManifest(target);
+  delete manifest.descriptor;
+  delete manifest.durableWorkflow;
+  manifest.schemaVersion = 2;
+  await writeFile(path.join(target, MANIFEST_PATH), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  await removeManagedFile(target, DESCRIPTOR_PATH);
+  await removeManagedFile(target, DURABLE_WORKFLOW_PATH);
+  return manifest;
+}
+
+async function removeManagedFile(target, relativePath) {
+  const absolute = path.join(target, relativePath);
+  if (existsSync(absolute)) await rm(absolute);
+}
+
+test("check reports a schema-2 installation as needing the durable lane, and update migrates it", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+  await downgradeToSchema2(target);
+
+  const checked = await runConsumerInstaller({ command: "check", target }, { sourceRoot, github });
+  assert.equal(checked.ok, false);
+  assert.ok(
+    checked.issues.includes(
+      "manifest predates the durable review lane; run update to install the descriptor and sd-review.yml",
+    ),
+    checked.issues.join("\n"),
+  );
+  assert.equal(
+    checked.issues.includes("manifest predates provenance tracking; run update to record provenance"),
+    false,
+    "a schema-2 manifest already records provenance",
+  );
+
+  await runConsumerInstaller({ command: "update", target }, { sourceRoot, github });
+  const migrated = await readManifest(target);
+  assert.equal(migrated.schemaVersion, MANIFEST_SCHEMA_VERSION);
+  assert.equal(existsSync(path.join(target, DESCRIPTOR_PATH)), true);
+  assert.equal(existsSync(path.join(target, DURABLE_WORKFLOW_PATH)), true);
+  const rechecked = await runConsumerInstaller({ command: "check", target }, { sourceRoot, github });
+  assert.deepEqual(rechecked.issues, []);
+});
+
+for (const { destination } of DURABLE_CASES) {
+  test(`migrating a schema-2 install refuses a hand-placed differing ${destination}`, async () => {
+    // The overwrite guard cannot fire here: a schema-2 manifest records no hash
+    // to compare against, so without a collision guard the unconditional write
+    // path would silently clobber the hand-placed file.
+    const sourceRoot = await makeSource();
+    const target = await makeTarget();
+    const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+    await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+    await downgradeToSchema2(target);
+    await writeManagedFile(target, destination, "hand placed by an operator\n");
+
+    await assert.rejects(
+      runConsumerInstaller({ command: "update", target }, { sourceRoot, github }),
+      /exists and is not managed by sd-github-review/u,
+    );
+    assert.equal(
+      await readFile(path.join(target, destination), "utf8"),
+      "hand placed by an operator\n",
+      "the hand-placed file survives byte-for-byte",
+    );
+    assert.equal((await readManifest(target)).schemaVersion, 2, "the refusal precedes any mutation");
+  });
+
+  test(`migrating a schema-2 install adopts a byte-identical ${destination} without rewriting it`, async () => {
+    // Refusing here would strand exactly the hand-placed installs this task
+    // exists to bring under management.
+    const sourceRoot = await makeSource();
+    const target = await makeTarget();
+    const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+    await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+    const schema2Manifest = await downgradeToSchema2(target);
+    const sourcePath = destination === DESCRIPTOR_PATH ? DESCRIPTOR_SOURCE_PATH : DURABLE_TEMPLATE_PATH;
+    const sourceBytes = await readFile(path.join(sourceRoot, sourcePath), "utf8");
+    await writeManagedFile(target, destination, sourceBytes);
+    const before = (await realLstat(path.join(target, destination))).mtimeMs;
+
+    await runConsumerInstaller({ command: "update", target }, { sourceRoot, github });
+
+    const migrated = await readManifest(target);
+    assert.equal(migrated.schemaVersion, MANIFEST_SCHEMA_VERSION);
+    assert.equal(await readFile(path.join(target, destination), "utf8"), sourceBytes);
+    assert.equal(
+      (await realLstat(path.join(target, destination))).mtimeMs,
+      before,
+      "an adopted byte-identical file is recorded, not rewritten",
+    );
+    assert.equal(schema2Manifest.schemaVersion, 2);
+  });
+}

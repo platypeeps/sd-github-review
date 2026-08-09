@@ -41,9 +41,11 @@ node scripts/install-consumer.mjs install --target /path/to/consumer --set-secre
 node scripts/install-consumer.mjs install --target /path/to/consumer --set-secret
 ```
 
-The command copies the reviewed workflow, creates the routing variables and
-missing labels, and records ownership in a consumer-side sd-github-review.json
-manifest under the repository's GitHub metadata directory. The manifest also
+The command copies three reviewed files — the event-driven router workflow, the
+durable `sd-review.yml` lane, and the setup discovery descriptor it declares —
+creates the routing variables and missing labels, and records ownership of all
+three in a consumer-side sd-github-review.json manifest under the repository's
+GitHub metadata directory. The manifest also
 records source provenance (the release commit and, for a clean tagged checkout,
 the release tag); run the installer from a checkout of the release tag, or pass
 `--source-tag`/`--source-commit` for a `.git`-less artifact. See

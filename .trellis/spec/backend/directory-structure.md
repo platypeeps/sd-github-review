@@ -39,6 +39,9 @@ scripts/             # repository validation, consumer lifecycle, and SD pack he
     persistence.mjs           # path-containment guard, atomic write/remove, local state
     plan.mjs                  # pure lifecycle planning from decoded snapshots
 examples/            # consumer-owned workflow templates
+  sd-review.yml      # durable workflow_dispatch lane; its `name:` must equal the
+                     # descriptor's workflow.name, which GitHub reports as the
+                     # workflow metadata name the probe validates
 docs/                # project and release operations
 .github/workflows/   # repository CI only
 ```

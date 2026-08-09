@@ -4,6 +4,12 @@
 // snapshots and options — no filesystem, `gh`, git, or environment access — so
 // it imports only the codecs leaf.
 import {
+  DESCRIPTOR_PATH,
+  DESCRIPTOR_SOURCE_PATH,
+  DURABLE_MANAGED_RESOURCES,
+  DURABLE_TEMPLATE_PATH,
+  DURABLE_WORKFLOW_PATH,
+  MANAGED_RESOURCES,
   MANIFEST_PATH,
   MANIFEST_SCHEMA_VERSION,
   ROUTING_LABELS,
@@ -58,6 +64,57 @@ export function assertWorkflowCanBeManaged(command, local, templateSource) {
   }
 }
 
+// The two resources the durable lane adds, in the shape the guards below need:
+// which manifest block records ownership, which consumer path holds the bytes,
+// and which key on the loaded local state carries the current content. Derived
+// from the one managed-resource table rather than restated, so a fourth resource
+// reaches these guards, `check`, and `uninstall` from a single edit.
+export const DURABLE_RESOURCES = DURABLE_MANAGED_RESOURCES;
+
+// The workflow guard above covers the event-driven lane only. The descriptor
+// and the durable workflow get the same protection, plus one case the workflow
+// never has: a schema-1/2 manifest records no hash for either resource, so the
+// modification guard has nothing to compare and a hand-placed file would be
+// clobbered by the unconditional write path. That case (D3b) is a *collision*,
+// resolved by refusing on differing bytes and adopting identical ones.
+export function assertDurableResourcesCanBeManaged(local, sources) {
+  for (const { field, destination } of DURABLE_RESOURCES) {
+    const content = local[field] ?? null;
+    const source = sources[field];
+    const recorded = local.manifest?.[field] ?? null;
+    if (!local.manifest) {
+      if (content !== null && content !== source) {
+        throw new Error(`${destination} exists and is not managed by sd-github-review`);
+      }
+      continue;
+    }
+    if (recorded === null) {
+      // Migration from a pre-durable manifest: first install of this resource.
+      if (content !== null && content !== source) {
+        throw new Error(
+          `${destination} exists and is not managed by sd-github-review; ` +
+            "back up and remove it, then rerun update to reconcile it manually",
+        );
+      }
+      continue;
+    }
+    if (content === null && local.manifest.state !== "pending") {
+      throw new Error(`${destination} is missing from an active managed installation`);
+    }
+    if (
+      content !== null &&
+      // Same A-013 reasoning as the workflow: a pending manifest is interrupted
+      // state to resume, not operator drift to refuse.
+      local.manifest.state !== "pending" &&
+      sha256(content) !== recorded.sha256
+    ) {
+      throw new Error(
+        `${destination} was modified after installation; preserve or reconcile it manually before update`,
+      );
+    }
+  }
+}
+
 export function planResources(configuration, snapshot, existingManifest, setSecretRequested) {
   const actions = [];
   const variables = {};
@@ -101,20 +158,46 @@ export function planResources(configuration, snapshot, existingManifest, setSecr
   return { actions, resources: { variables, secret, labels } };
 }
 
-export function createManifest({ state, repository, templateSha, configuration, resources, release }) {
+// `sources` is the managed source contents keyed by resource field, exactly as
+// `readManagedSources` returns it. Taking the bytes rather than per-resource
+// hash arguments is what keeps this function extensible: a resource added to
+// MANAGED_RESOURCES flows into both the hashes and the emitted blocks with no
+// edit here and no new parameter at either call site.
+export function createManifest({
+  state,
+  repository,
+  sources,
+  configuration,
+  resources,
+  release,
+}) {
+  const shas = Object.fromEntries(
+    MANAGED_RESOURCES.map(({ field }) => [field, sha256(sources[field])]),
+  );
   return {
     schemaVersion: MANIFEST_SCHEMA_VERSION,
     tool: "sd-github-review",
     state,
     repository,
-    workflow: { path: WORKFLOW_PATH, sha256: templateSha },
+    workflow: { path: WORKFLOW_PATH, sha256: shas.workflow },
     source: {
       template: TEMPLATE_PATH,
-      sha256: templateSha,
+      sha256: shas.workflow,
       commit: release.commit,
       tag: release.tag,
       released: release.released,
     },
+    // Schema-3 durable-lane resources. Each records the consumer destination,
+    // the installed bytes, and the source path in this repository it was copied
+    // from; the source path is what `check` compares against for freshness. The
+    // paths come from the managed-resource table so they cannot drift from the
+    // destinations the decoder validates against.
+    ...Object.fromEntries(
+      DURABLE_MANAGED_RESOURCES.map(({ field, destination, source }) => [
+        field,
+        { path: destination, source, sha256: shas[field] },
+      ]),
+    ),
     configuration,
     resources,
   };

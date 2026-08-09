@@ -8,6 +8,60 @@ import { createHash } from "node:crypto";
 export const MANIFEST_PATH = ".github/sd-github-review.json";
 export const WORKFLOW_PATH = ".github/workflows/ai-review-router.yml";
 export const TEMPLATE_PATH = "examples/pr-agent-router.yml";
+// The durable on-demand lane is an *additional* managed resource, never a
+// replacement for the event-driven one above: repointing WORKFLOW_PATH would
+// drop automatic on-PR review from every existing consumer and stop every live
+// manifest from decoding (workflow.path and source.template are exact-equality
+// checks below).
+export const DURABLE_WORKFLOW_PATH = ".github/workflows/sd-review.yml";
+export const DURABLE_TEMPLATE_PATH = "examples/sd-review.yml";
+// The descriptor's source and destination deliberately differ. This repository
+// publishes its reference copy under contract/; config/ is the only path setup
+// discovery probes in a consumer, so publishing there would make this
+// repository classify itself as an installed consumer.
+export const DESCRIPTOR_SOURCE_PATH = "contract/routed-review-setup-v1.json";
+export const DESCRIPTOR_PATH = "config/routed-review-setup-v1.json";
+// The single source of truth for the file resources the installer copies into a
+// consumer. Every downstream list — the schema-3 block validation below, the
+// durable guards in plan.mjs, the `released: true` cleanliness set in
+// transport.mjs, and both source reading and convergence in the orchestrator —
+// derives from this table rather than repeating it. Adding a fourth resource is
+// then one entry plus its manifest wiring, not six edits that silently pass
+// when one is missed.
+//
+// `field` keys the loaded local state, the manifest block, and the read source;
+// `destination` is the consumer path holding the bytes; `source` is the path in
+// this repository they are copied from. The event-driven workflow is durable:
+// false because it predates the durable lane: its manifest block is `workflow`
+// (schema 1) rather than one of the schema-3 blocks, so it is covered by its own
+// guards and is not part of the durable pair.
+export const MANAGED_RESOURCES = Object.freeze([
+  Object.freeze({
+    field: "workflow",
+    destination: WORKFLOW_PATH,
+    source: TEMPLATE_PATH,
+    durable: false,
+  }),
+  Object.freeze({
+    field: "descriptor",
+    destination: DESCRIPTOR_PATH,
+    source: DESCRIPTOR_SOURCE_PATH,
+    durable: true,
+  }),
+  Object.freeze({
+    field: "durableWorkflow",
+    destination: DURABLE_WORKFLOW_PATH,
+    source: DURABLE_TEMPLATE_PATH,
+    durable: true,
+  }),
+]);
+
+// The schema-3 subset: the resources whose ownership a schema-3 manifest records
+// in a block of its own.
+export const DURABLE_MANAGED_RESOURCES = Object.freeze(
+  MANAGED_RESOURCES.filter((resource) => resource.durable),
+);
+
 export const SECRET_NAME = "PR_AGENT_MODEL_API_KEY";
 export const DEFAULT_CONFIG = Object.freeze({
   provider: "openrouter",
@@ -70,9 +124,25 @@ const LIFECYCLE_STATES = new Set(["pending", "active", "uninstalling"]);
 const MAX_MODEL_LENGTH = 256;
 
 // Consumer-manifest schema version. Bumped 1 -> 2 to record source provenance
-// (commit, tag, released) on the source template. Distinct from the action
-// contract descriptor's schemaVersion in config/routed-review-setup-v1.json.
-export const MANIFEST_SCHEMA_VERSION = 2;
+// (commit, tag, released) on the source template, then 2 -> 3 to record the two
+// resources the durable lane adds: the setup discovery descriptor and the
+// durable workflow. Distinct from the action contract descriptor's own
+// schemaVersion in config/routed-review-setup-v1.json.
+//
+// Required fields per version, so the decoder can be read against the matrix:
+//
+//   | version | workflow + source | provenance | descriptor + durableWorkflow |
+//   | 1       | required          | absent     | absent                       |
+//   | 2       | required          | required   | absent                       |
+//   | 3       | required          | required   | required                     |
+export const MANIFEST_SCHEMA_VERSION = 3;
+const SUPPORTED_MANIFEST_SCHEMA_VERSIONS = new Set([1, 2, 3]);
+// Provenance became mandatory at schema 2 and stays mandatory afterwards.
+// Gating it on `=== MANIFEST_SCHEMA_VERSION` would silently stop validating
+// source.commit/tag/released on every schema-2 manifest the fleet is running.
+const PROVENANCE_MIN_SCHEMA_VERSION = 2;
+// The durable lane's two managed resources became mandatory at schema 3.
+const DURABLE_MIN_SCHEMA_VERSION = 3;
 export const COMMIT_PATTERN = /^[0-9a-f]{40}$/u;
 export const RELEASE_TAG_PATTERN =
   /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
@@ -160,7 +230,7 @@ export function decodeManifest(source, filePath = MANIFEST_PATH) {
   }
   if (
     !isObject(value) ||
-    (value.schemaVersion !== 1 && value.schemaVersion !== MANIFEST_SCHEMA_VERSION) ||
+    !SUPPORTED_MANIFEST_SCHEMA_VERSIONS.has(value.schemaVersion) ||
     value.tool !== "sd-github-review"
   ) {
     throw new Error(`${filePath}: unsupported or malformed manifest header`);
@@ -186,7 +256,7 @@ export function decodeManifest(source, filePath = MANIFEST_PATH) {
   if (value.source.sha256 !== value.workflow.sha256) {
     throw new Error(`${filePath}: source and workflow hashes must match`);
   }
-  if (value.schemaVersion === MANIFEST_SCHEMA_VERSION) {
+  if (value.schemaVersion >= PROVENANCE_MIN_SCHEMA_VERSION) {
     // Schema-2 provenance invariants. No separate provenance-source field: the
     // (released, tag) pair alone encodes the source unambiguously.
     if (!COMMIT_PATTERN.test(value.source.commit ?? "")) {
@@ -202,8 +272,27 @@ export function decodeManifest(source, filePath = MANIFEST_PATH) {
       throw new Error(`${filePath}: a released manifest must record a release tag`);
     }
   }
-  // A schema-1 manifest decodes as a pre-provenance install (value.schemaVersion
-  // stays 1); check surfaces the migration and update rewrites it to schema 2.
+  if (value.schemaVersion >= DURABLE_MIN_SCHEMA_VERSION) {
+    // Schema-3 durable-lane invariants, held to the same exact-equality and
+    // SHA256_PATTERN rigor the workflow block gets above. Each block records
+    // the consumer destination path, the installed bytes, and the source path
+    // it was copied from, so `check` can report drift and stale sources and
+    // `uninstall` knows exactly what it owns.
+    for (const { field, destination, source } of DURABLE_MANAGED_RESOURCES) {
+      const block = value[field];
+      if (
+        !isObject(block) ||
+        block.path !== destination ||
+        block.source !== source ||
+        !SHA256_PATTERN.test(block.sha256 ?? "")
+      ) {
+        throw new Error(`${filePath}: ${field} ownership is malformed`);
+      }
+    }
+  }
+  // A schema-1 manifest decodes as a pre-provenance install and a schema-2 one
+  // as a pre-durable install (value.schemaVersion is left as read); check
+  // surfaces the migration and update rewrites it to the current schema.
   value.configuration = validateConfiguration(value.configuration ?? {});
   if (!isObject(value.resources) || !isObject(value.resources.variables)) {
     throw new Error(`${filePath}: resource ownership is malformed`);

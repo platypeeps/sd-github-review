@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 55
+- **Total Sessions**: 56
 - **Last Active**: 2026-08-09
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~253 | Active |
+| `journal-2.md` | ~300 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 56 | 2026-08-09 | Installer ships the discovery descriptor and the durable sd-review.yml lane | `64f0a2b`, `ffe3917`, `d982841`, `2dd02f8`, `84da6b2`, `8fffc76`, `c9e49c7` | `feat/08-08-installer-durable-lane` |
 | 55 | 2026-08-09 | Follow-ups from the descriptor contract-path ship | `7e854554eb52d55867219462017d40e4457eee77` | `chore/08-09-followups` |
 | 54 | 2026-08-09 | Move the published setup descriptor off the consumer discovery path | `38a8042`, `4eea38d`, `32a156b`, `e25d0d2`, `aa750e3`, `3a89173`, `d930ffe` | `feat/08-09-descriptor-contract-path` |
 | 53 | 2026-08-05 | Ship v2 standard-v1 deletion-receipt decoder + residual retention fixtures (PR #54) | `94edfac`, `b704e95`, `5a9fd57`, `391ed90` | `feat/08-04-define-v2-retention-standard-v1-contracts` |
