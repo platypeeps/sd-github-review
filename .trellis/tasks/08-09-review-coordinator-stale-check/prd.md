@@ -18,7 +18,7 @@ check = state["check"]
 ```
 
 The state file is `<artifact-root>/review-<digest(identity)[:24]>.json`, and `_state_identity`
-covers repo, scope, controls, PR, base, and worktree digest — **not** `args.attempt`. So
+covers repo, scope, head, base, worktree digest, PR number, and controls — **not** `args.attempt`. So
 `--attempt N` does not produce a fresh state file, and a cached failure survives every retry.
 
 That is correct when the failure lives in tracked content, because fixing it moves the head or
@@ -64,6 +64,24 @@ it is simply undocumented in `sd-review`'s public control list — so the workar
 reading the script rather than the skill. That gap is part of what this task should close: the
 documented `--attempt N` control is the one that does not work.
 
+**Fifth recurrence: PR #71, 2026-08-09.** A different check and a worse outcome. The failing
+subject was `pack.review-scope` — "tooling/generated files changed, but the PR body does not
+include a recognized tooling/generated scope section" — whose remediated artifact is the
+**GitHub pull-request body**, further outside the content digest than the `.obsidian-kb`
+symlink because it does not live in the working tree at all. The section was regenerated with
+the pack's own `sd-ai-command-pack-pr-body-scope.py --prepare-tooling-body` and applied via
+`gh pr edit --body-file`; no tracked file changed, so the head stayed `d9e31e9`. The
+standalone validator then exited 0 ("PR body scope sections cover detected change
+categories") while attempts 3, 4, and 5 all replayed `failed` at a byte-identical
+`durationMs: 733`. The escape run under a fresh `--attempt-id` passed at `durationMs: 858`.
+
+What makes this recurrence worse than the first four: attempt 6 never reached the cache at
+all, exiting `status: invalid` / `phase: setup` with "attempt exceeds remoteIntegration
+roundLimit; record the structured review.round-extension decision before continuing". Attempts
+4 and 5 ran no provider and revealed nothing — they existed only to prove the replay — yet
+they still consumed the round budget. A stale cache that merely delayed a run now manufactures
+an operator gate for an already-remediated check.
+
 ## Requirements
 
 - A remediated check must be re-runnable without inventing an undocumented `--attempt-id`, and
@@ -79,6 +97,9 @@ documented `--attempt N` control is the one that does not work.
 - [ ] With a cached failing check whose cause is **not** fixed, the same invocation still reports
       blocked.
 - [ ] A resume at an unchanged head with a cached *passing* check does not re-run the suite.
+- [ ] After a cause is remediated outside tracked content, re-running the **same** attempt
+      number reaches the live result, so escaping a replay never requires spending a further
+      numbered attempt.
 - [ ] The behavior is covered by a test that fails against today's code.
 
 ## Notes
