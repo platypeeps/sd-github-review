@@ -82,6 +82,49 @@ roundLimit; record the structured review.round-extension decision before continu
 they still consumed the round budget. A stale cache that merely delayed a run now manufactures
 an operator gate for an already-remediated check.
 
+## BLOCKED — the fix belongs upstream, not in this repository
+
+**2026-08-09.** The implementation was written, validated, and then reverted here, because
+`scripts/sd-ai-command-pack-review.py` is a **vendored** copy owned by `sd-ai-command-pack`
+(present locally at `../sd-ai-command-pack`). Two independent pieces of evidence:
+
+- The file's entire history in this repository is pack refreshes — `chore: refresh
+  sd-ai-command-pack to 0.64.0 (#29)` and `... to 0.54.0`. It has never carried a local edit.
+- With the fix applied, the deterministic gate failed: `pack.install-audit` reported "installed
+  target drifted from pack 0.64.3 content: scripts/sd-ai-command-pack-review.py". The audit's
+  local-edit allowlist (`LOCAL_ALLOWED_PACK_FILES`) covers only `.sd-ai-command-pack/*.json`
+  configuration, so there is no sanctioned way to carry this change here. Even if the gate were
+  bypassed, the next pack refresh would overwrite it.
+
+This is why the planning artifacts read as though the file were repo-owned: `task.json`
+`relatedFiles` lists it, and nothing in the task directory recorded the vendoring boundary.
+Any future task touching a `scripts/sd-ai-command-pack-*` path should check ownership first.
+
+### What was proven before the revert
+
+The work is not lost — it is complete and evidence-backed, just landed in the wrong repository:
+
+- The fix is a one-site change: reuse a cached check only when it is a well-formed report whose
+  `status` is `passed`, and keep a failing report in memory rather than on disk.
+- A hermetic `--self-test` with five scenarios was added to the coordinator, driven by
+  `test/review-coordinator-contract.test.js`. Against unmodified code exactly three scenarios
+  failed (`remediated-outside-content`, `stale-failure-from-old-state`, `failure-not-persisted`);
+  with the fix all five passed, and `npm test` reported 637 pass / 0 fail against a 635 baseline.
+- Mutation testing corrected a design assumption: the **pass-only reuse predicate is the
+  load-bearing fix**, and the non-persistence guard is state hygiene, not correctness. Restoring
+  failure-caching breaks only `failure-not-persisted`; it does not break
+  `remediated-outside-content`, because the predicate still refuses the cached failure.
+
+The reverted implementation is preserved outside the repository for transfer; `design.md` and
+`implement.md` remain accurate and are directly executable against `../sd-ai-command-pack`.
+
+### What unblocks this
+
+Explicit approval for a pull request against `sd-ai-command-pack`, which the autonomous
+run-level authority excludes. After that lands and a pack refresh brings 0.64.4+ into this
+repository, `test/review-coordinator-contract.test.js` and the `error-handling.md` spec section
+can follow here.
+
 ## Requirements
 
 - A remediated check must be re-runnable without inventing an undocumented `--attempt-id`, and

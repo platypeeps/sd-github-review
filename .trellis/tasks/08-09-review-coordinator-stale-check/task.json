@@ -1,9 +1,9 @@
 {
   "id": "review-coordinator-stale-check",
   "name": "review-coordinator-stale-check",
-  "title": "Review coordinator replays a stale sd-check failure remediated outside the content digest",
+  "title": "PARKED: Review coordinator replays a stale sd-check failure remediated outside the content digest",
   "description": "sd-review caches the typed sd-check result in coordinator state keyed on an identity that excludes --attempt, so a check failure remediated outside tracked content \u2014 the Obsidian KB refresh \u2014 replays forever and no documented argument reaches a live re-run. Third recurrence; previously misdiagnosed as an environment isolation artifact.",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": "scripts",
@@ -12,7 +12,7 @@
   "assignee": "sdelmas",
   "createdAt": "2026-08-09",
   "completedAt": null,
-  "branch": null,
+  "branch": "feat/08-09-review-coordinator-stale-check",
   "base_branch": "main",
   "worktree_path": null,
   "commit": null,
@@ -21,6 +21,8 @@
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "",
-  "meta": {}
+  "notes": "2026-08-09: implementation written and validated, then reverted \u2014 the file is vendored from sd-ai-command-pack. Needs explicit approval for an upstream PR. See the BLOCKED section in prd.md.",
+  "meta": {},
+  "blocked": true,
+  "blockedOn": "upstream pull request against sd-ai-command-pack; scripts/sd-ai-command-pack-review.py is vendored and pack.install-audit blocks any local edit"
 }

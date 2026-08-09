@@ -13,7 +13,7 @@ Add the hermetic self-test before the fix, and prove it fails against today's co
    `scripts/sd-ai-command-pack-housekeeping.sh:1197` (`self_test_scenario`) as the shape
    reference. That precedent is a bash helper, so this is an adaptation, not an existing Python
    convention — hold it to the same hermeticity bar housekeeping sets.
-2. Build the fixture per `design.md`'s test-surface section. All four constraints are required,
+2. Build the fixture per `design.md`'s test-surface section. All five constraints are required,
    not optional hardening:
    - a **temporary Git repository**, never the checkout under test;
    - stubs for **both** `CHECK_SCRIPT` and `LOCAL_SCRIPT` — a passing check falls straight into
@@ -29,7 +29,7 @@ Add the hermetic self-test before the fix, and prove it fails against today's co
    the "live" check says on the first and second invocation, and counts how many times it was
    actually invoked. That invocation count is the assertion separating a replay from a live
    re-run — the same discriminator the `durationMs` comparison provided by hand.
-3. Four scenarios:
+3. Five scenarios:
    - **remediated-outside-content** (AC 1) — first invocation returns `failed`, second returns
      `passed`, identity unchanged. Expect: stub invoked twice, second run reports the live
      `passed`. *Fails today* — invoked once, replays `failed`.
@@ -40,6 +40,10 @@ Add the hermetic self-test before the fix, and prove it fails against today's co
    - **cached-pass-not-rerun** (AC 3) — first invocation returns `passed`, then resume at an
      unchanged identity. Expect: stub invoked exactly once. Passes today; it guards the cache's
      surviving purpose.
+   - **failure-not-persisted** (state hygiene) — one invocation returning `failed`; assert the
+     written state file's `check` is still `null`. Covers the non-persistence guard, which the
+     mutation run showed is hygiene rather than correctness. *Fails today* — today's code
+     persists the failure.
    - **stale-failure-from-old-state** (AC 1, upgrade path) — pre-write a state file containing a
      non-null *failed* check, as today's code produces, then invoke with the stub scripted to
      return `passed`. Expect: stub invoked once and the live `passed` reported. *Fails today* —
@@ -53,10 +57,11 @@ Add the hermetic self-test before the fix, and prove it fails against today's co
    npm test 2>&1 | tail -30
    ```
 
-   Expected before the fix: **two** scenarios fail — `remediated-outside-content` and
-   `stale-failure-from-old-state`. `still-failing` and `cached-pass-not-rerun` must already pass;
-   they encode behavior the fix preserves. If either failing scenario passes before the fix, the
-   stub is not exercising the cache — stop and correct the fixture rather than proceeding.
+   Expected before the fix: **three** scenarios fail — `remediated-outside-content`,
+   `stale-failure-from-old-state`, and `failure-not-persisted`. `still-failing` and
+   `cached-pass-not-rerun` must already pass; they encode behavior the fix preserves. If any
+   failing scenario passes before the fix, the stub is not exercising the cache — stop and
+   correct the fixture rather than proceeding.
 
 ## Step 2 — apply the fix
 
@@ -101,7 +106,7 @@ npm run check
 node scripts/sd-ai-command-pack-review-preflight.mjs
 ```
 
-Expected: all four scenarios pass; the pre-existing suite stays at its current pass count with
+Expected: all five scenarios pass; the pre-existing suite stays at its current pass count with
 zero new failures; coverage does not regress; preflight reports 0 failures.
 
 ### End-to-end check on a real run
@@ -145,10 +150,22 @@ Assertion is not evidence. Run two mutations, restoring after each:
 - Replace the reuse predicate with `if cached is not None:` — `stale-failure-from-old-state`
   must fail.
 - Remove the `if check.get("status") == "passed":` guard so failures are cached again —
-  `remediated-outside-content` must fail.
+  `failure-not-persisted` must fail.
+
+**The second mutation does not break `remediated-outside-content`, and that is not a gap in the
+test — it is what the mutation run revealed about the fix.** The pass-only reuse predicate is
+load-bearing on its own: a persisted failure is still never reused, because the predicate
+rejects any cached value that is not a passing report. The non-persistence guard is therefore
+*state hygiene* rather than correctness — it keeps a stale failed payload from sitting in the
+state file where a later reader, or a later change to the predicate, could come to trust it.
+
+Because that guard is real code, it needs its own scenario or it ships untested. That is
+`failure-not-persisted` (scenario 5): run once with a failing check, then assert the persisted
+state file's `check` is still `null`. It is the only scenario the second mutation breaks.
 
 A scenario that does not fail against the corresponding broken implementation proves nothing and
-must be rewritten.
+must be rewritten — but the correct response to a mutation that breaks nothing is first to ask
+whether the mutated code was load-bearing at all.
 
 ## Review gates
 
