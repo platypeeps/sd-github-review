@@ -216,3 +216,40 @@ This repository published routed-review-setup-v1.json at config/, the single pat
 ### Next Steps
 
 - None - task complete
+
+
+## Session 55: Follow-ups from the descriptor contract-path ship
+
+**Date**: 2026-08-09
+**Task**: Follow-ups from the descriptor contract-path ship
+**Branch**: `chore/08-09-followups`
+
+### Summary
+
+Cleared the blockedOn marker on 08-08-installer-durable-lane now that 08-09-descriptor-contract-path merged in #68, and recorded the review-coordinator state-replay defect found while shipping it as its own task with a reproduction and evidence.
+
+### Main Changes
+
+- Removed blockedOn from 08-08-installer-durable-lane so the backlog ranker can select it; 08-08-fleet-rollout-smoke correctly stays blocked on 08-08
+- Created 08-09-review-coordinator-stale-check with the cached-check reproduction, the _state_identity analysis, and a correction of the two earlier environment-isolation misdiagnoses
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7e854554eb52d55867219462017d40e4457eee77` | chore(task): unblock the installer lane and record the coordinator replay defect |
+
+### Testing
+
+- [OK] sd-review scope=pr on #69: ready, local clean, 0 findings
+- [OK] typed sd-check: 7/7 passed
+- [OK] review preflight: 0 failures
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
