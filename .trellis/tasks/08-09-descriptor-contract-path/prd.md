@@ -65,7 +65,7 @@ Explicitly **out of scope**: the installer writing a descriptor into consumers, 
 
 - [ ] `git grep -n 'mkdir(path.join(root, "config")' test/metadata.test.js` returns nothing.
       This line (`:66`) creates the parent directory for `:68` and matches neither pattern above,
-      so it needs its own check; missing it makes fixture creation fail on a absent parent.
+      so it needs its own check; missing it makes fixture creation fail on an absent parent.
 - [ ] `npm run validate:metadata` passes. It reads the descriptor and fails on a missed reader.
 - [ ] Running the probe against this repository no longer matches this repository's own
       published descriptor.

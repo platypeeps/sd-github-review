@@ -20,13 +20,18 @@ it and starts from a tree where that has already merged.
 Before step 2, confirm the prerequisite actually landed rather than assuming it:
 
 ```bash
-test -f contract/routed-review-setup-v1.json && echo present
-git grep -n "routed-review-setup-v1.json" -- ':!.trellis'
+test -f contract/routed-review-setup-v1.json && echo "source present"
+test -e config/routed-review-setup-v1.json && echo "STOP: old path still present"
+git grep -nE 'config/routed-review-setup-v1|"config", *"routed-review-setup-v1' -- scripts
 ```
 
-Expect `contract/` to hold the file and exactly four remaining `config/` hits, all naming the
-installed consumer path. If `config/routed-review-setup-v1.json` still exists, stop — this task
-would then define `DESCRIPTOR_SOURCE_PATH` pointing at a file that is not there.
+Expect `contract/` to hold the file, the old path to be absent, and exactly four `config/` hits
+under `scripts/` — `sd-ai-command-pack-review.py:31`, `sd-ai-command-pack-review-local.py:274`
+and `:323`, and the `consumer-installer/codecs.mjs:74` comment — all naming the installed
+consumer path. Grep the old path specifically, not the bare basename: the basename now matches
+every `contract/` reader and every documentation mention, so it cannot distinguish a completed
+move from an untouched tree. If `config/routed-review-setup-v1.json` still exists, stop — this
+task would then define `DESCRIPTOR_SOURCE_PATH` pointing at a file that is not there.
 
 ## Step 2 — `examples/sd-review.yml`
 
