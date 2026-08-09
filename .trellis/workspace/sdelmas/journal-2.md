@@ -253,3 +253,53 @@ Cleared the blockedOn marker on 08-08-installer-durable-lane now that 08-09-desc
 ### Next Steps
 
 - None - task complete
+
+
+## Session 56: Installer ships the discovery descriptor and the durable sd-review.yml lane
+
+**Date**: 2026-08-09
+**Task**: Installer ships the discovery descriptor and the durable sd-review.yml lane
+**Branch**: `feat/08-08-installer-durable-lane`
+
+### Summary
+
+Added the durable workflow_dispatch lane and the setup discovery descriptor to the consumer installer alongside the event-driven lane, bumped the consumer manifest to schema 3 with version-tier gating, and derived every managed-resource list from one table.
+
+### Main Changes
+
+- Added examples/sd-review.yml, the durable workflow_dispatch template declaring the workflow name the descriptor names
+- Bumped the consumer manifest 2 -> 3 with descriptor and durableWorkflow ownership blocks; the decoder admits 1, 2, and 3 and gates each invariant on the version it was introduced at, never on equality with the current constant
+- Extended all five guards (collision, check drift, check source freshness, update overwrite refusal, uninstall removal refusal) to both new resources, with the schema-2 migration using the collision guard rather than the overwrite guard
+- Made released: true require every copied source artifact clean, not just the event-driven template
+- Made a converged run perform no work at all: empty actions, no GitHub calls, no filesystem write
+- Introduced MANAGED_RESOURCES as the single source of truth and derived every dependent list from it, closing the review-recurrence drift the repo's own prism rules target
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `64f0a2b` | feat(installer): install the setup descriptor and the durable sd-review.yml lane |
+| `ffe3917` | docs(spec): record the durable-lane contract and its two silent-failure traps |
+| `d982841` | docs(spec): record the managed-resource enumeration sites as a contract |
+| `2dd02f8` | refactor(installer): derive every managed-resource list from one table |
+| `84da6b2` | refactor(installer): close the two residual managed-resource duplications |
+| `8fffc76` | fix(installer): pass sources at both createManifest call sites, plus review fixes |
+| `c9e49c7` | docs(task): check the two criteria PR #68 delivered, with reverified evidence |
+
+### Testing
+
+- [OK] npm test: 635 passing / 0 failing (baseline 608/0)
+- [OK] npm run test:coverage: OK (global 94.08% lines / 84.86% branches / 95.18% funcs)
+- [OK] npm run check, validate:metadata (7 examples), validate:ci-parity: all OK
+- [OK] end-to-end against this repository as the installer source: 21/21 assertions
+- [OK] mutation testing: removing one MANAGED_RESOURCES entry fails 48 tests; the naive hash-only convergence predicate fails 6; provenance gated on equality fails the schema-2 test
+- [OK] review preflight and pre-archive gate: 0 failures
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
