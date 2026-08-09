@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Defines the scripts/ boundary the review coordinator lives in and the rule that repository-only validation never becomes part of the shipped Action runtime."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "The fix changes when a cached failure is treated as authoritative; the failure surface and diagnostic wording must follow the project's error contract."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Acceptance requires a test that fails against today's code; this spec owns test structure and assertion-point expectations."}
