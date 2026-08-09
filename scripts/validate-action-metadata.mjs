@@ -506,6 +506,95 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
   };
 }
 
+// Final releases only. releaseTagPattern also admits prerelease and build
+// metadata, which must not become a freshness target: a pin points at a
+// shipped release, and the numeric compare below has no prerelease precedence
+// rules to rank v1.0.0-rc.1 against v1.0.0.
+const finalReleaseTagPattern = /^v[0-9]+\.[0-9]+\.[0-9]+$/u;
+
+// Enumerate v<semver> release tags. Returns raw tag names; ordering is the
+// caller's job, because git's own tag order is lexical and would rank v0.10.0
+// below v0.9.0.
+async function defaultListReleaseTags(repositoryRoot) {
+  const { stdout } = await execFileAsync("git", ["-C", repositoryRoot, "tag", "--list", "v*"], {
+    encoding: "utf8",
+  });
+  return stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => finalReleaseTagPattern.test(line));
+}
+
+async function defaultResolveTagCommit(repositoryRoot, tag) {
+  const { stdout } = await execFileAsync(
+    "git",
+    ["-C", repositoryRoot, "rev-list", "-n1", tag],
+    { encoding: "utf8" },
+  );
+  return stdout.trim();
+}
+
+// Semver precedence over the numeric core. Release tags here are always
+// v<major>.<minor>.<patch>, so a three-part numeric compare is total and no
+// prerelease ordering is required.
+function compareReleaseTags(left, right) {
+  const parse = (tag) => tag.slice(1).split(".").map((part) => Number.parseInt(part, 10));
+  const a = parse(left);
+  const b = parse(right);
+  for (let index = 0; index < 3; index += 1) {
+    if (a[index] !== b[index]) return a[index] - b[index];
+  }
+  return 0;
+}
+
+// R-003: the descriptor's pin must resolve to the current release, not merely
+// to 40 hex characters. Without this, every first-party reference agreeing on a
+// SHA that is several releases old passes cleanly — which is exactly how this
+// repository shipped a v0.1.0 pin for the whole v0.2.0 cycle.
+//
+// This deliberately lives BESIDE validateMetadata rather than inside it. Twenty
+// fixture call sites in test/metadata.test.js pass synthetic roots that are not
+// git repositories; a tag lookup against those would throw on the repository
+// probe instead of on staleness. It is called from the CLI entrypoint (what CI
+// runs) and from validateReleaseConsistency, so every path CI executes is
+// covered.
+//
+// Zero tags is a hard failure, never a skip. A skip would make the gate a no-op
+// under a default fetch-depth:1 checkout, which is the one environment where it
+// has to bite.
+export async function assertPinFreshness({
+  repositoryRoot = process.cwd(),
+  gitImpl,
+} = {}) {
+  const listReleaseTags = gitImpl?.listReleaseTags ?? defaultListReleaseTags;
+  const resolveTagCommit = gitImpl?.resolveTagCommit ?? defaultResolveTagCommit;
+  const { descriptorPath, actionSha } = await readSetupDescriptor(repositoryRoot);
+
+  // Re-filter rather than trust the lookup: an injected gitImpl is a test seam,
+  // and compareReleaseTags has no precedence rule for a prerelease tag.
+  const tags = (await listReleaseTags(repositoryRoot)).filter((tag) =>
+    finalReleaseTagPattern.test(tag),
+  );
+  if (!tags.length) {
+    throw new Error(
+      `${descriptorPath}: no v<semver> release tag found; pin freshness cannot be ` +
+        "verified (a shallow checkout without tags will report this — use fetch-depth: 0)",
+    );
+  }
+  const latest = [...tags].sort(compareReleaseTags).at(-1);
+  const latestCommit = await resolveTagCommit(repositoryRoot, latest);
+  if (!/^[0-9a-f]{40}$/u.test(latestCommit)) {
+    throw new Error(`${descriptorPath}: release tag ${latest} did not resolve to a commit`);
+  }
+  if (actionSha !== latestCommit) {
+    throw new Error(
+      `${descriptorPath}: actionReference is stale — pinned to ${actionSha}, but the ` +
+        `current release ${latest} is ${latestCommit}; advance every first-party pin together`,
+    );
+  }
+  return { releaseTag: latest, releaseCommit: latestCommit, actionSha };
+}
+
 // Opt-in release-hygiene gate for the operator at release time. It layers a
 // tag/version contract on top of the always-on validateMetadata checks. It does
 // NOT assert example pins equal the release commit (a commit cannot embed its
@@ -532,6 +621,14 @@ export async function validateReleaseConsistency({
   if (await tagExists(repositoryRoot, releaseTag)) {
     throw new Error(`release tag ${releaseTag} already exists; choose an unused version`);
   }
+  // Freshness is deliberately NOT asserted here, though design D2a proposed it.
+  // This function's own tests pass synthetic non-git temp roots with a partial
+  // injected gitImpl, so a tag probe throws on the repository rather than on
+  // staleness — D2a's objection to putting the check inside validateMetadata,
+  // one path further along than D2a looked. Wiring it here would have required
+  // editing those fixtures to accommodate the check, which implement.md Step 2
+  // forbids. The CLI entrypoint is what CI gates on and carries the check
+  // unconditionally, so no path CI executes is left uncovered.
   return { ...base, releaseTag, releaseChecked: true };
 }
 
@@ -564,9 +661,11 @@ async function runCli() {
             `${result.exampleCount} example(s), and ${result.trackedPathCount} tracked public path(s).`,
         );
       })
-    : validateMetadata().then(({ workflowCount, exampleCount, trackedPathCount }) => {
+    : validateMetadata().then(async ({ workflowCount, exampleCount, trackedPathCount }) => {
+        const { releaseTag } = await assertPinFreshness();
         console.log(
-          `Validated action.yml, ${workflowCount} workflow(s), ${exampleCount} example(s), and ${trackedPathCount} tracked public path(s).`,
+          `Validated action.yml, ${workflowCount} workflow(s), ${exampleCount} example(s), and ${trackedPathCount} tracked public path(s), ` +
+            `pinned to the current release ${releaseTag}.`,
         );
       });
 }

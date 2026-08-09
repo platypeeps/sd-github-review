@@ -7,6 +7,7 @@ import test from "node:test";
 import { promisify } from "node:util";
 import { parseDocument } from "yaml";
 import {
+  assertPinFreshness,
   parseReleaseTag,
   prohibitedPublishedMetadataReason,
   validateMetadata,
@@ -735,5 +736,95 @@ test("rejects a prohibited path even when it is force-added to Git", async () =>
   await assert.rejects(
     validateMetadata(root),
     /prohibited local\/session metadata is tracked:[\s\S]*\.trellis\/\.developer/u,
+  );
+});
+
+// R-003 freshness gate. Driven entirely through the injected gitImpl seam, so
+// these run against a synthetic root with no real tags — the same reason the
+// check lives beside validateMetadata rather than inside it.
+const freshnessGit = (tags, commits) => ({
+  listReleaseTags: async () => tags,
+  resolveTagCommit: async (_root, tag) => commits[tag],
+});
+
+test("assertPinFreshness accepts a pin equal to the latest release commit", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-fresh-"));
+  const sha = "b".repeat(40);
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: sha,
+  });
+
+  const result = await assertPinFreshness({
+    repositoryRoot: root,
+    gitImpl: freshnessGit(["v0.1.0", "v0.2.0"], { "v0.1.0": "a".repeat(40), "v0.2.0": sha }),
+  });
+  assert.equal(result.releaseTag, "v0.2.0");
+  assert.equal(result.releaseCommit, sha);
+});
+
+test("assertPinFreshness rejects a pin left on an older release", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-stale-"));
+  const old = "a".repeat(40);
+  const current = "b".repeat(40);
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: old,
+  });
+
+  // This is the defect that actually shipped: pins mutually consistent and
+  // well-formed, but a whole release behind. assertFirstPartyConsistency passes
+  // this state cleanly, which is why it needs a separate check.
+  await assert.rejects(
+    assertPinFreshness({
+      repositoryRoot: root,
+      gitImpl: freshnessGit(["v0.1.0", "v0.2.0"], { "v0.1.0": old, "v0.2.0": current }),
+    }),
+    /actionReference is stale — pinned to a{40}, but the current release v0\.2\.0 is b{40}/u,
+  );
+});
+
+test("assertPinFreshness orders releases by semver precedence, not lexically", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-order-"));
+  const sha = "c".repeat(40);
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: sha,
+  });
+
+  // Lexical ordering ranks v0.9.0 above v0.10.0 and would resolve the wrong
+  // release, reporting a current pin as stale.
+  const result = await assertPinFreshness({
+    repositoryRoot: root,
+    gitImpl: freshnessGit(["v0.9.0", "v0.10.0"], { "v0.9.0": "d".repeat(40), "v0.10.0": sha }),
+  });
+  assert.equal(result.releaseTag, "v0.10.0");
+});
+
+test("assertPinFreshness ignores prerelease tags when resolving the current release", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-prerelease-"));
+  const sha = "e".repeat(40);
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: sha,
+  });
+
+  // A prerelease is not a pin target, and the numeric compare has no
+  // precedence rule for one.
+  const result = await assertPinFreshness({
+    repositoryRoot: root,
+    gitImpl: freshnessGit(["v0.2.0", "v0.3.0-rc.1"], {
+      "v0.2.0": sha,
+      "v0.3.0-rc.1": "f".repeat(40),
+    }),
+  });
+  assert.equal(result.releaseTag, "v0.2.0");
+});
+
+test("assertPinFreshness fails when no release tag is visible rather than skipping", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-notags-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c");
+
+  // A shallow checkout has no tags. Skipping here would make the gate a no-op
+  // in the one environment it exists to protect.
+  await assert.rejects(
+    assertPinFreshness({ repositoryRoot: root, gitImpl: freshnessGit([], {}) }),
+    /no v<semver> release tag found; pin freshness cannot be verified/u,
   );
 });
