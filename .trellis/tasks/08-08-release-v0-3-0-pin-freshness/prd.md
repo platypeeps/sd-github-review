@@ -88,3 +88,24 @@ Action can enter. This is contract item R3.
 The pin advance and the freshness assertion belong in the same change: adding the assertion
 first turns the gate red on `main`, and advancing the pins first leaves the gate unable to
 prove the advance stuck.
+
+### PARK NOTE — 2026-08-09
+
+Parked during work-loop run `c2cfddfa`, iteration 1, at the planning convergence boundary.
+Planning is complete: `design.md` and `implement.md` are written and have passed host
+adversarial review (9 concerns; C-1 blocking and addressed, C-2 and C-8 rebutted by
+measurement). The optional Codex lane hung for ~25 minutes producing no output and was
+killed — recorded as failed, not as approval.
+
+**What blocks it:** concern C-7. Requirement 1 is "tag and publish release v0.3.0", an
+outward-facing release artifact the operator retained rather than delegating. The
+pin-freshness assertion resolves the latest existing release tag, so it cannot go green
+against a tag that does not exist. Verified still absent at park time: `git tag --list
+v0.3.0` and `git ls-remote --tags origin v0.3.0` both return nothing.
+
+**What resumes it:** the operator publishing the tag at
+`744a9f138bba7c60272c7f9e3f8412e435e11b89`, per `implement.md` Gate 0. Confirm with
+`git rev-list -n1 v0.3.0`. Implementation then proceeds from `implement.md` step 1 with no
+replanning needed.
+
+**Owner:** operator (sdelmas). No repository mutation was performed under this task.
