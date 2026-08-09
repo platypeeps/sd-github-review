@@ -100,8 +100,8 @@ killed — recorded as failed, not as approval.
 **What blocks it:** concern C-7. Requirement 1 is "tag and publish release v0.3.0", an
 outward-facing release artifact the operator retained rather than delegating. The
 pin-freshness assertion resolves the latest existing release tag, so it cannot go green
-against a tag that does not exist. Verified still absent at park time: `git tag --list
-v0.3.0` and `git ls-remote --tags origin v0.3.0` both return nothing.
+against a tag that does not exist. Verified still absent at park time:
+`git tag --list v0.3.0` and `git ls-remote --tags origin v0.3.0` both return nothing.
 
 **What resumes it:** the operator publishing the tag at
 `744a9f138bba7c60272c7f9e3f8412e435e11b89`, per `implement.md` Gate 0. Confirm with
