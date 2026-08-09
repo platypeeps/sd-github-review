@@ -21,6 +21,7 @@
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "",
+  "blockedOn": "operator publishing the v0.3.0 release tag",
+  "notes": "Blocked on the operator publishing the v0.3.0 release tag at 744a9f138bba7c60272c7f9e3f8412e435e11b89. The pin-freshness assertion resolves the latest existing release tag, so it cannot go green against a tag that does not exist. See the dated PARK NOTE in prd.md and Gate 0 in implement.md. Clear this blockedOn once `git rev-list -n1 v0.3.0` resolves.",
   "meta": {}
 }

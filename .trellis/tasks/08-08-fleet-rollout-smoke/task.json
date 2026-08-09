@@ -21,6 +21,7 @@
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "",
+  "blockedOn": "08-08-installer-durable-lane",
+  "notes": "Blocked on 08-08-installer-durable-lane. Until the installer emits the descriptor and the sd-review.yml lane, a rollout has nothing to roll out, and this repository's own rollout needs the descriptor relocation off the consumer discovery path. See prd.md Notes.",
   "meta": {}
 }
