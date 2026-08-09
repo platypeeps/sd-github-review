@@ -168,3 +168,51 @@ Added decodeDeletionReceipt (idempotent, digest-self-verifying, status-gated dea
 ### Next Steps
 
 - None - task complete
+
+
+## Session 54: Move the published setup descriptor off the consumer discovery path
+
+**Date**: 2026-08-09
+**Task**: Move the published setup descriptor off the consumer discovery path
+**Branch**: `feat/08-09-descriptor-contract-path`
+
+### Summary
+
+This repository published routed-review-setup-v1.json at config/, the single path the consumer setup-discovery probe reads, so probing this repository classified it as having the durable on-demand lane installed and then failed looking up workflow metadata that does not exist. Moved the published copy to contract/ and classified every reference into readers that move, consumer instructions that must name both paths, and consumer-probe references that stay.
+
+### Main Changes
+
+- Moved config/routed-review-setup-v1.json to contract/ and repointed every reader: validate-action-metadata.mjs, test/metadata.test.js, test/operation-contract.test.js, DESIGN.md, and two backend specs
+- Kept config/ as the documented consumer install destination in README, SETUP-COPILOT, and SETUP-PR-AGENT, and stated the published-versus-installed distinction explicitly in DESIGN.md
+- Recorded the path rule as a Wrong/Correct pair in .trellis/spec/backend/consumer-installer.md so a future edit cannot move the file back silently
+- Fixed a Copilot finding in 08-08-installer-durable-lane: its prerequisite grep matched the bare basename, returning identical hits before and after the move, so it could never fail
+- Parked 08-08-installer-durable-lane on this task and redirected its design D1
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `38a8042` | fix(contract): publish the setup descriptor at contract/, off the probe path |
+| `4eea38d` | docs(spec): record the published-descriptor path rule as a consumer-installer contract |
+| `32a156b` | docs: name both descriptor paths instead of a mismatched link |
+| `e25d0d2` | docs: state the descriptor source and destination as an explicit copy |
+| `aa750e3` | fix(task): make the 08-08 prerequisite check able to fail |
+| `3a89173` | docs(task): reconcile the descriptor grep counts with the shipped tree |
+| `d930ffe` | chore(task): record the task branch before finalization |
+
+### Testing
+
+- [OK] npm test: 608 tests, 608 pass, 0 fail
+- [OK] npm run validate:metadata: 1171 tracked public paths, pinned to v0.3.0
+- [OK] typed sd-check: 7/7 passed
+- [OK] review preflight: 0 failures, 1 warning (two task directories, the documented split)
+- [OK] setup probe against this repository: absent / setup-descriptor-absent (was unavailable / HTTP 404)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
