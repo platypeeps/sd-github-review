@@ -40,21 +40,31 @@ Explicitly **out of scope**: the installer writing a descriptor into consumers, 
 
 ## Acceptance criteria
 
-- [ ] `contract/routed-review-setup-v1.json` exists with content identical to the file it
+- [x] `contract/routed-review-setup-v1.json` exists with content identical to the file it
       replaced; `config/routed-review-setup-v1.json` is gone from this repository.
-- [ ] No producer reads the old path. With
+- [x] No producer reads the old path. With
 
       ```
       PAT='config/routed-review-setup-v1|"config", *"routed-review-setup-v1'
       ```
 
-      `git grep -nE "$PAT" -- scripts test .trellis/spec` goes from **10 hits to exactly 4** —
+      `git grep -nE "$PAT" -- scripts test .trellis/spec` goes from **10 hits to exactly 5** —
       `sd-ai-command-pack-review.py:31`, `sd-ai-command-pack-review-local.py:274`, `:323`, and
-      the `codecs.mjs:74` comment, all naming the installed consumer path (design category 3).
+      the `codecs.mjs:74` comment, all naming the installed consumer path (design category 3),
+      plus `consumer-installer.md:236`, the negative half of the Wrong/Correct spec pair added
+      by this task to stop a future edit moving the file back.
 
-- [ ] `git grep -nE "$PAT" -- ':!.trellis/tasks'` goes from **16 hits to exactly 7** — the four
-      above plus the three category-2 lines whose *displayed* path stays `config/` while their
-      link target moves.
+- [x] `git grep -nE "$PAT" -- ':!.trellis/tasks'` goes from **16 hits to exactly 9** — the five
+      above plus `README.md:135`, `SETUP-COPILOT.md:119`, and `SETUP-PR-AGENT.md:350`, which name
+      `config/` as the consumer's install destination, and `DESIGN.md:203`, which states the
+      published-versus-installed distinction.
+
+      Both counts were first written as 4 and 7. They rose to 5 and 9 during the task because it
+      added three further deliberate mentions of the consumer path — the spec Wrong/Correct pair
+      and the DESIGN.md distinction — after the criteria were drafted. The criterion these
+      numbers exist to enforce is unchanged and still holds: **no producer reads the old path.**
+      Every remaining hit is a consumer-probe-path constant, a comment, a negative example, or
+      prose naming the consumer's destination.
 
       Three properties of this pattern are load-bearing. It must match the **old path**, not the
       bare basename: the basename appears 16 times before and 16 times after, so a basename grep
@@ -63,13 +73,13 @@ Explicitly **out of scope**: the installer writing a descriptor into consumers, 
       `test/metadata.test.js` sites go unseen. And it must exclude only `.trellis/tasks`, not all
       of `.trellis`, or `consumer-installer.md:118` goes unseen.
 
-- [ ] `git grep -n 'mkdir(path.join(root, "config")' test/metadata.test.js` returns nothing.
+- [x] `git grep -n 'mkdir(path.join(root, "config")' test/metadata.test.js` returns nothing.
       This line (`:66`) creates the parent directory for `:68` and matches neither pattern above,
       so it needs its own check; missing it makes fixture creation fail on an absent parent.
-- [ ] `npm run validate:metadata` passes. It reads the descriptor and fails on a missed reader.
-- [ ] Running the probe against this repository no longer matches this repository's own
+- [x] `npm run validate:metadata` passes. It reads the descriptor and fails on a missed reader.
+- [x] Running the probe against this repository no longer matches this repository's own
       published descriptor.
-- [ ] `npm test` stays at 0 failures (608 passing before this change, on `main` at `053f156`).
+- [x] `npm test` stays at 0 failures (608 passing before this change, on `main` at `053f156`).
 
 ## Notes
 
