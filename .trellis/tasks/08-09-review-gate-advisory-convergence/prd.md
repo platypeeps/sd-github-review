@@ -1,5 +1,17 @@
 # Local review gate cannot converge under advisory-mode prism findings
 
+## BLOCKED — the fix belongs upstream
+
+**2026-08-09.** `_remote_gate` lives in `scripts/sd-ai-command-pack-review-local.py`, which is
+vendored from `sd-ai-command-pack` — its entire history here is `chore: refresh
+sd-ai-command-pack to 0.54.0`. The deterministic `pack.install-audit` gate blocks any local edit
+to a pack path, and its allowlist covers only `.sd-ai-command-pack/*.json`. Same boundary, same
+evidence, and same unblock as `08-09-review-coordinator-stale-check`: explicit approval for an
+upstream pull request, then a pack refresh.
+
+`.prism/rules.json` is repo-owned (history: `Initial commit`), so any rules-side adjustment could
+land here — but it cannot fix a gate that blocks on any finding regardless of rule configuration.
+
 ## Goal
 
 Let `sd-review` terminate on its own when the configured local providers return observations
