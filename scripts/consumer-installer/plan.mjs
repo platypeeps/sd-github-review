@@ -6,6 +6,7 @@
 import {
   DESCRIPTOR_PATH,
   DESCRIPTOR_SOURCE_PATH,
+  DURABLE_MANAGED_RESOURCES,
   DURABLE_TEMPLATE_PATH,
   DURABLE_WORKFLOW_PATH,
   MANIFEST_PATH,
@@ -64,11 +65,10 @@ export function assertWorkflowCanBeManaged(command, local, templateSource) {
 
 // The two resources the durable lane adds, in the shape the guards below need:
 // which manifest block records ownership, which consumer path holds the bytes,
-// and which key on the loaded local state carries the current content.
-export const DURABLE_RESOURCES = Object.freeze([
-  Object.freeze({ field: "descriptor", destination: DESCRIPTOR_PATH }),
-  Object.freeze({ field: "durableWorkflow", destination: DURABLE_WORKFLOW_PATH }),
-]);
+// and which key on the loaded local state carries the current content. Derived
+// from the one managed-resource table rather than restated, so a fourth resource
+// reaches these guards, `check`, and `uninstall` from a single edit.
+export const DURABLE_RESOURCES = DURABLE_MANAGED_RESOURCES;
 
 // The workflow guard above covers the event-driven lane only. The descriptor
 // and the durable workflow get the same protection, plus one case the workflow
@@ -182,17 +182,19 @@ export function createManifest({
     },
     // Schema-3 durable-lane resources. Each records the consumer destination,
     // the installed bytes, and the source path in this repository it was copied
-    // from; the source path is what `check` compares against for freshness.
-    descriptor: {
-      path: DESCRIPTOR_PATH,
-      source: DESCRIPTOR_SOURCE_PATH,
-      sha256: descriptorSha,
-    },
-    durableWorkflow: {
-      path: DURABLE_WORKFLOW_PATH,
-      source: DURABLE_TEMPLATE_PATH,
-      sha256: durableTemplateSha,
-    },
+    // from; the source path is what `check` compares against for freshness. The
+    // paths come from the managed-resource table so they cannot drift from the
+    // destinations the decoder validates against; only the hashes are per-call.
+    ...Object.fromEntries(
+      DURABLE_MANAGED_RESOURCES.map(({ field, destination, source }) => [
+        field,
+        {
+          path: destination,
+          source,
+          sha256: { descriptor: descriptorSha, durableWorkflow: durableTemplateSha }[field],
+        },
+      ]),
+    ),
     configuration,
     resources,
   };

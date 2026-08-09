@@ -13,6 +13,7 @@ import {
   DURABLE_WORKFLOW_PATH,
   HELP,
   HISTORICAL_TEMPLATE_HASHES,
+  MANAGED_RESOURCES,
   MANIFEST_PATH,
   MANIFEST_SCHEMA_VERSION,
   ROUTING_LABELS,
@@ -73,6 +74,7 @@ export {
   GitHubCli,
   HELP,
   HISTORICAL_TEMPLATE_HASHES,
+  MANAGED_RESOURCES,
   MANIFEST_PATH,
   MANIFEST_SCHEMA_VERSION,
   ROUTING_LABELS,
@@ -156,12 +158,14 @@ async function applyRemoteActions(github, repository, actions, options) {
 // Every source artifact the installer copies into a consumer, keyed the way the
 // loaded local state and the manifest blocks are keyed.
 async function readManagedSources(sourceRoot) {
-  const [workflow, durableWorkflow, descriptor] = await Promise.all([
-    readFile(path.join(sourceRoot, TEMPLATE_PATH), "utf8"),
-    readFile(path.join(sourceRoot, DURABLE_TEMPLATE_PATH), "utf8"),
-    readFile(path.join(sourceRoot, DESCRIPTOR_SOURCE_PATH), "utf8"),
-  ]);
-  return { workflow, durableWorkflow, descriptor };
+  const contents = await Promise.all(
+    MANAGED_RESOURCES.map((resource) =>
+      readFile(path.join(sourceRoot, resource.source), "utf8"),
+    ),
+  );
+  return Object.fromEntries(
+    MANAGED_RESOURCES.map((resource, index) => [resource.field, contents[index]]),
+  );
 }
 
 // D4. A converged run writes nothing at all, which is strictly narrower than
@@ -176,12 +180,12 @@ function isConverged(local, activeManifest, actions) {
   if (local.manifest.schemaVersion !== MANIFEST_SCHEMA_VERSION) return false;
   if (actions.length > 0) return false;
   if (JSON.stringify(activeManifest) !== JSON.stringify(local.manifest)) return false;
-  for (const [content, recorded] of [
-    [local.workflow, local.manifest.workflow.sha256],
-    [local.descriptor, local.manifest.descriptor.sha256],
-    [local.durableWorkflow, local.manifest.durableWorkflow.sha256],
-  ]) {
-    if (content === null || sha256(content) !== recorded) return false;
+  // Every managed resource, from the one table: the manifest block and the
+  // loaded local-state key share the resource's `field`, so a fourth resource
+  // is covered here without a fourth hand-written pair.
+  for (const { field } of MANAGED_RESOURCES) {
+    const content = local[field];
+    if (content === null || sha256(content) !== local.manifest[field].sha256) return false;
   }
   return true;
 }
@@ -249,10 +253,12 @@ async function installOrUpdate(command, options, dependencies) {
   await atomicWrite(guard, local.manifestFile, manifestJson(pendingManifest));
   // Write each managed file only when its bytes would change, so a run that is
   // not fully converged still leaves the already-matching files — including a
-  // hand-placed copy this run is adopting (D3b) — untouched on disk.
-  await atomicWriteIfChanged(guard, local.workflowFile, templateSource);
-  await atomicWriteIfChanged(guard, local.descriptorFile, sources.descriptor);
-  await atomicWriteIfChanged(guard, local.durableWorkflowFile, sources.durableWorkflow);
+  // hand-placed copy this run is adopting (D3b) — untouched on disk. Driven by
+  // the managed-resource table: `loadLocalState` exposes each destination as
+  // `<field>File`, so the write set cannot fall behind the table.
+  for (const { field } of MANAGED_RESOURCES) {
+    await atomicWriteIfChanged(guard, local[`${field}File`], sources[field]);
+  }
   await applyRemoteActions(github, target.repository, actions, options);
   await atomicWrite(guard, local.manifestFile, manifestJson(activeManifest));
   return report;
@@ -352,11 +358,12 @@ async function adoptInstallation(options, dependencies) {
   }
 
   await atomicWrite(guard, local.manifestFile, manifestJson(pendingManifest));
-  // Converge the workflow to the current source. For a current-template adoption
-  // these bytes already match; for a historical one this refreshes it in place.
-  await atomicWriteIfChanged(guard, local.workflowFile, templateSource);
-  await atomicWriteIfChanged(guard, local.descriptorFile, sources.descriptor);
-  await atomicWriteIfChanged(guard, local.durableWorkflowFile, sources.durableWorkflow);
+  // Converge every managed resource to the current source. For a current-template
+  // adoption the workflow bytes already match; for a historical one this refreshes
+  // it in place. Same table-driven write set as install/update.
+  for (const { field } of MANAGED_RESOURCES) {
+    await atomicWriteIfChanged(guard, local[`${field}File`], sources[field]);
+  }
   await applyRemoteActions(github, target.repository, actions, options);
   await atomicWrite(
     guard,

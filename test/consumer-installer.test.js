@@ -23,6 +23,7 @@ import {
   GIT_COMMAND_TIMEOUT_MS,
   GitHubCli,
   HISTORICAL_TEMPLATE_HASHES,
+  MANAGED_RESOURCES,
   MANIFEST_PATH,
   MANIFEST_SCHEMA_VERSION,
   ROUTING_LABELS,
@@ -190,25 +191,39 @@ async function managedFileState(target) {
   return state;
 }
 
-// The two durable resources, parameterizing the guard tests so each one is
-// asserted for both rather than for the workflow and by assumption for the
-// descriptor.
-const DURABLE_CASES = [
-  {
-    field: "descriptor",
-    destination: DESCRIPTOR_PATH,
-    sourcePath: DESCRIPTOR_SOURCE_PATH,
-    sourceOption: "descriptor",
-    freshBytes: '{"integrationId":"sd-github-review","revised":true}\n',
-  },
-  {
-    field: "durableWorkflow",
-    destination: DURABLE_WORKFLOW_PATH,
-    sourcePath: DURABLE_TEMPLATE_PATH,
-    sourceOption: "durableWorkflow",
-    freshBytes: "name: SD routed review\n# revised\n",
-  },
-];
+// The durable resources, parameterizing the guard tests so each one is asserted
+// for both rather than for the workflow and by assumption for the descriptor.
+// The set, its destinations, and its source paths are read from the production
+// table rather than restated, so adding a resource there extends this coverage
+// instead of silently leaving the new resource untested. Only the per-resource
+// replacement bytes are test-owned, since no production value supplies them.
+const FRESH_BYTES = {
+  descriptor: '{"integrationId":"sd-github-review","revised":true}\n',
+  durableWorkflow: "name: SD routed review\n# revised\n",
+};
+const DURABLE_CASES = MANAGED_RESOURCES.filter((resource) => resource.durable).map(
+  ({ field, destination, source }) => ({
+    field,
+    destination,
+    sourcePath: source,
+    sourceOption: field,
+    freshBytes: FRESH_BYTES[field],
+  }),
+);
+
+test("every durable managed resource is covered by the parameterized guard cases", () => {
+  // The coverage that makes the derivation above load-bearing: a resource added
+  // to MANAGED_RESOURCES without replacement bytes here would otherwise produce
+  // a case with `freshBytes: undefined` and quietly assert nothing.
+  assert.deepEqual(
+    DURABLE_CASES.map((item) => item.field).sort(),
+    ["descriptor", "durableWorkflow"],
+  );
+  for (const item of DURABLE_CASES) {
+    assert.equal(typeof item.freshBytes, "string", `${item.field} needs replacement bytes`);
+    assert.notEqual(item.freshBytes, "");
+  }
+});
 
 test("the installer does not export the unreachable hasManagedFiles helper (A-021)", () => {
   // A-021: hasManagedFiles had no in-repo caller — a public surface that served

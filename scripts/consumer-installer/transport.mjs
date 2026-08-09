@@ -8,22 +8,21 @@ import path from "node:path";
 import { promisify } from "node:util";
 import {
   COMMIT_PATTERN,
-  DESCRIPTOR_SOURCE_PATH,
-  DURABLE_TEMPLATE_PATH,
+  MANAGED_RESOURCES,
   RELEASE_TAG_PATTERN,
   SECRET_NAME,
-  TEMPLATE_PATH,
   resolveOverride,
 } from "./codecs.mjs";
 
 // Every source artifact `install` copies into a consumer. `released: true`
 // asserts the installed bytes came from the tagged release, so a dirty copy of
 // *any* of these invalidates that claim, not just the event-driven template.
-const COPIED_SOURCE_PATHS = Object.freeze([
-  TEMPLATE_PATH,
-  DURABLE_TEMPLATE_PATH,
-  DESCRIPTOR_SOURCE_PATH,
-]);
+// Derived from the managed-resource table: a resource added there is covered by
+// this cleanliness set without a second edit, and a resource missing from it
+// would otherwise ship dirty bytes under a release claim.
+const COPIED_SOURCE_PATHS = Object.freeze(
+  MANAGED_RESOURCES.map((resource) => resource.source),
+);
 
 const execFileAsync = promisify(execFile);
 

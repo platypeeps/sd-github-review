@@ -181,19 +181,23 @@ node scripts/install-consumer.mjs uninstall [options]
   removes each managed file the manifest records — so a schema-2 installation
   loses only its event-driven workflow — and refuses when any of them was
   modified after installation.
-- The managed-resource set is enumerated in more than one place, and a fourth
-  resource is only correctly added when every site below is updated together.
-  `DURABLE_RESOURCES` in `plan.mjs` is the shared table for the durable pair and
-  already drives the guards, `check`, and `uninstall`; the remaining sites hold
-  their own literal lists because they cover different slices of the set:
-  `decodeManifest`'s schema-3 block loop (`codecs.mjs`), `createManifest`'s
-  emitted blocks (`plan.mjs`), `COPIED_SOURCE_PATHS` (`transport.mjs`, the
-  `released: true` cleanliness set), `readManagedSources` and `isConverged`
-  (`consumer-installer.mjs`), and `DURABLE_CASES` (`test/consumer-installer.test.js`).
-  A resource missing from `COPIED_SOURCE_PATHS` ships dirty bytes under a
-  release claim; missing from `isConverged`, a converged run rewrites files;
-  missing from `DURABLE_CASES`, the guard tests pass while covering nothing.
-  Prefer deriving a new site from an existing table over adding a seventh list.
+- `MANAGED_RESOURCES` in `codecs.mjs` is the **single source of truth** for the
+  files the installer copies into a consumer — `{field, destination, source,
+  durable}` per resource — and `DURABLE_MANAGED_RESOURCES` is its schema-3
+  subset. Every dependent list derives from it rather than restating it:
+  `decodeManifest`'s schema-3 block validation and `createManifest`'s emitted
+  blocks, `DURABLE_RESOURCES` (which drives the guards, `check`, and
+  `uninstall`), `COPIED_SOURCE_PATHS` (the `released: true` cleanliness set),
+  `readManagedSources`, `isConverged`, the install/update/adopt write set, and
+  the tests' `DURABLE_CASES`. `field` keys the manifest block, the loaded local
+  state, and its `<field>File` destination path simultaneously, which is what
+  makes the derivation uniform. Adding a resource is one table entry plus its
+  manifest hash wiring; the alternative — a literal list per site — is what
+  allows a resource to reach the manifest while missing from the release-
+  cleanliness set (dirty bytes shipped under a release claim), from
+  `isConverged` (a converged run rewrites files), or from the test cases (guard
+  tests that pass while covering nothing). Removing one entry from the table
+  fails 48 tests, which is the evidence the derivation is load-bearing.
 
 ### 4. Validation & Error Matrix
 
