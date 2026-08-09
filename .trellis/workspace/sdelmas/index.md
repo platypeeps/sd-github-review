@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 54
+- **Total Sessions**: 55
 - **Last Active**: 2026-08-09
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~214 | Active |
+| `journal-2.md` | ~253 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 55 | 2026-08-09 | Follow-ups from the descriptor contract-path ship | `7e854554eb52d55867219462017d40e4457eee77` | `chore/08-09-followups` |
 | 54 | 2026-08-09 | Move the published setup descriptor off the consumer discovery path | `38a8042`, `4eea38d`, `32a156b`, `e25d0d2`, `aa750e3`, `3a89173`, `d930ffe` | `feat/08-09-descriptor-contract-path` |
 | 53 | 2026-08-05 | Ship v2 standard-v1 deletion-receipt decoder + residual retention fixtures (PR #54) | `94edfac`, `b704e95`, `5a9fd57`, `391ed90` | `feat/08-04-define-v2-retention-standard-v1-contracts` |
 | 52 | 2026-08-05 | Ship v2 quarantine status and clearance contracts (task 08-04) | `33e31ca`, `7c6dfeb` | `feat/08-04-define-v2-quarantine-clearance-contracts` |
