@@ -7,6 +7,7 @@ import test from "node:test";
 import { promisify } from "node:util";
 import { parseDocument } from "yaml";
 import {
+  assertPinFreshness,
   parseReleaseTag,
   prohibitedPublishedMetadataReason,
   validateMetadata,
@@ -51,6 +52,9 @@ async function writeMetadataFixture(root, actionReference, options = {}) {
   const {
     descriptorSha = "a".repeat(40),
     contractMajor = 1,
+    // Defaults to [contractMajor] so existing fixtures stay valid; the R2 tests
+    // below override it to drive the rejection paths.
+    supportedContractMajors = [contractMajor],
     version = "0.0.0",
     writeDescriptor = true,
     writePackage = true,
@@ -66,6 +70,7 @@ async function writeMetadataFixture(root, actionReference, options = {}) {
         {
           schemaVersion: 1,
           contractMajor,
+          supportedContractMajors,
           actionReference: `platypeeps/sd-github-review@${descriptorSha}`,
           supportedOperations: ["route", "finalize", "query"],
           requiredPermissions: {
@@ -736,4 +741,175 @@ test("rejects a prohibited path even when it is force-added to Git", async () =>
     validateMetadata(root),
     /prohibited local\/session metadata is tracked:[\s\S]*\.trellis\/\.developer/u,
   );
+});
+
+// R-003 freshness gate. Driven entirely through the injected gitImpl seam, so
+// these run against a synthetic root with no real tags — the same reason the
+// check lives beside validateMetadata rather than inside it.
+const freshnessGit = (tags, commits) => ({
+  listReleaseTags: async () => tags,
+  resolveTagCommit: async (_root, tag) => commits[tag],
+});
+
+test("assertPinFreshness accepts a pin equal to the latest release commit", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-fresh-"));
+  const sha = "b".repeat(40);
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: sha,
+  });
+
+  const result = await assertPinFreshness({
+    repositoryRoot: root,
+    gitImpl: freshnessGit(["v0.1.0", "v0.2.0"], { "v0.1.0": "a".repeat(40), "v0.2.0": sha }),
+  });
+  assert.equal(result.releaseTag, "v0.2.0");
+  assert.equal(result.releaseCommit, sha);
+});
+
+test("assertPinFreshness rejects a pin left on an older release", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-stale-"));
+  const old = "a".repeat(40);
+  const current = "b".repeat(40);
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: old,
+  });
+
+  // This is the defect that actually shipped: pins mutually consistent and
+  // well-formed, but a whole release behind. assertFirstPartyConsistency passes
+  // this state cleanly, which is why it needs a separate check.
+  await assert.rejects(
+    assertPinFreshness({
+      repositoryRoot: root,
+      gitImpl: freshnessGit(["v0.1.0", "v0.2.0"], { "v0.1.0": old, "v0.2.0": current }),
+    }),
+    /actionReference is stale — pinned to a{40}, but the current release v0\.2\.0 is b{40}/u,
+  );
+});
+
+test("assertPinFreshness orders releases by semver precedence, not lexically", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-order-"));
+  const sha = "c".repeat(40);
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: sha,
+  });
+
+  // Lexical ordering ranks v0.9.0 above v0.10.0 and would resolve the wrong
+  // release, reporting a current pin as stale.
+  const result = await assertPinFreshness({
+    repositoryRoot: root,
+    gitImpl: freshnessGit(["v0.9.0", "v0.10.0"], { "v0.9.0": "d".repeat(40), "v0.10.0": sha }),
+  });
+  assert.equal(result.releaseTag, "v0.10.0");
+});
+
+test("assertPinFreshness ignores prerelease tags when resolving the current release", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-prerelease-"));
+  const sha = "e".repeat(40);
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: sha,
+  });
+
+  // A prerelease is not a pin target, and the numeric compare has no
+  // precedence rule for one.
+  const result = await assertPinFreshness({
+    repositoryRoot: root,
+    gitImpl: freshnessGit(["v0.2.0", "v0.3.0-rc.1"], {
+      "v0.2.0": sha,
+      "v0.3.0-rc.1": "f".repeat(40),
+    }),
+  });
+  assert.equal(result.releaseTag, "v0.2.0");
+});
+
+test("assertPinFreshness fails when no release tag is visible rather than skipping", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-notags-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c");
+
+  // A shallow checkout has no tags. Skipping here would make the gate a no-op
+  // in the one environment it exists to protect.
+  await assert.rejects(
+    assertPinFreshness({ repositoryRoot: root, gitImpl: freshnessGit([], {}) }),
+    /no v<semver> release tag found; pin freshness cannot be verified/u,
+  );
+});
+
+// R2: supportedContractMajors. The scalar contractMajor says which contract
+// this release speaks; the array says which it can serve. A consumer pinned to
+// an older major cannot learn compatibility from a scalar alone.
+test("accepts a descriptor whose supportedContractMajors includes its contractMajor", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-majors-ok-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    contractMajor: 1,
+    supportedContractMajors: [1],
+  });
+  await initTracked(root);
+  const result = await validateMetadata(root);
+  assert.equal(result.contractMajor, 1);
+});
+
+test("rejects an empty supportedContractMajors array", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-majors-empty-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    supportedContractMajors: [],
+  });
+  await assert.rejects(
+    validateMetadata(root),
+    /supportedContractMajors must be a non-empty array/u,
+  );
+});
+
+test("rejects a missing supportedContractMajors array", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-majors-absent-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c");
+  // A pre-R2 descriptor has no such key at all. Passing `undefined` through the
+  // fixture would hit its default and write a valid descriptor instead.
+  const descriptorPath = path.join(root, "config", "routed-review-setup-v1.json");
+  const descriptor = JSON.parse(await readFile(descriptorPath, "utf8"));
+  delete descriptor.supportedContractMajors;
+  await writeFile(descriptorPath, `${JSON.stringify(descriptor, null, 2)}\n`, "utf8");
+  await assert.rejects(
+    validateMetadata(root),
+    /supportedContractMajors must be a non-empty array/u,
+  );
+});
+
+test("rejects a supportedContractMajors entry outside the known contracts", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-majors-unknown-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    contractMajor: 1,
+    supportedContractMajors: [1, 99],
+  });
+  await assert.rejects(
+    validateMetadata(root),
+    /supportedContractMajors contains unknown contract 99/u,
+  );
+});
+
+// There is deliberately no test for "supportedContractMajors omits its own
+// contractMajor". While knownContractMajors is the single value 1, that state
+// is unreachable: contractMajor must be a known major, every array element must
+// be a known major, and the array must be non-empty — so the array necessarily
+// contains contractMajor. The guard in readSetupDescriptor stays because it
+// becomes live the moment a second major is known; a test written today would
+// pass for the wrong reason.
+
+test("assertPinFreshness rejects a tag that resolves to noncanonical commit evidence", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-noncanon-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: "b".repeat(40),
+  });
+
+  // A short SHA, a symbolic ref, or empty output must not be compared against
+  // the pin: an abbreviated commit would never equal the 40-hex actionReference
+  // and would be reported as staleness, which is the wrong diagnosis.
+  for (const noncanonical of ["b".repeat(7), "refs/tags/v0.2.0", ""]) {
+    await assert.rejects(
+      assertPinFreshness({
+        repositoryRoot: root,
+        gitImpl: freshnessGit(["v0.2.0"], { "v0.2.0": noncanonical }),
+      }),
+      /release tag v0\.2\.0 did not resolve to a commit/u,
+      `expected noncanonical rejection for ${JSON.stringify(noncanonical)}`,
+    );
+  }
 });

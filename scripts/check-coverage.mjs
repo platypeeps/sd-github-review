@@ -25,6 +25,27 @@ const INCLUDES = [
   "scripts/install-consumer.mjs",
 ];
 
+// Parked v2 surface (R3). These eight modules are unreachable from both Action
+// entrypoints: a transitive relative-import walk from src/index.js and
+// src/operations.js reaches 11 of the 19 modules under src/, and these are the
+// remainder. They total roughly 9,390 of the 13,136 lines under src/, so
+// measuring them charges the gate for code no consumer can execute.
+//
+// Quarantine is not deletion. The files stay on disk and the v2 work stays
+// recoverable; only the CI gate stops measuring them. Delete an entry here the
+// moment its module becomes reachable — a reachable module that is silently
+// excluded is far worse than an unmeasured parked one.
+const QUARANTINED = [
+  "src/protocol-v2.js",
+  "src/retention-policy.js",
+  "src/review-budget-ledger.js",
+  "src/review-candidate-catalog.js",
+  "src/review-deferred-recovery.js",
+  "src/review-plan-authorization.js",
+  "src/review-usage-reconciliation.js",
+  "src/routed-review-compiler.js",
+];
+
 // [lines, branches, functions] minimum percentages.
 const GLOBAL_FLOOR = { lines: 88, branches: 77, functions: 88 };
 const FILE_FLOORS = {
@@ -44,6 +65,7 @@ const FILE_FLOORS = {
 function runCoverage() {
   const args = ["--test", "--experimental-test-coverage"];
   for (const include of INCLUDES) args.push(`--test-coverage-include=${include}`);
+  for (const exclude of QUARANTINED) args.push(`--test-coverage-exclude=${exclude}`);
   const result = spawnSync(process.execPath, args, {
     cwd: REPO_ROOT,
     encoding: "utf8",

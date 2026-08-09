@@ -120,7 +120,7 @@ cannot verify archive bytes against a commit offline:
 
 ```sh
 node scripts/install-consumer.mjs install --target /path/to/consumer \
-  --source-tag v0.1.0 --source-commit 8636a3983d18de17c49907a4c48170a61b1bb713 \
+  --source-tag v0.3.0 --source-commit 744a9f138bba7c60272c7f9e3f8412e435e11b89 \
   --set-secret
 ```
 
@@ -269,8 +269,8 @@ and
 1. Copy [`examples/pr-agent-router.yml`](examples/pr-agent-router.yml) to the
    consuming repository, for example as
    `.github/workflows/ai-review-router.yml`.
-2. The checked-in workflow is pinned to the `v0.1.0` release commit,
-   `8636a3983d18de17c49907a4c48170a61b1bb713`. Keep that exact pin or update
+2. The checked-in workflow is pinned to the `v0.3.0` release commit,
+   `744a9f138bba7c60272c7f9e3f8412e435e11b89`. Keep that exact pin or update
    it to the reviewed full 40-character SHA of a later approved release. The
    PR-Agent container reference is independently pinned by digest.
 3. Under **Settings → Secrets and variables → Actions → Variables**, create:
@@ -311,7 +311,7 @@ repository's `issue_comment` workflow without checking out contributor code.
    [`examples/pr-agent-on-demand-review-router.yml`](examples/pr-agent-on-demand-review-router.yml)
    to `.github/workflows/sd-review.yml`.
 2. Keep every first-party Action reference on the checked-in immutable
-   `v0.1.0` SHA, or update all of them together to the reviewed full SHA of a
+   `v0.3.0` SHA, or update all of them together to the reviewed full SHA of a
    later approved release.
 3. Configure `PR_AGENT_MODEL_PROVIDER` and `PR_AGENT_MODEL_API_KEY` as
    described above.
@@ -418,7 +418,8 @@ traceable. This is a forward migration, not a downgrade.
 Rolling an installer-managed install back is a clean `uninstall` at the current
 release: it removes the managed workflow and the schema-2 manifest so no older
 decoder ever sees a schema-2 file. Reinstalling a *prior* release requires a
-prior installer-bearing release. Because `v0.1.0` ships no installer, there is
-no earlier installer release to reinstall until a second release is cut; until
-then, rollback terminates at the cleanly uninstalled state rather than a
-downgraded installer.
+prior installer-bearing release. `v0.1.0` ships no installer, so it is not a
+rollback target; `v0.2.0` is the earliest installer-bearing release, and
+rolling back from `v0.3.0` means reinstalling from a checkout of `v0.2.0`.
+A rollback past `v0.2.0` terminates at the cleanly uninstalled state rather
+than a downgraded installer.

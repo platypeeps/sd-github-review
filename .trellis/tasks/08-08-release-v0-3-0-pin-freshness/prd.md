@@ -13,8 +13,10 @@ surface out of the CI gate.
 Every first-party reference in the repository pins the same SHA,
 `8636a3983d18de17c49907a4c48170a61b1bb713`. That SHA is tagged `v0.1.0` and dates from
 2026-07-23; `git rev-list --count 8636a39..main` is 252 and `package.json` already declares
-`0.2.0`, so the published pin is one full release and 252 commits stale. The nine references
+`0.2.0`, so the published pin is one full release and 252 commits stale. The fourteen sites
 are:
+
+Ten are executable first-party pins that `assertFirstPartyConsistency` reads:
 
 | File | Line |
 | --- | --- |
@@ -24,6 +26,19 @@ are:
 | `examples/on-demand-review-router.yml` | 40, 65 |
 | `examples/pr-agent-on-demand-review-router.yml` | 52, 168, 176 |
 | `examples/pilot-router.yml` | 21 |
+| `examples/gated-review-router.yml` | 52 |
+
+Four are prose mentions that only AC 2's grep covers:
+
+| File | Line |
+| --- | --- |
+| `README.md` | 94 |
+| `SETUP-COPILOT.md` | 58 |
+| `SETUP-PR-AGENT.md` | 123, 273 |
+
+`examples/gated-review-router.yml` was not in the original count: it landed in PR #63,
+after this task was planned. The two counts are kept distinct rather than flattened,
+because only the first group is machine-checked.
 
 Anything installed from these examples therefore runs v0.1.0 and misses everything landed
 since, including concurrency-safe receipt creation, rerequest hardening, and the
@@ -35,7 +50,7 @@ identity-override fixes.
 only when it fails to match `owner/repo@<40-character SHA>` (the `firstPartyReference` test
 around line 245). `assertFirstPartyConsistency` then checks that every example pin equals the
 descriptor's pin. Together these guarantee the pins agree with each other and are well-formed
-— and nothing more. Nine references across six files agreeing on a 252-commit-old SHA passes
+— and nothing more. Fourteen sites across ten files agreeing on a 252-commit-old SHA passes
 the gate cleanly, which is exactly the state the repository is in today.
 
 ### The descriptor cannot express contract-version range
@@ -58,7 +73,7 @@ Action can enter. This is contract item R3.
 ## Requirements
 
 - Tag and publish release v0.3.0 from `main`.
-- Update all nine first-party references above to the v0.3.0 SHA in one change, so
+- Update all fourteen sites above to the v0.3.0 SHA in one change, so
   `assertFirstPartyConsistency` never sees a split state.
 - Add an assertion to `scripts/validate-action-metadata.mjs` that the descriptor's
   `actionReference` SHA resolves to the current release, not merely to 40 hex characters. The
@@ -71,17 +86,23 @@ Action can enter. This is contract item R3.
 
 ## Acceptance Criteria
 
-- [ ] `git tag --points-at HEAD` includes `v0.3.0` and `package.json` declares `0.3.0`.
+- [ ] `v0.3.0` exists and every first-party reference resolves to it; `package.json`
+      declares `0.3.0`. (Was `git tag --points-at HEAD` includes `v0.3.0`, which is
+      unsatisfiable alongside AC 3: the tag is cut from the commit *before* the pin
+      advance, so it can never point at the HEAD that carries the advanced pins.)
 - [ ] `grep -rn 8636a3983d18de17c49907a4c48170a61b1bb713` over tracked files returns no hit
       outside `.trellis/` history.
-- [ ] All nine first-party references pin the v0.3.0 SHA.
+- [ ] All fourteen sites pin the v0.3.0 SHA: ten executable first-party pins that
+      `assertFirstPartyConsistency` reads, plus four prose mentions that only AC 2's
+      grep covers.
 - [ ] `node scripts/validate-action-metadata.mjs` passes; reverting the descriptor to the
       v0.1.0 SHA makes it fail with a staleness error rather than passing.
 - [ ] The descriptor carries a non-empty `supportedContractMajors` array that includes its
       `contractMajor`.
 - [ ] The CI gate no longer measures the eight named modules, and those files still exist in
       the tree.
-- [ ] `npm test` stays at 0 failures (595 passing before this change).
+- [ ] `npm test` stays at 0 failures (598 passing before this change; the 595 figure
+      predates PR #63).
 
 ## Notes
 

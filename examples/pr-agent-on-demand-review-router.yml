@@ -48,8 +48,8 @@ jobs:
     steps:
       - name: Route or query the exact-head review
         id: review
-        # v0.1.0; upgrade every first-party reference together.
-        uses: platypeeps/sd-github-review@8636a3983d18de17c49907a4c48170a61b1bb713
+        # v0.3.0; upgrade every first-party reference together.
+        uses: platypeeps/sd-github-review@744a9f138bba7c60272c7f9e3f8412e435e11b89
         with:
           github-token: ${{ github.token }}
           operation: ${{ inputs.operation }}
@@ -165,7 +165,7 @@ jobs:
     steps:
       - name: Build the PR-Agent acknowledgment
         id: acknowledge
-        uses: platypeeps/sd-github-review@8636a3983d18de17c49907a4c48170a61b1bb713
+        uses: platypeeps/sd-github-review@744a9f138bba7c60272c7f9e3f8412e435e11b89
         with:
           github-token: ${{ github.token }}
           operation: acknowledge
@@ -173,7 +173,7 @@ jobs:
           adapter-outcome: ${{ needs.pr-agent.result }}
 
       - name: Finalize the external receipt
-        uses: platypeeps/sd-github-review@8636a3983d18de17c49907a4c48170a61b1bb713
+        uses: platypeeps/sd-github-review@744a9f138bba7c60272c7f9e3f8412e435e11b89
         with:
           github-token: ${{ github.token }}
           operation: finalize

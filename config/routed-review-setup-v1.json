@@ -7,6 +7,7 @@
     "dispatchEvent": "workflow_dispatch"
   },
   "contractMajor": 1,
+  "supportedContractMajors": [1],
   "supportedIntents": ["auto", "cheap", "deep", "copilot", "none"],
   "supportedOperations": ["route", "finalize", "query"],
   "durableReceipt": {
@@ -18,7 +19,7 @@
     "pull-requests": "write",
     "checks": "write"
   },
-  "actionReference": "platypeeps/sd-github-review@8636a3983d18de17c49907a4c48170a61b1bb713",
+  "actionReference": "platypeeps/sd-github-review@744a9f138bba7c60272c7f9e3f8412e435e11b89",
   "noninteractive": true,
   "checkoutRequired": false
 }
