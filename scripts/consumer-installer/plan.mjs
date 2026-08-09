@@ -9,6 +9,7 @@ import {
   DURABLE_MANAGED_RESOURCES,
   DURABLE_TEMPLATE_PATH,
   DURABLE_WORKFLOW_PATH,
+  MANAGED_RESOURCES,
   MANIFEST_PATH,
   MANIFEST_SCHEMA_VERSION,
   ROUTING_LABELS,
@@ -157,25 +158,31 @@ export function planResources(configuration, snapshot, existingManifest, setSecr
   return { actions, resources: { variables, secret, labels } };
 }
 
+// `sources` is the managed source contents keyed by resource field, exactly as
+// `readManagedSources` returns it. Taking the bytes rather than per-resource
+// hash arguments is what keeps this function extensible: a resource added to
+// MANAGED_RESOURCES flows into both the hashes and the emitted blocks with no
+// edit here and no new parameter at either call site.
 export function createManifest({
   state,
   repository,
-  templateSha,
-  descriptorSha,
-  durableTemplateSha,
+  sources,
   configuration,
   resources,
   release,
 }) {
+  const shas = Object.fromEntries(
+    MANAGED_RESOURCES.map(({ field }) => [field, sha256(sources[field])]),
+  );
   return {
     schemaVersion: MANIFEST_SCHEMA_VERSION,
     tool: "sd-github-review",
     state,
     repository,
-    workflow: { path: WORKFLOW_PATH, sha256: templateSha },
+    workflow: { path: WORKFLOW_PATH, sha256: shas.workflow },
     source: {
       template: TEMPLATE_PATH,
-      sha256: templateSha,
+      sha256: shas.workflow,
       commit: release.commit,
       tag: release.tag,
       released: release.released,
@@ -184,15 +191,11 @@ export function createManifest({
     // the installed bytes, and the source path in this repository it was copied
     // from; the source path is what `check` compares against for freshness. The
     // paths come from the managed-resource table so they cannot drift from the
-    // destinations the decoder validates against; only the hashes are per-call.
+    // destinations the decoder validates against.
     ...Object.fromEntries(
       DURABLE_MANAGED_RESOURCES.map(({ field, destination, source }) => [
         field,
-        {
-          path: destination,
-          source,
-          sha256: { descriptor: descriptorSha, durableWorkflow: durableTemplateSha }[field],
-        },
+        { path: destination, source, sha256: shas[field] },
       ]),
     ),
     configuration,

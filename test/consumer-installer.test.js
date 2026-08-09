@@ -167,6 +167,12 @@ async function readManifest(target) {
   return JSON.parse(await readFile(path.join(target, MANIFEST_PATH), "utf8"));
 }
 
+// Every path a complete installation owns: the manifest plus each managed
+// resource's destination, derived from the production table so a resource added
+// there is asserted on by the idempotency and uninstall checks below without a
+// second edit here.
+const MANAGED_PATHS = [MANIFEST_PATH, ...MANAGED_RESOURCES.map((r) => r.destination)];
+
 async function writeManagedFile(target, relativePath, content) {
   await mkdir(path.dirname(path.join(target, relativePath)), { recursive: true });
   await writeFile(path.join(target, relativePath), content, "utf8");
@@ -176,7 +182,7 @@ async function writeManagedFile(target, relativePath, content) {
 // that a run left them untouched rather than merely rewrote identical bytes.
 async function managedFileState(target) {
   const state = {};
-  for (const relativePath of [MANIFEST_PATH, WORKFLOW_PATH, DESCRIPTOR_PATH, DURABLE_WORKFLOW_PATH]) {
+  for (const relativePath of MANAGED_PATHS) {
     const absolute = path.join(target, relativePath);
     try {
       state[relativePath] = {
@@ -1772,7 +1778,7 @@ test("uninstall removes all three managed files", async () => {
   await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
   await runConsumerInstaller({ command: "uninstall", target, yes: true }, { sourceRoot, github });
 
-  for (const relativePath of [MANIFEST_PATH, WORKFLOW_PATH, DESCRIPTOR_PATH, DURABLE_WORKFLOW_PATH]) {
+  for (const relativePath of MANAGED_PATHS) {
     assert.equal(existsSync(path.join(target, relativePath)), false, `${relativePath} must be removed`);
   }
 });

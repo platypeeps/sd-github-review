@@ -12,6 +12,7 @@ import {
   DURABLE_TEMPLATE_PATH,
   DURABLE_WORKFLOW_PATH,
   HISTORICAL_TEMPLATE_HASHES,
+  MANAGED_RESOURCES,
   MANIFEST_PATH,
   MANIFEST_SCHEMA_VERSION,
   ROUTING_LABELS,
@@ -53,6 +54,13 @@ import {
 } from "../scripts/consumer-installer/plan.mjs";
 
 const sha256Hex = (value) => createHash("sha256").update(value).digest("hex");
+
+// Managed source bytes keyed exactly as `readManagedSources` returns them, so
+// `createManifest` derives every hash it records from one fixture. A resource
+// added to MANAGED_RESOURCES needs an entry here and nothing else in these tests.
+const MANAGED_SOURCE_BODIES = Object.fromEntries(
+  MANAGED_RESOURCES.map(({ field }) => [field, `${field}-body`]),
+);
 
 // Fully-formed manifest bodies for the decoder tests below. Built as literals
 // rather than through createManifest so a decoder regression cannot be masked
@@ -271,14 +279,11 @@ test("codecs: recognizeTemplate matches the current template and allow-listed hi
 });
 
 test("codecs: decodeManifest round-trips a schema-3 manifest and rejects a foreign label", () => {
-  const templateSha = sha256Hex("workflow-body");
   const configuration = { ...DEFAULT_CONFIG };
   const manifest = createManifest({
     state: "active",
     repository: "acme/consumer",
-    templateSha,
-    descriptorSha: sha256Hex("descriptor-body"),
-    durableTemplateSha: sha256Hex("durable-body"),
+    sources: MANAGED_SOURCE_BODIES,
     configuration,
     resources: {
       variables: Object.fromEntries(
@@ -398,14 +403,14 @@ test("plan: createManifest encodes the (released, tag) provenance pair verbatim"
   const manifest = createManifest({
     state: "pending",
     repository: "acme/consumer",
-    templateSha: "deadbeef",
+    sources: MANAGED_SOURCE_BODIES,
     configuration: DEFAULT_CONFIG,
     resources: { variables: {}, secret: { name: SECRET_NAME, owned: true }, labels: [] },
     release: { commit: "a".repeat(40), tag: "v2.0.0", released: true },
   });
   assert.equal(manifest.source.released, true);
   assert.equal(manifest.source.tag, "v2.0.0");
-  assert.equal(manifest.workflow.sha256, "deadbeef");
+  assert.equal(manifest.workflow.sha256, sha256Hex(MANAGED_SOURCE_BODIES.workflow));
 });
 
 // ---------------------------------------------------------------------------
@@ -541,14 +546,11 @@ test("persistence: the guard rejects a path escaping the canonical root", async 
 test("persistence: loadLocalState decodes an existing managed manifest", async () => {
   const root = await makeTarget();
   const guard = makePathGuard(root);
-  const templateSha = sha256("workflow-body\n");
   const configuration = { ...DEFAULT_CONFIG };
   const manifest = createManifest({
     state: "active",
     repository: "acme/consumer",
-    templateSha,
-    descriptorSha: sha256Hex("descriptor-body"),
-    durableTemplateSha: sha256Hex("durable-body"),
+    sources: MANAGED_SOURCE_BODIES,
     configuration,
     resources: {
       variables: Object.fromEntries(
@@ -560,9 +562,9 @@ test("persistence: loadLocalState decodes an existing managed manifest", async (
     release: { commit: "a".repeat(40), tag: null, released: false },
   });
   await mkdir(path.join(root, ".github", "workflows"), { recursive: true });
-  await writeFile(path.join(root, WORKFLOW_PATH), "workflow-body\n", "utf8");
+  await writeFile(path.join(root, WORKFLOW_PATH), MANAGED_SOURCE_BODIES.workflow, "utf8");
   await writeFile(path.join(root, MANIFEST_PATH), manifestJson(manifest), "utf8");
   const state = await loadLocalState(guard, root);
   assert.equal(state.manifest.repository, "acme/consumer");
-  assert.equal(state.workflow, "workflow-body\n");
+  assert.equal(state.workflow, MANAGED_SOURCE_BODIES.workflow);
 });

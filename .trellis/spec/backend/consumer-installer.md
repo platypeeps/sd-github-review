@@ -191,8 +191,10 @@ node scripts/install-consumer.mjs uninstall [options]
   `readManagedSources`, `isConverged`, the install/update/adopt write set, and
   the tests' `DURABLE_CASES`. `field` keys the manifest block, the loaded local
   state, and its `<field>File` destination path simultaneously, which is what
-  makes the derivation uniform. Adding a resource is one table entry plus its
-  manifest hash wiring; the alternative — a literal list per site — is what
+  makes the derivation uniform. `createManifest` takes the managed source
+  *bytes* keyed by field — the shape `readManagedSources` returns — rather than
+  one hash argument per resource, so a new resource adds no parameter at either
+  call site. Adding a resource is one table entry; the alternative — a literal list per site — is what
   allows a resource to reach the manifest while missing from the release-
   cleanliness set (dirty bytes shipped under a release claim), from
   `isConverged` (a converged run rewrites files), or from the test cases (guard
