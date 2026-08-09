@@ -892,3 +892,24 @@ test("rejects a supportedContractMajors entry outside the known contracts", asyn
 // contains contractMajor. The guard in readSetupDescriptor stays because it
 // becomes live the moment a second major is known; a test written today would
 // pass for the wrong reason.
+
+test("assertPinFreshness rejects a tag that resolves to noncanonical commit evidence", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-noncanon-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: "b".repeat(40),
+  });
+
+  // A short SHA, a symbolic ref, or empty output must not be compared against
+  // the pin: an abbreviated commit would never equal the 40-hex actionReference
+  // and would be reported as staleness, which is the wrong diagnosis.
+  for (const noncanonical of ["b".repeat(7), "refs/tags/v0.2.0", ""]) {
+    await assert.rejects(
+      assertPinFreshness({
+        repositoryRoot: root,
+        gitImpl: freshnessGit(["v0.2.0"], { "v0.2.0": noncanonical }),
+      }),
+      /release tag v0\.2\.0 did not resolve to a commit/u,
+      `expected noncanonical rejection for ${JSON.stringify(noncanonical)}`,
+    );
+  }
+});
