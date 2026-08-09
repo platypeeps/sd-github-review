@@ -199,6 +199,12 @@ placeholder. Read-only clients combine that declaration with GitHub workflow
 metadata to classify `ready`, `absent`, `invalid`, `incompatible`, or
 `unavailable` before any dispatch.
 
+`contract/` is where this repository publishes the reference descriptor;
+`config/routed-review-setup-v1.json` is the single path setup discovery probes
+in the repository being classified. The two are deliberately different: a
+reference copy on the probe path would make this repository classify itself as
+having the durable lane installed.
+
 ## Automatic Selection
 
 The first applicable rule wins:

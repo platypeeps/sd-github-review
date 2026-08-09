@@ -113,12 +113,13 @@ outputs.
    together only when adopting the reviewed full SHA of a later release.
 2. Keep `contents: read`, `pull-requests: write`, and `checks: write`.
    Check Run write access is used only for durable receipts.
-3. Publish [`config/routed-review-setup-v1.json`](contract/routed-review-setup-v1.json)
-   with the workflow. Copy it from this repository's published
-   `contract/routed-review-setup-v1.json`, but place it at `config/` in your
-   repository — that is the only path setup discovery probes. Its
-   `actionReference` is pinned to the same release SHA; keep the descriptor and
-   workflow references identical when upgrading.
+3. Publish the setup capability descriptor with the workflow. Copy this
+   repository's published
+   [`contract/routed-review-setup-v1.json`](contract/routed-review-setup-v1.json)
+   to `config/routed-review-setup-v1.json` in your repository — `config/` is
+   the only path setup discovery probes. Its `actionReference` is pinned to the
+   same release SHA; keep the descriptor and workflow references identical when
+   upgrading.
 4. A request whose intent or automatic policy selects `copilot` uses the
    built-in native backend. If automatic policy can select `cheap` or `deep`,
    configure those external backend descriptors and adapter steps as well.

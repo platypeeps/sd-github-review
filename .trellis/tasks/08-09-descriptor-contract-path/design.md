@@ -59,11 +59,21 @@ These are **consumer install instructions**. The displayed path is where a consu
 the descriptor so `DEFAULT_DESCRIPTOR_PATH` finds it (`sd-ai-command-pack-review.py:31`); the
 link target is this repository's copy — the file being copied — which is what moves.
 
-So each becomes ``[`config/routed-review-setup-v1.json`](contract/routed-review-setup-v1.json)``:
-display the destination, link the source. A mechanical find-and-replace across these three lines
-would instruct every consumer to install at `contract/`, where nothing ever probes — the R1
-defect inverted, and strictly worse than the defect being fixed, because R1 breaks only this
-repository while this would break every consumer that follows the guide.
+A mechanical find-and-replace across these three lines would instruct every consumer to install
+at `contract/`, where nothing ever probes — the R1 defect inverted, and strictly worse than the
+defect being fixed, because R1 breaks only this repository while this would break every consumer
+that follows the guide. Both paths must therefore appear, and both must be labelled.
+
+The first implementation displayed `config/` as the link text while targeting `contract/`
+(``[`config/routed-review-setup-v1.json`](contract/routed-review-setup-v1.json)``). Local review
+(prism, PR #68) flagged that as a broken link at high severity. It is not broken — the target
+resolves and the preflight documentation-path check passes — but a link whose visible text is a
+different path from its destination cannot be read correctly, and "which of these two paths am I
+looking at" is exactly the confusion this task exists to remove.
+
+Revised: the link text equals the link target (this repository's published source), and the
+consumer destination is stated as ordinary prose beside it. Both paths are named, neither is
+inferred from a link.
 
 ### Category 3 — stays entirely
 

@@ -32,12 +32,17 @@ by `validateMetadata(root)`, this repository's own validator.
 `directory-structure.md:31` needs both edits: repurpose or remove the `config/` line, and add a
 `contract/` entry describing the published descriptor.
 
-**Category 2 — link target only.** `README.md:132`, `SETUP-COPILOT.md:116`,
-`SETUP-PR-AGENT.md:346`. Each becomes
-``[`config/routed-review-setup-v1.json`](contract/routed-review-setup-v1.json)`` — displayed path
-unchanged, link target moved. These are consumer install instructions: the displayed path is
-where a consumer must place the file for `DEFAULT_DESCRIPTOR_PATH` to find it. Rewriting the
-displayed text to `contract/` would document an installation nothing ever probes.
+**Category 2 — name both paths.** `README.md:132`, `SETUP-COPILOT.md:116`,
+`SETUP-PR-AGENT.md:346`. These are consumer install instructions, so both the source and the
+destination must appear: link to this repository's published
+``[`contract/routed-review-setup-v1.json`](contract/routed-review-setup-v1.json)``, then state in
+prose that it is copied to `config/routed-review-setup-v1.json` in the consumer repository,
+because `config/` is the only path `DEFAULT_DESCRIPTOR_PATH` probes. Rewriting the instruction to
+name only `contract/` would document an installation nothing ever probes.
+
+Do not use a link whose display text is one path and whose target is another. That form was
+tried first and rejected in review (PR #68): the link resolves, but the reader cannot tell which
+of the two paths the link refers to.
 
 **Category 3 — do not touch.** `scripts/sd-ai-command-pack-review.py:31`,
 `scripts/sd-ai-command-pack-review-local.py:274,323`, and the `codecs.mjs:74` comment. All name
