@@ -346,8 +346,10 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 
 - `mode`: `auto|cheap|deep|copilot|none`; explicit configuration outranks
   commands, labels, draft gating, and automatic risk rules.
-- `high-risk-route`: `deep|copilot`, default `copilot`; both sensitive-path and
-  changed-line threshold rules select it. PR-Agent profiles opt into `deep`.
+- `high-risk-route`: `deep|copilot`, default `deep`; both sensitive-path and
+  changed-line threshold rules select it. PR-Agent profiles set `deep`
+  explicitly, which now matches the default. Consumers wanting the previous
+  behavior set `copilot`.
 - `low-confidence-route`: `deep|copilot`, default `deep`; it remains separate
   from structural high-risk routing.
 - Trusted `/review <mode>` commands and `review:<mode>` labels override only

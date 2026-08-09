@@ -16,7 +16,7 @@ authoritative. AI review is supplemental.
 | --- | --- | --- | --- |
 | `cheap` | Routine, lower-risk changes | Emits the configured cheap model and `run-external-reviewer=true` | Generic adapter plus executable PR-Agent workflow supported |
 | `deep` | Changes that need a more capable external review, including high-risk changes in the PR-Agent profile | Emits the configured deep model and `run-external-reviewer=true` | Generic adapter plus executable PR-Agent workflow supported |
-| `copilot` | Explicit native reviews and the generic high-risk default | Requests `copilot-pull-request-reviewer[bot]` through GitHub | Native integration supported |
+| `copilot` | Explicit native reviews only | Requests `copilot-pull-request-reviewer[bot]` through GitHub | Native integration supported |
 | `none` | Review intentionally disabled or event is irrelevant | Emits routing evidence without requesting a reviewer | Supported |
 
 Copilot is the only reviewer backend invoked directly by the action. The
@@ -209,8 +209,8 @@ The first applicable rule wins:
 | 2 | Trusted exact `/review` command | Command route |
 | 3 | One explicit `review:*` label | Label route |
 | 4 | Draft and `review-drafts=false` | `none` |
-| 5 | A changed path matches `sensitive-paths` | `high-risk-route`, default `copilot` |
-| 6 | Changed lines meet `changed-line-threshold` (default `800`) | `high-risk-route`, default `copilot` |
+| 5 | A changed path matches `sensitive-paths` | `high-risk-route`, default `deep` |
+| 6 | Changed lines meet `changed-line-threshold` (default `800`) | `high-risk-route`, default `deep` |
 | 7 | Upstream `confidence=low` | `low-confidence-route`, default `deep` |
 | 8 | No earlier rule matched | `cheap` |
 
@@ -223,9 +223,13 @@ This makes automatic routing a risk policy rather than a general model
 ranking. Known structural risk or scale goes to `high-risk-route`; uncertainty
 reported by an upstream reviewer goes to `low-confidence-route`; and ordinary
 work stays on `cheap`. Both escalation inputs accept `deep` or `copilot`.
-Generic workflows inherit `high-risk-route=copilot`, while both PR-Agent
-profiles set it to `deep` so the configured external deep model handles
-automatic high-risk reviews. Selecting `copilot` does not dynamically raise
+Generic workflows and both PR-Agent profiles all resolve `high-risk-route` to
+`deep`, the profiles by setting it explicitly and generic workflows by
+inheriting the default, so the configured external deep model handles automatic
+high-risk reviews everywhere unless a consumer opts back into `copilot`. On the
+durable operations path that default makes a `deep-backend` input load-bearing:
+the copilot route synthesizes its own backend, every other route requires one.
+Selecting `copilot` does not dynamically raise
 GitHub's review-effort setting, and setting `high-risk-route=deep` does not
 disable explicit Copilot commands, labels, modes, or durable requests.
 
@@ -234,6 +238,66 @@ within one path segment, `**` crosses directories, and `?` matches one
 non-separator character. The defaults cover authentication, authorization,
 billing, cryptography, migrations, schemas, and public API paths; consumers
 should replace them with repository-specific risk boundaries.
+
+### Lowering the automatic route with local review evidence
+
+A caller that has already run its own review can lower the automatic route by
+supplying local evidence. This works on the **durable operations path only**.
+The standalone path (`src/index.js:254`, `routeReview`) has no local-evidence
+concept at all, so a standalone workflow gets nothing from these inputs no
+matter how they are set.
+
+The evidence does not travel as its own action input. It rides inside the
+`review-request` JSON input (`action.yml:13`) as a `localReview` object:
+
+```jsonc
+{
+  "schemaVersion": 1,
+  "repository": "owner/repo",
+  "pullRequestNumber": 23,
+  "headSha": "<40-hex head sha>",
+  "mode": "auto",
+  "localReview": {
+    "headSha": "<the same 40-hex head sha>",
+    "outcome": "clean",
+    "confidence": 90,
+    "dispositionCounts": { "unresolved": 0 }
+  }
+}
+```
+
+`runOperation` reads the `review-request` input at `src/operations.js:539` —
+that is the **decode** site, not the consume site — and delegates.
+`src/protocol.js:538` decodes the `localReview` object itself,
+`selectProtocolRoute` (`src/operations.js:381`) reads the three policy inputs at
+`src/operations.js:390-401`, `src/router.js:161` evaluates the evidence, and the
+resulting decision is consumed at `src/operations.js:405`. The call order is not
+the file order: `:539` sits below `:381` and `:405` because `runOperation` calls
+`runRouteAction`.
+
+**Exact-head binding.** `localReview.headSha` must equal the request's
+`headSha`; a mismatch is rejected at `src/protocol.js:459-460` with
+`localReview.headSha must match the request headSha`. Evidence gathered against
+an earlier commit is therefore inadmissible rather than merely stale.
+
+**All three eligibility conditions must hold** (`src/router.js:163-165`):
+
+1. `outcome` is `clean` or `fully-dispositioned`;
+2. `confidence` is at or above `local-confidence-threshold`;
+3. `dispositionCounts.unresolved` is exactly `0`.
+
+When all three hold, the route is lowered toward `local-evidence-route`, but
+only ever *weakened* — `weakerRoute` never raises a route, so evidence cannot
+escalate. When any condition fails the request records `local evidence supplied
+no positive routing confidence` and routing proceeds unchanged.
+
+**Floors are applied after lowering and cannot be bypassed.** The risk floor is
+`high-risk-route` whenever a sensitive path matched or the changed-line
+threshold was met, `independent-review-floor` supplies a configured floor, and
+the stronger of the two is re-applied at `src/router.js:195` *after* any
+evidence-driven reduction. Local evidence can lower an ordinary change to
+`cheap` or `none`; it can never lower a sensitive or oversized change below the
+high-risk floor.
 
 ## Manual Selection
 
@@ -399,6 +463,9 @@ The planned contract and delivery split live under
   routing smoke workflow
 - [`examples/on-demand-review-router.yml`](examples/on-demand-review-router.yml)
   — no-checkout durable dispatch and finalization workflow
+- [`examples/gated-review-router.yml`](examples/gated-review-router.yml) —
+  cost-optimized profile running free deterministic gates ahead of routing, so
+  AI review is never billed for a change a lint or test failure would reject
 - [`config/routed-review-setup-v1.json`](config/routed-review-setup-v1.json) —
   read-only setup capability descriptor
 - [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) — candidate, pilot,

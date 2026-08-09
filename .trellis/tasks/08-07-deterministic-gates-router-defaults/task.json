@@ -3,7 +3,7 @@
   "name": "deterministic-gates-router-defaults",
   "title": "Ship deterministic pre-routing gates and cost-biased router defaults",
   "description": "Flip the high-risk-route default from copilot to deep across all five declaration sites, ship a gated example workflow that runs deterministic jobs before AI routing, and document the local-review-evidence payload path.",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,

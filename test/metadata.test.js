@@ -134,7 +134,7 @@ async function writeExampleFixture(root, actionReference) {
 test("validates the repository action metadata, pinned workflows, and examples", async () => {
   const result = await validateMetadata(path.resolve(import.meta.dirname, ".."));
   assert.equal(result.workflowCount, 1);
-  assert.equal(result.exampleCount, 5);
+  assert.equal(result.exampleCount, 6);
   assert.ok(result.trackedPathCount > 0);
   assert.equal(result.contractMajor, 1);
 });

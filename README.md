@@ -11,8 +11,8 @@ tier for a pull request:
 - `cheap` for routine changes within configured risk limits
 - `deep` for a more capable external model, including high-risk changes in the
   shipped PR-Agent profile
-- `copilot` for explicit native reviews and, by default, sensitive or unusually
-  large changes in generic profiles
+- `copilot` for explicit native reviews; sensitive or unusually large changes go
+  to `deep` by default, and reach `copilot` only when `high-risk-route` is set
 - `none` when AI review is explicitly disabled
 
 Copilot is integrated directly. The `cheap` and `deep` routes emit a generic
@@ -78,6 +78,13 @@ failure recovery, and optional cleanup.
 - **Another external reviewer:** start from
   [`examples/review-router.yml`](examples/review-router.yml) and replace its
   adapter placeholder with the organization's internal review service.
+- **Lowest cost:** start from
+  [`examples/gated-review-router.yml`](examples/gated-review-router.yml), which
+  runs free deterministic checks in a separate job and reaches the router only
+  through `needs:` on that job. No AI review is billed for a pull request a
+  lint, type-check, or test failure would have rejected. See also
+  [Lowering the automatic route with local review evidence](DESIGN.md#lowering-the-automatic-route-with-local-review-evidence)
+  for reducing cost further on the durable path.
 
 For a provider-free evaluation, start with
 [`examples/pilot-router.yml`](examples/pilot-router.yml). It exercises routing
