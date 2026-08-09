@@ -227,3 +227,16 @@ for (const label of manifest.resources.labels) {
   if (label.owned && snapshot.labels.has(label.name)) await deleteLabel(label.name);
 }
 ```
+
+```js
+// Wrong: publish this repository's reference descriptor at the same path the
+// consumer probe reads. Setup discovery cannot tell a published reference copy
+// from an installed declaration, so probing this repository reports the durable
+// lane as present and then fails looking up workflow metadata that never exists.
+const setupDescriptorPath = "config/routed-review-setup-v1.json";
+
+// Correct: publish under contract/ and keep config/ reserved for the consumer's
+// own installed copy. Probing this repository reports
+// `state: "absent" / reason: "setup-descriptor-absent"`, which is the truth.
+const setupDescriptorPath = "contract/routed-review-setup-v1.json";
+```
