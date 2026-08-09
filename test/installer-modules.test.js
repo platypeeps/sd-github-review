@@ -204,7 +204,12 @@ test("codecs: the durable template declares the workflow name and path the descr
     await readFile(new URL(DESCRIPTOR_SOURCE_PATH, repositoryRoot), "utf8"),
   );
   const template = await readFile(new URL(DURABLE_TEMPLATE_PATH, repositoryRoot), "utf8");
-  const declaredName = template.match(/^name:[ \t]*(.+?)[ \t]*$/mu)?.[1];
+  // Compare the logical YAML value, not the raw bytes: `name: "SD routed
+  // review"` is valid YAML that GitHub resolves to the same workflow name, so
+  // capturing the quotes would fail this test on a change the probe accepts.
+  const declaredName = template
+    .match(/^name:[ \t]*(.+?)[ \t]*$/mu)?.[1]
+    ?.replace(/^(["'])(.*)\1$/u, "$2");
 
   assert.equal(declaredName, descriptor.workflow.name);
   assert.equal(DURABLE_WORKFLOW_PATH, descriptor.workflow.path);

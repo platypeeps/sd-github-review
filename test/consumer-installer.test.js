@@ -1771,7 +1771,7 @@ for (const { field, destination, sourceOption, freshBytes } of DURABLE_CASES) {
   });
 }
 
-test("uninstall removes all three managed files", async () => {
+test("uninstall removes the manifest and every managed file", async () => {
   const sourceRoot = await makeSource();
   const target = await makeTarget();
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });

@@ -220,9 +220,7 @@ async function installOrUpdate(command, options, dependencies) {
   const pendingManifest = createManifest({
     state: "pending",
     repository: target.repository,
-    templateSha,
-    descriptorSha: sha256(sources.descriptor),
-    durableTemplateSha: sha256(sources.durableWorkflow),
+    sources,
     configuration,
     resources,
     release,
@@ -321,9 +319,7 @@ async function adoptInstallation(options, dependencies) {
   const pendingManifest = createManifest({
     state: "pending",
     repository: target.repository,
-    templateSha,
-    descriptorSha: sha256(sources.descriptor),
-    durableTemplateSha: sha256(sources.durableWorkflow),
+    sources,
     configuration,
     resources,
     release,
