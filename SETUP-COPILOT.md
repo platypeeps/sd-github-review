@@ -54,8 +54,8 @@ and
 1. Copy [`examples/pilot-router.yml`](examples/pilot-router.yml) into the
    consuming repository, for example as
    `.github/workflows/ai-review-router.yml`.
-2. The checked-in workflow is pinned to the `v0.1.0` release commit,
-   `8636a3983d18de17c49907a4c48170a61b1bb713`. Keep that exact pin or replace
+2. The checked-in workflow is pinned to the `v0.3.0` release commit,
+   `744a9f138bba7c60272c7f9e3f8412e435e11b89`. Keep that exact pin or replace
    it with the reviewed full 40-character SHA of a later approved release. Do
    not use a floating branch or tag in production.
 3. Keep these workflow permissions:
@@ -109,7 +109,7 @@ when a trusted caller needs an exact-head receipt rather than event-local
 outputs.
 
 1. Copy the workflow to `.github/workflows/sd-review.yml`. It is pinned to the
-   immutable `v0.1.0` commit; update every first-party Action reference
+   immutable `v0.3.0` commit; update every first-party Action reference
    together only when adopting the reviewed full SHA of a later release.
 2. Keep `contents: read`, `pull-requests: write`, and `checks: write`.
    Check Run write access is used only for durable receipts.

@@ -89,6 +89,13 @@ export const HISTORICAL_TEMPLATE_HASHES = Object.freeze([
     tag: "v0.1.0",
     sha256: "fb372116ae1853da92865ddf03c79dd93dcc174ac0f7979eda3eefdcf336bc18",
   }),
+  // v0.2.0 and v0.3.0 ship byte-identical templates, so this one entry covers
+  // both; it is labeled with the earlier release that introduced the bytes.
+  // Superseded by the v0.3.0 pin advance.
+  Object.freeze({
+    tag: "v0.2.0",
+    sha256: "79ee12926723d0b073fdd33241b08047faa9e75ea4243db797be15ade73e3b6f",
+  }),
 ]);
 
 export function isObject(value) {
