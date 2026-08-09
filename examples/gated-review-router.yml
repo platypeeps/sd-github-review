@@ -1,0 +1,72 @@
+name: Gated AI review router
+
+# Cost-optimized profile: free deterministic checks run first, and AI review is
+# reached only if they pass. The `needs: [gates]` edge is the load-bearing part
+# of this file — it is what prevents paying for an AI review of a pull request
+# that a lint or type-check failure would have rejected anyway.
+#
+# The commands inside the gate job are placeholders. This repository cannot know
+# your lint, test, or type-check invocation; replace them with yours. Do not
+# remove the job or the `needs:` edge — that is the whole point of the example.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  gates:
+    # Deterministic, free, and fast. Anything that can reject a pull request
+    # without an AI call belongs here: lint, type-check, unit tests, CodeQL,
+    # Semgrep. A failure here stops the workflow before the router ever runs.
+    if: github.event_name == 'pull_request' || github.event.issue.pull_request != null
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Lint
+        run: echo "replace with your lint command, e.g. npm run lint"
+
+      - name: Type check
+        run: echo "replace with your type-check command, e.g. npm run typecheck"
+
+      - name: Unit tests
+        run: echo "replace with your test command, e.g. npm test"
+
+  route:
+    # Reached only when every gate above succeeded. GitHub skips this job if any
+    # job named in `needs` fails, so no AI review is billed for a change that
+    # already failed a free check.
+    needs: [gates]
+    if: github.event_name == 'pull_request' || github.event.issue.pull_request != null
+    runs-on: ubuntu-latest
+    steps:
+      - name: Choose reviewer
+        id: review
+        # v0.1.0; upgrade only to another reviewed full release SHA.
+        uses: platypeeps/sd-github-review@8636a3983d18de17c49907a4c48170a61b1bb713
+        with:
+          github-token: ${{ github.token }}
+          cheap-model: ${{ vars.CHEAP_REVIEW_MODEL }}
+          deep-model: ${{ vars.DEEP_REVIEW_MODEL }}
+          sensitive-paths: |-
+            **/auth/**
+            **/billing/**
+            **/migrations/**
+            **/api/**
+
+      # Add the external reviewer your organization operates here. The selected
+      # model is available as steps.review.outputs.model. Keep provider secrets
+      # on this step, not on the routing step.
+      - name: Run external reviewer
+        if: steps.review.outputs.run-external-reviewer == 'true'
+        env:
+          REVIEW_ROUTE: ${{ steps.review.outputs.route }}
+          REVIEW_MODEL: ${{ steps.review.outputs.model }}
+          PULL_REQUEST_NUMBER: ${{ steps.review.outputs.pull-request-number }}
+        run: ./scripts/run-ai-review

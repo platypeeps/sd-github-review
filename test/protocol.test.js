@@ -499,11 +499,29 @@ test("failed, cancelled, skipped, and low-confidence local evidence supply no po
   assert.equal(decision.route, "deep");
 });
 
-test("sensitive and large-change floors cannot be bypassed by local evidence", () => {
+// Pins the src/protocol.js:970 decode fallback (`context.highRiskRoute ?? …`),
+// which is reached when the routing context omits the field entirely — a third
+// distinct site from the two input fallbacks.
+test("a routing context omitting highRiskRoute resolves the deep default", () => {
   const automatic = requestByName.get("automatic with exact-head local evidence");
   for (const routingContext of [
     { sensitiveFiles: ["src/security.js"] },
     { changedLines: 800, changedLineThreshold: 800 },
+  ]) {
+    const decision = selectProtocolRoute({
+      request: automatic,
+      routingContext,
+      policy: { localEvidenceRoute: "none" },
+    });
+    assert.equal(decision.route, "deep");
+  }
+});
+
+test("sensitive and large-change floors cannot be bypassed by local evidence", () => {
+  const automatic = requestByName.get("automatic with exact-head local evidence");
+  for (const routingContext of [
+    { sensitiveFiles: ["src/security.js"], highRiskRoute: "copilot" },
+    { changedLines: 800, changedLineThreshold: 800, highRiskRoute: "copilot" },
   ]) {
     const decision = selectProtocolRoute({
       request: automatic,

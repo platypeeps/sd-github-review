@@ -84,22 +84,23 @@ requests before adding another backend.
 
 ## Copilot-only routing
 
-Automatic mode sends routine changes to `cheap`, low-confidence changes to
-`deep`, and—under the generic default—sensitive or large changes to `copilot`.
-Therefore a Copilot-only installation reviews only the pull requests that
-actually select `copilot`. Keep `high-risk-route: copilot` or omit the input to
-retain that default.
+Automatic mode sends routine changes to `cheap`, and low-confidence changes to
+`deep`. Sensitive or large changes also go to `deep` unless you set
+`high-risk-route: copilot`; omitting the input no longer selects Copilot for
+them. Therefore a Copilot-only installation reviews only the pull requests that
+actually select `copilot`, and you must set `high-risk-route: copilot`
+explicitly to route structural risk there.
 
 To send every supported pull-request event to Copilot, set `mode: copilot` on
 the action and remove the broad `issue_comment` trigger unless the workflow
 also restricts comments to explicit review commands. A fixed mode has higher
 precedence than command and label routing.
 
-The shipped PR-Agent profile instead sets `high-risk-route: deep`, so PR-Agent
-handles automatic high-risk reviews while explicit Copilot selection remains
-available. For a hybrid installation where high-risk changes still run
-Copilot, start from that workflow and change the input to
-`high-risk-route: copilot`.
+The shipped PR-Agent profile sets `high-risk-route: deep` explicitly, which now
+matches the default rather than departing from it, so PR-Agent handles automatic
+high-risk reviews while explicit Copilot selection remains available. For a
+hybrid installation where high-risk changes still run Copilot, start from that
+workflow and change the input to `high-risk-route: copilot`.
 
 ## Durable on-demand routing
 

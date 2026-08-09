@@ -205,7 +205,7 @@ test("automatic sensitive routing requests Copilot once and reports outputs", as
 
   const result = await harness.run({
     event: { action: "opened", pull_request: basePullRequest },
-    env: { "INPUT_SENSITIVE-PATHS": "**/auth/**" },
+    env: { "INPUT_SENSITIVE-PATHS": "**/auth/**", "INPUT_HIGH-RISK-ROUTE": "copilot" },
   });
 
   assert.equal(result.decision.route, "copilot");
@@ -218,6 +218,22 @@ test("automatic sensitive routing requests Copilot once and reports outputs", as
   assert.equal(harness.outputs.get("run-external-reviewer"), "false");
   assert.deepEqual(harness.summaries[0].sensitiveFiles, ["src/auth/session.js"]);
   assert.match(harness.logs[0], /Selected copilot for PR #23/u);
+});
+
+// Pins the src/index.js:249 standalone-path fallback. Every other sensitive-path
+// test now passes high-risk-route explicitly, so without this one nothing
+// exercises the shipped default at all.
+test("omitting high-risk-route routes sensitive paths to deep, not Copilot", async () => {
+  const harness = createHarness({ files: ["src/auth/session.js"] });
+
+  const result = await harness.run({
+    event: { action: "opened", pull_request: basePullRequest },
+    env: { "INPUT_SENSITIVE-PATHS": "**/auth/**" },
+  });
+
+  assert.equal(result.decision.route, "deep");
+  assert.equal(harness.outputs.get("copilot-requested"), "false");
+  assert.deepEqual(harness.calls.requestReviewer, []);
 });
 
 test("automatic sensitive routing can run the external deep reviewer without requesting Copilot", async () => {
@@ -406,7 +422,7 @@ test("event-target routing drives every client call with the single event PR num
 
   const result = await harness.run({
     event: { action: "opened", pull_request: basePullRequest },
-    env: { "INPUT_SENSITIVE-PATHS": "**/auth/**" },
+    env: { "INPUT_SENSITIVE-PATHS": "**/auth/**", "INPUT_HIGH-RISK-ROUTE": "copilot" },
   });
 
   assert.equal(result.decision.route, "copilot");
@@ -428,7 +444,11 @@ test("explicit-target override fetches metadata and binds every client call to t
   const result = await harness.run({
     eventName: "workflow_dispatch",
     event: {},
-    env: { "INPUT_PR-NUMBER": "77", "INPUT_SENSITIVE-PATHS": "**/auth/**" },
+    env: {
+      "INPUT_PR-NUMBER": "77",
+      "INPUT_SENSITIVE-PATHS": "**/auth/**",
+      "INPUT_HIGH-RISK-ROUTE": "copilot",
+    },
   });
 
   assert.equal(result.decision.route, "copilot");

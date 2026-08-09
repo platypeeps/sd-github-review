@@ -967,7 +967,7 @@ export function decodeRoutingInputs({ request: requestValue, routingContext = {}
     "routingContext.lowConfidenceRoute",
   );
   const highRiskRoute = normalizeEscalationRoute(
-    context.highRiskRoute ?? "copilot",
+    context.highRiskRoute ?? "deep",
     "routingContext.highRiskRoute",
   );
   const draft = booleanValue(context.draft ?? false, "routingContext.draft");
