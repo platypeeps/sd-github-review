@@ -181,6 +181,19 @@ node scripts/install-consumer.mjs uninstall [options]
   removes each managed file the manifest records — so a schema-2 installation
   loses only its event-driven workflow — and refuses when any of them was
   modified after installation.
+- The managed-resource set is enumerated in more than one place, and a fourth
+  resource is only correctly added when every site below is updated together.
+  `DURABLE_RESOURCES` in `plan.mjs` is the shared table for the durable pair and
+  already drives the guards, `check`, and `uninstall`; the remaining sites hold
+  their own literal lists because they cover different slices of the set:
+  `decodeManifest`'s schema-3 block loop (`codecs.mjs`), `createManifest`'s
+  emitted blocks (`plan.mjs`), `COPIED_SOURCE_PATHS` (`transport.mjs`, the
+  `released: true` cleanliness set), `readManagedSources` and `isConverged`
+  (`consumer-installer.mjs`), and `DURABLE_CASES` (`test/consumer-installer.test.js`).
+  A resource missing from `COPIED_SOURCE_PATHS` ships dirty bytes under a
+  release claim; missing from `isConverged`, a converged run rewrites files;
+  missing from `DURABLE_CASES`, the guard tests pass while covering nothing.
+  Prefer deriving a new site from an existing table over adding a seventh list.
 
 ### 4. Validation & Error Matrix
 
