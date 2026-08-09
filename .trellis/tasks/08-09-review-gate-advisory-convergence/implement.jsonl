@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "The gate lives in scripts/; this spec owns that boundary and the rule that repository-only review tooling never becomes part of the shipped Action runtime."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Changing which findings block redefines the failure surface; the blocked/ready diagnostic and its reason codes must follow the project's error contract."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Acceptance requires a test proving an advisory-only receipt converges while a real defect still blocks; this spec owns test structure and assertion points."}
