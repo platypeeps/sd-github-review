@@ -240,6 +240,28 @@ async function readSetupDescriptor(repositoryRoot) {
       `${descriptorPath}: contractMajor must be a known contract (${[...knownContractMajors].join(", ")})`,
     );
   }
+  // R2: the scalar contractMajor says which contract this release speaks; the
+  // array says which it can serve. A consumer pinned to an older major has no
+  // way to learn compatibility from a scalar alone.
+  const supported = descriptor.supportedContractMajors;
+  if (!Array.isArray(supported) || supported.length === 0) {
+    throw new Error(
+      `${descriptorPath}: supportedContractMajors must be a non-empty array of contract majors`,
+    );
+  }
+  for (const major of supported) {
+    if (!knownContractMajors.has(major)) {
+      throw new Error(
+        `${descriptorPath}: supportedContractMajors contains unknown contract ${JSON.stringify(major)} ` +
+          `(known: ${[...knownContractMajors].join(", ")})`,
+      );
+    }
+  }
+  if (!supported.includes(descriptor.contractMajor)) {
+    throw new Error(
+      `${descriptorPath}: supportedContractMajors must include contractMajor ${descriptor.contractMajor}`,
+    );
+  }
   const match = firstPartyReference.exec(descriptor.actionReference ?? "");
   if (!match) {
     throw new Error(`${descriptorPath}: actionReference must pin owner/repo@<40-character SHA>`);
@@ -249,6 +271,7 @@ async function readSetupDescriptor(repositoryRoot) {
     actionOwnerRepo: match[1],
     actionSha: match[2],
     contractMajor: descriptor.contractMajor,
+    supportedContractMajors: [...supported],
   };
 }
 

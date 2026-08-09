@@ -52,6 +52,9 @@ async function writeMetadataFixture(root, actionReference, options = {}) {
   const {
     descriptorSha = "a".repeat(40),
     contractMajor = 1,
+    // Defaults to [contractMajor] so existing fixtures stay valid; the R2 tests
+    // below override it to drive the rejection paths.
+    supportedContractMajors = [contractMajor],
     version = "0.0.0",
     writeDescriptor = true,
     writePackage = true,
@@ -67,6 +70,7 @@ async function writeMetadataFixture(root, actionReference, options = {}) {
         {
           schemaVersion: 1,
           contractMajor,
+          supportedContractMajors,
           actionReference: `platypeeps/sd-github-review@${descriptorSha}`,
           supportedOperations: ["route", "finalize", "query"],
           requiredPermissions: {
@@ -828,3 +832,63 @@ test("assertPinFreshness fails when no release tag is visible rather than skippi
     /no v<semver> release tag found; pin freshness cannot be verified/u,
   );
 });
+
+// R2: supportedContractMajors. The scalar contractMajor says which contract
+// this release speaks; the array says which it can serve. A consumer pinned to
+// an older major cannot learn compatibility from a scalar alone.
+test("accepts a descriptor whose supportedContractMajors includes its contractMajor", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-majors-ok-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    contractMajor: 1,
+    supportedContractMajors: [1],
+  });
+  await initTracked(root);
+  const result = await validateMetadata(root);
+  assert.equal(result.contractMajor, 1);
+});
+
+test("rejects an empty supportedContractMajors array", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-majors-empty-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    supportedContractMajors: [],
+  });
+  await assert.rejects(
+    validateMetadata(root),
+    /supportedContractMajors must be a non-empty array/u,
+  );
+});
+
+test("rejects a missing supportedContractMajors array", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-majors-absent-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c");
+  // A pre-R2 descriptor has no such key at all. Passing `undefined` through the
+  // fixture would hit its default and write a valid descriptor instead.
+  const descriptorPath = path.join(root, "config", "routed-review-setup-v1.json");
+  const descriptor = JSON.parse(await readFile(descriptorPath, "utf8"));
+  delete descriptor.supportedContractMajors;
+  await writeFile(descriptorPath, `${JSON.stringify(descriptor, null, 2)}\n`, "utf8");
+  await assert.rejects(
+    validateMetadata(root),
+    /supportedContractMajors must be a non-empty array/u,
+  );
+});
+
+test("rejects a supportedContractMajors entry outside the known contracts", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-majors-unknown-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    contractMajor: 1,
+    supportedContractMajors: [1, 99],
+  });
+  await assert.rejects(
+    validateMetadata(root),
+    /supportedContractMajors contains unknown contract 99/u,
+  );
+});
+
+// There is deliberately no test for "supportedContractMajors omits its own
+// contractMajor". While knownContractMajors is the single value 1, that state
+// is unreachable: contractMajor must be a known major, every array element must
+// be a known major, and the array must be non-empty — so the array necessarily
+// contains contractMajor. The guard in readSetupDescriptor stays because it
+// becomes live the moment a second major is known; a test written today would
+// pass for the wrong reason.
