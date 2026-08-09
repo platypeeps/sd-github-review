@@ -21,7 +21,6 @@
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "blockedOn": "08-08-release-v0-3-0-pin-freshness",
-  "notes": "Blocked on 08-08-release-v0-3-0-pin-freshness. The new examples/sd-review.yml template carries a first-party pin; shipping it before the pin advance would bake v0.1.0 into the one workflow the whole fleet is about to receive. See prd.md Notes.",
+  "notes": "Unblocked 2026-08-09: 08-08-release-v0-3-0-pin-freshness merged in PR #66, so examples/sd-review.yml will carry the current v0.3.0 pin rather than baking v0.1.0 into the fleet rollout.",
   "meta": {}
 }
