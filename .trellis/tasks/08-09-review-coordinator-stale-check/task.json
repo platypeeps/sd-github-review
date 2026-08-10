@@ -21,7 +21,7 @@
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "2026-08-09: filed upstream, not fixable here. scripts/sd-ai-command-pack-review.py is vendored and pack.install-audit blocks a local edit. Upstream 08-07-review-check-stale-cache predates this task and requires recompute-every-run, which SUPERSEDES this task's pass-only-reuse design.md/implement.md and its AC 3 -- do not implement those as written. Evidence appended upstream in PR #406.",
+  "notes": "2026-08-09: PARKED. Filed upstream, not fixable here. scripts/sd-ai-command-pack-review.py is vendored and pack.install-audit blocks a local edit. Upstream 08-07-review-check-stale-cache predates this task and requires recompute-every-run, which SUPERSEDES this task's pass-only-reuse design.md/implement.md and its AC 3 -- do not implement those as written. Evidence appended upstream in PR #406. Status stays in_progress because task.py start did run and the branch exists; Trellis has no parked status, so parking is carried by the PARKED: title prefix plus blocked/blockedOn, per the work-loop inventory convention. It is not awaiting local work.",
   "meta": {},
   "blocked": true,
   "blockedOn": "upstream sd-ai-command-pack task 08-07-review-check-stale-cache; evidence sent as platypeeps/sd-ai-command-pack#406; resumes on a pack refresh carrying the fix"

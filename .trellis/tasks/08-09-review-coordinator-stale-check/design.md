@@ -1,5 +1,14 @@
 # Design — stop the coordinator replaying a stale deterministic-check failure
 
+> **Superseded — do not implement as written.** This document specifies
+> **pass-only reuse**: keep serving a cached `passed` report, refuse a cached
+> failure. The owning upstream task, `08-07-review-check-stale-cache` in
+> `sd-ai-command-pack`, requires the opposite — recompute the deterministic
+> check on **every** invocation — and explicitly supersedes cached-pass reuse.
+> The subject file is vendored, so nothing here can land in this repository
+> anyway. Retained as a recorded, refuted alternative and for its mechanism
+> analysis, which remains accurate. See the two closing sections of `prd.md`.
+
 ## Current mechanism
 
 Three pieces in `scripts/sd-ai-command-pack-review.py` produce the defect together.

@@ -110,11 +110,12 @@ Before implementation:
 - [ ] Identified all layer boundaries
 - [ ] Defined format at each boundary
 - [ ] Decided where validation happens
-- [ ] Confirmed this repository **owns** every file the change touches. A
-      vendored path looks ordinary in the tree and only fails at the gate. Check
-      `git log --oneline -- <path>`: a history of nothing but "chore: refresh
-      ..." commits means the fix belongs upstream, and the deterministic
-      install audit will block a local edit. See
+- [ ] Confirmed this repository **owns** every file the change touches. Run
+      `git log --oneline -- <path>` on each one. If every commit is a
+      `chore: refresh ...`, the file is a vendored copy: the install audit will
+      refuse your edit and the next refresh would erase it, so the change
+      belongs upstream. A vendored file is indistinguishable from a repo-owned
+      one by reading it, so check before planning, not after implementing. See
       [`../backend/directory-structure.md`](../backend/directory-structure.md).
 
 After implementation:

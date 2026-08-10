@@ -130,8 +130,10 @@ can follow here.
 - A remediated check must be re-runnable without inventing an undocumented `--attempt-id`, and
   without deleting coordinator state by hand.
 - Do not weaken the gate: a check that is genuinely still failing must still block.
-- Do not make every invocation re-run the full check suite; the cache exists to make a resume at
-  an unchanged head cheap, and that property should survive.
+- ~~Do not make every invocation re-run the full check suite; the cache exists to make a resume at
+  an unchanged head cheap, and that property should survive.~~ **Superseded.** The owning upstream
+  task requires recomputing the deterministic check on every invocation: correctness over reuse.
+  Only the expensive local and remote stages stay memoized.
 
 ## Acceptance criteria
 
@@ -139,7 +141,11 @@ can follow here.
       `sd-review` invocation re-runs the check and reports the live result.
 - [ ] With a cached failing check whose cause is **not** fixed, the same invocation still reports
       blocked.
-- [ ] A resume at an unchanged head with a cached *passing* check does not re-run the suite.
+- [ ] ~~A resume at an unchanged head with a cached *passing* check does not re-run the suite.~~
+      **Superseded** by the upstream recompute contract, which requires a cached *pass* to be
+      recomputed too — a live input that has since broken must block. Replaced upstream by: the
+      coordinator's verdict equals a direct `sd-check` run's verdict on the same tree, for both a
+      pass and a fail, with state pre-seeded to the opposite verdict.
 - [ ] After a cause is remediated outside tracked content, re-running the **same** attempt
       number reaches the live result, so escaping a replay never requires spending a further
       numbered attempt.

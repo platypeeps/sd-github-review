@@ -1,8 +1,17 @@
 # Implementation plan — cache only a passing deterministic check
 
+> **Superseded — not a canonical plan.** The approach below (cache only a
+> passing check) is refuted by the owning upstream task,
+> `08-07-review-check-stale-cache` in `sd-ai-command-pack`, which requires
+> recomputing the check on every invocation. Its subject file is vendored, so
+> these steps cannot be executed against this repository at all. Retained
+> because the steps were executed once and their evidence is cited in `prd.md`:
+> the five-scenario self-test, the three pre-fix failures, and the mutation
+> result that identified which half of the change was load-bearing.
+
 Acceptance-criterion numbering below follows `prd.md` as it now stands: AC 1 remediated-outside,
 AC 2 still-failing, AC 3 cached-pass-not-rerun, AC 4 same-attempt convergence, AC 5 a test that
-fails against today's code.
+fails against today's code. AC 3 is itself superseded upstream — see `prd.md`.
 
 ## Step 1 — establish the failing test first
 
@@ -57,11 +66,12 @@ Add the hermetic self-test before the fix, and prove it fails against today's co
    npm test 2>&1 | tail -30
    ```
 
-   Expected before the fix: **three** scenarios fail — `remediated-outside-content`,
-   `stale-failure-from-old-state`, and `failure-not-persisted`. `still-failing` and
-   `cached-pass-not-rerun` must already pass; they encode behavior the fix preserves. If any
-   failing scenario passes before the fix, the stub is not exercising the cache — stop and
-   correct the fixture rather than proceeding.
+   Expected before the fix: exactly three scenarios fail — `remediated-outside-content`,
+   `stale-failure-from-old-state`, and `failure-not-persisted`. The other two,
+   `still-failing` and `cached-pass-not-rerun`, must already pass, because they encode
+   behavior this change preserves rather than introduces. A different count means the stub is
+   not reaching the cache: correct the fixture before continuing, and do not proceed on a
+   partial match.
 
 ## Step 2 — apply the fix
 
