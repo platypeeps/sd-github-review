@@ -56,6 +56,12 @@ materially slower.
 
 ## Notes
 
+2026-08-09: Both prerequisites below are closed and archived — `08-08-installer-durable-lane`
+and `08-09-descriptor-contract-path`. The `blockedOn` marker was stale and has been cleared;
+the sequencing rationale is retained for context. Execution still mutates eight external
+repositories and opens a pull request in each, which is outside the autonomous work-loop's
+run-level authority and requires explicit approval for that scope.
+
 Sequence after `08-08-installer-durable-lane`. Until the installer actually emits the
 descriptor and the `sd-review.yml` lane, a rollout would have nothing to roll out, and
 reproducing the pilot's hand-placement would recreate exactly the undetectable drift this task
