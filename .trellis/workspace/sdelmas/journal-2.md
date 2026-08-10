@@ -342,3 +342,50 @@ Captured the follow-up defects PR #70 exposed as Trellis task records: a fourth 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 58: Park the two review-defect tasks on upstream ownership
+
+**Date**: 2026-08-09
+**Task**: Park the two review-defect tasks on upstream ownership
+**Branch**: `feat/08-09-review-coordinator-stale-check`
+
+### Summary
+
+Established that scripts/sd-ai-command-pack-review.py is vendored from sd-ai-command-pack, so neither the stale-check replay nor the advisory non-convergence defect can be fixed in this repository. Filed this repository's evidence against the existing upstream tasks (platypeeps/sd-ai-command-pack#406), parked both local tasks on that upstream boundary, marked the local design and implementation plan superseded because upstream requires recompute-every-run rather than the pass-only reuse specified here, and recorded the vendored-pack ownership boundary in spec so a future task establishes ownership before planning.
+
+### Main Changes
+
+- Recorded upstream ownership in 08-09-review-coordinator-stale-check/prd.md: the owning task is 08-07-review-check-stale-cache upstream, and its recompute contract supersedes AC 3 and the third requirement here
+- Marked design.md and implement.md superseded — they specify pass-only reuse, which the upstream PRD explicitly rejects ('Do not resurrect the reuse AC')
+- Parked 08-09-review-gate-advisory-convergence on the same boundary; upstream PR #402 already shipped part of the fix
+- Set blockedOn on both task.json records to name the upstream task and PR #406, with notes explaining why status still reads in_progress/planning (Trellis has no parked status)
+- Added the vendored-pack ownership boundary to .trellis/spec/backend/directory-structure.md, deriving the editable set from pack.install-audit rather than a list that can go stale
+- Added a pre-implementation checklist item to .trellis/spec/guides/cross-layer-thinking-guide.md: git log a path and treat refresh-only history as upstream ownership
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b644fc2` | docs(task): plan the review-coordinator stale-check fix |
+| `a0b51c3` | chore(task): park review-coordinator-stale-check on upstream ownership |
+| `9e52f31` | chore(task): park review-gate-advisory-convergence on the same boundary |
+| `34703c8` | docs(task): record upstream ownership and supersede the local design |
+| `109d5d6` | docs(spec): record the vendored pack-file ownership boundary |
+| `1eb519c` | fix(review): resolve prism findings on the parked-task records |
+
+### Testing
+
+- [OK] sd-check standalone: 7/7 passed after KB refresh (copies 500/500, conflicts none)
+- [OK] sd-review scope=pr round 2 at head 1eb519c: seven editable findings fixed, two refuted against the checkout as factually false
+- [OK] PR #72 required checks green; MERGEABLE / CLEAN, zero unresolved review threads
+- [BLOCKED] sd-review coordinator replayed the stale knowledge.obsidian-kb failure a sixth time; escaped with --attempt-id review-1eb519c-kbfresh. Both documented escapes (local=none, --successor bookkeeping) return outcome: skipped, which the clean-receipt rule refuses
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
