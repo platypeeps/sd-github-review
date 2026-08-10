@@ -21,7 +21,7 @@
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "blockedOn": "08-08-installer-durable-lane",
-  "notes": "Blocked on 08-08-installer-durable-lane. Until the installer emits the descriptor and the sd-review.yml lane, a rollout has nothing to roll out, and this repository's own rollout needs the descriptor relocation off the consumer discovery path. See prd.md Notes.",
+  "blockedOn": null,
+  "notes": "2026-08-09: Unblocked. Both prerequisites are archived — 08-08-installer-durable-lane (installer emits the descriptor and the sd-review.yml lane) and 08-09-descriptor-contract-path (published descriptor relocated off the consumer discovery path). Note that execution mutates eight external fleet repositories and opens a pull request in each, so it is outside the sd-work-backlog run-level authority and needs explicit per-run approval. See prd.md Notes.",
   "meta": {}
 }
