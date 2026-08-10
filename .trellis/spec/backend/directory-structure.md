@@ -140,6 +140,31 @@ single queryable source for priority, ownership, dependencies, and status.
   `test/shared-service-parity.test.js`.
 - Put repository-only validation in `scripts/`; it must not become part of the
   shipped Action runtime.
+- Treat every `scripts/sd-ai-command-pack-*` path as **vendored, not repo-owned**.
+  Those files are installed copies from the `sd-ai-command-pack` source
+  repository. The deterministic `pack.install-audit` check fails any local edit
+  to one, reporting `installed target drifted from pack <version> content:
+  <path>`, and the next pack refresh would overwrite the edit regardless. Change
+  pack behavior upstream and consume it through a refresh; change pack
+  *configuration* through the repo-owned JSON files under `.sd-ai-command-pack/`.
+
+  ```text
+  # Wrong: task planning names a vendored path as the change site
+  relatedFiles: ["scripts/sd-ai-command-pack-review.py"]
+
+  # Correct: establish ownership from the repository, not from memory
+  git log --oneline -- scripts/sd-ai-command-pack-review.py  # only "chore: refresh ..." -> vendored
+  node scripts/sd-ai-command-pack-review-preflight.mjs       # the gate that refuses the edit
+  ```
+
+  Derive the editable set from the audit rather than from a list here: a list in
+  this document goes stale silently while the audit stays authoritative. As
+  observed against pack 0.64.3 it admitted only
+  `.sd-ai-command-pack/{check,pr-body-scope,review-preflight,review}.json`.
+
+  Establish ownership before planning, not after implementing: a task that
+  reaches validation before discovering the boundary has already written work it
+  must revert.
 - Keep consumer installation lifecycle code under `scripts/consumer-installer.mjs`
   and `scripts/consumer-installer/`, with a thin `scripts/install-consumer.mjs`
   entrypoint. It may manage consumer files and bounded GitHub metadata, but must
