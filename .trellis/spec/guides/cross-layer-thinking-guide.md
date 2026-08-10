@@ -110,6 +110,12 @@ Before implementation:
 - [ ] Identified all layer boundaries
 - [ ] Defined format at each boundary
 - [ ] Decided where validation happens
+- [ ] Confirmed this repository **owns** every file the change touches. A
+      vendored path looks ordinary in the tree and only fails at the gate. Check
+      `git log --oneline -- <path>`: a history of nothing but "chore: refresh
+      ..." commits means the fix belongs upstream, and the deterministic
+      install audit will block a local edit. See
+      [`../backend/directory-structure.md`](../backend/directory-structure.md).
 
 After implementation:
 
