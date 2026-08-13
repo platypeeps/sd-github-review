@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/backend/consumer-installer.md", "reason": "This repository's own contract for how an installed consumer surface is laid out and updated. The refresh rewrites exactly those installer-managed paths, so this is the spec that says which files install.py legitimately owns here and which would be out of scope."}

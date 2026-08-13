@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "The lane's candidate checks are npm test, npm run check, and npm run validate:metadata. Use the repository's quality bar to confirm a green run actually means what the acceptance criteria claim, rather than accepting exit 0 alone."}
