@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 58
-- **Last Active**: 2026-08-09
+- **Total Sessions**: 59
+- **Last Active**: 2026-08-12
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~388 | Active |
+| `journal-2.md` | ~425 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 59 | 2026-08-12 | Refresh SD AI command pack to 0.71.2 | `eeb93971f614f46d29296f1fb13652cb5db81d59` | `chore/sd-ai-command-pack-0.71.2` |
 | 58 | 2026-08-09 | Park the two review-defect tasks on upstream ownership | `b644fc2`, `a0b51c3`, `9e52f31`, `34703c8`, `109d5d6`, `1eb519c` | `feat/08-09-review-coordinator-stale-check` |
 | 57 | 2026-08-09 | Record the two review-gate defects surfaced by PR #70 | `34a5372`, `0e89282` | `docs/08-09-pr70-followups` |
 | 56 | 2026-08-09 | Installer ships the discovery descriptor and the durable sd-review.yml lane | `64f0a2b`, `ffe3917`, `d982841`, `2dd02f8`, `84da6b2`, `8fffc76`, `c9e49c7` | `feat/08-08-installer-durable-lane` |
