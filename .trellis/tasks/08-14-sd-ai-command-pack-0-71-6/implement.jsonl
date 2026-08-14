@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/consumer-installer.md", "reason": "Describes this repository's consumer-installer surface, the closest analogue to the vendored pack files this refresh replaces."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Entry point for the repository guides that bound what this pack refresh may rewrite."}
