@@ -121,9 +121,25 @@ that differs from its recorded hash makes the installer "preserve operator edit
 and refuse update/uninstall". That would trade the floor for the rollback in the
 section below — a bad trade, and a silent one.
 
-The floor therefore has to be set in `examples/sd-review.yml:24` **before** the
-install, so the installed copy is byte-identical to its source and stays
-managed. That is a change to the template every future consumer receives, which
+**And there are two lanes, not one.** The install writes an event-driven
+`ai-review-router.yml` alongside the durable lane, and it fires on every
+`pull_request` `opened`/`synchronize`/`reopened`/`ready_for_review`/`labeled`.
+Its template passed no floor at all, so it fell through to `action.yml:58`
+`default: none` — and `src/index.js:124` sets `run-external-reviewer` true for
+exactly the `cheap` and `deep` routes, which is PR-Agent billing the operator's
+OpenRouter key. Setting the durable lane's floor alone would have left that lane
+uncovered while the design claimed "repository policy", and the first evidence
+would have been an invoice.
+
+The floor is therefore a spend control as much as a coverage control, and it is
+set on both templates: `examples/sd-review.yml:24` (the durable default) and
+`examples/pr-agent-router.yml` (an explicit `independent-review-floor: copilot`
+input). A `copilot` floor never reaches `cheap` or `deep`, so PR-Agent is never
+invoked. The cost of that choice is real and was put to the operator: the
+cheap/deep tier is now unreachable and the OpenRouter key stays unused.
+
+Both must be set **before** the install, so each installed copy is
+byte-identical to its source and stays managed. That is a change to the template every future consumer receives, which
 is why it was put to the operator rather than assumed. They chose `copilot` on
 2026-08-15. Two facts made it cheap: nothing pins the input block
 (`test/installer-modules.test.js:206-215` asserts only the template's `name:`

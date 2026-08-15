@@ -36,7 +36,15 @@ the installed copy afterwards makes it differ from its recorded hash — which
 "preserve operator edit and refuse update/uninstall", destroying the rollback in
 Phase 4.
 
+Both templates, not one. The install writes two lanes, and the event-driven one
+fires on every pull-request event with no floor at all, which is where PR-Agent
+spend would come from.
+
 - [ ] `examples/sd-review.yml:24` — `default: none` becomes `default: copilot`.
+- [ ] `examples/pr-agent-router.yml` — add an explicit
+      `independent-review-floor: copilot` input. Without it the lane falls
+      through to `action.yml:58` `default: none`, and `src/index.js:124` runs
+      PR-Agent on the `cheap` and `deep` routes.
 - [ ] Confirm nothing pins the input block. `test/installer-modules.test.js:206-215`
       compares only the template's `name:` against `descriptor.workflow.name`;
       the inputs are not asserted.
