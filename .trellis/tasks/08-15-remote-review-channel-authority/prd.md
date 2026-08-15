@@ -111,6 +111,10 @@ hook requests by hand, but dispatched through the sanctioned path with a durable
 receipt (`sd-github-review/receipt`). The floor turns "a Copilot review always
 happens" from a side channel into repository policy.
 
+Planning the execution later established *where* that floor has to be set, and
+it is not where this paragraph implies: the pack never forwards the input, so
+only the workflow's own default counts. See `design.md`.
+
 ### What remains unverified
 
 **This Action has never run in any repository.** The evidence above establishes
@@ -134,8 +138,14 @@ so the OpenRouter key could sit unused — also unprovable without running it.
 
 ## Candidate resolutions
 
+**Decided 2026-08-15: option 1, with the operator supplying the secret.** The
+review floor is `copilot`, set in `examples/sd-review.yml` before the install —
+see `design.md` for why that is the only place it can be set. Options 2 and 3
+are recorded below as rejected, not as open alternatives; option 2 survives only
+as the closing step of option 1.
+
 1. **Install this repository as a consumer of its own Action, then scope the
-   hook out.** Not "author a descriptor" — that was the pre-investigation
+   hook out.** — **CHOSEN.** Not "author a descriptor" — that was the pre-investigation
    framing and it is wrong. Run `node scripts/install-consumer.mjs install`,
    which writes the descriptor *and* the lane it advertises. `--target`
    defaults to the current directory (`codecs.mjs:422`), and the target here is
@@ -199,15 +209,23 @@ so the OpenRouter key could sit unused — also unprovable without running it.
 
 Complex: touches the review lifecycle contract and spans a user-global config
 file this repository does not own. This is not a PRD-only task — `design.md`
-and `implement.md` must both exist before `task.py start`. `design.md` was
-written alongside this update; `implement.md` is still missing, so the task
-remains unstarted by design rather than by oversight.
+and `implement.md` must both exist before `task.py start`. All three now do.
+
+Two constraints found while planning the execution shape the work more than the
+route choice did, and both are recorded in `design.md` and `implement.md`:
+
+- The floor can only be set in the template before installing. The pack never
+  forwards `independent-review-floor`, and editing the installed workflow
+  afterwards forfeits `uninstall`.
+- The lane cannot be proven on the pull request that installs it, because
+  dispatch targets the default branch. The work is therefore two pull requests:
+  install, then proof and closeout.
 
 The descriptor collision that blocked design is settled — see **Investigation**.
 What blocks implementation now is a decision, not a question: the operator picks
 a route, and option 1 additionally requires a secret only they can supply.
 
-Two steps stay outside this repository whichever route wins. The user-global
-hook edit lives in `~/.claude/settings.json`, and `PR_AGENT_MODEL_API_KEY` is
-set through `gh secret set` by the operator. The task records both as handoffs
-rather than claiming them.
+Two steps stay outside this repository. The user-global hook edit lives in
+`~/.claude/settings.json`, and `PR_AGENT_MODEL_API_KEY` is set through
+`gh secret set` by the operator. The task records both as handoffs rather than
+claiming them; the agent never sees the secret value.

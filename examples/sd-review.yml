@@ -21,7 +21,12 @@ on:
       independent-review-floor:
         description: Minimum route allowed by repository review policy
         required: false
-        default: none
+        # The routed-review caller does not send this input -- the pack
+        # dispatches operation, review-request, and rerequest-authorized only --
+        # so this default is the repository's actual review policy, not a
+        # fallback. `copilot` guarantees an independent review on every routed
+        # pull request; lower it deliberately, never by accident.
+        default: copilot
         type: choice
         options: [none, cheap, deep, copilot]
 

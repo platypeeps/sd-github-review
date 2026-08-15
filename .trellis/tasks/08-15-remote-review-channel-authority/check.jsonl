@@ -1,1 +1,2 @@
-{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Verifies any descriptor added under config/ stays repo-owned and that no vendored pack path was edited to resolve the contract conflict."}
+{"file": ".trellis/spec/backend/consumer-installer.md", "reason": "Verifies the installed descriptor and durable workflow stay byte-identical to their sources, so the managed files keep their recorded hashes and rollback via uninstall remains available."}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Verifies no vendored pack path was edited to resolve the contract conflict and that the new config/ and workflow entries are documented in the tree."}
