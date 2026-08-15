@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 69
+- **Total Sessions**: 70
 - **Last Active**: 2026-08-15
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~845 | Active |
+| `journal-2.md` | ~888 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 70 | 2026-08-15 | Prove the routed review lane, and find what it collides with | `bae0962`, `25ad4a1`, `942a4b6` | `feat/prove-routed-lane` |
 | 69 | 2026-08-15 | Record the routed-review decision and split the unprovable criteria | `3cb4742`, `e456cdd` | `feat/install-routed-review-consumer` |
 | 68 | 2026-08-15 | Install the repository as a routed-review consumer (PR A) | `42ed46e`, `b3f40d7`, `b6e2e88`, `40dcab1`, `c4d4314`, `f936946`, `cb2df2d`, `a358172`, `8b0056b`, `4a6c435` | `feat/install-routed-review-consumer` |
 | 67 | 2026-08-15 | Record the descriptor-collision finding and design the remote-review route | `39c9f3f` | `docs/remote-review-channel-authority-findings` |

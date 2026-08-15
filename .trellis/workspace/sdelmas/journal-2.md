@@ -845,3 +845,47 @@ Finalization for PR A: recorded which contract owns remote review and why the tw
 ### Next Steps
 
 - None - task complete
+
+
+## Session 70: Prove the routed review lane, and find what it collides with
+
+**Date**: 2026-08-15
+**Task**: Prove the routed review lane, and find what it collides with
+**Branch**: `feat/prove-routed-lane`
+
+### Summary
+
+PR #86 was the first pull request opened after the self-install, and it exercised the durable lane with no remote=none escape. The lane works. The client cannot see it finish, and a third channel nobody had counted beat both lanes to the reviewer.
+
+### Main Changes
+
+- Exercised the durable lane end to end: routerCapability resolved to ready, workflow_dispatch runs 31910569360 and 31911109874 both completed success, and each published a sd-github-review/receipt Check Run carrying selectedRoute copilot with the reason 'review floor required copilot' -- independent-review-floor doing on the durable lane what it silently failed to do on the event lane in PR #85.
+- Found a deterministic client-side wedge: the lane publishes its receipt at dispatch.phase started and rewrites it to observed ~3s later, the coordinator polls inside that window, caches the started receipt, and never re-queries it (sd-ai-command-pack-review.py:2133, :2159-2166). Every routed review ends at remote-reconciliation-required no matter how often the attempt is rerun. Reproduced at two heads with two independent dispatches.
+- Established there is no supported escape from that wedge: a fresh --artifact-root does find the receipt by logicalDispatchId, then fails with 'durable receipt does not contain the current correlation id' because the correlation id lives only in the state a fresh root discards. Correct fail-closed behaviour, and a dead end. Tasked upstream as 08-15-review-receipt-cache-race.
+- Discovered a third Copilot channel: the main repository ruleset carries a copilot_code_review rule that requested the reviewer one second after PR open, twenty-two seconds before the Action routed. The review on #86 is the ruleset's, so retiring the PostToolUse hook will not leave the Action as sole requester. Operator chose to keep the overlap and record it.
+- Fixed a real defect the remote reviewer found: consumer-installer.md claimed install-consumer.mjs check exits 0 on provenance drift. It exits 1 -- the message enters issues, which clears report.ok, and install-consumer.mjs:46 sets exitCode 1. The operational advice was backwards, so a self-install's check must not be wired into a gate by exit code.
+- Recorded all of it in .trellis/spec/backend/consumer-installer.md and split the two criteria that need the operator's settings edit plus a later PR into 08-15-retire-direct-request-hook.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `bae0962` | docs(spec): distinguish provenance drift from file drift for self-installs |
+| `25ad4a1` | docs(spec): correct the self-install check exit code |
+| `942a4b6` | docs(spec): record the routed lane's first proof and its two defects |
+
+### Testing
+
+- [OK] sd-review scope=pr at 942a4b6: status ready, deterministic checks passed, local provider clean, limitations [remote-intentionally-skipped]
+- [OK] node scripts/install-consumer.mjs check --target . -> printed the drift line and exited 1, refuting the spec's exit-0 claim
+- [OK] pre-archive gate: schema 1, status valid, pre_archive_valid
+- [NOTE] routed review reached remote-reconciliation-required on both heads; recorded rather than worked around, per the task's own stop-rather-than-bypass requirement
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
