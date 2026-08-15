@@ -276,10 +276,43 @@ fires a `workflow_dispatch` against a ref that already contains the workflow
 file, so the routed lane is unreachable from the branch that installs it.
 
 The install therefore lands in one pull request and the proof happens in the
-next. The install PR will still report `routerCapability: absent` on its own
-review — its `config/` descriptor and its lane exist only in the diff under
-review — and that must not be read as the install having failed. `implement.md`
-splits the phases along exactly this line.
+next. `implement.md` splits the phases along exactly this line.
+
+**The state that PR is left in is worse than this section first predicted.** The
+prediction was `routerCapability: absent`, which is benign: routing is optional,
+so a clean local receipt completes the review. What PR #85 actually produced was
+
+```
+routerCapability: {state: unavailable,
+  reason: "failed to read routed-review workflow metadata: gh: Not Found (HTTP 404)"}
+limitations: [router-unavailable]
+status: indeterminate
+```
+
+and `unavailable` **fails closed** — `sd-review/SKILL.md` permits local
+completion only for `absent`, never for `unavailable`. Installing the descriptor
+moves the probe past discovery and into
+`scripts/sd-ai-command-pack-review.py:919-929`, which asks GitHub for the
+workflow's metadata. GitHub's Actions API only knows workflows present on the
+default branch, so `sd-review.yml` 404s until this merges. The registry proves
+the asymmetry — it lists `ai-review-router.yml`, which registered itself by
+*running* from the branch, and does not list the dispatch-only lane, which has
+no way to run:
+
+```
+active  .github/workflows/ai-review-router.yml
+active  .github/workflows/ci.yml
+```
+
+So the install PR is not merely unrouted, it is unreviewable by the sanctioned
+channel: the review fails closed and completes only with an explicit
+`remote=none`. That is a one-time bootstrap cost — no later pull request in this
+repository can hit it, because the workflow will exist on `main` — but it is a
+cost every future consumer pays once, and it is not what this section promised.
+The operator was given the choice on 2026-08-15 and chose to merge on the
+deterministic gates, Copilot's review, and three production runs of the
+event-driven lane, with `remote=none` recorded in the receipt rather than
+pretended around.
 
 ### The unproven premise
 
