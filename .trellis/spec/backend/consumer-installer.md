@@ -128,6 +128,15 @@ node scripts/install-consumer.mjs uninstall [options]
 - GitHub resources are `PR_AGENT_MODEL_PROVIDER`, `CHEAP_REVIEW_MODEL`,
   `DEEP_REVIEW_MODEL`, `PR_AGENT_MODEL_API_KEY`, and the router's five review
   labels. Matching pre-existing resources are unowned and preserved.
+- `REVIEW_ROUTE_MODE` is required by the installed event-driven lane but is
+  **not** an installer-managed resource: the operator sets it, `uninstall` does
+  not remove it, and `check` does not verify it. The lane fails closed instead —
+  its first step rejects an unset or invalid value rather than defaulting to
+  `auto`, because `auto` can select `cheap` or `deep` and bill
+  `PR_AGENT_MODEL_API_KEY` on a route nobody chose.
+  `08-15-installer-managed-route-mode` would bring it under management; if that
+  lands, this entry, the README install call-out, and the install/check/uninstall
+  descriptions above all describe the old behaviour and must change with it.
 - Provider secret values enter only through the inherited `gh secret set`
   prompt or standard input. They never enter CLI arguments, reports,
   manifests, diagnostics, or JSON output.
@@ -369,7 +378,50 @@ const converged =
 const setupDescriptorPath = "config/routed-review-setup-v1.json";
 
 // Correct: publish under contract/ and keep config/ reserved for the consumer's
-// own installed copy. Probing this repository reports
-// `state: "absent" / reason: "setup-descriptor-absent"`, which is the truth.
+// own installed copy. The two paths are the same schema in opposite roles, and
+// separating them is what lets this repository install itself as a consumer
+// without the published reference shadowing the installed declaration.
 const setupDescriptorPath = "contract/routed-review-setup-v1.json";
 ```
+
+## Decision: this repository is a consumer of its own Action
+
+Since 2026-08-15 this repository has `config/routed-review-setup-v1.json`
+installed, so probing it reports the durable lane as present. Earlier revisions
+of this document said the probe reports
+`state: "absent" / reason: "setup-descriptor-absent"`; that was true only while
+no consumer install existed here.
+
+**The routed lane owns remote review in this repository.** A `PostToolUse` hook
+that requested Copilot directly was the channel that actually reviewed PRs #81,
+#82, and #83 while `sd-review` reported `zero-remote-confidence` — two contracts
+claiming the same authority, with the receipt recording neither. The routed lane
+won because it is the only one that produces a durable receipt, and because
+`sd-review/SKILL.md:14-16` forbids the direct request outright: the choice was
+between making the sanctioned lane real and weakening the rule that says it must
+be.
+
+Two alternatives were rejected, and the reasons matter more than the verdict:
+
+- **Scope the hook out and stop there.** Cheapest, and it makes reporting honest
+  immediately — but it deletes the reviewer that found real defects while the
+  local lane found none, and leaves the router dark. It survives only as the
+  closing step of the chosen route, gated on a first observed receipt, never as
+  the whole answer.
+- **Relax `sd-review`'s prohibition** so a direct request is permitted when the
+  router is `absent`. This weakens a safety rule to legitimize a workaround for
+  a router nobody had switched on. It remains the fallback if the routed lane
+  cannot be made to work, not a first choice.
+
+Two things about the install are load-bearing and easy to get wrong:
+
+- **Route policy differs per lane.** `independent-review-floor` is durable-only
+  (`action.yml:55`, read at `src/operations.js:389` inside `routeOperation`).
+  The event-driven lane runs `operation: standalone` and honours `mode` instead.
+  Setting the floor on the event lane looks right, changes nothing, and lets
+  `auto` bill the provider key. That is not hypothetical: it happened on PR #85.
+- **The install PR cannot be reviewed through the lane it installs.** GitHub's
+  Actions API only knows workflows on the default branch, so the dispatch-only
+  lane 404s and `routerCapability` reports `unavailable`, which fails closed —
+  unlike `absent`, it does not permit local completion. Every consumer pays this
+  bootstrap cost exactly once, on the pull request that installs the lane.

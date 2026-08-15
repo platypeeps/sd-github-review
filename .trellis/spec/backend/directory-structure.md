@@ -30,6 +30,11 @@ fixtures/setup/      # read-only setup discovery fixtures
 contract/            # published versioned setup capability descriptor; deliberately
                      # NOT config/, which is the path consumers install their own
                      # copy to and the vendored probe reads (R1)
+config/              # this repository's OWN installed copy, written by
+                     # install-consumer.mjs, not hand-authored. It exists only
+                     # because this repository is now a consumer of its own
+                     # Action; keep it byte-identical to contract/ or the
+                     # installer refuses update/uninstall
 scripts/             # repository validation, consumer lifecycle, and SD pack helpers
   install-consumer.mjs        # thin consumer-installer CLI entrypoint (process I/O)
   consumer-installer.mjs      # consumer lifecycle orchestration + public re-exports
@@ -43,7 +48,15 @@ examples/            # consumer-owned workflow templates
                      # descriptor's workflow.name, which GitHub reports as the
                      # workflow metadata name the probe validates
 docs/                # project and release operations
-.github/workflows/   # repository CI only
+.github/workflows/   # ci.yml is this repository's own CI. The other two --
+                     # ai-review-router.yml and sd-review.yml -- are installer-
+                     # managed copies of examples/pr-agent-router.yml and
+                     # examples/sd-review.yml. Never edit them in place: a
+                     # managed file that differs from its recorded hash makes
+                     # the installer preserve the edit and refuse
+                     # update/uninstall. Change the example, then rerun
+                     # `node scripts/install-consumer.mjs update`.
+.github/sd-github-review.json  # installer ownership manifest (schema 3)
 ```
 
 `action.yml` is the public runtime manifest. `DESIGN.md` owns architecture and

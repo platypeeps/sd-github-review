@@ -752,3 +752,96 @@ Unblocked 08-15-remote-review-channel-authority's planning by settling the contr
 ### Next Steps
 
 - None - task complete
+
+
+## Session 68: Install the repository as a routed-review consumer (PR A)
+
+**Date**: 2026-08-15
+**Task**: Install the repository as a routed-review consumer (PR A)
+**Branch**: `feat/install-routed-review-consumer`
+
+### Summary
+
+Installed this repository as a consumer of its own Action so the sanctioned routed-review lane is switched on here, then fixed two spend defects the lane exposed by actually running. Planning finalization: phases 5-7 (proving the durable lane) remain open for PR B.
+
+### Main Changes
+
+- Installed four managed resources via install-consumer.mjs, all verified byte-identical to their sources so uninstall stays available
+- First execution of this Action anywhere: run 31908380030 routed cheap and billed one PR-Agent review while carrying an inert independent-review-floor input
+- Root cause: independent-review-floor is durable-only (action.yml:55, src/operations.js:389); the event-driven lane runs operation=standalone, which reads mode instead
+- Switched the event lane to mode via REVIEW_ROUTE_MODE, then removed the || 'auto' fallback and added a fail-closed gate, since the variable is not installer-managed
+- Replaced two hardcoded inventory counts in metadata.test.js with runtime enumeration of .github/workflows and examples/
+- Recorded that the install PR is unreviewable by its own lane: routerCapability is unavailable, not absent, and unavailable fails closed
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `42ed46e` | feat: set the routed-review floor to copilot and plan the consumer install |
+| `b3f40d7` | feat: install this repository as a routed-review consumer |
+| `b6e2e88` | fix: set the review floor on the event-driven lane too |
+| `40dcab1` | docs(spec): record the installed lanes and the do-not-edit-in-place rule |
+| `c4d4314` | fix: stop the event-driven lane billing PR-Agent on every pull request |
+| `f936946` | fix: fail closed when the event-driven lane has no explicit route |
+| `cb2df2d` | chore(trellis): file the installer-managed route variable follow-up |
+| `a358172` | fix: address local review findings on the route variable and task manifests |
+| `8b0056b` | fix: enumerate the example inventory and flag the spec's expiry condition |
+| `4a6c435` | docs(task): record that the install PR is unreviewable by its own lane |
+
+### Testing
+
+- [OK] npm test 640/640
+- [OK] validate-action-metadata.mjs: action.yml, 3 workflows, 7 examples, 1211 tracked paths, pinned to v0.3.0
+- [OK] validate-ci-parity.mjs: 5 CI package gates
+- [OK] install-consumer.mjs check: healthy, manifest schema 3, state active
+- [OK] review preflight: 0 failures, 2 dispositioned warnings
+- [OK] route gate exercised locally across valid, unset, wrong-case, and unknown values
+- [OK] production run 31908993543: Selected copilot, both PR-Agent steps skipped
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 69: Record the routed-review decision and split the unprovable criteria
+
+**Date**: 2026-08-15
+**Task**: Record the routed-review decision and split the unprovable criteria
+**Branch**: `feat/install-routed-review-consumer`
+
+### Summary
+
+Finalization for PR A: recorded which contract owns remote review and why the two alternatives lost, corrected a spec example this branch falsified, and split the two acceptance criteria that cannot be tested from the branch that installs the lane into 08-15-prove-routed-lane.
+
+### Main Changes
+
+- consumer-installer.md now carries the route decision, both rejections with reasons, the per-lane policy difference, and the one-time bootstrap cost
+- Fixed a spec example asserting this repository probes as setup-descriptor-absent, which stopped being true when config/routed-review-setup-v1.json was installed
+- Created 08-15-prove-routed-lane (P1) carrying the hook-retirement and matching-review-state criteria verbatim
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3cb4742` | docs: record the route decision in spec and split the unprovable criteria out |
+| `e456cdd` | docs(task): list the moved criteria outside the acceptance checklist |
+
+### Testing
+
+- [OK] pre-archive gate: status valid, pre_archive_valid
+- [OK] npm test 640/640
+- [OK] review preflight: 0 failures
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

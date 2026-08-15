@@ -63,9 +63,11 @@ sd-review scope=pr
   -> probe config/routed-review-setup-v1.json
        (scripts/sd-ai-command-pack-review.py:31, :866-868)
   -> state: ready, not absent
-  -> workflow_dispatch .github/workflows/sd-review.yml
-       inputs: review-request, operation=route,
-               independent-review-floor=copilot
+  -> workflow_dispatch .github/workflows/sd-review.yml --ref main
+       inputs sent: operation=route, review-request,
+                    rerequest-authorized=false   <- these three, nothing else
+       independent-review-floor: NOT sent; the workflow's own
+                    default applies (see the floor section below)
   -> src/index.js:265-272 route=copilot
        -> request copilot-pull-request-reviewer[bot]
   -> durable receipt check "sd-github-review/receipt"
@@ -106,8 +108,101 @@ policy rather than as a hook side effect. Any lower floor lets `auto` routing
 decide, which would make some PRs locally-reviewed-only; that is a real change
 in review coverage and should not ride along silently with a plumbing change.
 
-Recommend `copilot` initially, precisely because it holds coverage constant
-while the channel moves. Lowering it later is a separate, deliberate decision.
+**There is only one place that value can be set, and it is not the obvious
+one.** The pack does not forward the input: `sd-ai-command-pack-review.py:1160-1166`
+dispatches exactly `operation=route`, `review-request`, and
+`rerequest-authorized=false`, and nothing else. So `sd-review` can never raise
+the floor per run, and the installed workflow's own default decides every routed
+review.
+
+Editing the *installed* workflow to raise it is worse than doing nothing.
+`.trellis/spec/backend/consumer-installer.md:215`: a managed durable workflow
+that differs from its recorded hash makes the installer "preserve operator edit
+and refuse update/uninstall". That would trade the floor for the rollback in the
+section below — a bad trade, and a silent one.
+
+**And there are two lanes, not one.** The install writes an event-driven
+`ai-review-router.yml` alongside the durable lane, and it fires on every
+`pull_request` `opened`/`synchronize`/`reopened`/`ready_for_review`/`labeled`.
+Its template passed no route policy at all, so it fell through to
+`action.yml:66` `mode: auto` — and `src/index.js:124` sets
+`run-external-reviewer` true for exactly the `cheap` and `deep` routes, which is
+PR-Agent billing the operator's OpenRouter key. Leaving that lane uncovered while
+the design claimed "repository policy" meant the first evidence would be an
+invoice.
+
+**The floor does not cover that lane, and the first attempt to make it do so was
+wrong.** `independent-review-floor` is a *durable* policy field and nothing else:
+`action.yml:55` describes it as the "minimum durable automatic route", and
+`src/operations.js:389` reads it only inside `routeOperation`. The event-driven
+lane runs `operation: standalone`, whose `routeReview` call (`src/index.js:254-261`)
+is never passed a floor at all. Adding `independent-review-floor: copilot` to
+`examples/pr-agent-router.yml` therefore changed nothing.
+
+This was not caught by reading. It was caught by the lane's first real execution,
+on PR #85, which logged
+
+```
+Selected cheap for PR #85: routine pull request within configured risk limits
+```
+
+and then pulled `pragent/pr-agent` and billed one OpenRouter review — with the
+inert `independent-review-floor: copilot` input visible in the same log. The
+premise this design flagged as unproven was the *durable* lane; the lane that
+actually falsified a claim was the event-driven one, and it did so on the pull
+request that installed it.
+
+The two lanes need two different mechanisms:
+
+- durable (`examples/sd-review.yml:24`): `independent-review-floor: copilot`,
+  which `routeOperation` honours and `strongerRoute` resolves to the strongest
+  route (`src/router.js:15-20`, `copilot` = 3).
+- event-driven (`examples/pr-agent-router.yml`): `mode`, the input standalone
+  routing actually reads, wired as
+  `mode: ${{ vars.REVIEW_ROUTE_MODE || 'auto' }}` with the repository variable
+  `REVIEW_ROUTE_MODE=copilot`.
+
+The variable rather than a literal is deliberate. The template ships to every
+future consumer, and a hardcoded `copilot` would make the PR-Agent steps below it
+permanently dead — the example would stop documenting the thing it exists to
+document. It also keeps the installed copy byte-identical to its source, so the
+rollback in the section below survives.
+
+**The variable fails closed, and that is the second correction.** The first
+version defaulted the expression to `auto` when the variable was unset. That
+reproduces the original defect one layer up: `REVIEW_ROUTE_MODE` is a plain
+repository variable, not an installer-managed resource — `uninstall` does not
+remove it and `check` does not verify it — so deleting or mistyping it would
+silently restore paid routing, with an invoice as the first evidence. The lane's
+first step now rejects an unset or invalid value and names the five it accepts,
+and `mode:` carries no `||` fallback. Consumers must state the intent; opting
+into paid review is allowed, but only out loud.
+
+Rejected alternative: making `REVIEW_ROUTE_MODE` an installer-managed variable
+alongside the three in `codecs.mjs:116-120`. That is the stronger fix — `check`
+would then catch drift — but it needs a manifest schema bump and installer
+surgery well outside this task, and the fail-closed gate already turns the drift
+into a loud, harmless failure. Filed as a follow-up rather than smuggled in here.
+
+The gate lives only in `examples/pr-agent-router.yml`. `examples/review-router.yml`
+and `examples/gated-review-router.yml` also expose `run-external-reviewer`, but
+their reviewer step is a placeholder `./scripts/run-ai-review` the operator writes
+themselves; the operator who authors the spend step already knows what it costs.
+`pr-agent-router.yml` is the only example that ships a concrete billed reviewer,
+and the only one the installer deploys.
+
+The cost of the operator's choice is real and was put to them: the cheap/deep
+tier is unreachable in this repository and the OpenRouter key stays unused.
+
+Both templates must be edited **before** the install — or the edit followed by
+`install-consumer.mjs update`, which is what the correction above required — so
+each installed copy is byte-identical to its source and stays managed. That is a
+change to the template every future consumer receives, which is why it was put to
+the operator rather than assumed. They chose `copilot` on 2026-08-15. Two facts
+made it cheap: nothing pins the input block
+(`test/installer-modules.test.js:206-215` asserts only the template's `name:`
+against `descriptor.workflow.name`), and the blast radius is currently empty —
+zero fleet consumers have the descriptor installed.
 
 ### Resources written
 
@@ -173,6 +268,52 @@ as unowned. A
 rollback that leaves the descriptor without the lane is the one state to avoid,
 since that is the original defect; verify both are gone, not just one.
 
+### The lane cannot be proven on the pull request that adds it
+
+`sd-ai-command-pack-review.py:1152` resolves `default_ref =
+_default_branch(repo)` and dispatches with `--ref <default_ref>`. GitHub only
+fires a `workflow_dispatch` against a ref that already contains the workflow
+file, so the routed lane is unreachable from the branch that installs it.
+
+The install therefore lands in one pull request and the proof happens in the
+next. `implement.md` splits the phases along exactly this line.
+
+**The state that PR is left in is worse than this section first predicted.** The
+prediction was `routerCapability: absent`, which is benign: routing is optional,
+so a clean local receipt completes the review. What PR #85 actually produced was
+
+```
+routerCapability: {state: unavailable,
+  reason: "failed to read routed-review workflow metadata: gh: Not Found (HTTP 404)"}
+limitations: [router-unavailable]
+status: indeterminate
+```
+
+and `unavailable` **fails closed** — `sd-review/SKILL.md` permits local
+completion only for `absent`, never for `unavailable`. Installing the descriptor
+moves the probe past discovery and into
+`scripts/sd-ai-command-pack-review.py:919-929`, which asks GitHub for the
+workflow's metadata. GitHub's Actions API only knows workflows present on the
+default branch, so `sd-review.yml` 404s until this merges. The registry proves
+the asymmetry — it lists `ai-review-router.yml`, which registered itself by
+*running* from the branch, and does not list the dispatch-only lane, which has
+no way to run:
+
+```
+active  .github/workflows/ai-review-router.yml
+active  .github/workflows/ci.yml
+```
+
+So the install PR is not merely unrouted, it is unreviewable by the sanctioned
+channel: the review fails closed and completes only with an explicit
+`remote=none`. That is a one-time bootstrap cost — no later pull request in this
+repository can hit it, because the workflow will exist on `main` — but it is a
+cost every future consumer pays once, and it is not what this section promised.
+The operator was given the choice on 2026-08-15 and chose to merge on the
+deterministic gates, Copilot's review, and three production runs of the
+event-driven lane, with `remote=none` recorded in the receipt rather than
+pretended around.
+
 ### The unproven premise
 
 This Action has never executed in any repository. The investigation established
@@ -224,11 +365,16 @@ Leaving both contracts in place and resolving by judgment per run. A rule that
 is routinely disobeyed is worse than no rule, and this session disobeyed it
 three times in a row while believing it was following the workflow.
 
-## Open decisions
+## Decisions, all settled 2026-08-15
 
-1. **Route** — 1, 2, or 3. Operator's. Option 1 recommended.
-2. **Secret** — required by option 1 only; operator supplies or refuses.
-3. **Floor** — `copilot` recommended, and only meaningful under option 1.
+1. **Route** — option 1. Install this repository as a consumer, then scope the
+   hook out once a receipt proves the lane.
+2. **Secret** — the operator supplies `PR_AGENT_MODEL_API_KEY` directly through
+   `gh secret set`, before the install rather than through `--set-secret`, so
+   every later command runs without a secret flag.
+3. **Floor** — `copilot`, set in `examples/sd-review.yml:24` before installing,
+   for the reasons in the floor section above.
 
-`implement.md` cannot be written before decision 1, because the ordered steps
-differ entirely between the three. That is why it does not yet exist.
+`implement.md` exists now and carries the ordered plan. Nothing in this design
+is blocked on a further decision; what remains unproven is empirical, and
+Phase 5 is the experiment that settles it.

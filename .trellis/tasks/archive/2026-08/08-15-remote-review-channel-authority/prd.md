@@ -111,13 +111,25 @@ hook requests by hand, but dispatched through the sanctioned path with a durable
 receipt (`sd-github-review/receipt`). The floor turns "a Copilot review always
 happens" from a side channel into repository policy.
 
+Planning the execution later established *where* that floor has to be set, and
+it is not where this paragraph implies: the pack never forwards the input, so
+only the workflow's own default counts. See `design.md`.
+
 ### What remains unverified
 
-**This Action has never run in any repository.** The evidence above establishes
-that it is installable and internally coherent, not that it executes
-successfully. Only an installation proves that, and this repository would be the
-first. Related: if the floor is set to `copilot`, PR-Agent may never be invoked,
-so the OpenRouter key could sit unused — also unprovable without running it.
+**The durable routed lane has never run in any repository.** The evidence
+gathered while planning established that the Action is installable and
+internally coherent, not that the routed lane executes successfully. Only a
+`workflow_dispatch` against the default branch proves that, and it cannot happen
+on the pull request that installs the lane.
+
+The event-driven lane is no longer unproven: it executed for the first time on
+PR #85 on 2026-08-15, completed green, and immediately falsified a design claim
+— it routed `cheap` and billed one PR-Agent review while carrying an
+`independent-review-floor: copilot` input that standalone routing does not read.
+That is recorded in `design.md`; the corrected mechanism is the `mode` input
+driven by the `REVIEW_ROUTE_MODE` repository variable. Whether the durable lane
+leaves the OpenRouter key entirely unused remains unproven until it runs.
 
 ## Requirements
 
@@ -134,8 +146,14 @@ so the OpenRouter key could sit unused — also unprovable without running it.
 
 ## Candidate resolutions
 
+**Decided 2026-08-15: option 1, with the operator supplying the secret.** The
+review floor is `copilot`, set in `examples/sd-review.yml` before the install —
+see `design.md` for why that is the only place it can be set. Options 2 and 3
+are recorded below as rejected, not as open alternatives; option 2 survives only
+as the closing step of option 1.
+
 1. **Install this repository as a consumer of its own Action, then scope the
-   hook out.** Not "author a descriptor" — that was the pre-investigation
+   hook out.** — **CHOSEN.** Not "author a descriptor" — that was the pre-investigation
    framing and it is wrong. Run `node scripts/install-consumer.mjs install`,
    which writes the descriptor *and* the lane it advertises. `--target`
    defaults to the current directory (`codecs.mjs:422`), and the target here is
@@ -175,14 +193,12 @@ so the OpenRouter key could sit unused — also unprovable without running it.
 
 ## Acceptance Criteria
 
-- [ ] A recorded decision names the owning contract and the reason, in a place
+- [x] A recorded decision names the owning contract and the reason, in a place
       a future session reads before shipping — a spec, not a commit message.
-- [ ] The losing contract no longer fires in this repository, by configuration
-      rather than by convention.
-- [ ] A PR shipped after the change reports a remote-review state that matches
-      what reviewed it: either a router receipt with real remote confidence, or
-      an explicit, recorded local-only limitation with no side-channel review
-      happening behind it.
+      `.trellis/spec/backend/consumer-installer.md`, "Decision: this repository
+      is a consumer of its own Action".
+Two further criteria are not listed here because they are no longer this task's
+to meet; see **Criteria moved to `08-15-prove-routed-lane`** below.
 - [x] If the descriptor route is taken, the relationship between this
       repository's own descriptor and the consumer-facing artifact of the same
       path is documented, and neither shadows the other. Answered during
@@ -191,23 +207,57 @@ so the OpenRouter key could sit unused — also unprovable without running it.
       already documents it. The route was rewritten to a real installation
       accordingly, so nothing shadows anything — the file only appears at
       `config/` when the lane it advertises exists.
-- [ ] Whichever route is chosen, the reason the other two were rejected is
+- [x] Whichever route is chosen, the reason the other two were rejected is
       recorded where a future session reads it, so this is not re-litigated from
-      the same starting assumptions.
+      the same starting assumptions. Same spec section as the first criterion;
+      both rejections are recorded with their reasons, not just their verdicts.
+
+### Criteria moved to `08-15-prove-routed-lane`
+
+Carried verbatim into that task, where they can actually be tested:
+
+1. The losing contract no longer fires in this repository, by configuration
+   rather than by convention. Gated on a real receipt existing, which cannot
+   happen until the lane this task installs is on the default branch. Retiring
+   the hook before then would remove the only remote review this repository
+   actually gets.
+2. A PR shipped after the change reports a remote-review state that matches what
+   reviewed it: either a router receipt with real remote confidence, or an
+   explicit, recorded local-only limitation with no side-channel review
+   happening behind it. The install PR cannot satisfy it — the capability probe
+   reports `unavailable` until the durable lane exists on `main`.
+
+### Why they moved rather than being ticked
+
+This task was planned as two pull requests — `implement.md` splits phases 0–4
+from 5–7 — because the routed lane cannot be exercised from the branch that
+installs it. Two of the original criteria depend on that lane running, so they
+belong to the pull request that can actually test them. They are carried
+verbatim into `08-15-prove-routed-lane` rather than reworded, and that task is
+P1: this work is not finished until they are met, only this pull request is.
 
 ## Notes
 
 Complex: touches the review lifecycle contract and spans a user-global config
 file this repository does not own. This is not a PRD-only task — `design.md`
-and `implement.md` must both exist before `task.py start`. `design.md` was
-written alongside this update; `implement.md` is still missing, so the task
-remains unstarted by design rather than by oversight.
+and `implement.md` must both exist before `task.py start`. All three now do.
+
+Two constraints found while planning the execution shape the work more than the
+route choice did, and both are recorded in `design.md` and `implement.md`:
+
+- Route policy can only be set in the templates, and the two lanes take
+  different inputs: `independent-review-floor` is durable-only, while the
+  event-driven lane honours `mode`. The pack forwards neither, and editing an
+  installed workflow in place forfeits `uninstall`.
+- The lane cannot be proven on the pull request that installs it, because
+  dispatch targets the default branch. The work is therefore two pull requests:
+  install, then proof and closeout.
 
 The descriptor collision that blocked design is settled — see **Investigation**.
 What blocks implementation now is a decision, not a question: the operator picks
 a route, and option 1 additionally requires a secret only they can supply.
 
-Two steps stay outside this repository whichever route wins. The user-global
-hook edit lives in `~/.claude/settings.json`, and `PR_AGENT_MODEL_API_KEY` is
-set through `gh secret set` by the operator. The task records both as handoffs
-rather than claiming them.
+Two steps stay outside this repository. The user-global hook edit lives in
+`~/.claude/settings.json`, and `PR_AGENT_MODEL_API_KEY` is set through
+`gh secret set` by the operator. The task records both as handoffs rather than
+claiming them; the agent never sees the secret value.
