@@ -581,3 +581,48 @@ Verified that the upstream recompute fix for the sd-review stale deterministic-c
 ### Next Steps
 
 - None - task complete
+
+
+## Session 64: Record machine-readable resume conditions on the parked backlog
+
+**Date**: 2026-08-15
+**Task**: Record machine-readable resume conditions on the parked backlog
+**Branch**: `chore/parked-task-resume-conditions`
+
+### Summary
+
+Seventeen of eighteen active tasks were parked and sixteen said nothing about why: a PARKED: title prefix, no blockedOn, empty notes, rationale surviving only in the message of e2872da. All sixteen therefore ranked as candidate_block_status's bare fallback string 'parked'. Re-derived both premises of that park before writing anything, wrote the rationale plus its falsification recipe into each record's blockedOn, corrected 08-09-review-gate-advisory-convergence's now-wrong blockedOn, and captured the corollary in the directory-structure spec.
+
+### Main Changes
+
+- Wrote the e2872da scope-park rationale and its two falsification checks into the blockedOn of all sixteen prefix-only parked records, with a dated note pointing at this task
+- Rewrote 08-09-review-gate-advisory-convergence's blockedOn: the rebuttal channel it waited on shipped (review.py:1790, review-local.py:1956), so three of four requirements are met and only the severity/category gate remains at review-local.py:900-905
+- Added the park-hygiene corollary to .trellis/spec/backend/directory-structure.md -- park with a resume condition, not the prefix alone -- with a recipe that enumerates prefix-only parks from the filesystem instead of reciting a list
+- Curated implement.jsonl and check.jsonl after review caught that task.py start had run against seed-only manifests, which workflow.md's ready gate excludes
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `85a260f` | docs(task): record resume conditions on the 17 parked backlog tasks |
+| `5d9e394` | docs(spec): require a resume condition, not just a PARKED: prefix |
+| `45d01c5` | fix(task): curate the context manifests before the task was started |
+
+### Testing
+
+- [OK] npm test: 635 pass, 0 fail
+- [OK] review-preflight: 0 failures, 1 warning (18 task directories, confirmed as one reviewable outcome)
+- [OK] work-loop rank over the updated records: 17 blocked, bare-'parked' candidates 16 -> 0, actionableCount 2
+- [OK] same rank against records at 9dbed23: 16 bare-'parked', proving the before/after rather than only the after
+- [OK] task.py validate: passes for all 19 active task directories
+- [OK] sd-review scope=pr pr=81: ready, sd-check 7/7, prism clean; 2 Copilot findings fixed and resolved
+- [OK] pre-archive gate: pre_archive_valid
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
