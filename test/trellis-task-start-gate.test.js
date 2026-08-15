@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import os from "node:os";
+import os, { platform } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -18,6 +18,8 @@ const execFileAsync = promisify(execFile);
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const GATE = path.join(REPO_ROOT, "scripts", "trellis-task-start-gate.py");
 const PREFLIGHT_NAME = "sd-ai-command-pack-review-preflight.mjs";
+// Same resolution the repository already uses in .opencode/lib/session-utils.js.
+const PYTHON_CMD = platform() === "win32" ? "python" : "python3";
 
 const SEED_ROW = JSON.stringify({
   _example: 'Fill with {"file": "<path>", "reason": "<why>"}.',
@@ -51,7 +53,7 @@ async function runGate(taskDir, root = REPO_ROOT) {
   // manifests rather than about the sandbox.
   const env = { ...process.env, SD_AI_COMMAND_PACK_DEFAULT_BRANCH: "main" };
   try {
-    const { stdout, stderr } = await execFileAsync("python3", [gate, taskDir], { cwd: root, env });
+    const { stdout, stderr } = await execFileAsync(PYTHON_CMD, [gate, taskDir], { cwd: root, env });
     return { code: 0, stdout, stderr };
   } catch (error) {
     return { code: error.code, stdout: error.stdout ?? "", stderr: error.stderr ?? "" };
@@ -131,7 +133,7 @@ test("gate allows a task whose manifests carry a real entry", async () => {
 
 test("gate rejects a bad invocation without pretending the task is ready", async () => {
   for (const argv of [[], [".", "extra"]]) {
-    const result = await execFileAsync("python3", [GATE, ...argv], { cwd: REPO_ROOT }).then(
+    const result = await execFileAsync(PYTHON_CMD, [GATE, ...argv], { cwd: REPO_ROOT }).then(
       () => ({ code: 0, stderr: "" }),
       (error) => ({ code: error.code, stderr: error.stderr ?? "" }),
     );
@@ -162,7 +164,7 @@ test("gate degrades visibly rather than refusing when the preflight is unreachab
   await writeFile(path.join(copied, "trellis-task-start-gate.py"), await readFile(GATE, "utf8"), "utf8");
   try {
     const result = await execFileAsync(
-      "python3",
+      PYTHON_CMD,
       [path.join(copied, "trellis-task-start-gate.py"), parent],
       { cwd: parent },
     ).then(

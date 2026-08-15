@@ -70,6 +70,12 @@ def main(argv: list[str]) -> int:
             file=sys.stderr,
         )
         return 1
+    except OSError as exc:
+        # `node` resolved on PATH but the spawn still failed -- a permission
+        # change or a file removed between the check and the call. A controlled
+        # refusal beats a traceback out of `task.py start`.
+        print(f"Ready gate could not evaluate {rel_dir}: {exc}", file=sys.stderr)
+        return 1
 
     try:
         report = json.loads(proc.stdout)
