@@ -34,7 +34,9 @@ def write_json(path: Path, data: dict) -> bool:
 
     Returns True on success, False on error.
     """
-    payload = json.dumps(data, indent=2, ensure_ascii=False)
+    # Trailing newline: every task.json this writes is a reviewed file, and a
+    # missing final byte is a review finding on each PR that touches one.
+    payload = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
     try:
         fd, tmp = tempfile.mkstemp(
             dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp"

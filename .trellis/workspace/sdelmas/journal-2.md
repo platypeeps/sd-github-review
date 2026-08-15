@@ -669,3 +669,44 @@ Filed task-manifest-ready-gate and remote-review-channel-authority as follow-ups
 ### Next Steps
 
 - None - task complete
+
+
+## Session 66: Enforce the Trellis context-manifest ready gate at task start
+
+**Date**: 2026-08-15
+**Task**: Enforce the Trellis context-manifest ready gate at task start
+**Branch**: `feat/trellis-seeded-task-start-gate`
+
+### Summary
+
+Wired the pack's existing seeded-task check into task.py start so a task whose implement.jsonl and check.jsonl hold only the seed row is refused before any state is written, and recorded why .trellis/ is editable where the vendored pack is not.
+
+### Main Changes
+
+- Added scripts/trellis-task-start-gate.py and a generic pre-start hook in .trellis/scripts/task.py; an after_start hook cannot refuse a start because run_task_hooks only warns
+- Fixed write_json to emit a trailing newline, removing a review finding that recurred on every PR touching a task.json
+- Recorded the template-managed vs vendored distinction in .trellis/spec/backend/directory-structure.md and marked the workflow.md ready gate as enforced
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4fd0723` | feat: refuse a Trellis task start when its context manifests are seed-only |
+| `d1e0561` | fix: address review findings on the pre-start ready gate |
+| `026b9e1` | fix: handle a failed preflight spawn and use the repo's python command in tests |
+| `41f1652` | chore(task): archive 08-15-task-manifest-ready-gate |
+
+### Testing
+
+- [OK] npm test: 640 pass, 0 fail (635 before)
+- [OK] review preflight: 0 failures
+- [OK] seed-only start refused, curated start allowed, scaffold exemption intact
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

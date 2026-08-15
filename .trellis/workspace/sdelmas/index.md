@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 65
+- **Total Sessions**: 66
 - **Last Active**: 2026-08-15
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~667 | Active |
+| `journal-2.md` | ~710 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 66 | 2026-08-15 | Enforce the Trellis context-manifest ready gate at task start | `4fd0723`, `d1e0561`, `026b9e1`, `41f1652` | `feat/trellis-seeded-task-start-gate` |
 | 65 | 2026-08-15 | File the two follow-ups PR #81 earned, and correct one of them before merge | `28fd6a5`, `a047494`, `dae66d9` | `chore/followup-tasks-from-pr-81` |
 | 64 | 2026-08-15 | Record machine-readable resume conditions on the parked backlog | `85a260f`, `5d9e394`, `45d01c5` | `chore/parked-task-resume-conditions` |
 | 63 | 2026-08-15 | Close review-coordinator stale-check on the shipped upstream fix | `5e52330`, `be8de04`, `5a2fc50` | `feat/08-09-review-coordinator-stale-check` |

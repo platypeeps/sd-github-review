@@ -423,6 +423,8 @@ Delete the seed `_example` line once real entries exist (optional — it's skipp
 
 Ready gate: both `implement.jsonl` and `check.jsonl` must contain at least one real `{"file": "...", "reason": "..."}` entry before `task.py start`. The seed `_example` row alone is not ready.
 
+This is enforced, not advisory: `task.py start` runs `scripts/trellis-task-start-gate.py` before it writes any state, and a nonzero result refuses the start and names the offending files. Entries may reference only `.trellis/spec/**` or another task's `research/**` — a code path is rejected as a reference outside the allowed roots. `task.py create` is deliberately outside the gate, since a new task's manifests are always seed-only.
+
 Skip this step only when both files already have real curated entries.
 
 [/Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Reasonix, Trae]

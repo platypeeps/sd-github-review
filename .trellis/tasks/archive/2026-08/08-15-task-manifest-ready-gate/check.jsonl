@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Standards the new gate script and the task.py guard are reviewed against, including keeping the runtime edit minimal because a future trellis update reconciles it by prompt."}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "The check must confirm no scripts/sd-ai-command-pack-* path was modified and that the gate sits on a repo-owned path."}

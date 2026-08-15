@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Owns the vendored-versus-repo-owned boundary that decides where the gate may live: scripts/sd-ai-command-pack-* is off limits, while the Trellis runtime under .trellis/scripts/ is editable and reconciled by prompt on update."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Failure contracts for the gate's exit codes -- when a missing toolchain degrades visibly to a pass and when a real finding must refuse the start."}
