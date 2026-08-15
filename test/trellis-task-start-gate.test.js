@@ -17,6 +17,7 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const GATE = path.join(REPO_ROOT, "scripts", "trellis-task-start-gate.py");
+const PREFLIGHT_NAME = "sd-ai-command-pack-review-preflight.mjs";
 
 const SEED_ROW = JSON.stringify({
   _example: 'Fill with {"file": "<path>", "reason": "<why>"}.',
@@ -26,11 +27,31 @@ const REAL_ROW = JSON.stringify({
   reason: "Repository layout rules this task must respect.",
 });
 
-async function runGate(taskDir) {
+// The gate resolves its repository root from its own location, so a copy of it
+// alongside a copy of the (import-free) preflight makes a throwaway directory a
+// complete environment. Fixtures therefore never land in the real tasks tree,
+// where a crashed run would leave a task the backlog and preflight would see.
+async function makeSandbox() {
+  const root = await mkdtemp(path.join(os.tmpdir(), "trellis-gate-"));
+  await mkdir(path.join(root, "scripts"), { recursive: true });
+  for (const script of [PREFLIGHT_NAME, "trellis-task-start-gate.py"]) {
+    await writeFile(
+      path.join(root, "scripts", script),
+      await readFile(path.join(REPO_ROOT, "scripts", script), "utf8"),
+      "utf8",
+    );
+  }
+  return root;
+}
+
+async function runGate(taskDir, root = REPO_ROOT) {
+  const gate = path.join(root, "scripts", "trellis-task-start-gate.py");
+  // A sandbox root is not a git repository, so the preflight cannot resolve a
+  // default branch from origin/HEAD; naming it keeps the verdict about the
+  // manifests rather than about the sandbox.
+  const env = { ...process.env, SD_AI_COMMAND_PACK_DEFAULT_BRANCH: "main" };
   try {
-    const { stdout, stderr } = await execFileAsync("python3", [GATE, taskDir], {
-      cwd: REPO_ROOT,
-    });
+    const { stdout, stderr } = await execFileAsync("python3", [gate, taskDir], { cwd: root, env });
     return { code: 0, stdout, stderr };
   } catch (error) {
     return { code: error.code, stdout: error.stdout ?? "", stderr: error.stderr ?? "" };
@@ -68,12 +89,13 @@ function taskRecord(suffix) {
   };
 }
 
-// The preflight only accepts an exact active `.trellis/tasks/MM-DD-name`
-// directory, so fixtures live in the real tasks tree under a name no real task
-// uses, and are removed again in a finally block.
+// The preflight only accepts an exact `.trellis/tasks/MM-DD-name` directory, so
+// the fixture keeps that shape inside a sandbox root rather than in the real
+// tasks tree.
 async function withTaskDir(rows, run) {
-  const suffix = `gate-probe-${process.pid}`;
-  const taskDir = path.join(REPO_ROOT, ".trellis", "tasks", `01-01-${suffix}`);
+  const suffix = "gate-probe";
+  const root = await makeSandbox();
+  const taskDir = path.join(root, ".trellis", "tasks", `01-01-${suffix}`);
   await mkdir(taskDir, { recursive: true });
   await writeFile(path.join(taskDir, "implement.jsonl"), `${rows}\n`, "utf8");
   await writeFile(path.join(taskDir, "check.jsonl"), `${rows}\n`, "utf8");
@@ -88,9 +110,9 @@ async function withTaskDir(rows, run) {
     "utf8",
   );
   try {
-    return await run(taskDir);
+    return await run(path.relative(root, taskDir), root);
   } finally {
-    await rm(taskDir, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true });
   }
 }
 
