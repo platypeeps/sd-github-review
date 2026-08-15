@@ -710,3 +710,45 @@ Wired the pack's existing seeded-task check into task.py start so a task whose i
 ### Next Steps
 
 - None - task complete
+
+
+## Session 67: Record the descriptor-collision finding and design the remote-review route
+
+**Date**: 2026-08-15
+**Task**: Record the descriptor-collision finding and design the remote-review route
+**Branch**: `docs/remote-review-channel-authority-findings`
+
+### Summary
+
+Unblocked 08-15-remote-review-channel-authority's planning by settling the contract/ vs config/ descriptor question, then wrote design.md costing all three routes. An adversarial review of the pair caught two material defects in the first draft of the reasoning.
+
+### Main Changes
+
+- prd.md: added an Investigation section recording that contract/ and config/ hold the same schema in opposite roles (DESIGN.md:201-206), separated deliberately by 08-09-descriptor-contract-path (PR #68). Authoring config/routed-review-setup-v1.json back onto the probe path would restore the defect that task removed, so the honest form of the route is a full consumer install.
+- prd.md: rewrote the three candidate resolutions and their rejection rationale; ticked the descriptor-collision acceptance criterion and added one requiring the rejected routes be recorded.
+- design.md (new): boundaries and ownership table, routed-review data flow, the independent-review-floor decision, resource set, secret handling, verified blast radius, rollback shape, and the unproven premise that the Action has never executed anywhere.
+- Adversarial review correction 1: installing does not silence the user-global hook. It is a PostToolUse matcher on Bash that re-arms on every push, so a push landing after PR creation and before sd-review dispatches still wins the race. Scoping the hook out is the closing step of the route, not an alternative to it.
+- Adversarial review correction 2: installing does not unpark the sixteen v2-governance tasks. Their shared blockedOn requires distribution to fleet consumers plus a deliberate scope revalidation, and its falsification probe names external repositories.
+- implement.md deliberately absent: the ordered steps differ entirely between the three routes, so it cannot be written before the operator chooses one. The task stays unstarted.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `39c9f3f` | docs(task): record the descriptor-collision finding and design the route |
+
+### Testing
+
+- [OK] node scripts/sd-ai-command-pack-review-preflight.mjs -- 0 failure(s), 0 warning(s)
+- [OK] sd-review scope=pr on PR #84 -- status ready, deterministic check passed, prism clean, 0 findings
+- [OK] cross-artifact value sweep across the task directory -- 0 disagreements over the pin, line citations, model ids, and resource paths
+- [INFO] limitations router-not-configured and zero-remote-confidence; no Copilot review ran on this PR
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
