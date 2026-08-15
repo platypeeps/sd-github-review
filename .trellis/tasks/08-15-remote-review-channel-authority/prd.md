@@ -197,17 +197,8 @@ as the closing step of option 1.
       a future session reads before shipping — a spec, not a commit message.
       `.trellis/spec/backend/consumer-installer.md`, "Decision: this repository
       is a consumer of its own Action".
-- [→] The losing contract no longer fires in this repository, by configuration
-      rather than by convention. **Moved to `08-15-prove-routed-lane`.** It is
-      gated on a real receipt existing, which cannot happen until the lane this
-      task installs is on the default branch. Retiring the hook before then
-      would remove the only remote review this repository actually gets.
-- [→] A PR shipped after the change reports a remote-review state that matches
-      what reviewed it: either a router receipt with real remote confidence, or
-      an explicit, recorded local-only limitation with no side-channel review
-      happening behind it. **Moved to `08-15-prove-routed-lane`.** The install
-      PR itself cannot satisfy it: the capability probe reports `unavailable`
-      until the durable lane exists on `main`.
+Two further criteria are not listed here because they are no longer this task's
+to meet; see **Criteria moved to `08-15-prove-routed-lane`** below.
 - [x] If the descriptor route is taken, the relationship between this
       repository's own descriptor and the consumer-facing artifact of the same
       path is documented, and neither shadows the other. Answered during
@@ -221,7 +212,22 @@ as the closing step of option 1.
       the same starting assumptions. Same spec section as the first criterion;
       both rejections are recorded with their reasons, not just their verdicts.
 
-### Why two criteria moved rather than being ticked
+### Criteria moved to `08-15-prove-routed-lane`
+
+Carried verbatim into that task, where they can actually be tested:
+
+1. The losing contract no longer fires in this repository, by configuration
+   rather than by convention. Gated on a real receipt existing, which cannot
+   happen until the lane this task installs is on the default branch. Retiring
+   the hook before then would remove the only remote review this repository
+   actually gets.
+2. A PR shipped after the change reports a remote-review state that matches what
+   reviewed it: either a router receipt with real remote confidence, or an
+   explicit, recorded local-only limitation with no side-channel review
+   happening behind it. The install PR cannot satisfy it — the capability probe
+   reports `unavailable` until the durable lane exists on `main`.
+
+### Why they moved rather than being ticked
 
 This task was planned as two pull requests — `implement.md` splits phases 0–4
 from 5–7 — because the routed lane cannot be exercised from the branch that
