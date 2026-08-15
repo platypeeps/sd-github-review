@@ -425,3 +425,31 @@ Two things about the install are load-bearing and easy to get wrong:
   lane 404s and `routerCapability` reports `unavailable`, which fails closed —
   unlike `absent`, it does not permit local completion. Every consumer pays this
   bootstrap cost exactly once, on the pull request that installs the lane.
+
+### Self-installation reports permanent provenance drift
+
+`install-consumer.mjs check` in this repository reports
+
+```
+Installation drift detected for platypeeps/sd-github-review:
+- a newer source commit is available; run update
+```
+
+and will keep reporting it. This is **provenance drift, not file drift**: the
+three managed files stay byte-identical to their sources, and `check` exits 0.
+The manifest records the source commit at install time — `commit` under
+`source`, with `tag: null` and `released: false` for an install from a working
+checkout rather than a release tag — and for a self-install the source
+repository is this one, so every subsequent commit here makes that recording
+older than `HEAD`.
+
+Running `update` clears the message and restarts the treadmill: it rewrites the
+manifest with the current commit, which the next commit invalidates again. Do
+not treat this as a state to chase. An ordinary consumer does not see it, because
+their recorded source commit belongs to a different repository and only moves
+when they deliberately upgrade.
+
+The signal that still matters is file drift: a managed file differing from its
+recorded hash makes the installer preserve the operator edit and refuse
+`update`/`uninstall`, which is the state that costs the rollback. Verify that
+with `diff` against `examples/` and `contract/`, not with the provenance line.
