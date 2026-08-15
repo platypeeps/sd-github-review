@@ -2,7 +2,7 @@
   "id": "remote-review-channel-authority",
   "name": "remote-review-channel-authority",
   "title": "Reconcile the two contracts that both claim remote-review authority",
-  "description": "The user-global push hook in ~/.claude/settings.json instructs a direct Copilot request after every push; sd-review's SKILL.md forbids exactly that as a router fallback. Both fired on PR #81. The router reports absent because config/routed-review-setup-v1.json -- review.py:31 DEFAULT_DESCRIPTOR_PATH -- does not exist in this repository, so the forbidden channel is currently the only remote review that runs. Decide which contract owns remote review here and make them agree.",
+  "description": "The user-global push hook in ~/.claude/settings.json instructs a direct Copilot request after every push; sd-review's SKILL.md forbids exactly that as a router fallback. Both fired on PR #81. The router reports absent because config/routed-review-setup-v1.json -- scripts/sd-ai-command-pack-review.py:31 DEFAULT_DESCRIPTOR_PATH -- does not exist in this repository, so the forbidden channel is currently the only remote review that runs. Decide which contract owns remote review here and make them agree.",
   "status": "planning",
   "dev_type": null,
   "scope": null,
@@ -22,5 +22,6 @@
   "parent": null,
   "relatedFiles": [],
   "notes": "",
+  "blockedOn": null,
   "meta": {}
 }

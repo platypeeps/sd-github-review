@@ -1,8 +1,8 @@
 {
   "id": "task-manifest-ready-gate",
   "name": "task-manifest-ready-gate",
-  "title": "PARKED: Gate task.py start on curated context manifests",
-  "description": "workflow.md:424 states a ready gate -- both implement.jsonl and check.jsonl must hold at least one real entry before task.py start, seed _example row excluded -- but nothing enforces it. PR #81 started a task against seed-only manifests and only Copilot review caught it. The enforcing check belongs in the vendored pack, so this is parked on an upstream change.",
+  "title": "Invoke the seeded-task gate before starting a Trellis task",
+  "description": "workflow.md:424 requires a real entry in implement.jsonl and check.jsonl before task.py start. The enforcing check already exists in the installed pack -- scripts/sd-ai-command-pack-review-preflight.mjs:617, the seeded-task command, verified refusing a seed-only task and passing a curated one -- but nothing in this repository invokes it. Wire it into the start path.",
   "status": "planning",
   "dev_type": null,
   "scope": null,
@@ -21,8 +21,8 @@
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "2026-08-15: Filed from PR #81, where task.py start ran against seed-only manifests and Copilot review caught it rather than any gate. The rule already exists in .trellis/workflow.md:424; only the enforcement is missing. Parked before any mutation -- no branch, no task.py start.",
+  "notes": "2026-08-15: Filed from PR #81 as PARKED on an upstream change, on the assumption that no gate existed. Wrong: the seeded-task gate is present in the installed copy and was verified in both directions before this record merged. Unparked and rescoped to repo-local wiring. The park was recorded against an assumption rather than the vendored file -- the exact failure the same session had just written a spec rule against.",
   "meta": {},
-  "blocked": true,
-  "blockedOn": "Upstream sd-ai-command-pack change, not fixable here: the enforcing code sits on vendored paths (task.py's start surface and scripts/sd-ai-command-pack-review-preflight.mjs), which pack.install-audit fails on any local edit and the next refresh would overwrite. Resumes on a pack refresh whose payload refuses task.py start when a started task's implement.jsonl or check.jsonl holds only the seed _example row, while still exempting a planning task's untouched scaffold. Verify against the vendored file itself, not the pack version number: start a throwaway task with seed-only manifests and confirm it is refused, and confirm a planning task with the same manifests still passes the preflight. Filing the upstream pull request needs explicit approval for that PR and was outside the authority of the run that recorded this."
+  "blocked": false,
+  "blockedOn": null
 }

@@ -102,8 +102,9 @@ the descriptor route, not assume.
 
 Complex: touches the review lifecycle contract, spans a user-global config file
 this repository does not own, and has a design question (the descriptor
-collision) that must be settled before implementation. Needs `design.md` and
-`implement.md`, not PRD-only.
+collision) that must be settled before implementation. This is not a PRD-only
+task — `design.md` and `implement.md` must be written during planning, before
+`task.py start`. Neither exists yet; the task has not been started.
 
 The user-global hook edit is outside this repository. Whichever option is
 chosen, that step is the user's to make; the task records it as a handoff
