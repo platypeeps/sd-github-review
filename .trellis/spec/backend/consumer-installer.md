@@ -134,6 +134,9 @@ node scripts/install-consumer.mjs uninstall [options]
   its first step rejects an unset or invalid value rather than defaulting to
   `auto`, because `auto` can select `cheap` or `deep` and bill
   `PR_AGENT_MODEL_API_KEY` on a route nobody chose.
+  `08-15-installer-managed-route-mode` would bring it under management; if that
+  lands, this entry, the README install call-out, and the install/check/uninstall
+  descriptions above all describe the old behaviour and must change with it.
 - Provider secret values enter only through the inherited `gh secret set`
   prompt or standard input. They never enter CLI arguments, reports,
   manifests, diagnostics, or JSON output.

@@ -148,7 +148,12 @@ test("validates the repository action metadata, pinned workflows, and examples",
     .filter((name) => name.endsWith(".yml") || name.endsWith(".yaml"));
   assert.equal(result.workflowCount, workflowsOnDisk.length);
   assert.ok(result.workflowCount > 0, "the repository must publish at least one workflow");
-  assert.equal(result.exampleCount, 7);
+  // Same reasoning, same directory-shaped claim: a literal example count breaks
+  // or, worse, quietly narrows the moment an example is added or removed.
+  const examplesOnDisk = (await readdir(path.join(root, "examples")))
+    .filter((name) => name.endsWith(".yml") || name.endsWith(".yaml"));
+  assert.equal(result.exampleCount, examplesOnDisk.length);
+  assert.ok(result.exampleCount > 0, "the repository must publish at least one example");
   assert.ok(result.trackedPathCount > 0);
   assert.equal(result.contractMajor, 1);
 });
