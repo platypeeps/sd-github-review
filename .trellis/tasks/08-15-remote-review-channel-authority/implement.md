@@ -36,15 +36,26 @@ the installed copy afterwards makes it differ from its recorded hash — which
 "preserve operator edit and refuse update/uninstall", destroying the rollback in
 Phase 4.
 
-Both templates, not one. The install writes two lanes, and the event-driven one
-fires on every pull-request event with no floor at all, which is where PR-Agent
-spend would come from.
+Both templates, not one — but **not with the same input**. The install writes two
+lanes, and the event-driven one fires on every pull-request event, which is where
+PR-Agent spend comes from. `independent-review-floor` does not reach it:
+`action.yml:55` calls it the "minimum durable automatic route" and
+`src/operations.js:389` reads it only inside `routeOperation`, while the
+event-driven lane runs `operation: standalone` (`src/index.js:254-261`, no floor
+argument). Setting the floor there is inert — proven by PR #85's first run, which
+logged `Selected cheap for PR #85` with `independent-review-floor: copilot` in the
+same log and then billed one PR-Agent review.
 
-- [ ] `examples/sd-review.yml:24` — `default: none` becomes `default: copilot`.
-- [ ] `examples/pr-agent-router.yml` — add an explicit
-      `independent-review-floor: copilot` input. Without it the lane falls
-      through to `action.yml:58` `default: none`, and `src/index.js:124` runs
-      PR-Agent on the `cheap` and `deep` routes.
+- [x] `examples/sd-review.yml:24` — `default: none` becomes `default: copilot`.
+      This lane is durable, so the floor genuinely applies.
+- [x] `examples/pr-agent-router.yml` — add `mode: ${{ vars.REVIEW_ROUTE_MODE ||
+      'auto' }}`, the input standalone routing reads, and set the repository
+      variable `REVIEW_ROUTE_MODE=copilot`. A literal would leave the template's
+      PR-Agent steps permanently dead for every consumer; the variable defaults to
+      today's behaviour when unset.
+- [x] After any template edit that follows an install, re-run
+      `node scripts/install-consumer.mjs update` and re-check byte identity —
+      otherwise the installed copy drifts from its recorded hash.
 - [ ] Confirm nothing pins the input block. `test/installer-modules.test.js:206-215`
       compares only the template's `name:` against `descriptor.workflow.name`;
       the inputs are not asserted.
@@ -142,9 +153,10 @@ fallback. A direct reviewer request is forbidden here by
 `sd-review/SKILL.md:14-16` and is not an acceptable substitute for a working
 lane.
 
-Secondary observation, not a gate: with the floor at `copilot`, PR-Agent may
-never be invoked and the OpenRouter key may sit unused. Record what actually
-happens rather than assuming either way.
+Secondary observation, not a gate: with the durable floor at `copilot`, PR-Agent
+may never be invoked and the OpenRouter key may sit unused. Record what actually
+happens rather than assuming either way — on the event-driven lane that
+assumption was already wrong once, and only a real run caught it.
 
 ## Phase 6 — scope the hook out (PR B, gated on Phase 5)
 

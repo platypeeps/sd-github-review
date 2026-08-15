@@ -124,24 +124,60 @@ section below — a bad trade, and a silent one.
 **And there are two lanes, not one.** The install writes an event-driven
 `ai-review-router.yml` alongside the durable lane, and it fires on every
 `pull_request` `opened`/`synchronize`/`reopened`/`ready_for_review`/`labeled`.
-Its template passed no floor at all, so it fell through to `action.yml:58`
-`default: none` — and `src/index.js:124` sets `run-external-reviewer` true for
-exactly the `cheap` and `deep` routes, which is PR-Agent billing the operator's
-OpenRouter key. Setting the durable lane's floor alone would have left that lane
-uncovered while the design claimed "repository policy", and the first evidence
-would have been an invoice.
+Its template passed no route policy at all, so it fell through to
+`action.yml:66` `mode: auto` — and `src/index.js:124` sets
+`run-external-reviewer` true for exactly the `cheap` and `deep` routes, which is
+PR-Agent billing the operator's OpenRouter key. Leaving that lane uncovered while
+the design claimed "repository policy" meant the first evidence would be an
+invoice.
 
-The floor is therefore a spend control as much as a coverage control, and it is
-set on both templates: `examples/sd-review.yml:24` (the durable default) and
-`examples/pr-agent-router.yml` (an explicit `independent-review-floor: copilot`
-input). A `copilot` floor never reaches `cheap` or `deep`, so PR-Agent is never
-invoked. The cost of that choice is real and was put to the operator: the
-cheap/deep tier is now unreachable and the OpenRouter key stays unused.
+**The floor does not cover that lane, and the first attempt to make it do so was
+wrong.** `independent-review-floor` is a *durable* policy field and nothing else:
+`action.yml:55` describes it as the "minimum durable automatic route", and
+`src/operations.js:389` reads it only inside `routeOperation`. The event-driven
+lane runs `operation: standalone`, whose `routeReview` call (`src/index.js:254-261`)
+is never passed a floor at all. Adding `independent-review-floor: copilot` to
+`examples/pr-agent-router.yml` therefore changed nothing.
 
-Both must be set **before** the install, so each installed copy is
-byte-identical to its source and stays managed. That is a change to the template every future consumer receives, which
-is why it was put to the operator rather than assumed. They chose `copilot` on
-2026-08-15. Two facts made it cheap: nothing pins the input block
+This was not caught by reading. It was caught by the lane's first real execution,
+on PR #85, which logged
+
+```
+Selected cheap for PR #85: routine pull request within configured risk limits
+```
+
+and then pulled `pragent/pr-agent` and billed one OpenRouter review — with the
+inert `independent-review-floor: copilot` input visible in the same log. The
+premise this design flagged as unproven was the *durable* lane; the lane that
+actually falsified a claim was the event-driven one, and it did so on the pull
+request that installed it.
+
+The two lanes need two different mechanisms:
+
+- durable (`examples/sd-review.yml:24`): `independent-review-floor: copilot`,
+  which `routeOperation` honours and `strongerRoute` resolves to the strongest
+  route (`src/router.js:15-20`, `copilot` = 3).
+- event-driven (`examples/pr-agent-router.yml`): `mode`, the input standalone
+  routing actually reads, wired as
+  `mode: ${{ vars.REVIEW_ROUTE_MODE || 'auto' }}` with the repository variable
+  `REVIEW_ROUTE_MODE=copilot`.
+
+The variable rather than a literal is deliberate. The template ships to every
+future consumer, and a hardcoded `copilot` would make the PR-Agent steps below it
+permanently dead — the example would stop documenting the thing it exists to
+document. Unset, the expression yields `auto` and consumers see today's behaviour;
+set, it is a one-variable spend switch. It also keeps the installed copy
+byte-identical to its source, so the rollback in the section below survives.
+
+The cost of the operator's choice is real and was put to them: the cheap/deep
+tier is unreachable in this repository and the OpenRouter key stays unused.
+
+Both templates must be edited **before** the install — or the edit followed by
+`install-consumer.mjs update`, which is what the correction above required — so
+each installed copy is byte-identical to its source and stays managed. That is a
+change to the template every future consumer receives, which is why it was put to
+the operator rather than assumed. They chose `copilot` on 2026-08-15. Two facts
+made it cheap: nothing pins the input block
 (`test/installer-modules.test.js:206-215` asserts only the template's `name:`
 against `descriptor.workflow.name`), and the blast radius is currently empty —
 zero fleet consumers have the descriptor installed.

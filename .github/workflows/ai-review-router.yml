@@ -24,13 +24,15 @@ jobs:
           github-token: ${{ github.token }}
           cheap-model: ${{ vars.CHEAP_REVIEW_MODEL }}
           deep-model: ${{ vars.DEEP_REVIEW_MODEL }}
-          # Matches the durable lane's default in examples/sd-review.yml. This
-          # lane runs on every pull_request event, so the floor is also the
-          # spend control: run-external-reviewer is true only for the cheap and
-          # deep routes (src/index.js:124), and a copilot floor never reaches
-          # them, so PR-Agent is not billed. Lower it only alongside the durable
-          # lane, and only deliberately.
-          independent-review-floor: copilot
+          # This lane's spend control. `independent-review-floor` does NOT work
+          # here: action.yml calls it the "minimum durable automatic route" and
+          # src/operations.js:389 reads it only inside routeOperation, so the
+          # standalone routing this lane performs (src/index.js:254) ignores it.
+          # `mode` is the input standalone honours. Leave the variable unset for
+          # automatic routing; set REVIEW_ROUTE_MODE=copilot to guarantee an
+          # independent review and keep run-external-reviewer false
+          # (src/index.js:124), which is what stops PR-Agent from being billed.
+          mode: ${{ vars.REVIEW_ROUTE_MODE || 'auto' }}
           high-risk-route: deep
 
       - name: Validate PR-Agent configuration

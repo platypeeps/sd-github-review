@@ -117,11 +117,19 @@ only the workflow's own default counts. See `design.md`.
 
 ### What remains unverified
 
-**This Action has never run in any repository.** The evidence above establishes
-that it is installable and internally coherent, not that it executes
-successfully. Only an installation proves that, and this repository would be the
-first. Related: if the floor is set to `copilot`, PR-Agent may never be invoked,
-so the OpenRouter key could sit unused — also unprovable without running it.
+**The durable routed lane has never run in any repository.** The evidence
+gathered while planning established that the Action is installable and
+internally coherent, not that the routed lane executes successfully. Only a
+`workflow_dispatch` against the default branch proves that, and it cannot happen
+on the pull request that installs the lane.
+
+The event-driven lane is no longer unproven: it executed for the first time on
+PR #85 on 2026-08-15, completed green, and immediately falsified a design claim
+— it routed `cheap` and billed one PR-Agent review while carrying an
+`independent-review-floor: copilot` input that standalone routing does not read.
+That is recorded in `design.md`; the corrected mechanism is the `mode` input
+driven by the `REVIEW_ROUTE_MODE` repository variable. Whether the durable lane
+leaves the OpenRouter key entirely unused remains unproven until it runs.
 
 ## Requirements
 
@@ -214,9 +222,10 @@ and `implement.md` must both exist before `task.py start`. All three now do.
 Two constraints found while planning the execution shape the work more than the
 route choice did, and both are recorded in `design.md` and `implement.md`:
 
-- The floor can only be set in the template before installing. The pack never
-  forwards `independent-review-floor`, and editing the installed workflow
-  afterwards forfeits `uninstall`.
+- Route policy can only be set in the templates, and the two lanes take
+  different inputs: `independent-review-floor` is durable-only, while the
+  event-driven lane honours `mode`. The pack forwards neither, and editing an
+  installed workflow in place forfeits `uninstall`.
 - The lane cannot be proven on the pull request that installs it, because
   dispatch targets the default branch. The work is therefore two pull requests:
   install, then proof and closeout.
