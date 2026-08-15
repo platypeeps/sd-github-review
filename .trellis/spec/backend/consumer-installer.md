@@ -436,7 +436,11 @@ Installation drift detected for platypeeps/sd-github-review:
 ```
 
 and will keep reporting it. This is **provenance drift, not file drift**: the
-three managed files stay byte-identical to their sources, and `check` exits 0.
+three managed files stay byte-identical to their sources. `check` still exits 1
+— the message lands in `issues`, which clears `report.ok`, and
+`scripts/install-consumer.mjs:46` sets `process.exitCode = 1` for any not-ok
+report. A self-install therefore has a permanently failing `check`, so do not
+wire this repository's own `check` into a gate that reads only the exit code.
 The manifest records the source commit at install time — `commit` under
 `source`, with `tag: null` and `released: false` for an install from a working
 checkout rather than a release tag — and for a self-install the source
