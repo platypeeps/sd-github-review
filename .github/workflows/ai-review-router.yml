@@ -1,0 +1,105 @@
+name: AI review router with PR-Agent
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  route:
+    if: github.event.sender.type != 'Bot' && (github.event_name == 'pull_request' || github.event.issue.pull_request != null)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Choose reviewer
+        id: review
+        # v0.3.0; upgrade only to another reviewed full release SHA.
+        uses: platypeeps/sd-github-review@744a9f138bba7c60272c7f9e3f8412e435e11b89
+        with:
+          github-token: ${{ github.token }}
+          cheap-model: ${{ vars.CHEAP_REVIEW_MODEL }}
+          deep-model: ${{ vars.DEEP_REVIEW_MODEL }}
+          high-risk-route: deep
+
+      - name: Validate PR-Agent configuration
+        id: pr-agent-config
+        if: steps.review.outputs.run-external-reviewer == 'true' && (github.event_name == 'issue_comment' || github.event.pull_request.head.repo.fork == false)
+        env:
+          REVIEW_MODEL_PROVIDER: ${{ vars.PR_AGENT_MODEL_PROVIDER }}
+          REVIEW_MODEL: ${{ steps.review.outputs.model }}
+        run: |
+          if [ -z "$REVIEW_MODEL" ]; then
+            echo "CHEAP_REVIEW_MODEL and DEEP_REVIEW_MODEL must select a PR-Agent model." >&2
+            exit 1
+          fi
+          case "$REVIEW_MODEL_PROVIDER" in
+            openai)
+              REVIEW_MODEL_PREFIX=""
+              ;;
+            gemini|openrouter|anthropic|cohere|replicate|groq|sambanova|xai|deepseek|deepinfra|mistral|codestral)
+              REVIEW_MODEL_PREFIX="${REVIEW_MODEL_PROVIDER}/"
+              ;;
+            *)
+              echo "PR_AGENT_MODEL_PROVIDER must select a supported single-key provider." >&2
+              exit 1
+              ;;
+          esac
+          if [ -n "$REVIEW_MODEL_PREFIX" ]; then
+            case "$REVIEW_MODEL" in
+              "$REVIEW_MODEL_PREFIX"*) ;;
+              *)
+                echo "The selected PR-Agent model must use the ${REVIEW_MODEL_PREFIX}<model-id> format." >&2
+                exit 1
+              ;;
+            esac
+          fi
+
+      - name: Run PR-Agent review
+        id: pr-agent
+        if: steps.pr-agent-config.outcome == 'success'
+        env:
+          GITHUB__USER_TOKEN: ${{ github.token }}
+          OPENAI__KEY: ${{ vars.PR_AGENT_MODEL_PROVIDER == 'openai' && secrets.PR_AGENT_MODEL_API_KEY || '' }}
+          GOOGLE_AI_STUDIO__GEMINI_API_KEY: ${{ vars.PR_AGENT_MODEL_PROVIDER == 'gemini' && secrets.PR_AGENT_MODEL_API_KEY || '' }}
+          OPENROUTER__KEY: ${{ vars.PR_AGENT_MODEL_PROVIDER == 'openrouter' && secrets.PR_AGENT_MODEL_API_KEY || '' }}
+          ANTHROPIC__KEY: ${{ vars.PR_AGENT_MODEL_PROVIDER == 'anthropic' && secrets.PR_AGENT_MODEL_API_KEY || '' }}
+          COHERE__KEY: ${{ vars.PR_AGENT_MODEL_PROVIDER == 'cohere' && secrets.PR_AGENT_MODEL_API_KEY || '' }}
+          REPLICATE__KEY: ${{ vars.PR_AGENT_MODEL_PROVIDER == 'replicate' && secrets.PR_AGENT_MODEL_API_KEY || '' }}
+          GROQ__KEY: ${{ vars.PR_AGENT_MODEL_PROVIDER == 'groq' && secrets.PR_AGENT_MODEL_API_KEY || '' }}
+          SAMBANOVA__KEY: ${{ vars.PR_AGENT_MODEL_PROVIDER == 'sambanova' && secrets.PR_AGENT_MODEL_API_KEY || '' }}
+          XAI__KEY: ${{ vars.PR_AGENT_MODEL_PROVIDER == 'xai' && secrets.PR_AGENT_MODEL_API_KEY || '' }}
+          DEEPSEEK__KEY: ${{ vars.PR_AGENT_MODEL_PROVIDER == 'deepseek' && secrets.PR_AGENT_MODEL_API_KEY || '' }}
+          DEEPINFRA__KEY: ${{ vars.PR_AGENT_MODEL_PROVIDER == 'deepinfra' && secrets.PR_AGENT_MODEL_API_KEY || '' }}
+          MISTRAL__KEY: ${{ vars.PR_AGENT_MODEL_PROVIDER == 'mistral' && secrets.PR_AGENT_MODEL_API_KEY || '' }}
+          CODESTRAL__KEY: ${{ vars.PR_AGENT_MODEL_PROVIDER == 'codestral' && secrets.PR_AGENT_MODEL_API_KEY || '' }}
+          CONFIG__MODEL: ${{ steps.review.outputs.model }}
+          CONFIG__FALLBACK_MODELS: '[]'
+          CONFIG__RESTRICTED_MODE: "true"
+          REVIEW_PULL_REQUEST_NUMBER: ${{ steps.review.outputs.pull-request-number }}
+        run: |
+          docker run --rm \
+            --env GITHUB__USER_TOKEN \
+            --env OPENAI__KEY \
+            --env GOOGLE_AI_STUDIO__GEMINI_API_KEY \
+            --env OPENROUTER__KEY \
+            --env ANTHROPIC__KEY \
+            --env COHERE__KEY \
+            --env REPLICATE__KEY \
+            --env GROQ__KEY \
+            --env SAMBANOVA__KEY \
+            --env XAI__KEY \
+            --env DEEPSEEK__KEY \
+            --env DEEPINFRA__KEY \
+            --env MISTRAL__KEY \
+            --env CODESTRAL__KEY \
+            --env CONFIG__MODEL \
+            --env CONFIG__FALLBACK_MODELS \
+            --env CONFIG__RESTRICTED_MODE \
+            pragent/pr-agent@sha256:cae31b51b65b5c978a3b2a978d96e89e6a4c5bcd81cb2553fd8dad0251c3a23e \
+            --pr_url="https://github.com/${GITHUB_REPOSITORY}/pull/${REVIEW_PULL_REQUEST_NUMBER}" \
+            review

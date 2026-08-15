@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 3,
+  "tool": "sd-github-review",
+  "state": "active",
+  "repository": "platypeeps/sd-github-review",
+  "workflow": {
+    "path": ".github/workflows/ai-review-router.yml",
+    "sha256": "0e9ab126c438f58440286785de07ed444f0a21e04e773dae29e1ef45256d3b26"
+  },
+  "source": {
+    "template": "examples/pr-agent-router.yml",
+    "sha256": "0e9ab126c438f58440286785de07ed444f0a21e04e773dae29e1ef45256d3b26",
+    "commit": "42ed46e365cf853316e96cbc56b8f6ca174e2229",
+    "tag": null,
+    "released": false
+  },
+  "descriptor": {
+    "path": "config/routed-review-setup-v1.json",
+    "source": "contract/routed-review-setup-v1.json",
+    "sha256": "83e590cc27a2707feaba79f414c7e446b4203d2c6cc484627063458ff922b7fa"
+  },
+  "durableWorkflow": {
+    "path": ".github/workflows/sd-review.yml",
+    "source": "examples/sd-review.yml",
+    "sha256": "ed2004779c84e136fa7f2d197fbbdd0f7cdb16c59f9dd615649ae1c547b81f58"
+  },
+  "configuration": {
+    "provider": "openrouter",
+    "cheapModel": "openrouter/qwen/qwen3-coder-30b-a3b-instruct",
+    "deepModel": "openrouter/moonshotai/kimi-k2.6"
+  },
+  "resources": {
+    "variables": {
+      "PR_AGENT_MODEL_PROVIDER": {
+        "value": "openrouter",
+        "owned": true
+      },
+      "CHEAP_REVIEW_MODEL": {
+        "value": "openrouter/qwen/qwen3-coder-30b-a3b-instruct",
+        "owned": true
+      },
+      "DEEP_REVIEW_MODEL": {
+        "value": "openrouter/moonshotai/kimi-k2.6",
+        "owned": true
+      }
+    },
+    "secret": {
+      "name": "PR_AGENT_MODEL_API_KEY",
+      "owned": false
+    },
+    "labels": [
+      {
+        "name": "review:cheap",
+        "owned": true
+      },
+      {
+        "name": "review:deep",
+        "owned": true
+      },
+      {
+        "name": "review:copilot",
+        "owned": true
+      },
+      {
+        "name": "review:none",
+        "owned": true
+      },
+      {
+        "name": "review:auto",
+        "owned": true
+      }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -137,8 +137,17 @@ async function writeExampleFixture(root, actionReference) {
 }
 
 test("validates the repository action metadata, pinned workflows, and examples", async () => {
-  const result = await validateMetadata(path.resolve(import.meta.dirname, ".."));
-  assert.equal(result.workflowCount, 1);
+  const root = path.resolve(import.meta.dirname, "..");
+  const result = await validateMetadata(root);
+  // Enumerate rather than restate. The point of this assertion is that
+  // validateMetadata visited every workflow in the directory, and a literal
+  // count silently becomes a different claim the moment a workflow is added --
+  // which is exactly how installing this repository as a consumer of its own
+  // Action broke it, by adding two.
+  const workflowsOnDisk = (await readdir(path.join(root, ".github", "workflows")))
+    .filter((name) => name.endsWith(".yml") || name.endsWith(".yaml"));
+  assert.equal(result.workflowCount, workflowsOnDisk.length);
+  assert.ok(result.workflowCount > 0, "the repository must publish at least one workflow");
   assert.equal(result.exampleCount, 7);
   assert.ok(result.trackedPathCount > 0);
   assert.equal(result.contractMajor, 1);
