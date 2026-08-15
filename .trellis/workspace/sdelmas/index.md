@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 67
+- **Total Sessions**: 68
 - **Last Active**: 2026-08-15
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~751 | Active |
+| `journal-2.md` | ~802 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 68 | 2026-08-15 | Install the repository as a routed-review consumer (PR A) | `42ed46e`, `b3f40d7`, `b6e2e88`, `40dcab1`, `c4d4314`, `f936946`, `cb2df2d`, `a358172`, `8b0056b`, `4a6c435` | `feat/install-routed-review-consumer` |
 | 67 | 2026-08-15 | Record the descriptor-collision finding and design the remote-review route | `39c9f3f` | `docs/remote-review-channel-authority-findings` |
 | 66 | 2026-08-15 | Enforce the Trellis context-manifest ready gate at task start | `4fd0723`, `d1e0561`, `026b9e1`, `41f1652` | `feat/trellis-seeded-task-start-gate` |
 | 65 | 2026-08-15 | File the two follow-ups PR #81 earned, and correct one of them before merge | `28fd6a5`, `a047494`, `dae66d9` | `chore/followup-tasks-from-pr-81` |
