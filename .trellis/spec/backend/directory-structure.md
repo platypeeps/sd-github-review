@@ -184,6 +184,32 @@ single queryable source for priority, ownership, dependencies, and status.
   had already advanced to 0.71.6, so the version alone answered neither
   question. The park outlived its blocker by four refreshes and the backlog
   reported one actionable task where there were two.
+
+  Park a task with its resume condition in `blockedOn`, not with the `PARKED:`
+  prefix alone. The prefix marks *that* a task is parked and nothing more:
+  `candidate_block_status` in `scripts/sd-ai-command-pack-work-loop.py` returns
+  `reason_text or "parked"`, so a prefix-only park ranks as the literal string
+  `parked` and a backlog report cannot tell a deliberate scope decision from a
+  dependency block. Write what would unpark it and how to falsify it — the
+  command or artifact to re-derive, not prose — because the next sweep re-checks
+  the field, never the commit that created the park.
+
+  ```bash
+  # Does every parked record carry a reason the ranker can surface?
+  python3 - <<'EOF'
+  import json, pathlib
+  for p in sorted(pathlib.Path(".trellis/tasks").iterdir()):
+      if not p.is_dir() or p.name == "archive": continue
+      t = json.loads((p / "task.json").read_text())
+      if t.get("title", "").startswith("PARKED:") and not t.get("blockedOn"):
+          print("prefix-only park:", p.name)
+  EOF
+  ```
+
+  Observed 2026-08-15: sixteen tasks parked by one commit carried the prefix and
+  nothing else, so their rationale survived only in that commit's message and
+  every one of them ranked as the bare fallback `parked`. Answering "is this
+  still valid?" meant reading git history.
 - Keep consumer installation lifecycle code under `scripts/consumer-installer.mjs`
   and `scripts/consumer-installer/`, with a thin `scripts/install-consumer.mjs`
   entrypoint. It may manage consumer files and bounded GitHub metadata, but must
