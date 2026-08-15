@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 62
-- **Last Active**: 2026-08-14
+- **Total Sessions**: 63
+- **Last Active**: 2026-08-15
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~537 | Active |
+| `journal-2.md` | ~579 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 63 | 2026-08-15 | Close review-coordinator stale-check on the shipped upstream fix | `5e52330`, `be8de04`, `5a2fc50` | `feat/08-09-review-coordinator-stale-check` |
 | 62 | 2026-08-14 | chore: refresh sd-ai-command-pack to 0.71.6 | `39460db768aa77bcbca64c573f73bfea395ad9e7` | `chore/sd-ai-command-pack-0-71-6` |
 | 61 | 2026-08-14 | sd-ai-command-pack 0.71.5 refresh | `3a2c74f784877a6c19cc5baed15c376a350583cc` | `chore/sd-ai-command-pack-0.71.5` |
 | 60 | 2026-08-13 | sd-ai-command-pack 0.71.4 refresh | `b24257b5915532ba0e9a86c5da7b8876cc77eb4f` | `chore/sd-ai-command-pack-0.71.4` |
