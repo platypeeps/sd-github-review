@@ -1,1 +1,2 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/backend/consumer-installer.md", "reason": "Defines managed-resource ownership, the unowned-preexisting rule, and the manifest schema this task must extend; it also currently records REVIEW_ROUTE_MODE as deliberately unmanaged, which this task changes."}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Names the installer-managed files and the do-not-edit-in-place rule, so the task knows which paths the installer owns before adding a fourth managed variable."}
