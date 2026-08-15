@@ -1,1 +1,1 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Owns the vendored-versus-repo-owned boundary that decides which of the three candidate resolutions are actionable here: config/routed-review-setup-v1.json is repo-owned, sd-review's SKILL.md is not."}
