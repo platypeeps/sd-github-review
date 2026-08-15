@@ -72,19 +72,20 @@ advertises actually exists.
 ### What a real installation costs
 
 `scripts/consumer-installer/plan.mjs:148-150` hard-requires the secret, with no
-copilot-only exemption; `install --dry-run` exits 1 before it will even plan:
+copilot-only exemption; `node scripts/install-consumer.mjs install --dry-run`
+exits 1 before it will even plan:
 
 ```
 Error: PR_AGENT_MODEL_API_KEY is missing; rerun with --set-secret or pipe it to --secret-stdin
 ```
 
-A read-only `install-consumer.mjs check` enumerates the full resource set: four
-files, five `review:*` labels, three variables (`openrouter`,
-`qwen3-coder-30b-a3b-instruct` cheap, `kimi-k2.6` deep), and
+A read-only `node scripts/install-consumer.mjs check` enumerates the full
+resource set: four files, five `review:*` labels, three variables
+(`openrouter`, `qwen3-coder-30b-a3b-instruct` cheap, `kimi-k2.6` deep), and
 `PR_AGENT_MODEL_API_KEY`. `design.md` lists the file paths, since none of them
 exists in this repository yet and only a forward-looking artifact may name a
 path that does not resolve. `check` omits two of the four only because
-`consumer-installer.mjs:421` is `if (!recorded) continue` and no manifest exists
+`consumer-installer.mjs:422` is `if (!recorded) continue` and no manifest exists
 yet — expected, not a gap.
 
 ### Two premises that would have sunk the install were checked and hold
@@ -135,8 +136,10 @@ so the OpenRouter key could sit unused — also unprovable without running it.
 
 1. **Install this repository as a consumer of its own Action, then scope the
    hook out.** Not "author a descriptor" — that was the pre-investigation
-   framing and it is wrong. Run `install-consumer.mjs install`, which writes the
-   descriptor *and* the lane it advertises. The router becomes present and
+   framing and it is wrong. Run `node scripts/install-consumer.mjs install`,
+   which writes the descriptor *and* the lane it advertises. `--target`
+   defaults to the current directory (`codecs.mjs:422`), and the target here is
+   this repository. The router becomes present and
    sd-review dispatches Copilot through its own path with a durable receipt.
 
    Two steps, not one, and the second is not optional. The hook is a

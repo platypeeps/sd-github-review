@@ -111,9 +111,11 @@ while the channel moves. Lowering it later is a separate, deliberate decision.
 
 ### Resources written
 
-From a read-only `install-consumer.mjs check`, plus the two schema-3 durable
-resources it skips when no manifest exists yet (`consumer-installer.mjs:421`,
-`if (!recorded) continue`):
+From a read-only `node scripts/install-consumer.mjs check`, plus the two
+schema-3 durable resources it skips when no manifest exists yet
+(`consumer-installer.mjs:422`, `if (!recorded) continue`). `--target` is
+omitted throughout: it defaults to the current directory
+(`codecs.mjs:422`), which is the target here.
 
 - `.github/sd-github-review.json` — ownership manifest, schema 3
 - `.github/workflows/ai-review-router.yml` — event-driven lane
@@ -165,8 +167,9 @@ inherits that and must not widen it.
 
 ### Rollback
 
-`install-consumer.mjs uninstall` removes the managed resources it owns and, per
-the installer's ownership rules, preserves anything it recorded as unowned. A
+`node scripts/install-consumer.mjs uninstall` removes the managed resources it
+owns and, per the installer's ownership rules, preserves anything it recorded
+as unowned. A
 rollback that leaves the descriptor without the lane is the one state to avoid,
 since that is the original defect; verify both are gone, not just one.
 
