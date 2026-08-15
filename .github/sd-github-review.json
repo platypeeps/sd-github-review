@@ -5,12 +5,12 @@
   "repository": "platypeeps/sd-github-review",
   "workflow": {
     "path": ".github/workflows/ai-review-router.yml",
-    "sha256": "c9060ef9a2e3ad91b480b459889e0d95e082712319bdc897da090942edfb898b"
+    "sha256": "eba0bb9e767b2302ea13c3dc999d977470721eee6ace71b9585a7da7305a28f7"
   },
   "source": {
     "template": "examples/pr-agent-router.yml",
-    "sha256": "c9060ef9a2e3ad91b480b459889e0d95e082712319bdc897da090942edfb898b",
-    "commit": "40dcab1c1ece72d4194f9c5db5855582f0602f6d",
+    "sha256": "eba0bb9e767b2302ea13c3dc999d977470721eee6ace71b9585a7da7305a28f7",
+    "commit": "c4d4314f0cc169714a596e79a877439f3eb13e06",
     "tag": null,
     "released": false
   },

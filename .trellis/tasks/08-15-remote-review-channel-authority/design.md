@@ -165,9 +165,31 @@ The two lanes need two different mechanisms:
 The variable rather than a literal is deliberate. The template ships to every
 future consumer, and a hardcoded `copilot` would make the PR-Agent steps below it
 permanently dead — the example would stop documenting the thing it exists to
-document. Unset, the expression yields `auto` and consumers see today's behaviour;
-set, it is a one-variable spend switch. It also keeps the installed copy
-byte-identical to its source, so the rollback in the section below survives.
+document. It also keeps the installed copy byte-identical to its source, so the
+rollback in the section below survives.
+
+**The variable fails closed, and that is the second correction.** The first
+version defaulted the expression to `auto` when the variable was unset. That
+reproduces the original defect one layer up: `REVIEW_ROUTE_MODE` is a plain
+repository variable, not an installer-managed resource — `uninstall` does not
+remove it and `check` does not verify it — so deleting or mistyping it would
+silently restore paid routing, with an invoice as the first evidence. The lane's
+first step now rejects an unset or invalid value and names the five it accepts,
+and `mode:` carries no `||` fallback. Consumers must state the intent; opting
+into paid review is allowed, but only out loud.
+
+Rejected alternative: making `REVIEW_ROUTE_MODE` an installer-managed variable
+alongside the three in `codecs.mjs:116-120`. That is the stronger fix — `check`
+would then catch drift — but it needs a manifest schema bump and installer
+surgery well outside this task, and the fail-closed gate already turns the drift
+into a loud, harmless failure. Filed as a follow-up rather than smuggled in here.
+
+The gate lives only in `examples/pr-agent-router.yml`. `examples/review-router.yml`
+and `examples/gated-review-router.yml` also expose `run-external-reviewer`, but
+their reviewer step is a placeholder `./scripts/run-ai-review` the operator writes
+themselves; the operator who authors the spend step already knows what it costs.
+`pr-agent-router.yml` is the only example that ships a concrete billed reviewer,
+and the only one the installer deploys.
 
 The cost of the operator's choice is real and was put to them: the cheap/deep
 tier is unreachable in this repository and the OpenRouter key stays unused.

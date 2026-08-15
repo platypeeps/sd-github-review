@@ -48,11 +48,16 @@ same log and then billed one PR-Agent review.
 
 - [x] `examples/sd-review.yml:24` — `default: none` becomes `default: copilot`.
       This lane is durable, so the floor genuinely applies.
-- [x] `examples/pr-agent-router.yml` — add `mode: ${{ vars.REVIEW_ROUTE_MODE ||
-      'auto' }}`, the input standalone routing reads, and set the repository
-      variable `REVIEW_ROUTE_MODE=copilot`. A literal would leave the template's
-      PR-Agent steps permanently dead for every consumer; the variable defaults to
-      today's behaviour when unset.
+- [x] `examples/pr-agent-router.yml` — add `mode: ${{ vars.REVIEW_ROUTE_MODE }}`,
+      the input standalone routing reads, and set the repository variable
+      `REVIEW_ROUTE_MODE=copilot`. A literal would leave the template's PR-Agent
+      steps permanently dead for every consumer.
+- [x] `examples/pr-agent-router.yml` — gate the lane on that variable being set
+      to one of `auto|cheap|deep|copilot|none`, failing the job with an
+      explanatory message otherwise. No `||` fallback: the variable is not
+      installer-managed, so an unset value must fail closed rather than resume
+      paid routing silently. Verified locally across valid, unset, and invalid
+      values before pushing.
 - [x] After any template edit that follows an install, re-run
       `node scripts/install-consumer.mjs update` and re-check byte identity —
       otherwise the installed copy drifts from its recorded hash.

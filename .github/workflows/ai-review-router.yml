@@ -16,6 +16,30 @@ jobs:
     if: github.event.sender.type != 'Bot' && (github.event_name == 'pull_request' || github.event.issue.pull_request != null)
     runs-on: ubuntu-latest
     steps:
+      # This lane runs on every pull-request event, and the cheap and deep routes
+      # bill the provider key below. An unset route variable must therefore fail
+      # closed and say so: falling back to `auto` would spend the operator's money
+      # on a route nobody chose, and the first evidence would be an invoice. Set
+      # REVIEW_ROUTE_MODE deliberately -- `copilot` or `none` for no PR-Agent
+      # spend, `auto`/`cheap`/`deep` to opt into it.
+      - name: Require an explicit review route
+        env:
+          REVIEW_ROUTE_MODE: ${{ vars.REVIEW_ROUTE_MODE }}
+        run: |
+          case "$REVIEW_ROUTE_MODE" in
+            auto|cheap|deep|copilot|none)
+              echo "Review route: $REVIEW_ROUTE_MODE"
+              ;;
+            "")
+              echo "::error::Repository variable REVIEW_ROUTE_MODE is not set. This lane will not guess a route, because auto can select cheap or deep and bill the configured PR-Agent provider key. Set it to copilot or none for an independent review with no PR-Agent spend, or to auto, cheap, or deep to opt into paid review." >&2
+              exit 1
+              ;;
+            *)
+              echo "::error::Repository variable REVIEW_ROUTE_MODE must be one of auto, cheap, deep, copilot, or none; got '$REVIEW_ROUTE_MODE'." >&2
+              exit 1
+              ;;
+          esac
+
       - name: Choose reviewer
         id: review
         # v0.3.0; upgrade only to another reviewed full release SHA.
@@ -24,15 +48,16 @@ jobs:
           github-token: ${{ github.token }}
           cheap-model: ${{ vars.CHEAP_REVIEW_MODEL }}
           deep-model: ${{ vars.DEEP_REVIEW_MODEL }}
-          # This lane's spend control. `independent-review-floor` does NOT work
-          # here: action.yml calls it the "minimum durable automatic route" and
+          # This lane's spend control, validated by the step above -- no `||`
+          # default here, because a fallback is the silent failure that step
+          # exists to prevent. `independent-review-floor` does NOT work here:
+          # action.yml calls it the "minimum durable automatic route" and
           # src/operations.js:389 reads it only inside routeOperation, so the
           # standalone routing this lane performs (src/index.js:254) ignores it.
-          # `mode` is the input standalone honours. Leave the variable unset for
-          # automatic routing; set REVIEW_ROUTE_MODE=copilot to guarantee an
-          # independent review and keep run-external-reviewer false
-          # (src/index.js:124), which is what stops PR-Agent from being billed.
-          mode: ${{ vars.REVIEW_ROUTE_MODE || 'auto' }}
+          # `mode` is the input standalone honours; copilot and none keep
+          # run-external-reviewer false (src/index.js:124), so PR-Agent is not
+          # billed.
+          mode: ${{ vars.REVIEW_ROUTE_MODE }}
           high-risk-route: deep
 
       - name: Validate PR-Agent configuration

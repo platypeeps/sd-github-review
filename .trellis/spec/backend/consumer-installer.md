@@ -128,6 +128,12 @@ node scripts/install-consumer.mjs uninstall [options]
 - GitHub resources are `PR_AGENT_MODEL_PROVIDER`, `CHEAP_REVIEW_MODEL`,
   `DEEP_REVIEW_MODEL`, `PR_AGENT_MODEL_API_KEY`, and the router's five review
   labels. Matching pre-existing resources are unowned and preserved.
+- `REVIEW_ROUTE_MODE` is required by the installed event-driven lane but is
+  **not** an installer-managed resource: the operator sets it, `uninstall` does
+  not remove it, and `check` does not verify it. The lane fails closed instead —
+  its first step rejects an unset or invalid value rather than defaulting to
+  `auto`, because `auto` can select `cheap` or `deep` and bill
+  `PR_AGENT_MODEL_API_KEY` on a route nobody chose.
 - Provider secret values enter only through the inherited `gh secret set`
   prompt or standard input. They never enter CLI arguments, reports,
   manifests, diagnostics, or JSON output.
