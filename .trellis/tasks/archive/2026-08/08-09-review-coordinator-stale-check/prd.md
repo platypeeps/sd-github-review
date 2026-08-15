@@ -84,6 +84,10 @@ an operator gate for an already-remediated check.
 
 ## BLOCKED — the fix belongs upstream, not in this repository
 
+> **Historical (2026-08-09 to 2026-08-15).** This block records why the task
+> parked and what was proven before the revert. The park has since been
+> lifted — see "RESOLVED" at the end of this document.
+
 **2026-08-09.** The implementation was written, validated, and then reverted here, because
 `scripts/sd-ai-command-pack-review.py` is a **vendored** copy owned by `sd-ai-command-pack`
 (present locally at `../sd-ai-command-pack`). Two independent pieces of evidence:
@@ -137,19 +141,33 @@ can follow here.
 
 ## Acceptance criteria
 
-- [ ] With a cached failing check whose cause is fixed outside tracked content, one documented
+Every criterion below is satisfied by the shipped upstream fix rather than by
+work in this repository. See "RESOLVED" at the end of this document for the
+full evidence and for why no local code change was written.
+
+- [x] With a cached failing check whose cause is fixed outside tracked content, one documented
       `sd-review` invocation re-runs the check and reports the live result.
-- [ ] With a cached failing check whose cause is **not** fixed, the same invocation still reports
+      → `review.py:1931` recomputes unconditionally; upstream
+      `test_review_controller.py:1483`.
+- [x] With a cached failing check whose cause is **not** fixed, the same invocation still reports
       blocked.
-- [ ] ~~A resume at an unchanged head with a cached *passing* check does not re-run the suite.~~
+      → upstream `test_review_controller.py:1626`, direction one.
+- [x] ~~A resume at an unchanged head with a cached *passing* check does not re-run the suite.~~
       **Superseded** by the upstream recompute contract, which requires a cached *pass* to be
       recomputed too — a live input that has since broken must block. Replaced upstream by: the
       coordinator's verdict equals a direct `sd-check` run's verdict on the same tree, for both a
       pass and a fail, with state pre-seeded to the opposite verdict.
-- [ ] After a cause is remediated outside tracked content, re-running the **same** attempt
+      → replacement met by upstream `test_review_controller.py:1626`; the
+      stale-pass direction by `:1558`. Checked as resolved, not as implemented.
+- [x] After a cause is remediated outside tracked content, re-running the **same** attempt
       number reaches the live result, so escaping a replay never requires spending a further
       numbered attempt.
-- [ ] The behavior is covered by a test that fails against today's code.
+      → upstream `test_review_controller.py:1626`, direction two, which clears
+      the gate at the same head with no new attempt id.
+- [x] The behavior is covered by a test that fails against today's code.
+      → covered upstream, against the code as it stood before the fix. Not
+      reproduced here: the subject is vendored, so a local copy would duplicate
+      upstream coverage of a file this repository cannot edit.
 
 ## Notes
 
@@ -210,3 +228,90 @@ recompute contract. This task resumes when a pack release carrying that fix is
 refreshed into this repository; at that point the local
 `test/review-coordinator-contract.test.js` and the `error-handling.md` spec
 section can follow, if they still add anything the upstream tests do not.
+
+## RESOLVED — the upstream fix arrived; no local change was required (2026-08-15)
+
+The blocker condition recorded above — "resumes when a pack release carrying that
+fix is refreshed into this repository" — is met, and both planned local
+deliverables were checked against the repository and dropped with reason. The
+task closes without a code change.
+
+### The fix is present in the vendored coordinator
+
+`chore: refresh SD AI command pack to 0.71.1` (`49f65dc`) brought it in.
+`scripts/sd-ai-command-pack-review.py` now implements the upstream recompute
+contract, not this task's refuted pass-only-reuse design:
+
+```python
+1931:    check = _run_check(repo)
+1943:        resumable=isinstance(check, dict) and check.get("status") == "passed",
+```
+
+The call is unconditional, so every invocation recomputes the deterministic
+check and no stored verdict — pass or fail — can decide a later run.
+
+That reading is of pristine pack content, not a drifted local copy:
+`python3 scripts/sd-ai-command-pack-install-audit.py` reports "install audit
+passed: 199 targets checked" and "Installed payload provenance: version 0.71.6;
+vouched file hashes match". The coordinator itself has not changed since
+`49f65dc`; the 0.71.2, 0.71.4, 0.71.5, and 0.71.6 refreshes since then left it
+untouched, so the fix arrived at 0.71.1 and has survived four refreshes. A failure
+is additionally never written to the state file, and the recompute passes the
+current phase back rather than rewinding it, so a resume still re-enters at the
+right stage. The failing report stays in the emitted result, which was the one
+piece of the work here that carried forward upstream.
+
+### Acceptance criteria, resolved against the shipped code
+
+Upstream owns the tests, in `../sd-ai-command-pack/tests/test_review_controller.py`:
+
+| AC | Disposition |
+| --- | --- |
+| 1 — remediated outside tracked content re-runs live | Met. `test_failed_check_is_recomputed_on_the_next_invocation:1483`. |
+| 2 — a genuinely failing check still blocks | Met. `test_the_gate_agrees_with_a_direct_check_run_in_both_directions:1626`, direction one. |
+| 3 — cached pass is not re-run | Superseded, as recorded above. The replacement AC — the coordinator's verdict equals a direct `sd-check` run in both directions with state pre-seeded to the opposite verdict — is met by `:1626`, and the stale-pass direction by `test_stored_passing_check_is_recomputed_and_can_still_block:1558`. |
+| 4 — re-running the same attempt number reaches the live result | Met. `:1626` direction two clears the gate at the same head with no new attempt id. |
+| 5 — covered by a test that fails against today's code | Met upstream, and not reproducible here: see below. |
+
+### Both local deliverables were checked and dropped
+
+- **`test/review-coordinator-contract.test.js` — not written.** The PRD's own
+  condition was "if they still add anything the upstream tests do not." They do
+  not. The three tests above cover every surviving acceptance criterion,
+  including the exact both-directions-against-a-live-input scenario this task
+  would have had to construct. Writing it here would duplicate that coverage
+  against a file this repository cannot modify, and would re-assert a contract
+  whose owner is upstream.
+- **The `error-handling.md` spec section — already captured, in a better home.**
+  The durable convention this task produced is an ownership rule, not a failure
+  contract, so it landed in `.trellis/spec/backend/directory-structure.md:143-186`:
+  treat every `scripts/sd-ai-command-pack-*` path as vendored, establish
+  ownership from `git log` and the preflight gate before planning, and derive the
+  editable set from the audit rather than from a list. It also carries the
+  specific lesson this task paid for — "a task that reaches validation before
+  discovering the boundary has already written work it must revert."
+
+  This closure added the companion park-hygiene rule to the same section: a
+  park whose resume condition is "a pack refresh carrying the fix" is not
+  cleared by the refresh happening, because the ranker reads the `PARKED:`
+  prefix and the `blocked`/`blockedOn` fields rather than the sentence. Verify
+  such a park against the vendored file — `git log -- <path>` plus the audit's
+  payload provenance — not against the pack version, which this task's own
+  history shows can advance four releases without touching the file.
+
+### Residual risk this closure accepts
+
+Dropping the local test leaves one gap, recorded rather than hidden: a future
+pack refresh that regressed the recompute would land here silently.
+`pack.install-audit` proves the vendored file matches the pack it claims to come
+from, not that the pack still carries the fix, so the guarantee is inherited
+from upstream's release gate rather than enforced locally. That is the same
+exposure every other vendored pack behavior already runs under, and the
+directory-structure rule is explicit that pack behavior changes upstream and is
+consumed through a refresh. Buying a local guarantee would mean maintaining a
+behavioral test against a file this repository cannot edit, which is the
+duplication this task declined. If the defect ever recurs after a refresh, that
+recurrence — not this closure — is the signal to reopen with a local guard.
+
+`design.md` and `implement.md` are unchanged and remain a recorded, refuted
+alternative. Neither was implemented.

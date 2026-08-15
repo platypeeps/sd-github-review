@@ -537,3 +537,47 @@ Fleet campaign refresh-0.71.6-20260814T170234Z, post-canary wave 2 (sd-github-re
 ### Next Steps
 
 - None - task complete
+
+
+## Session 63: Close review-coordinator stale-check on the shipped upstream fix
+
+**Date**: 2026-08-15
+**Task**: Close review-coordinator stale-check on the shipped upstream fix
+**Branch**: `feat/08-09-review-coordinator-stale-check`
+
+### Summary
+
+Verified that the upstream recompute fix for the sd-review stale deterministic-check replay reached this repository, resolved the task without a local code change, and captured the park-hygiene rule the three-day miss earned.
+
+### Main Changes
+
+- Cleared the stale PARKED: prefix and blocked/blockedOn markers on 08-09-review-coordinator-stale-check; the backlog ranker went from 1 actionable task to 2
+- Recorded in prd.md that review.py:1931 now recomputes the deterministic check unconditionally and :1943 persists it only on a pass, arriving in 49f65dc (0.71.1) and unchanged through 0.71.6
+- Resolved all five acceptance criteria against upstream coverage in ../sd-ai-command-pack/tests/test_review_controller.py:1483, :1558, :1626
+- Dropped both planned local deliverables with reason: the contract test would duplicate upstream coverage of a vendored file, and the ownership convention already lived in the directory-structure spec
+- Added the companion park-hygiene rule to .trellis/spec/backend/directory-structure.md: a park whose resume condition is a pack refresh is not cleared by the refresh happening, and must be verified against the vendored file rather than the pack version
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5e52330` | docs(task): close review-coordinator stale-check on the shipped upstream fix |
+| `be8de04` | docs(task): check off the acceptance criteria the upstream fix satisfies |
+| `5a2fc50` | chore: archive 08-09-review-coordinator-stale-check |
+
+### Testing
+
+- [OK] npm test: 635 pass, 0 fail
+- [OK] node scripts/sd-ai-command-pack-review-preflight.mjs: 0 failures, 0 warnings
+- [OK] sd-review scope=pr pr=80: status ready, sd-check 7/7 passed, prism local receipt clean
+- [OK] pre-archive gate: status valid, pre_archive_valid
+- [OK] work-loop rank: actionableCount 2, task ranked first and unblocked
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

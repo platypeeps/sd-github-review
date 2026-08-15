@@ -165,6 +165,25 @@ single queryable source for priority, ownership, dependencies, and status.
   Establish ownership before planning, not after implementing: a task that
   reaches validation before discovering the boundary has already written work it
   must revert.
+
+  A task parked on "resumes when a pack refresh carries the fix" is **not**
+  cleared by the refresh happening. Nothing re-reads that sentence: the
+  `PARKED:` title prefix and the `blocked`/`blockedOn` fields are what the
+  backlog ranker machine-reads, so the task stays invisible until someone
+  clears them by hand. Re-verify such a park against the vendored file itself,
+  not against the pack version number — a refresh that bumps the version
+  without touching the file proves nothing in either direction.
+
+  ```bash
+  # Which refresh last touched the file, and is the installed copy pristine?
+  git log --oneline -2 -- scripts/sd-ai-command-pack-review.py
+  python3 scripts/sd-ai-command-pack-install-audit.py   # prints payload provenance
+  ```
+
+  Observed 2026-08-15: `review.py` last changed at 0.71.1 while the repository
+  had already advanced to 0.71.6, so the version alone answered neither
+  question. The park outlived its blocker by four refreshes and the backlog
+  reported one actionable task where there were two.
 - Keep consumer installation lifecycle code under `scripts/consumer-installer.mjs`
   and `scripts/consumer-installer/`, with a thin `scripts/install-consumer.mjs`
   entrypoint. It may manage consumer files and bounded GitHub metadata, but must
