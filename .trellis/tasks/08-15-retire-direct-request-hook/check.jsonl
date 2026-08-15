@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/backend/consumer-installer.md", "reason": "The acceptance criteria are stated against the channel inventory and the recorded-limitation rule in this spec; verify the hook change against it rather than against the original two-channel plan."}

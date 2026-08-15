@@ -425,3 +425,91 @@ Two things about the install are load-bearing and easy to get wrong:
   lane 404s and `routerCapability` reports `unavailable`, which fails closed —
   unlike `absent`, it does not permit local completion. Every consumer pays this
   bootstrap cost exactly once, on the pull request that installs the lane.
+
+### The routed lane works; the client cannot observe it finishing
+
+PR #86 was the first pull request opened after the install, and it exercised the
+lane with no `remote=none` escape. The lane itself is proven, twice, at two
+heads:
+
+- `routerCapability` reports `ready` / `compatible-enabled-workflow`, so the
+  merge of the lane onto the default branch did resolve the 404 above.
+- `workflow_dispatch` runs `31910569360` and `31911109874` both completed
+  `success`, and each published a `sd-github-review/receipt` Check Run whose
+  payload carries `selectedRoute: "copilot"`, backend `github-copilot`, and the
+  reason `review floor required copilot` — the durable floor doing exactly what
+  `action.yml:55` promises.
+- `limitations` contains neither `router-not-configured` nor
+  `zero-remote-confidence`; the reviewer produced a real finding, and it was a
+  true one.
+
+The coordinator still cannot reach `ready`, for a reason that is entirely
+client-side and reproduces every time. The lane publishes its receipt at
+`dispatch.phase: "started"` when the route step begins and rewrites it to
+`"observed"` about three seconds later. `scripts/sd-ai-command-pack-review.py`
+polls inside that window, caches the started receipt, and never re-reads it:
+`:2133` queries the receipt only `if state.get("remoteReceipt") is None`, and
+`:2159-2166` turns a cached `phase == "started"` into `indeterminate` with
+`remote-reconciliation-required`. The one re-query branch at `:2095` is the
+dispatch-*failure* path and never runs here. Rerunning the same attempt replays
+the cache, so the attempt is wedged permanently rather than pending.
+
+There is no supported escape. A fresh `--artifact-root` does find the receipt by
+`logicalDispatchId` — the id is stable across controller state — but then fails
+`durable receipt does not contain the current correlation id`, because the
+correlation id exists only in the state a fresh root discards. That is correct
+fail-closed behaviour and it is also a dead end. `scripts/sd-ai-command-pack-*`
+is vendored, so the fix belongs upstream: treat a cached non-terminal receipt
+like a missing one and re-query it inside the existing poll loop.
+
+Until that ships, a routed review in this repository ends at
+`remote-reconciliation-required`. Record that limitation; do not read it as the
+lane failing, and do not let it justify a direct reviewer request.
+
+### Three channels can request Copilot, not two
+
+The install was planned against two competing channels — the routed lane and the
+`PostToolUse` hook. There is a third, and it wins the race: the `main` repository
+ruleset carries a `copilot_code_review` rule, which requested Copilot on PR #86
+at 21:51:06, one second after the pull request opened and twenty-two seconds
+before the Action routed. The review that exists on that PR is the ruleset's.
+
+The consequence is that retiring the hook does not leave the Action as the sole
+requester, and `src/index.js:265-272` requesting Copilot is largely redundant
+here: by the time it runs, the reviewer is already assigned. The overlap is
+recorded and left in place deliberately — the Action's route stays the durable
+receipt of what *should* review the change, while the ruleset is what summons
+the reviewer. A repository that wants the lane to be the only requester turns
+the ruleset rule off; this one does not.
+
+### Self-installation reports permanent provenance drift
+
+`install-consumer.mjs check` in this repository reports
+
+```
+Installation drift detected for platypeeps/sd-github-review:
+- a newer source commit is available; run update
+```
+
+and will keep reporting it. This is **provenance drift, not file drift**: the
+three managed files stay byte-identical to their sources. `check` still exits 1
+— the message lands in `issues`, which clears `report.ok`, and
+`scripts/install-consumer.mjs:46` sets `process.exitCode = 1` for any not-ok
+report. A self-install therefore has a permanently failing `check`, so do not
+wire this repository's own `check` into a gate that reads only the exit code.
+The manifest records the source commit at install time — `commit` under
+`source`, with `tag: null` and `released: false` for an install from a working
+checkout rather than a release tag — and for a self-install the source
+repository is this one, so every subsequent commit here makes that recording
+older than `HEAD`.
+
+Running `update` clears the message and restarts the treadmill: it rewrites the
+manifest with the current commit, which the next commit invalidates again. Do
+not treat this as a state to chase. An ordinary consumer does not see it, because
+their recorded source commit belongs to a different repository and only moves
+when they deliberately upgrade.
+
+The signal that still matters is file drift: a managed file differing from its
+recorded hash makes the installer preserve the operator edit and refuse
+`update`/`uninstall`, which is the state that costs the rollback. Verify that
+with `diff` against `examples/` and `contract/`, not with the provenance line.

@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/backend/consumer-installer.md", "reason": "Verify the fix against the recorded failure: the wedge must be gone while remote-reconciliation-required still fires when a receipt never becomes terminal, and no re-query may cause a second dispatch."}
