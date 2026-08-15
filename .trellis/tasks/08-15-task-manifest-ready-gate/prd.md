@@ -64,14 +64,25 @@ a gate.
 
 ## Acceptance Criteria
 
-- [ ] Starting a task whose manifests hold only the seed row is refused, and the
-      output names the offending files.
-- [ ] Starting a task with one real entry in each manifest proceeds unchanged.
-- [ ] The plain `node scripts/sd-ai-command-pack-review-preflight.mjs` run still
+- [x] Starting a task whose manifests hold only the seed row is refused, and the
+      output names the offending files. Verified: `task.py start
+      08-04-define-v2-receipt-and-identity-contracts` exits 1 printing
+      `task_context_seed` for both manifests, and that task's `task.json` and
+      the active-task pointer are unchanged afterwards.
+- [x] Starting a task with one real entry in each manifest proceeds unchanged.
+      Verified: `task.py start 08-15-task-manifest-ready-gate` exits 0 and still
+      reports `Current task set to`. The gate refused it first, on manifest
+      entries naming code paths -- the preflight admits only `.trellis/spec/**`
+      and another task's `research/**`, which is what caught it.
+- [x] The plain `node scripts/sd-ai-command-pack-review-preflight.mjs` run still
       exempts an untouched lone scaffold on an unstarted task — verified against
-      a `planning` task that has one.
-- [ ] A repo-wide search for `seeded-task` returns a real invocation, not only
-      prose.
+      a `planning` task that has one. Verified: a scratch `planning` task with
+      untouched scaffolds produced five failures, all of them `task.json` and
+      `prd.md` placeholder findings, and no `task_context_seed` finding for
+      either manifest. No vendored path is modified by this change.
+- [x] A repo-wide search for `seeded-task` returns a real invocation, not only
+      prose. Verified: `scripts/trellis-task-start-gate.py:55` passes it to the
+      preflight; the remaining hits are documentation and task records.
 
 ## Non-goals
 

@@ -210,6 +210,49 @@ single queryable source for priority, ownership, dependencies, and status.
   nothing else, so their rationale survived only in that commit's message and
   every one of them ranked as the bare fallback `parked`. Answering "is this
   still valid?" meant reading git history.
+- Treat `.trellis/**` as **template-managed, not vendored**. The two managed
+  trees in this repository behave oppositely and the pack's rule does not carry
+  over. `.trellis/.template-hashes.json` records the content hash Trellis last
+  wrote; `trellis update` compares it and, for a file the user modified, prompts
+  to overwrite, keep, or write `.new`. Trellis's own reference lists
+  `.trellis/workflow.md`, `.trellis/config.yaml`, `.trellis/spec/**`, and
+  `.trellis/scripts/**` as editable by default and states that update
+  recognizing the result as user-modified is normal. So a hash entry means
+  "reconciled by prompt", not "refuses your edit" — the opposite of
+  `pack.install-audit`.
+
+  ```bash
+  # Is this path template-managed, and has anyone already diverged from it?
+  python3 - <<'EOF'
+  import hashlib, json, pathlib
+  h = json.load(open(".trellis/.template-hashes.json"))["hashes"]
+  for f, recorded in sorted(h.items()):
+      p = pathlib.Path(f)
+      if p.is_file() and hashlib.sha256(p.read_bytes()).hexdigest() != recorded:
+          print("locally modified:", f)
+  EOF
+  ```
+
+  When a change must land in that tree, keep the tracked file's diff generic and
+  minimal and put the repository-specific knowledge in a repo-owned path — a new
+  file under `scripts/` carries no hash entry, so update never prompts for it.
+  The diff you leave in a tracked file is the diff a human reconciles at the
+  next update prompt.
+
+  Check what a lifecycle extension point can actually do before designing
+  against it. `run_task_hooks` in `.trellis/scripts/common/task_utils.py` prints
+  `[WARN] Hook failed` on a nonzero exit and returns; Trellis documents only
+  `after_*` events. An `after_start` hook therefore cannot refuse a start, and
+  the ready gate at `.trellis/workflow.md` needs a check that runs *before* the
+  status write — `cmd_start` in `.trellis/scripts/task.py`, which is the only
+  path that flips a task to `in_progress`. `task.py create` activates the
+  session pointer without that flip, so it is correctly outside the gate; a new
+  task's manifests are always seed-only.
+
+  Observed 2026-08-15: the pack rule was applied to `.trellis/` by analogy and a
+  working route was nearly abandoned as unsafe. Both files involved were
+  unmodified from template while 11 of the 259 tracked paths had already
+  diverged.
 - Keep consumer installation lifecycle code under `scripts/consumer-installer.mjs`
   and `scripts/consumer-installer/`, with a thin `scripts/install-consumer.mjs`
   entrypoint. It may manage consumer files and bounded GitHub metadata, but must
