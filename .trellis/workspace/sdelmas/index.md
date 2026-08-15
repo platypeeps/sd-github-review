@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 64
+- **Total Sessions**: 65
 - **Last Active**: 2026-08-15
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~622 | Active |
+| `journal-2.md` | ~667 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 65 | 2026-08-15 | File the two follow-ups PR #81 earned, and correct one of them before merge | `28fd6a5`, `a047494`, `dae66d9` | `chore/followup-tasks-from-pr-81` |
 | 64 | 2026-08-15 | Record machine-readable resume conditions on the parked backlog | `85a260f`, `5d9e394`, `45d01c5` | `chore/parked-task-resume-conditions` |
 | 63 | 2026-08-15 | Close review-coordinator stale-check on the shipped upstream fix | `5e52330`, `be8de04`, `5a2fc50` | `feat/08-09-review-coordinator-stale-check` |
 | 62 | 2026-08-14 | chore: refresh sd-ai-command-pack to 0.71.6 | `39460db768aa77bcbca64c573f73bfea395ad9e7` | `chore/sd-ai-command-pack-0-71-6` |
