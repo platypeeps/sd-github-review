@@ -50,21 +50,50 @@ Whether it does is the open question this task answers.
 
 ## Acceptance criteria
 
-- [ ] `sd-review scope=pr` on a post-install pull request reports
+- [x] `sd-review scope=pr` on a post-install pull request reports
       `routerCapability.state: ready` — not `absent`, not `unavailable`.
-- [ ] A `workflow_dispatch` run of `.github/workflows/sd-review.yml` appears,
+      PR #86, both heads: `ready` / `compatible-enabled-workflow`.
+- [x] A `workflow_dispatch` run of `.github/workflows/sd-review.yml` appears,
       and a durable receipt Check Run named `sd-github-review/receipt` is
-      published.
-- [ ] The selected route is `copilot` and the reviewer request comes from the
-      Action (`src/index.js:265-272`), not from the `PostToolUse` hook.
-- [ ] `limitations` no longer contains `router-not-configured` or
-      `zero-remote-confidence`.
-- [ ] **Inherited:** the losing contract no longer fires in this repository, by
-      configuration rather than by convention.
-- [ ] **Inherited:** a PR shipped after the change reports a remote-review state
-      that matches what reviewed it — either a router receipt with real remote
-      confidence, or an explicit, recorded local-only limitation with no
-      side-channel review happening behind it.
+      published. Runs `31910569360` and `31911109874`, both `success`; both
+      published the receipt Check Run, both `success`.
+- [x] The selected route is `copilot` and the reviewer request comes from the
+      Action (`src/index.js:265-272`), not from the `PostToolUse` hook. The
+      route is the Action's: `selectedRoute: "copilot"`, backend
+      `github-copilot`, reason `review floor required copilot`. The reviewer
+      request is neither the Action's nor the hook's — the `main` ruleset's
+      `copilot_code_review` rule requested it one second after PR open, before
+      either lane ran. Recorded in `consumer-installer.md`; the overlap is
+      deliberately left in place.
+- [x] `limitations` no longer contains `router-not-configured` or
+      `zero-remote-confidence`. It contains `remote-reconciliation-required`,
+      from a client-side receipt-cache defect rather than from the lane.
+- Two criteria moved to `08-15-retire-direct-request-hook`: the losing
+  contract no longer firing by configuration, and a PR shipped after that change
+  reporting a remote-review state that matches what reviewed it. Both need the
+  operator's `~/.claude/settings.json` edit and a subsequent pull request, so
+  neither can be verified from this one — the same reason this task was split
+  out of `08-15-remote-review-channel-authority` in the first place.
+
+## Outcome
+
+The lane runs. The client cannot see it finish.
+
+`sd-review` ends at `remote-reconciliation-required` on every routed review,
+because the coordinator caches the receipt during the ~3s window in which its
+`dispatch.phase` is still `started` and never re-reads it
+(`scripts/sd-ai-command-pack-review.py:2133`, `:2159-2166`). Reproduced at two
+heads with two independent dispatches. The vendored pack cannot be edited here,
+so the fix is tasked upstream as `08-15-review-receipt-cache-race`.
+
+PR #86 therefore ships with that limitation recorded rather than papered over —
+the same disposition PR #85 used for its `remote=none`, and for the same reason:
+the honest report of a partially working channel is worth more than a green one
+obtained by disabling the check. The remote review was real. Copilot found that
+`install-consumer.mjs check` exits 1, not 0, on provenance drift; the claim was
+wrong and the spec was corrected in `25ad4a1`.
+
+No PR-Agent spend occurred on this pull request.
 
 ## Notes
 

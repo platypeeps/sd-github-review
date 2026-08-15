@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/backend/consumer-installer.md", "reason": "Records why the routed lane won over the direct-request hook, and the third channel discovered on PR #86: the main ruleset's copilot_code_review rule requests Copilot before either lane runs, so retiring the hook does not leave the Action as sole requester."}
