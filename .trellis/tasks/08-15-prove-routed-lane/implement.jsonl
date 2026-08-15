@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/backend/consumer-installer.md", "reason": "Records the route decision, the per-lane policy difference, and the bootstrap cost that made the durable lane unprovable on its own install PR; this task's gate is defined against those states."}

@@ -193,14 +193,21 @@ as the closing step of option 1.
 
 ## Acceptance Criteria
 
-- [ ] A recorded decision names the owning contract and the reason, in a place
+- [x] A recorded decision names the owning contract and the reason, in a place
       a future session reads before shipping — a spec, not a commit message.
-- [ ] The losing contract no longer fires in this repository, by configuration
-      rather than by convention.
-- [ ] A PR shipped after the change reports a remote-review state that matches
+      `.trellis/spec/backend/consumer-installer.md`, "Decision: this repository
+      is a consumer of its own Action".
+- [→] The losing contract no longer fires in this repository, by configuration
+      rather than by convention. **Moved to `08-15-prove-routed-lane`.** It is
+      gated on a real receipt existing, which cannot happen until the lane this
+      task installs is on the default branch. Retiring the hook before then
+      would remove the only remote review this repository actually gets.
+- [→] A PR shipped after the change reports a remote-review state that matches
       what reviewed it: either a router receipt with real remote confidence, or
       an explicit, recorded local-only limitation with no side-channel review
-      happening behind it.
+      happening behind it. **Moved to `08-15-prove-routed-lane`.** The install
+      PR itself cannot satisfy it: the capability probe reports `unavailable`
+      until the durable lane exists on `main`.
 - [x] If the descriptor route is taken, the relationship between this
       repository's own descriptor and the consumer-facing artifact of the same
       path is documented, and neither shadows the other. Answered during
@@ -209,9 +216,19 @@ as the closing step of option 1.
       already documents it. The route was rewritten to a real installation
       accordingly, so nothing shadows anything — the file only appears at
       `config/` when the lane it advertises exists.
-- [ ] Whichever route is chosen, the reason the other two were rejected is
+- [x] Whichever route is chosen, the reason the other two were rejected is
       recorded where a future session reads it, so this is not re-litigated from
-      the same starting assumptions.
+      the same starting assumptions. Same spec section as the first criterion;
+      both rejections are recorded with their reasons, not just their verdicts.
+
+### Why two criteria moved rather than being ticked
+
+This task was planned as two pull requests — `implement.md` splits phases 0–4
+from 5–7 — because the routed lane cannot be exercised from the branch that
+installs it. Two of the original criteria depend on that lane running, so they
+belong to the pull request that can actually test them. They are carried
+verbatim into `08-15-prove-routed-lane` rather than reworded, and that task is
+P1: this work is not finished until they are met, only this pull request is.
 
 ## Notes
 
