@@ -141,19 +141,33 @@ can follow here.
 
 ## Acceptance criteria
 
-- [ ] With a cached failing check whose cause is fixed outside tracked content, one documented
+Every criterion below is satisfied by the shipped upstream fix rather than by
+work in this repository. See "RESOLVED" at the end of this document for the
+full evidence and for why no local code change was written.
+
+- [x] With a cached failing check whose cause is fixed outside tracked content, one documented
       `sd-review` invocation re-runs the check and reports the live result.
-- [ ] With a cached failing check whose cause is **not** fixed, the same invocation still reports
+      → `review.py:1931` recomputes unconditionally; upstream
+      `test_review_controller.py:1483`.
+- [x] With a cached failing check whose cause is **not** fixed, the same invocation still reports
       blocked.
-- [ ] ~~A resume at an unchanged head with a cached *passing* check does not re-run the suite.~~
+      → upstream `test_review_controller.py:1626`, direction one.
+- [x] ~~A resume at an unchanged head with a cached *passing* check does not re-run the suite.~~
       **Superseded** by the upstream recompute contract, which requires a cached *pass* to be
       recomputed too — a live input that has since broken must block. Replaced upstream by: the
       coordinator's verdict equals a direct `sd-check` run's verdict on the same tree, for both a
       pass and a fail, with state pre-seeded to the opposite verdict.
-- [ ] After a cause is remediated outside tracked content, re-running the **same** attempt
+      → replacement met by upstream `test_review_controller.py:1626`; the
+      stale-pass direction by `:1558`. Checked as resolved, not as implemented.
+- [x] After a cause is remediated outside tracked content, re-running the **same** attempt
       number reaches the live result, so escaping a replay never requires spending a further
       numbered attempt.
-- [ ] The behavior is covered by a test that fails against today's code.
+      → upstream `test_review_controller.py:1626`, direction two, which clears
+      the gate at the same head with no new attempt id.
+- [x] The behavior is covered by a test that fails against today's code.
+      → covered upstream, against the code as it stood before the fix. Not
+      reproduced here: the subject is vendored, so a local copy would duplicate
+      upstream coverage of a file this repository cannot edit.
 
 ## Notes
 
