@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Verifies any descriptor added under config/ stays repo-owned and that no vendored pack path was edited to resolve the contract conflict."}

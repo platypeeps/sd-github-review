@@ -626,3 +626,46 @@ Seventeen of eighteen active tasks were parked and sixteen said nothing about wh
 ### Next Steps
 
 - None - task complete
+
+
+## Session 65: File the two follow-ups PR #81 earned, and correct one of them before merge
+
+**Date**: 2026-08-15
+**Task**: File the two follow-ups PR #81 earned, and correct one of them before merge
+**Branch**: `chore/followup-tasks-from-pr-81`
+
+### Summary
+
+Filed task-manifest-ready-gate and remote-review-channel-authority as follow-ups from PR #81's review cycle. Checking the first one's premise before acting on it showed the premise was false: the seeded-task gate already exists at review-preflight.mjs:617 and is present in the installed copy; this repository simply never invokes it. Unparked and rescoped to repo-local wiring rather than filing an upstream PR for work already done. The second task records the hook-versus-sd-review contract conflict and the narrower cause behind it -- config/routed-review-setup-v1.json has never been authored here, so the router reports absent.
+
+### Main Changes
+
+- Filed 08-15-task-manifest-ready-gate and 08-15-remote-review-channel-authority
+- Corrected the ready-gate task before merge: the seeded-task gate exists and works, verified in both directions against the installed copy, so the task is repo-local wiring at P2 rather than parked on upstream
+- Curated context manifests on both new tasks and restored a trailing newline task.py create omits, after review caught the same seed-only manifest defect PR #81 was caught on
+- Applied three review findings on the sibling record: full-path breadcrumb, explicit blockedOn null matching 18 of 19 sibling records, and wording that no longer implies design.md and implement.md exist
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `28fd6a5` | docs(task): file the two follow-ups PR #81 earned |
+| `a047494` | fix(task): curate the context manifests and restore a trailing newline |
+| `dae66d9` | fix(task): unpark the ready gate -- it already exists, it is just never called |
+
+### Testing
+
+- [OK] npm test: 635 pass, 0 fail
+- [OK] review-preflight: 0 failures, 1 warning (2 task directories, one reviewable outcome)
+- [OK] seeded-task gate verified both directions: invalid on a seed-only task, valid on a curated one
+- [OK] sd-review scope=pr pr=82: ready, sd-check passed, prism clean; 3 Copilot findings fixed and resolved
+- [OK] work-loop rank: actionableCount 3, 0 candidates reporting the bare fallback parked
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
