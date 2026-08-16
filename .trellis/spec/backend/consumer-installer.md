@@ -515,8 +515,9 @@ the installer's `DESCRIPTOR_PATH` (`scripts/consumer-installer/codecs.mjs:23`),
 so every consumer the installer sets up carries it at that path — but only a
 *durable* install writes it. `sd-github-review-pilot` is the case that proves
 the distinction: an active consumer whose `.github/sd-github-review.json` is
-`schemaVersion: 1` with `descriptor: None` and `durableWorkflow: None`, where
-this repository is `schemaVersion: 3` with both. Descriptor presence therefore
+`schemaVersion: 1` and carries no `descriptor` or `durableWorkflow` key at all —
+both are absent from the object, not present and null — where this repository is
+`schemaVersion: 3` with both. Descriptor presence therefore
 means "a receipt-producing lane is installed here", which is exactly the
 condition that makes the hook's direct request redundant. An event-lane-only
 consumer keeps the hook, correctly, because it has no receipt competing with it.
