@@ -14,6 +14,7 @@
 
 import assert from "node:assert/strict";
 import { execFile, execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os, { platform } from "node:os";
 import path from "node:path";
@@ -24,7 +25,11 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const GATE = path.join(REPO_ROOT, "scripts", "trellis-task-start-gate.py");
-const PREFLIGHT_NAME = "sd-ai-command-pack-review-preflight.mjs";
+// Read out of the gate rather than repeated here: the gate owns which pack
+// script it runs, and a second copy of that name is a second thing to update
+// when the pack renames it.
+const PREFLIGHT_NAME = /^PREFLIGHT_NAME = "([^"]+)"$/m.exec(readFileSync(GATE, "utf8"))?.[1];
+assert.ok(PREFLIGHT_NAME, "the gate must declare PREFLIGHT_NAME");
 const LAYOUT_RESOLVER = path.join(
   REPO_ROOT,
   ".sd-ai-command-pack",
