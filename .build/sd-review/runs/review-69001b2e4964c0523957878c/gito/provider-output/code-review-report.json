@@ -1,0 +1,21 @@
+{
+    "issues": {},
+    "summary": "This change implements a robust, pure, and deterministic compiler for v2 routed review configurations\u2014extensively validating input, catalog, and handler profiles, enforcing all schema boundaries and composition constraints, offering secure input guarding and reproducible canonical output, and is comprehensively and creatively tested to enforce and document every requirement.\n<!-- award -->\n\ud83d\udee1\ufe0f GATE GUARDIAN \ud83d\udee1\ufe0f\n\"No bad data shall pass your vigilant defense. Users may enter\nthe most bizarre combinations, but your code stands firm, like a sentinel at the gates\nof the data city. 'You shall not pass!' it speaks to invalid format.\"\n\n<!-- award -->\n\ud83e\uddea TESTING ALCHEMIST \ud83e\uddea\n\"In your testing crucible you mixed reagents of edge cases, catalyst\nof boundary conditions and essence of unit tests. The philosopher's stone of quality was born \u2014\nyour code is now immortal in the face of regression!\"",
+    "number_of_processed_files": 8,
+    "total_issues": 0,
+    "created_at": "2026-08-05 09:08:56",
+    "model": "gpt-4.1",
+    "pipeline_out": {},
+    "processing_warnings": [],
+    "target": {
+        "git_platform_type": "GitHub",
+        "repo_url": "https://github.com/platypeeps/sd-github-review",
+        "pull_request_id": null,
+        "what": null,
+        "against": "0eacc0750208a22d6504632271372f18e9c40e57",
+        "commit_sha": "22b2bae77b5b8287a94badaf371707fab08565fa",
+        "filters": "",
+        "use_merge_base": true,
+        "active_branch": "feat/07-25-compile-routed-review-configuration"
+    }
+}

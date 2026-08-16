@@ -1,0 +1,415 @@
+{
+  "attemptId": "review-1338f312e0f3d7a8487cccb5",
+  "attempts": [
+    {
+      "artifact": "runs/review-1338f312e0f3d7a8487cccb5/gito",
+      "diagnostic": "2026-08-15 10:04:25 INFO: Bootstrapping Gito v4.4.3... \u001b[90m[verbosity=1]\u001b[39m 2026-08-15 10:04:26 INFO: get_repo_context: Using local repo... 2026-08-15 10:04:26 INFO: Loading project-specific configuration from file:////Users/sven/repos/platypeeps/sd-github-review/.gito/config.toml... 2026-08-15 10:04:26 INFO: Making merge-base diff: \u001b[32mINDEX\u001b[39m vs \u001b[33mab4d2e1f8bb2d50db32f62fd86d62a7bed0217d1\u001b[39m 2026-08-15 10:04:26 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-15 10:04:27 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-15 10:04:27 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-15 10:04:27 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-15 10:04:27 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-15 10:04:27 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-15 10:04:27 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-15 10:04:28 INFO: HTTP Request: POST ht...",
+      "durationMs": 4262,
+      "exitCode": 0,
+      "findings": [],
+      "provider": {
+        "adapter": "gito",
+        "costTier": "medium",
+        "dataHandling": "private-network",
+        "id": "gito",
+        "qualityTier": "standard",
+        "timeoutSeconds": 600,
+        "version": "builtin-v1"
+      },
+      "startedAt": 1786809865.507071,
+      "status": "clean"
+    },
+    {
+      "artifact": "runs/review-1338f312e0f3d7a8487cccb5/prism",
+      "diagnostic": "{ \"tool\": \"prism\", \"version\": \"1.0\", \"runId\": \"c1ccf83ceb5562b04103ce43d975a052\", \"repo\": { \"root\": \"/Users/sven/repos/platypeeps/sd-github-review\", \"head\": \"026b9e1495c175bebc8d39c6ea9492d2ce3e08d8\", \"branch\": \"feat/trellis-seeded-task-start-gate\" }, \"inputs\": { \"mode\": \"range\", \"range\": \"ab4d2e1f8bb2d50db32f62fd86d62a7bed0217d1..026b9e1495c175bebc8d39c6ea9492d2ce3e08d8\" }, \"summary\": { \"counts\": { \"low\": 4, \"medium\": 5, \"high\": 0 }, \"highestSeverity\": \"medium\" }, \"findings\": [ { \"id\": \"d76dd5c5756334c9\", \"severity\": \"medium\", \"category\": \"performance\", \"title\": \"Hardcoded preflight timeout could block user experience\", \"message\": \"In scripts/trellis-task-start-gate.py, the PREFLIGHT_TIMEOUT_SECONDS constant is hardcoded to 60 seconds. If the preflight process hangs or is excessively slow, this will delay every task start by 60 seconds, which can meaningfully impact UX.\", \"suggestion\": \"Consider reducing the timeout (e.g., 10 seconds) or making it configurable via environment variable. Monitor preflight run times to determine a reasonable default.\", \"confidence\": 0.9, \"locations\": [ { \"path\": \"scripts/trellis-task-start-gate.py\", \"lines\": { \"start\": 17, \"end\": 17 } } ], \"tags\":...",
+      "durationMs": 11404,
+      "exitCode": 0,
+      "findings": [
+        {
+          "disposition": "outstanding",
+          "family": "performance",
+          "line": 17,
+          "path": "scripts/trellis-task-start-gate.py",
+          "severity": "medium",
+          "summary": "Hardcoded preflight timeout could block user experience"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "security",
+          "line": 37,
+          "path": "scripts/trellis-task-start-gate.py",
+          "severity": "medium",
+          "summary": "Path traversal possible if user-controlled input is not validated"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "correctness",
+          "line": 60,
+          "path": "scripts/trellis-task-start-gate.py",
+          "severity": "medium",
+          "summary": "Broad except block may hide underlying errors"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "bug",
+          "line": 70,
+          "path": "scripts/trellis-task-start-gate.py",
+          "severity": "medium",
+          "summary": "Incorrect handling of subprocess non-zero exit code during preflight invocation"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "testing",
+          "line": 1,
+          "path": "test/trellis-task-start-gate.test.js",
+          "severity": "medium",
+          "summary": "Tests do not check for non-ASCII or platform-specific path handling"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "maintainability",
+          "line": 73,
+          "path": ".trellis/scripts/task.py",
+          "severity": "low",
+          "summary": "Hardcoded path separator in script path creation"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "style",
+          "line": 27,
+          "path": "scripts/trellis-task-start-gate.py",
+          "severity": "low",
+          "summary": "Unused imports in scripts/trellis-task-start-gate.py"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "performance",
+          "line": 16,
+          "path": "test/trellis-task-start-gate.test.js",
+          "severity": "low",
+          "summary": "Test suite makes filesystem copies for each test sandbox"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "testing",
+          "line": 100,
+          "path": "test/trellis-task-start-gate.test.js",
+          "severity": "low",
+          "summary": "Test does not cover timeout behavior of preflight"
+        }
+      ],
+      "provider": {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      },
+      "startedAt": 1786809865.507026,
+      "status": "findings"
+    }
+  ],
+  "confidence": {
+    "granted": false,
+    "limitations": []
+  },
+  "createdAt": 1786809876.912978,
+  "disposition": {
+    "fixPolicy": "auto",
+    "localDispositions": {
+      "0313ec12c666789c": "rebutted",
+      "205fdda6f3a82fa3": "rebutted",
+      "4ff66ab35037b8d2": "rebutted",
+      "5427bf03b991cff5": "rebutted",
+      "5d62e62c2810fc54": "rebutted",
+      "69e47ef2703e3351": "rebutted",
+      "86385a20b6bcac99": "rebutted",
+      "91157637c1da2051": "rebutted",
+      "a8731ee088dca1b2": "rebutted"
+    },
+    "maximumFixCommitsBeforeRemote": 1,
+    "outstanding": 0
+  },
+  "findings": [
+    {
+      "disposition": "rebutted",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "5d62e62c2810fc54",
+      "line": 73,
+      "path": ".trellis/scripts/task.py",
+      "providers": [
+        "prism"
+      ],
+      "severity": "low",
+      "sourceFamilies": [
+        "maintainability"
+      ],
+      "summary": "Hardcoded path separator in script path creation"
+    },
+    {
+      "disposition": "rebutted",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "a8731ee088dca1b2",
+      "line": 17,
+      "path": "scripts/trellis-task-start-gate.py",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "performance"
+      ],
+      "summary": "Hardcoded preflight timeout could block user experience"
+    },
+    {
+      "disposition": "rebutted",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "91157637c1da2051",
+      "line": 27,
+      "path": "scripts/trellis-task-start-gate.py",
+      "providers": [
+        "prism"
+      ],
+      "severity": "low",
+      "sourceFamilies": [
+        "style"
+      ],
+      "summary": "Unused imports in scripts/trellis-task-start-gate.py"
+    },
+    {
+      "disposition": "rebutted",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "69e47ef2703e3351",
+      "line": 37,
+      "path": "scripts/trellis-task-start-gate.py",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "security"
+      ],
+      "summary": "Path traversal possible if user-controlled input is not validated"
+    },
+    {
+      "disposition": "rebutted",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "86385a20b6bcac99",
+      "line": 60,
+      "path": "scripts/trellis-task-start-gate.py",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "correctness"
+      ],
+      "summary": "Broad except block may hide underlying errors"
+    },
+    {
+      "disposition": "rebutted",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "5427bf03b991cff5",
+      "line": 70,
+      "path": "scripts/trellis-task-start-gate.py",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "bug"
+      ],
+      "summary": "Incorrect handling of subprocess non-zero exit code during preflight invocation"
+    },
+    {
+      "disposition": "rebutted",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "4ff66ab35037b8d2",
+      "line": 1,
+      "path": "test/trellis-task-start-gate.test.js",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "testing"
+      ],
+      "summary": "Tests do not check for non-ASCII or platform-specific path handling"
+    },
+    {
+      "disposition": "rebutted",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "0313ec12c666789c",
+      "line": 16,
+      "path": "test/trellis-task-start-gate.test.js",
+      "providers": [
+        "prism"
+      ],
+      "severity": "low",
+      "sourceFamilies": [
+        "performance"
+      ],
+      "summary": "Test suite makes filesystem copies for each test sandbox"
+    },
+    {
+      "disposition": "rebutted",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "205fdda6f3a82fa3",
+      "line": 100,
+      "path": "test/trellis-task-start-gate.test.js",
+      "providers": [
+        "prism"
+      ],
+      "severity": "low",
+      "sourceFamilies": [
+        "testing"
+      ],
+      "summary": "Test does not cover timeout behavior of preflight"
+    }
+  ],
+  "outcome": "findings",
+  "plan": {
+    "configurationDigest": "fd3ff633c0cb480516dc246fb53ef7cee3669e4b8350eea2a83c89e4da98536c",
+    "execution": "parallel",
+    "familyGate": {
+      "batchSize": 0,
+      "currentRound": 0,
+      "exactHead": "026b9e1495c175bebc8d39c6ea9492d2ce3e08d8",
+      "families": [],
+      "repeatedFamilies": [],
+      "roundsAvoided": 0,
+      "schemaVersion": 1,
+      "siblingFindings": 0,
+      "state": "inactive"
+    },
+    "findingFamilies": [],
+    "fixPolicy": "auto",
+    "localPolicy": "optional",
+    "policyDigest": "2ae3b1188d3128765d067e40d01f8ac938a18be10c0d12d00896face617e527d",
+    "policyId": "substantive-ensemble",
+    "providers": [
+      {
+        "adapter": "gito",
+        "costTier": "medium",
+        "dataHandling": "private-network",
+        "id": "gito",
+        "qualityTier": "standard",
+        "timeoutSeconds": 600,
+        "version": "builtin-v1"
+      },
+      {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      }
+    ],
+    "riskClass": "substantive",
+    "riskReasons": [
+      "executable-configuration",
+      "source",
+      "tests"
+    ],
+    "schemaVersion": 1,
+    "scope": "branch_delta",
+    "successor": "first"
+  },
+  "receiptId": "c8e73a9e17714273e0c3d3c29f22864c17a5d319bf7b68dd9717bf405234c62c",
+  "remoteGate": {
+    "reason": "local-stage-terminal",
+    "state": "eligible"
+  },
+  "schemaVersion": 1,
+  "target": {
+    "base": "ab4d2e1f8bb2d50db32f62fd86d62a7bed0217d1",
+    "contentDigest": "3b908ed1c3dd7f252ef7216120d380081abde90e8289e29a5412a5968239ca70",
+    "head": "026b9e1495c175bebc8d39c6ea9492d2ce3e08d8",
+    "identity": "054d25df150586ba0003ea0c556483cde9075b47fac1bdf96d81524d7bec53f5",
+    "paths": [
+      {
+        "digest": "b701516cbf0c157540288a88c4bf333a8801912781dd77f3c54230d9e907b711",
+        "kind": "file",
+        "path": ".trellis/scripts/common/io.py"
+      },
+      {
+        "digest": "4f59c65a0ade0ed15f98fab87b09d1bc3c8aeb21d62a46cbce6fcad8f4308770",
+        "kind": "file",
+        "path": ".trellis/scripts/task.py"
+      },
+      {
+        "digest": "6c688f35090f314b18fedff614973406bcaf27d78a5e5db7ad2b161cc8291b03",
+        "kind": "file",
+        "path": ".trellis/spec/backend/directory-structure.md"
+      },
+      {
+        "digest": "6c7182f9f09ba5be585baf3ebb58604ea85f868366b723706bd1b877d77c135e",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-task-manifest-ready-gate/check.jsonl"
+      },
+      {
+        "digest": "4eb748219562d665eb1c2469f6361c94f9a9bd1449c38fcac19cb89f1dc8781f",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-task-manifest-ready-gate/implement.jsonl"
+      },
+      {
+        "digest": "11aa0d32cf34f54d55edef3b7f3b0a98aba3a177fdc0da05119857c4415bb2cf",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-task-manifest-ready-gate/prd.md"
+      },
+      {
+        "digest": "f56d9f9e18f1f72d214417361c56830c0cb77a870512e7704d831014faf83430",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-task-manifest-ready-gate/task.json"
+      },
+      {
+        "digest": "0fa9e949024b8413e7ab3256b58f9d3b6fb6dfab571dfadeda80527b51dbe15f",
+        "kind": "file",
+        "path": ".trellis/workflow.md"
+      },
+      {
+        "digest": "9fe640a302a226cb2e2bfe98d67d839248774e54b41f2b4c3f5b1e1fe0b34adb",
+        "kind": "file",
+        "path": "scripts/trellis-task-start-gate.py"
+      },
+      {
+        "digest": "95481528cfdd8838641e63871b03202a3c30e338746ec8d5d38413c7d2a09992",
+        "kind": "file",
+        "path": "test/trellis-task-start-gate.test.js"
+      }
+    ],
+    "repository": "github.com/platypeeps/sd-github-review",
+    "scope": "branch_delta"
+  }
+}

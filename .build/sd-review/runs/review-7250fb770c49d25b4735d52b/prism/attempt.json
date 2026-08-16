@@ -1,0 +1,59 @@
+{
+  "artifact": "runs/review-7250fb770c49d25b4735d52b/prism",
+  "diagnostic": "{ \"tool\": \"prism\", \"version\": \"1.0\", \"runId\": \"60a22af9db9080d86cd0026b0dec0a30\", \"repo\": { \"root\": \"/Users/sven/repos/platypeeps/sd-github-review\", \"head\": \"a35817218cc87313eddc3ccf8441c0b6cd89e808\", \"branch\": \"feat/install-routed-review-consumer\" }, \"inputs\": { \"mode\": \"range\", \"range\": \"1b94b128b8a96eb476d140d7164bb4c61e9d7090..a35817218cc87313eddc3ccf8441c0b6cd89e808\" }, \"summary\": { \"counts\": { \"low\": 2, \"medium\": 3, \"high\": 0 }, \"highestSeverity\": \"medium\" }, \"findings\": [ { \"id\": \"bbffadccb84ab73c\", \"severity\": \"medium\", \"category\": \"correctness\", \"title\": \"REVIEW_ROUTE_MODE not checked by installer\", \"message\": \"The manifest, workflows, and documentation repeatedly warn that REVIEW_ROUTE_MODE is required for safe operation, but neither install nor check will currently verify its presence. Users could miss this and incur unwanted billing if the workflow or docs become out of sync.\", \"suggestion\": \"If possible, update installer scripts and manifest logic to manage, check for, and optionally create REVIEW_ROUTE_MODE as a tracked variable, as is being suggested in the planned task.\", \"confidence\": 0.9, \"locations\": [ { \"path\": \".github/sd-github-review.json\", \"lines\": { \"sta...",
+  "durationMs": 8022,
+  "exitCode": 0,
+  "findings": [
+    {
+      "disposition": "outstanding",
+      "family": "correctness",
+      "line": 1,
+      "path": ".github/sd-github-review.json",
+      "severity": "medium",
+      "summary": "REVIEW_ROUTE_MODE not checked by installer"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "security",
+      "line": 6,
+      "path": "examples/pr-agent-router.yml",
+      "severity": "medium",
+      "summary": "Sensitive provider key risk in event-driven lane fallback"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "correctness",
+      "line": 146,
+      "path": "test/metadata.test.js",
+      "severity": "medium",
+      "summary": "Hard-coded assertion for workflow count replaced, but exampleCount is still fixed"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "docs",
+      "line": 131,
+      "path": ".trellis/spec/backend/consumer-installer.md",
+      "severity": "low",
+      "summary": "Stale documentation comment for reviewer variable management"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "docs",
+      "line": 6,
+      "path": "examples/pr-agent-router.yml",
+      "severity": "low",
+      "summary": "Complexity and workflow cross-dependencies not summarized"
+    }
+  ],
+  "provider": {
+    "adapter": "prism",
+    "costTier": "low",
+    "dataHandling": "private-network",
+    "id": "prism",
+    "qualityTier": "standard",
+    "timeoutSeconds": 300,
+    "version": "builtin-v1"
+  },
+  "startedAt": 1786829418.879694,
+  "status": "findings"
+}

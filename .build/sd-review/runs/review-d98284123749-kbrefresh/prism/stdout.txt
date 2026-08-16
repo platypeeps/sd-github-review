@@ -1,0 +1,305 @@
+{
+  "tool": "prism",
+  "version": "1.0",
+  "runId": "8037dc09d81a18c1d905b7ff7a2154cb",
+  "repo": {
+    "root": "/Users/sven/repos/platypeeps/sd-github-review",
+    "head": "d98284123749f82d110cc51a8260cb05f3ef636c",
+    "branch": "feat/08-08-installer-durable-lane"
+  },
+  "inputs": {
+    "mode": "range",
+    "range": "c3ec5f648f604d0f936b86a79425cc79ffc7fd7b..d98284123749f82d110cc51a8260cb05f3ef636c"
+  },
+  "summary": {
+    "counts": {
+      "low": 4,
+      "medium": 7,
+      "high": 0
+    },
+    "highestSeverity": "medium"
+  },
+  "findings": [
+    {
+      "id": "fcfbfe8d6cbca078",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "Install/Update/Uninstall logic for file management expanded but may miss error handling on atomicWriteIfChanged",
+      "message": "The install, update, and adopt flows now use atomicWriteIfChanged to avoid unnecessary file writes. However, as this is new logic, error handling for partial updates (one file fails, others succeed) is insufficiently discussed and partially missing. This could leave the system in a confusing or inconsistent state.",
+      "suggestion": "Consider adding transaction-like or compensating mechanisms when using multiple atomicWriteIfChanged calls, or provide stronger assurances that steps are not partially executed (e.g., rollback logic, or file locking/marking through the flow). Document recovery solutions if a partial update occurs.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer.mjs",
+          "lines": {
+            "start": 249,
+            "end": 259
+          }
+        }
+      ],
+      "tags": [
+        "atomicity",
+        "consistency",
+        "installation"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "872fe91296f2b2ad",
+      "severity": "medium",
+      "category": "bug",
+      "title": "Potential race between check and update when durable resources are missing",
+      "message": "During migration from pre-durable manifest (schema 1 or 2), check may not clearly differentiate between missing actual file vs missing manifest block. Operator confusion or accidental overwrite possible.",
+      "suggestion": "Improve the check logic to explicitly warn when durable resources are present without manifest blocks, and when manifest blocks exist without files. Make error messages more actionable.",
+      "confidence": 0.5,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer.mjs",
+          "lines": {
+            "start": 353,
+            "end": 423
+          }
+        }
+      ],
+      "tags": [
+        "migration",
+        "update",
+        "diagnostics"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "a01a7aa8df1c710b",
+      "severity": "medium",
+      "category": "bug",
+      "title": "Atomic write operations may not be strictly atomic for concurrent processes",
+      "message": "atomicWriteIfChanged checks file content before writing. If processes run concurrently, two may check, see no change, then both proceed to write, or one may overwrite another. Not strictly atomic in multi-process scenario.",
+      "suggestion": "Implement robust file locking or document that the installer must not be run concurrently. Consider using fs/promises.open with 'wx' mode and atomic renaming, or a lock-file pattern.",
+      "confidence": 0.6,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer/persistence.mjs",
+          "lines": {
+            "start": 170,
+            "end": 177
+          }
+        }
+      ],
+      "tags": [
+        "file system",
+        "concurrency"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "8433f98dc53373ce",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "Unilateral assumption about unchanged file bytes for adoption and migration",
+      "message": "When adopting or migrating, the code assumes that if file bytes match the intended content, the file does not need to be rewritten. However, some systems (esp. Windows) may have line-ending normalization or hidden transforms, producing semantically identical but byte-different files and causing an unnecessary block. Atomic adopt should be robust to such edge cases.",
+      "suggestion": "Consider normalizing line endings or using a semantic hash where sensible, or at least document that adoption and migration are byte-exact and may fail with normalized line endings or encodings.",
+      "confidence": 0.6,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer/persistence.mjs",
+          "lines": {
+            "start": 170,
+            "end": 177
+          }
+        }
+      ],
+      "tags": [
+        "files",
+        "adoption",
+        "cross-platform"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "86bd52a93daf5a64",
+      "severity": "medium",
+      "category": "security",
+      "title": "No explicit sensitive file permission hardening for managed files",
+      "message": "Atomic write operations do not explicitly set secure file permissions on secret or config files that might contain sensitive information.",
+      "suggestion": "When creating or overwriting sensitive files, set appropriate fs permissions (e.g., mode 0600 or similar) if on Unix systems, or warn/document that secrets may be world-readable depending on umask/defaults.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer/persistence.mjs",
+          "lines": {
+            "start": 170,
+            "end": 177
+          }
+        }
+      ],
+      "tags": [
+        "security",
+        "filesystem",
+        "permissions"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "9040e44e7080b383",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "Potential drift between managed resources and validation tables",
+      "message": "Multiple lists of managed resources (e.g., DURABLE_RESOURCES, COPIED_SOURCE_PATHS, sites in isConverged, etc.) must always be kept in sync. The documentation notes this explicitly. If a new managed file is added but not to all tables, drift and incomplete validation may occur.",
+      "suggestion": "Deduplicate the representation of managed resources, deriving all necessary lists from a single source (e.g., export a single table and use mapping for each specific downstream use). Add tests to ensure all relevant sites are updated together.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer/plan.mjs",
+          "lines": {
+            "start": 62,
+            "end": 108
+          }
+        }
+      ],
+      "tags": [
+        "consistency",
+        "maintainability"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "5498647c3bf294cd",
+      "severity": "medium",
+      "category": "testing",
+      "title": "Test coverage relies on repeated logic between code and test",
+      "message": "In test/consumer-installer.test.js, test validation logic for 'durable resources' exactly mirrors production logic (including hardcoded lists), increasing risk that errors in logic are undetected if both code and test are wrong in the same way.",
+      "suggestion": "Tests should use external, independently-supplied input/expectation logic where possible; or generate test cases based on exported production objects (lists, constants) with assertion for shape and identity.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": "test/consumer-installer.test.js",
+          "lines": {
+            "start": 106,
+            "end": 1072
+          }
+        }
+      ],
+      "tags": [
+        "test",
+        "mirrored logic"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "0bdff8b74836c578",
+      "severity": "low",
+      "category": "docs",
+      "title": "Extensive inline documentation in code blocks may fall out of sync",
+      "message": "The updated documentation in 'consumer-installer.md' and code comments is extremely thorough and references many moving parts, including test cases, error messages, and invariants. If code is refactored the documentation may quickly lose accuracy.",
+      "suggestion": "Consider moving block explanations into well-organized documentation files with references to source line anchors. Use doc generation tools, or at minimum, add reminders to sync docs on logic changes.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": ".trellis/spec/backend/consumer-installer.md",
+          "lines": {
+            "start": 1,
+            "end": 400
+          }
+        }
+      ],
+      "tags": [
+        "docs",
+        "spec",
+        "source-of-truth"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "0601006195006368",
+      "severity": "low",
+      "category": "style",
+      "title": "Redundant null-check pattern in assertDurableResourcesCanBeManaged",
+      "message": "Multiple places check for content !== null and comparison with source. Excessive null coalescing can obscure intent for readers.",
+      "suggestion": "Simplify logic by consistently asserting file existence before comparing bytes. Use isDefinedOrNull utility, or check existence, then read and compare.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer/plan.mjs",
+          "lines": {
+            "start": 62,
+            "end": 108
+          }
+        }
+      ],
+      "tags": [
+        "readability"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "123ca4b2ee9b0757",
+      "severity": "low",
+      "category": "maintainability",
+      "title": "Tests may mask maintainability issues via copy-pasted structures",
+      "message": "Copied blocks between test/consumer-installer.test.js and installer-modules.test.js (and elsewhere) encapsulate logic but risk de-synchronization. If resource shape or checks change, this pattern can result in inconsistent test expectations.",
+      "suggestion": "Use shared test utility modules or import shapes and logic directly from implementation or a single fixtures module.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": "test/consumer-installer.test.js",
+          "lines": {
+            "start": 15,
+            "end": 105
+          }
+        }
+      ],
+      "tags": [
+        "testing",
+        "maintenance"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "6fd36a6ecf0c7569",
+      "severity": "low",
+      "category": "maintainability",
+      "title": "Multiple examples of literal test values for manifest shape",
+      "message": "In the tests, literal string blobs are used in various places (fixed bytes, paths, descriptors). Over time, as manifests or descriptors change, these may require manual updates and could mask out-of-sync issues.",
+      "suggestion": "Extract common test constants and use factories/builders to reduce drift. Assert roundtrips by always parsing and reconstructing fixtures if applicable.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": "test/installer-modules.test.js",
+          "lines": {
+            "start": 61,
+            "end": 149
+          }
+        }
+      ],
+      "tags": [
+        "test",
+        "constants",
+        "fixtures"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ],
+  "timing": {
+    "gitMs": 0,
+    "llmMs": 26563,
+    "totalMs": 26596
+  },
+  "_provenance": [
+    {
+      "ai_generated": true,
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ]
+}

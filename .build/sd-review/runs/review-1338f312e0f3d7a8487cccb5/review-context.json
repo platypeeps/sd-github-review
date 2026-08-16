@@ -1,0 +1,14 @@
+{
+  "confidenceCredit": {
+    "granted": false
+  },
+  "findingFamilies": [],
+  "riskClass": "substantive",
+  "riskReasons": [
+    "executable-configuration",
+    "source",
+    "tests"
+  ],
+  "schemaVersion": 1,
+  "targetIdentity": "054d25df150586ba0003ea0c556483cde9075b47fac1bdf96d81524d7bec53f5"
+}

@@ -1,0 +1,2677 @@
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        diff --git a/package.json b/package.json
+        index 84ad828..89a8ff5 100644
+        --- a/package.json
+        +++ b/package.json
+        @@ -9,7 +9,7 @@
+             "node": ">=24"
+           },
+           "scripts": {
+        -    "check": "node --check src/index.js && node --check src/operations.js && node --check src/operation-contract.js && node --check src/router.js && node --check src/protocol.js && node --check src/receipt.js && node --check src/risk-context.js && node --check src/reviewer-dispatch.js && node --check src/normalize.js && node --check src/path-match.js && node --check src/github.js && node --check scripts/consumer-installer.mjs && node --check scripts/install-consumer.mjs && node --check scripts/validate-action-metadata.mjs && node --check scripts/check-coverage.mjs && node --check scripts/validate-ci-parity.mjs",
+        +    "check": "node --check src/index.js && node --check src/operations.js && node --check src/operation-contract.js && node --check src/router.js && node --check src/protocol.js && node --check src/receipt.js && node --check src/risk-context.js && node --check src/reviewer-dispatch.js && node --check src/normalize.js && node --check src/path-match.js && node --check src/github.js && node --check scripts/consumer-installer.mjs && node --check scripts/consumer-installer/codecs.mjs && node --check scripts/consumer-installer/transport.mjs && node --check scripts/consumer-installer/persistence.mjs && node --check scripts/consumer-installer/plan.mjs && node --check scripts/install-consumer.mjs && node --check scripts/validate-action-metadata.mjs && node --check scripts/check-coverage.mjs && node --check scripts/validate-ci-parity.mjs",
+             "validate:metadata": "node scripts/validate-action-metadata.mjs",
+             "validate:release": "node scripts/validate-action-metadata.mjs --release-tag",
+             "validate:ci-parity": "node scripts/validate-ci-parity.mjs",
+        
+        --------
+        
+        ----ADDITIONAL CONTEXT: FULL FILE CONTENT AFTER APPLYING REVIEWED CHANGES----
+        1: {
+        2:   "name": "sd-github-review",
+        3:   "version": "0.2.0",
+        4:   "private": true,
+        5:   "license": "MIT",
+        6:   "description": "A dependency-free GitHub Action that routes pull requests to cost-appropriate AI reviewers.",
+        7:   "type": "module",
+        8:   "engines": {
+        9:     "node": ">=24"
+        10:   },
+        11:   "scripts": {
+        12:     "check": "node --check src/index.js && node --check src/operations.js && node --check src/operation-contract.js && node --check src/router.js && node --check src/protocol.js && node --check src/receipt.js && node --check src/risk-context.js && node --check src/reviewer-dispatch.js && node --check src/normalize.js && node --check src/path-match.js && node --check src/github.js && node --check scripts/consumer-installer.mjs && node --check scripts/consumer-installer/codecs.mjs && node --check scripts/consumer-installer/transport.mjs && node --check scripts/consumer-installer/persistence.mjs && node --check scripts/consumer-installer/plan.mjs && node --check scripts/install-consumer.mjs && node --check scripts/validate-action-metadata.mjs && node --check scripts/check-coverage.mjs && node --check scripts/validate-ci-parity.mjs",
+        13:     "validate:metadata": "node scripts/validate-action-metadata.mjs",
+        14:     "validate:release": "node scripts/validate-action-metadata.mjs --release-tag",
+        15:     "validate:ci-parity": "node scripts/validate-ci-parity.mjs",
+        16:     "test": "node --test",
+        17:     "test:coverage": "node scripts/check-coverage.mjs",
+        18:     "check:full": "npm test && npm run test:coverage && npm run check && npm run validate:metadata && npm run validate:ci-parity && SD_AI_COMMAND_PACK_FULL_CHECK_SKIP_PACKAGE_SCRIPTS=1 bash scripts/sd-ai-command-pack-full-check.sh"
+        19:   },
+        20:   "devDependencies": {
+        21:     "yaml": "^2.9.0"
+        22:   }
+        23: }
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        diff --git a/scripts/check-coverage.mjs b/scripts/check-coverage.mjs
+        index ce4487b..bd363bf 100644
+        --- a/scripts/check-coverage.mjs
+        +++ b/scripts/check-coverage.mjs
+        @@ -18,13 +18,26 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
+         
+         // Coverage is measured only for shipped product code; test files, fixtures, and
+         // dev tooling are excluded so the numbers reflect what consumers actually run.
+        -const INCLUDES = ["src/**", "scripts/consumer-installer.mjs", "scripts/install-consumer.mjs"];
+        +const INCLUDES = [
+        +  "src/**",
+        +  "scripts/consumer-installer.mjs",
+        +  "scripts/consumer-installer/**",
+        +  "scripts/install-consumer.mjs",
+        +];
+         
+         // [lines, branches, functions] minimum percentages.
+         const GLOBAL_FLOOR = { lines: 88, branches: 77, functions: 88 };
+         const FILE_FLOORS = {
+           "src/index.js": { lines: 95, branches: 82, functions: 88 },
+        -  "scripts/consumer-installer.mjs": { lines: 82, branches: 73, functions: 85 },
+        +  // A-009 split scripts/consumer-installer.mjs into the four focused modules
+        +  // below. Floors sit a few points under observed coverage (orchestrator
+        +  // 90.78/81.90/100; codecs 89.02/75.83/95; transport 95.59/83.52/93.55;
+        +  // persistence 97.69/92.86/92.31; plan 96.89/95.83/100).
+        +  "scripts/consumer-installer.mjs": { lines: 86, branches: 77, functions: 95 },
+        +  "scripts/consumer-installer/codecs.mjs": { lines: 84, branches: 70, functions: 90 },
+        +  "scripts/consumer-installer/transport.mjs": { lines: 90, branches: 78, functions: 88 },
+        +  "scripts/consumer-installer/persistence.mjs": { lines: 93, branches: 87, functions: 87 },
+        +  "scripts/consumer-installer/plan.mjs": { lines: 92, branches: 90, functions: 95 },
+           "scripts/install-consumer.mjs": { lines: 70, branches: 45, functions: 60 },
+         };
+         
+        
+        --------
+        
+        ----ADDITIONAL CONTEXT: FULL FILE CONTENT AFTER APPLYING REVIEWED CHANGES----
+        1: #!/usr/bin/env node
+        2: // Coverage gate for the shipped runtime (A-006). Runs the test suite with
+        3: // Node's built-in coverage restricted to product code, then enforces a
+        4: // conservative GLOBAL floor plus per-file floors for the critical process
+        5: // boundaries. Floors sit a few points below current coverage: high enough to
+        6: // catch a real regression, low enough not to flake on incidental line moves.
+        7: //
+        8: // The interactive TTY paths in install-consumer.mjs (the uninstall
+        9: // confirmation prompt and the interactive secret readline) are deliberately
+        10: // NOT demanded at a high branch floor — they are side-effecting terminal
+        11: // boundaries that must not be faked to inflate a number.
+        12: 
+        13: import { spawnSync } from "node:child_process";
+        14: import path from "node:path";
+        15: import { fileURLToPath } from "node:url";
+        16: 
+        17: const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+        18: 
+        19: // Coverage is measured only for shipped product code; test files, fixtures, and
+        20: // dev tooling are excluded so the numbers reflect what consumers actually run.
+        21: const INCLUDES = [
+        22:   "src/**",
+        23:   "scripts/consumer-installer.mjs",
+        24:   "scripts/consumer-installer/**",
+        25:   "scripts/install-consumer.mjs",
+        26: ];
+        27: 
+        28: // [lines, branches, functions] minimum percentages.
+        29: const GLOBAL_FLOOR = { lines: 88, branches: 77, functions: 88 };
+        30: const FILE_FLOORS = {
+        31:   "src/index.js": { lines: 95, branches: 82, functions: 88 },
+        32:   // A-009 split scripts/consumer-installer.mjs into the four focused modules
+        33:   // below. Floors sit a few points under observed coverage (orchestrator
+        34:   // 90.78/81.90/100; codecs 89.02/75.83/95; transport 95.59/83.52/93.55;
+        35:   // persistence 97.69/92.86/92.31; plan 96.89/95.83/100).
+        36:   "scripts/consumer-installer.mjs": { lines: 86, branches: 77, functions: 95 },
+        37:   "scripts/consumer-installer/codecs.mjs": { lines: 84, branches: 70, functions: 90 },
+        38:   "scripts/consumer-installer/transport.mjs": { lines: 90, branches: 78, functions: 88 },
+        39:   "scripts/consumer-installer/persistence.mjs": { lines: 93, branches: 87, functions: 87 },
+        40:   "scripts/consumer-installer/plan.mjs": { lines: 92, branches: 90, functions: 95 },
+        41:   "scripts/install-consumer.mjs": { lines: 70, branches: 45, functions: 60 },
+        42: };
+        43: 
+        44: function runCoverage() {
+        45:   const args = ["--test", "--experimental-test-coverage"];
+        46:   for (const include of INCLUDES) args.push(`--test-coverage-include=${include}`);
+        47:   const result = spawnSync(process.execPath, args, {
+        48:     cwd: REPO_ROOT,
+        49:     encoding: "utf8",
+        50:     maxBuffer: 64 * 1024 * 1024,
+        51:   });
+        52:   if (result.error) throw result.error;
+        53:   return result;
+        54: }
+        55: 
+        56: // Parse the spec reporter's coverage table. Rows look like:
+        57: //   ℹ  index.js | 99.37 | 87.64 | 90.91 | 64-65
+        58: //   ℹ all files | 91.35 | 81.24 | 92.69 |
+        59: // The leaf file name is the last path segment the reporter prints; match each
+        60: // critical file by its basename and the global row by the "all files" label.
+        61: function parseCoverage(output) {
+        62:   const rows = [];
+        63:   for (const rawLine of output.split("\n")) {
+        64:     const line = rawLine.replace(/^ℹ\s?/u, "").trim();
+        65:     const match = /^(.*?)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|/u.exec(line);
+        66:     if (!match) continue;
+        67:     const [, label, lines, branches, functions] = match;
+        68:     rows.push({
+        69:       label: label.trim(),
+        70:       lines: Number(lines),
+        71:       branches: Number(branches),
+        72:       functions: Number(functions),
+        73:     });
+        74:   }
+        75:   return rows;
+        76: }
+        77: 
+        78: function findRow(rows, predicate, description) {
+        79:   const row = rows.find(predicate);
+        80:   if (!row) throw new Error(`coverage row not found for ${description}`);
+        81:   return row;
+        82: }
+        83: 
+        84: function checkFloor(name, row, floor, failures) {
+        85:   for (const metric of ["lines", "branches", "functions"]) {
+        86:     if (row[metric] < floor[metric]) {
+        87:       failures.push(`${name}: ${metric} ${row[metric].toFixed(2)}% < floor ${floor[metric]}%`);
+        88:     }
+        89:   }
+        90: }
+        91: 
+        92: function main() {
+        93:   const result = runCoverage();
+        94:   const output = `${result.stdout}${result.stderr}`;
+        95:   if (result.status !== 0) {
+        96:     process.stdout.write(output);
+        97:     console.error("check-coverage: the test run failed; fix tests before enforcing floors");
+        98:     process.exit(result.status ?? 1);
+        99:   }
+        100:   const rows = parseCoverage(output);
+        101:   const failures = [];
+        102: 
+        103:   const global = findRow(rows, (row) => row.label === "all files", "the global summary");
+        104:   checkFloor("all files", global, GLOBAL_FLOOR, failures);
+        105: 
+        106:   for (const [file, floor] of Object.entries(FILE_FLOORS)) {
+        107:     const base = path.basename(file);
+        108:     const row = findRow(rows, (r) => r.label === base || r.label.endsWith(base), file);
+        109:     checkFloor(file, row, floor, failures);
+        110:   }
+        111: 
+        112:   if (failures.length > 0) {
+        113:     process.stdout.write(output);
+        114:     console.error("\ncheck-coverage: coverage floors not met:");
+        115:     for (const failure of failures) console.error(`  - ${failure}`);
+        116:     process.exit(1);
+        117:   }
+        118: 
+        119:   console.log(
+        120:     `check-coverage: OK (global ${global.lines.toFixed(2)}% lines / ` +
+        121:       `${global.branches.toFixed(2)}% branches / ${global.functions.toFixed(2)}% funcs)`,
+        122:   );
+        123: }
+        124: 
+        125: main();
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        diff --git a/scripts/consumer-installer.mjs b/scripts/consumer-installer.mjs
+        index 8fff098..0387090 100644
+        --- a/scripts/consumer-installer.mjs
+        +++ b/scripts/consumer-installer.mjs
+        @@ -1,768 +1,82 @@
+        -import { createHash, randomBytes } from "node:crypto";
+        -import { execFile, execFileSync, spawnSync } from "node:child_process";
+        -import { lstat, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+        +// Orchestration for the consumer installer lifecycle (A-009). This module wires
+        +// the pure codecs, the transport/`gh` seam, local persistence, and pure
+        +// planning into the install/update/adopt/check/uninstall flows, and remains the
+        +// single public module: it re-exports every symbol the CLI entrypoint and the
+        +// test suite import so the decomposition is behavior-preserving.
+        +import { readFile } from "node:fs/promises";
+         import path from "node:path";
+        -import { promisify } from "node:util";
+        -
+        -const execFileAsync = promisify(execFile);
+        -
+        -export const MANIFEST_PATH = ".github/sd-github-review.json";
+        -export const WORKFLOW_PATH = ".github/workflows/ai-review-router.yml";
+        -export const TEMPLATE_PATH = "examples/pr-agent-router.yml";
+        -export const SECRET_NAME = "PR_AGENT_MODEL_API_KEY";
+        -export const DEFAULT_CONFIG = Object.freeze({
+        -  provider: "openrouter",
+        -  cheapModel: "openrouter/qwen/qwen3-coder-30b-a3b-instruct",
+        -  deepModel: "openrouter/moonshotai/kimi-k2.6",
+        -});
+        -
+        -export const ROUTING_LABELS = Object.freeze([
+        -  Object.freeze({
+        -    name: "review:cheap",
+        -    color: "0e8a16",
+        -    description: "Route to the routine AI reviewer",
+        -  }),
+        -  Object.freeze({
+        -    name: "review:deep",
+        -    color: "5319e7",
+        -    description: "Route to the deeper AI reviewer",
+        -  }),
+        -  Object.freeze({
+        -    name: "review:copilot",
+        -    color: "1d76db",
+        -    description: "Route to GitHub Copilot code review",
+        -  }),
+        -  Object.freeze({
+        -    name: "review:none",
+        -    color: "b60205",
+        -    description: "Disable AI review for this pull request",
+        -  }),
+        -  Object.freeze({
+        -    name: "review:auto",
+        -    color: "fbca04",
+        -    description: "Use automatic AI review routing",
+        -  }),
+        -]);
+        -
+        -export const SUPPORTED_PROVIDERS = Object.freeze([
+        -  "openai",
+        -  "gemini",
+        -  "openrouter",
+        -  "anthropic",
+        -  "cohere",
+        -  "replicate",
+        -  "groq",
+        -  "sambanova",
+        -  "xai",
+        -  "deepseek",
+        -  "deepinfra",
+        -  "mistral",
+        -  "codestral",
+        -]);
+        -const SUPPORTED_PROVIDER_SET = new Set(SUPPORTED_PROVIDERS);
+        -const CONFIG_VARIABLES = Object.freeze({
+        -  PR_AGENT_MODEL_PROVIDER: "provider",
+        -  CHEAP_REVIEW_MODEL: "cheapModel",
+        -  DEEP_REVIEW_MODEL: "deepModel",
+        -});
+        -const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
+        -const REPOSITORY_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u;
+        -const LIFECYCLE_STATES = new Set(["pending", "active", "uninstalling"]);
+        -const MAX_MODEL_LENGTH = 256;
+        -// Bounded wall-clock deadlines for the installer's own subprocesses, so a hung
+        -// network call or a credential helper waiting on a prompt cannot stall the
+        -// installer forever. `gh` subprocesses reach the network (repo/label/secret
+        -// APIs), so they get the larger bound; local `git` metadata reads get the
+        -// smaller one. Both are positive and fixed here, never derived from input.
+        -export const GH_COMMAND_TIMEOUT_MS = 120_000;
+        -export const GIT_COMMAND_TIMEOUT_MS = 30_000;
+        -
+        -// Consumer-manifest schema version. Bumped 1 -> 2 to record source provenance
+        -// (commit, tag, released) on the source template. Distinct from the action
+        -// contract descriptor's schemaVersion in config/routed-review-setup-v1.json.
+        -export const MANIFEST_SCHEMA_VERSION = 2;
+        -const COMMIT_PATTERN = /^[0-9a-f]{40}$/u;
+        -const RELEASE_TAG_PATTERN =
+        -  /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
+        -
+        -// A-019 adoption registry. Versioned repository data, not a contextual guess:
+        -// the exact SHA-256 of every historical `examples/pr-agent-router.yml` a
+        -// consumer may have copied manually per SETUP-PR-AGENT.md. `adopt` recognizes
+        -// only these hashes (plus the current template, matched dynamically) and then
+        -// converges the workflow to the current source. When the shipped template
+        -// changes, add the superseded release's hash here so its manual installs stay
+        -// adoptable. Hashes are exact bytes; there is no fuzzy/semantic matching.
+        -export const HISTORICAL_TEMPLATE_HASHES = Object.freeze([
+        -  Object.freeze({
+        -    tag: "v0.1.0",
+        -    sha256: "fb372116ae1853da92865ddf03c79dd93dcc174ac0f7979eda3eefdcf336bc18",
+        -  }),
+        -]);
+        -
+        -function isObject(value) {
+        -  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+        -}
+        -
+        -function sha256(value) {
+        -  return createHash("sha256").update(value).digest("hex");
+        -}
+        -
+        -function redact(value, secret) {
+        -  if (!secret || typeof value !== "string") return value;
+        -  return value.replaceAll(secret, "[redacted]");
+        -}
+        -
+        -function commandFailure(command, args, result, secret) {
+        -  const stderr = redact(result.stderr?.trim(), secret);
+        -  const detail = stderr || `exit status ${result.status ?? "unknown"}`;
+        -  // Redact the args too: a secret can be passed via options.secret, and the
+        -  // nonzero-exit path must not leak it when the timeout/startup paths do not.
+        -  const redactedArgs = args.map((arg) => redact(arg, secret)).join(" ");
+        -  return new Error(`${command} ${redactedArgs} failed: ${detail}`);
+        -}
+        -
+        -function commandTimeout(command, args, timeoutMs, secret, readOnly) {
+        -  // Name the command and its (secret-redacted) args, never stdin, and match the
+        -  // recovery guidance to the command's effect. A killed mutating subprocess
+        -  // (variable/secret/label set or delete) may have partially applied a remote
+        -  // change, so the operator reconciles state; a read-only query (the repo,
+        -  // variable, secret, and label list calls behind inspect()) has no side effect
+        -  // to reconcile, so a plain retry is safe.
+        -  const redactedArgs = args.map((arg) => redact(arg, secret)).join(" ");
+        -  const guidance = readOnly
+        -    ? "the read was interrupted — retry once GitHub is responsive"
+        -    : "verify no partial change was applied before retrying";
+        -  return new Error(
+        -    `${command} ${redactedArgs} timed out after ${timeoutMs}ms; ${guidance}`,
+        -  );
+        -}
+        -
+        -// Shared interpretation of a spawnSync-shaped result. Both the synchronous
+        -// runCommand and the asynchronous runCommandAsync route through this so the
+        -// timeout wording, secret redaction, and failure mapping cannot diverge.
+        -function interpretCommandResult(command, args, result, options, timeoutMs) {
+        -  if (result.error) {
+        -    if (result.error.code === "ETIMEDOUT") {
+        -      throw commandTimeout(command, args, timeoutMs, options.secret, options.readOnly);
+        -    }
+        -    throw new Error(`${command} could not start: ${redact(result.error.message, options.secret)}`);
+        -  }
+        -  if (result.status !== 0) {
+        -    throw commandFailure(command, args, result, options.secret);
+        -  }
+        -  return result.stdout ?? "";
+        -}
+        -
+        -function parseCommandJson(command, args, output) {
+        -  try {
+        -    return JSON.parse(output);
+        -  } catch {
+        -    throw new Error(`${command} ${args.join(" ")} returned invalid JSON`);
+        -  }
+        -}
+        -
+        -function runCommand(command, args, options = {}) {
+        -  const spawnImpl = options.spawnImpl ?? spawnSync;
+        -  const timeoutMs = options.timeoutMs ?? GH_COMMAND_TIMEOUT_MS;
+        -  const result = spawnImpl(command, args, {
+        -    cwd: options.cwd,
+        -    encoding: "utf8",
+        -    env: process.env,
+        -    input: options.input,
+        -    stdio: options.inherit ? "inherit" : undefined,
+        -    timeout: timeoutMs,
+        -    killSignal: "SIGTERM",
+        -  });
+        -  return interpretCommandResult(command, args, result, options, timeoutMs);
+        -}
+        -
+        -// execFile represents a timeout in two ways across Node versions: a string code
+        -// "ETIMEDOUT", or a killSignal-kill (killed + signal === killSignal) with NO
+        -// error code. execFile ALSO kills the child with killSignal on a maxBuffer
+        -// overflow, but that rejection carries a string code
+        -// ("ERR_CHILD_PROCESS_STDIO_MAXBUFFER"); requiring the code to be absent keeps a
+        -// maxBuffer (or any other coded kill) from being misreported as a timeout.
+        -function isTimeoutKill(error, killSignal) {
+        -  if (error.code === "ETIMEDOUT") return true;
+        -  return Boolean(error.killed) && error.signal === killSignal && error.code == null;
+        -}
+        -
+        -// Asynchronous sibling of runCommand for independent read-only queries that can
+        -// overlap. It maps execFile's rejection into the same spawnSync-shaped result
+        -// interpretCommandResult understands. Not used for mutations, which stay on the
+        -// ordered synchronous path.
+        -async function runCommandAsync(command, args, options = {}) {
+        -  const execImpl = options.execImpl ?? execFileAsync;
+        -  const timeoutMs = options.timeoutMs ?? GH_COMMAND_TIMEOUT_MS;
+        -  let result;
+        -  try {
+        -    const { stdout } = await execImpl(command, args, {
+        -      cwd: options.cwd,
+        -      encoding: "utf8",
+        -      env: process.env,
+        -      timeout: timeoutMs,
+        -      killSignal: "SIGTERM",
+        -    });
+        -    result = { error: null, status: 0, stdout, stderr: "" };
+        -  } catch (error) {
+        -    if (isTimeoutKill(error, "SIGTERM")) {
+        -      result = {
+        -        error: Object.assign(new Error("timed out"), { code: "ETIMEDOUT" }),
+        -        status: null,
+        -        stdout: "",
+        -        stderr: error.stderr ?? "",
+        -      };
+        -    } else if (typeof error.code === "number") {
+        -      result = { error: null, status: error.code, stdout: error.stdout ?? "", stderr: error.stderr ?? "" };
+        -    } else {
+        -      result = { error, status: null, stdout: "", stderr: "" };
+        -    }
+        -  }
+        -  return interpretCommandResult(command, args, result, options, timeoutMs);
+        -}
+        -
+        -export class GitHubCli {
+        -  // spawnImpl/timeoutMs are injectable so fake-child-process tests can drive the
+        -  // timeout, redaction, and recovery-guidance paths without a real subprocess.
+        -  // execImpl is the async execFile seam used only by the concurrent read path
+        -  // (inspect); spawnImpl remains the synchronous seam for all mutations, so
+        -  // installation state transitions stay ordered. Both are injectable for tests.
+        -  constructor({ spawnImpl = spawnSync, execImpl = execFileAsync, timeoutMs = GH_COMMAND_TIMEOUT_MS } = {}) {
+        -    this.spawnImpl = spawnImpl;
+        -    this.execImpl = execImpl;
+        -    this.timeoutMs = timeoutMs;
+        -  }
+        -
+        -  run(command, args, options = {}) {
+        -    return runCommand(command, args, {
+        -      ...options,
+        -      spawnImpl: this.spawnImpl,
+        -      timeoutMs: this.timeoutMs,
+        -    });
+        -  }
+        -
+        -  runJson(command, args) {
+        -    // runJson only wraps read-only list/view queries, so a timeout gets the
+        -    // plain-retry guidance rather than the mutation reconciliation wording.
+        -    const output = this.run(command, args, { readOnly: true });
+        -    return parseCommandJson(command, args, output);
+        -  }
+        -
+        -  // Asynchronous read used by inspect so its independent queries can overlap.
+        -  async #runJsonAsync(command, args) {
+        -    const output = await runCommandAsync(command, args, {
+        -      readOnly: true,
+        -      execImpl: this.execImpl,
+        -      timeoutMs: this.timeoutMs,
+        -    });
+        -    return parseCommandJson(command, args, output);
+        -  }
+        -
+        -  async inspect(repository) {
+        -    // Four independent, read-only queries — a fixed, bounded fan-out with no
+        -    // cross-dependency, so they run concurrently rather than summing round trips.
+        -    const [repo, variables, secrets, labels] = await Promise.all([
+        -      this.#runJsonAsync("gh", ["repo", "view", repository, "--json", "nameWithOwner"]),
+        -      this.#runJsonAsync("gh", ["variable", "list", "--repo", repository, "--json", "name,value"]),
+        -      this.#runJsonAsync("gh", ["secret", "list", "--repo", repository, "--json", "name"]),
+        -      this.#runJsonAsync("gh", [
+        -        "label",
+        -        "list",
+        -        "--repo",
+        -        repository,
+        -        "--limit",
+        -        "1000",
+        -        "--json",
+        -        "name,color,description",
+        -      ]),
+        -    ]);
+        -    return {
+        -      repository: repo.nameWithOwner,
+    [33m...(output was truncated)...[92m
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        scripts/consumer-installer/codecs.mjs:
+        1: // Leaf module for the consumer installer: constants, patterns, and the pure
+        2: // codecs for manifests, configuration, GitHub remotes, source-provenance
+        3: // overrides, template recognition, and the CLI argument grammar. It imports no
+        4: // other local installer module so the decomposition keeps one downhill
+        5: // dependency direction (transport/persistence/plan -> codecs -> orchestrator).
+        6: import { createHash } from "node:crypto";
+        7: 
+        8: export const MANIFEST_PATH = ".github/sd-github-review.json";
+        9: export const WORKFLOW_PATH = ".github/workflows/ai-review-router.yml";
+        10: export const TEMPLATE_PATH = "examples/pr-agent-router.yml";
+        11: export const SECRET_NAME = "PR_AGENT_MODEL_API_KEY";
+        12: export const DEFAULT_CONFIG = Object.freeze({
+        13:   provider: "openrouter",
+        14:   cheapModel: "openrouter/qwen/qwen3-coder-30b-a3b-instruct",
+        15:   deepModel: "openrouter/moonshotai/kimi-k2.6",
+        16: });
+        17: 
+        18: export const ROUTING_LABELS = Object.freeze([
+        19:   Object.freeze({
+        20:     name: "review:cheap",
+        21:     color: "0e8a16",
+        22:     description: "Route to the routine AI reviewer",
+        23:   }),
+        24:   Object.freeze({
+        25:     name: "review:deep",
+        26:     color: "5319e7",
+        27:     description: "Route to the deeper AI reviewer",
+        28:   }),
+        29:   Object.freeze({
+        30:     name: "review:copilot",
+        31:     color: "1d76db",
+        32:     description: "Route to GitHub Copilot code review",
+        33:   }),
+        34:   Object.freeze({
+        35:     name: "review:none",
+        36:     color: "b60205",
+        37:     description: "Disable AI review for this pull request",
+        38:   }),
+        39:   Object.freeze({
+        40:     name: "review:auto",
+        41:     color: "fbca04",
+        42:     description: "Use automatic AI review routing",
+        43:   }),
+        44: ]);
+        45: 
+        46: export const SUPPORTED_PROVIDERS = Object.freeze([
+        47:   "openai",
+        48:   "gemini",
+        49:   "openrouter",
+        50:   "anthropic",
+        51:   "cohere",
+        52:   "replicate",
+        53:   "groq",
+        54:   "sambanova",
+        55:   "xai",
+        56:   "deepseek",
+        57:   "deepinfra",
+        58:   "mistral",
+        59:   "codestral",
+        60: ]);
+        61: const SUPPORTED_PROVIDER_SET = new Set(SUPPORTED_PROVIDERS);
+        62: const CONFIG_VARIABLES = Object.freeze({
+        63:   PR_AGENT_MODEL_PROVIDER: "provider",
+        64:   CHEAP_REVIEW_MODEL: "cheapModel",
+        65:   DEEP_REVIEW_MODEL: "deepModel",
+        66: });
+        67: export const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
+        68: const REPOSITORY_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u;
+        69: const LIFECYCLE_STATES = new Set(["pending", "active", "uninstalling"]);
+        70: const MAX_MODEL_LENGTH = 256;
+        71: 
+        72: // Consumer-manifest schema version. Bumped 1 -> 2 to record source provenance
+        73: // (commit, tag, released) on the source template. Distinct from the action
+        74: // contract descriptor's schemaVersion in config/routed-review-setup-v1.json.
+        75: export const MANIFEST_SCHEMA_VERSION = 2;
+        76: export const COMMIT_PATTERN = /^[0-9a-f]{40}$/u;
+        77: export const RELEASE_TAG_PATTERN =
+        78:   /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
+        79: 
+        80: // A-019 adoption registry. Versioned repository data, not a contextual guess:
+        81: // the exact SHA-256 of every historical `examples/pr-agent-router.yml` a
+        82: // consumer may have copied manually per SETUP-PR-AGENT.md. `adopt` recognizes
+        83: // only these hashes (plus the current template, matched dynamically) and then
+        84: // converges the workflow to the current source. When the shipped template
+        85: // changes, add the superseded release's hash here so its manual installs stay
+        86: // adoptable. Hashes are exact bytes; there is no fuzzy/semantic matching.
+        87: export const HISTORICAL_TEMPLATE_HASHES = Object.freeze([
+        88:   Object.freeze({
+        89:     tag: "v0.1.0",
+        90:     sha256: "fb372116ae1853da92865ddf03c79dd93dcc174ac0f7979eda3eefdcf336bc18",
+        91:   }),
+        92: ]);
+        93: 
+        94: export function isObject(value) {
+        95:   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+        96: }
+        97: 
+        98: export function sha256(value) {
+        99:   return createHash("sha256").update(value).digest("hex");
+        100: }
+        101: 
+        102: export function normalizeRepository(value, field = "GitHub repository") {
+        103:   if (typeof value !== "string" || !REPOSITORY_PATTERN.test(value)) {
+        104:     throw new Error(`${field} must use the OWNER/REPO form`);
+        105:   }
+        106:   return value;
+        107: }
+        108: 
+        109: export function sameRepository(left, right) {
+        110:   return left.toLowerCase() === right.toLowerCase();
+        111: }
+        112: 
+        113: export function validateConfiguration(configuration) {
+        114:   const provider = configuration.provider;
+        115:   if (!SUPPORTED_PROVIDER_SET.has(provider)) {
+        116:     throw new Error(
+        117:       `provider must be one of: ${[...SUPPORTED_PROVIDERS].sort().join(", ")}`,
+        118:     );
+        119:   }
+        120:   for (const [field, model] of [
+        121:     ["cheap model", configuration.cheapModel],
+        122:     ["deep model", configuration.deepModel],
+        123:   ]) {
+        124:     if (typeof model !== "string" || model.length === 0) {
+        125:       throw new Error(`${field} must be nonempty`);
+        126:     }
+        127:     if (model.length > MAX_MODEL_LENGTH || /\s/u.test(model)) {
+        128:       throw new Error(`${field} must be at most ${MAX_MODEL_LENGTH} characters with no whitespace`);
+        129:     }
+        130:     if (provider !== "openai" && !model.startsWith(`${provider}/`)) {
+        131:       throw new Error(`${field} must use the ${provider}/<model-id> form`);
+        132:     }
+        133:   }
+        134:   return {
+        135:     provider,
+        136:     cheapModel: configuration.cheapModel,
+        137:     deepModel: configuration.deepModel,
+        138:   };
+        139: }
+        140: 
+        141: function assertOwnedResource(value, field) {
+        142:   if (!isObject(value) || typeof value.owned !== "boolean") {
+        143:     throw new Error(`${field} must record an owned boolean`);
+        144:   }
+        145: }
+        146: 
+        147: export function decodeManifest(source, filePath = MANIFEST_PATH) {
+        148:   let value;
+        149:   try {
+        150:     value = JSON.parse(source);
+        151:   } catch {
+        152:     throw new Error(`${filePath}: manifest is not valid JSON`);
+        153:   }
+        154:   if (
+        155:     !isObject(value) ||
+        156:     (value.schemaVersion !== 1 && value.schemaVersion !== MANIFEST_SCHEMA_VERSION) ||
+        157:     value.tool !== "sd-github-review"
+        158:   ) {
+        159:     throw new Error(`${filePath}: unsupported or malformed manifest header`);
+        160:   }
+        161:   if (!LIFECYCLE_STATES.has(value.state)) {
+        162:     throw new Error(`${filePath}: state must be pending, active, or uninstalling`);
+        163:   }
+        164:   normalizeRepository(value.repository, `${filePath}: repository`);
+        165:   if (
+        166:     !isObject(value.workflow) ||
+        167:     value.workflow.path !== WORKFLOW_PATH ||
+        168:     !SHA256_PATTERN.test(value.workflow.sha256 ?? "")
+        169:   ) {
+        170:     throw new Error(`${filePath}: workflow ownership is malformed`);
+        171:   }
+        172:   if (
+        173:     !isObject(value.source) ||
+        174:     value.source.template !== TEMPLATE_PATH ||
+        175:     !SHA256_PATTERN.test(value.source.sha256 ?? "")
+        176:   ) {
+        177:     throw new Error(`${filePath}: source template metadata is malformed`);
+        178:   }
+        179:   if (value.source.sha256 !== value.workflow.sha256) {
+        180:     throw new Error(`${filePath}: source and workflow hashes must match`);
+        181:   }
+        182:   if (value.schemaVersion === MANIFEST_SCHEMA_VERSION) {
+        183:     // Schema-2 provenance invariants. No separate provenance-source field: the
+        184:     // (released, tag) pair alone encodes the source unambiguously.
+        185:     if (!COMMIT_PATTERN.test(value.source.commit ?? "")) {
+        186:       throw new Error(`${filePath}: source commit must be a 40-character hex commit`);
+        187:     }
+        188:     if (value.source.tag !== null && !RELEASE_TAG_PATTERN.test(value.source.tag ?? "")) {
+        189:       throw new Error(`${filePath}: source tag must be a v<semver> release tag or null`);
+        190:     }
+        191:     if (typeof value.source.released !== "boolean") {
+        192:       throw new Error(`${filePath}: source released must be a boolean`);
+        193:     }
+        194:     if (value.source.released && value.source.tag === null) {
+        195:       throw new Error(`${filePath}: a released manifest must record a release tag`);
+        196:     }
+        197:   }
+        198:   // A schema-1 manifest decodes as a pre-provenance install (value.schemaVersion
+        199:   // stays 1); check surfaces the migration and update rewrites it to schema 2.
+        200:   value.configuration = validateConfiguration(value.configuration ?? {});
+        201:   if (!isObject(value.resources) || !isObject(value.resources.variables)) {
+        202:     throw new Error(`${filePath}: resource ownership is malformed`);
+        203:   }
+        204:   const variableNames = Object.keys(value.resources.variables).sort();
+        205:   const expectedVariableNames = Object.keys(CONFIG_VARIABLES).sort();
+        206:   if (JSON.stringify(variableNames) !== JSON.stringify(expectedVariableNames)) {
+        207:     throw new Error(`${filePath}: variable ownership must contain only managed variables`);
+        208:   }
+        209:   for (const name of Object.keys(CONFIG_VARIABLES)) {
+        210:     const entry = value.resources.variables[name];
+        211:     assertOwnedResource(entry, `${filePath}: variable ${name}`);
+        212:     if (entry.value !== value.configuration[CONFIG_VARIABLES[name]]) {
+        213:       throw new Error(`${filePath}: variable ${name} must match the recorded configuration`);
+        214:     }
+        215:   }
+        216:   assertOwnedResource(value.resources.secret, `${filePath}: secret`);
+        217:   if (value.resources.secret.name !== SECRET_NAME) {
+        218:     throw new Error(`${filePath}: secret ownership is malformed`);
+        219:   }
+        220:   if (!Array.isArray(value.resources.labels)) {
+        221:     throw new Error(`${filePath}: label ownership must be an array`);
+        222:   }
+        223:   const labelNames = new Set();
+        224:   const managedLabelNames = new Set(ROUTING_LABELS.map(({ name }) => name));
+        225:   for (const label of value.resources.labels) {
+        226:     assertOwnedResource(label, `${filePath}: label`);
+        227:     if (
+        228:       typeof label.name !== "string" ||
+        229:       labelNames.has(label.name) ||
+        230:       !managedLabelNames.has(label.name)
+        231:     ) {
+        232:       throw new Error(`${filePath}: label ownership is malformed`);
+        233:     }
+        234:     labelNames.add(label.name);
+        235:   }
+        236:   for (const { name } of ROUTING_LABELS) {
+        237:     if (!labelNames.has(name)) {
+        238:       throw new Error(`${filePath}: label ownership is missing ${name}`);
+        239:     }
+        240:   }
+        241:   if (labelNames.size !== managedLabelNames.size) {
+        242:     throw new Error(`${filePath}: label ownership must contain only managed labels`);
+        243:   }
+        244:   return value;
+        245: }
+        246: 
+        247: export function manifestJson(manifest) {
+        248:   return `${JSON.stringify(manifest, null, 2)}\n`;
+        249: }
+        250: 
+        251: export function variableValues(configuration) {
+        252:   return Object.fromEntries(
+        253:     Object.entries(CONFIG_VARIABLES).map(([name, field]) => [name, configuration[field]]),
+        254:   );
+        255: }
+        256: 
+        257: export function resolveConfiguration(options, existingManifest) {
+        258:   const existing = existingManifest?.configuration ?? DEFAULT_CONFIG;
+        259:   return validateConfiguration({
+        260:     provider: options.provider ?? existing.provider,
+        261:     cheapModel: options.cheapModel ?? existing.cheapModel,
+        262:     deepModel: options.deepModel ?? existing.deepModel,
+        263:   });
+        264: }
+        265: 
+        266: export function parseGitHubRemote(remote) {
+        267:   const trimmed = remote.trim().replace(/\/$/u, "");
+        268:   const patterns = [
+        269:     /^https?:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/iu,
+        270:     /^git@github\.com:([^/]+)\/([^/]+?)(?:\.git)?$/iu,
+        271:     /^ssh:\/\/git@github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/iu,
+        272:   ];
+        273:   for (const pattern of patterns) {
+        274:     const match = trimmed.match(pattern);
+        275:     if (match) return `${match[1]}/${match[2]}`;
+        276:   }
+        277:   return null;
+        278: }
+        279: 
+        280: export function resolveOverride({ tag, commit }) {
+        281:   if (!COMMIT_PATTERN.test(commit ?? "")) {
+        282:     throw new Error("--source-commit must be a 40-character hex commit");
+        283:   }
+        284:   // Both parts are required: a commit-only override would record (false, null),
+        285:   // indistinguishable from a dev checkout and breaking the (released, tag)
+        286:   // encoding. A declared .git-less artifact must carry its v<semver> tag.
+        287:   if (tag === null || tag === undefined || !RELEASE_TAG_PATTERN.test(tag)) {
+        288:     throw new Error("--source-tag must be a v<semver> release tag");
+        289:   }
+        290:   // A .git-less artifact cannot verify bytes against a commit offline, so a
+    [33m...(output was truncated)...[92m
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        scripts/consumer-installer/persistence.mjs:
+        1: // Local persistence for the consumer installer: the A-005 path-containment
+        2: // guard, atomic managed-file writes/removals, and managed-state loading. It
+        3: // imports only the codecs leaf so the downhill dependency direction stays
+        4: // intact.
+        5: import { randomBytes } from "node:crypto";
+        6: import { lstat, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+        7: import path from "node:path";
+        8: import { MANIFEST_PATH, WORKFLOW_PATH, decodeManifest } from "./codecs.mjs";
+        9: 
+        10: export async function readOptional(filePath) {
+        11:   try {
+        12:     return await readFile(filePath, "utf8");
+        13:   } catch (error) {
+        14:     if (error.code === "ENOENT") return null;
+        15:     throw error;
+        16:   }
+        17: }
+        18: 
+        19: // A-005 containment guard. Every managed read, write, rename, and removal must
+        20: // stay beneath the canonical consumer worktree without following a
+        21: // repository-controlled symlink ancestor. Errors are bounded to the managed
+        22: // path relative to the root; they never embed a symlink target, the escaping
+        23: // destination, or any other unrelated host path.
+        24: const CONTAINMENT_MESSAGE = "refusing to follow a symlinked or escaping installer path";
+        25: 
+        26: function containmentError(relativeParts, reason = CONTAINMENT_MESSAGE) {
+        27:   return new Error(`${relativeParts.join(path.sep)}: ${reason}`);
+        28: }
+        29: 
+        30: function managedRelativeParts(root, targetPath) {
+        31:   const relative = path.relative(root, targetPath);
+        32:   if (
+        33:     relative === "" ||
+        34:     relative === "." ||
+        35:     relative === ".." ||
+        36:     relative.startsWith(`..${path.sep}`) ||
+        37:     path.isAbsolute(relative)
+        38:   ) {
+        39:     // Bounded: report only the intended leaf name, never the root or an
+        40:     // escaping absolute destination.
+        41:     throw new Error(`${path.basename(targetPath)}: ${CONTAINMENT_MESSAGE}`);
+        42:   }
+        43:   return relative.split(path.sep);
+        44: }
+        45: 
+        46: async function inspectComponent(componentPath, lstatImpl) {
+        47:   try {
+        48:     return await lstatImpl(componentPath);
+        49:   } catch (error) {
+        50:     if (error.code === "ENOENT") return null;
+        51:     throw error;
+        52:   }
+        53: }
+        54: 
+        55: // Inspect every existing ancestor from the canonical root down to targetPath
+        56: // with lstat (never stat) so a symlink component is rejected instead of
+        57: // followed. A missing component ends the walk: nothing beyond it can exist.
+        58: async function assertContainedPath(root, targetPath, lstatImpl) {
+        59:   const relativeParts = managedRelativeParts(root, path.resolve(targetPath));
+        60:   let current = root;
+        61:   for (let index = 0; index < relativeParts.length; index += 1) {
+        62:     current = path.join(current, relativeParts[index]);
+        63:     const stats = await inspectComponent(current, lstatImpl);
+        64:     if (stats === null) return;
+        65:     const traversed = relativeParts.slice(0, index + 1);
+        66:     if (stats.isSymbolicLink()) {
+        67:       throw containmentError(traversed);
+        68:     }
+        69:     if (index === relativeParts.length - 1) {
+        70:       if (!stats.isFile()) {
+        71:         throw containmentError(traversed, "managed path is not a regular file");
+        72:       }
+        73:     } else if (!stats.isDirectory()) {
+        74:       throw containmentError(traversed, "managed ancestor is not a directory");
+        75:     }
+        76:   }
+        77: }
+        78: 
+        79: // Create every missing directory from the canonical root down to dirPath one
+        80: // component at a time. A recursive mkdir would follow a symlink swapped into an
+        81: // ancestor and create directories outside the root; creating a single component
+        82: // at a time under an lstat-verified real-directory parent keeps every mkdir
+        83: // contained. A component that already exists as a symlink or non-directory is
+        84: // rejected, and a component swapped to a symlink between its check and creation
+        85: // makes the non-recursive mkdir fail with EEXIST rather than follow it.
+        86: async function assertContainedDir(root, dirPath, lstatImpl) {
+        87:   const resolved = path.resolve(dirPath);
+        88:   if (resolved === root) return;
+        89:   const relativeParts = managedRelativeParts(root, resolved);
+        90:   let current = root;
+        91:   for (let index = 0; index < relativeParts.length; index += 1) {
+        92:     current = path.join(current, relativeParts[index]);
+        93:     const stats = await inspectComponent(current, lstatImpl);
+        94:     const traversed = relativeParts.slice(0, index + 1);
+        95:     if (stats === null) {
+        96:       await mkdir(current);
+        97:     } else if (stats.isSymbolicLink()) {
+        98:       throw containmentError(traversed);
+        99:     } else if (!stats.isDirectory()) {
+        100:       throw containmentError(traversed, "managed ancestor is not a directory");
+        101:     }
+        102:   }
+        103: }
+        104: 
+        105: export function makePathGuard(root, lstatImpl = lstat) {
+        106:   const canonicalRoot = path.resolve(root);
+        107:   return {
+        108:     root: canonicalRoot,
+        109:     assert(targetPath) {
+        110:       return assertContainedPath(canonicalRoot, targetPath, lstatImpl);
+        111:     },
+        112:     mkdirWithin(targetPath) {
+        113:       return assertContainedDir(
+        114:         canonicalRoot,
+        115:         path.dirname(path.resolve(targetPath)),
+        116:         lstatImpl,
+        117:       );
+        118:     },
+        119:   };
+        120: }
+        121: 
+        122: export async function atomicWrite(guard, filePath, content) {
+        123:   // Create the destination directory one component at a time, rejecting a
+        124:   // symlinked ancestor before creating any child beneath it; a recursive mkdir
+        125:   // would follow a swapped-in symlink and create directories outside the root.
+        126:   await guard.mkdirWithin(filePath);
+        127:   // Re-check containment after the directory exists and immediately before the
+        128:   // temp write, so the write is protected symmetrically with the rename below:
+        129:   // a symlink swapped into an ancestor is caught before any bytes are written.
+        130:   await guard.assert(filePath);
+        131:   const temporaryPath = `${filePath}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
+        132:   try {
+        133:     await writeFile(temporaryPath, content, { encoding: "utf8", mode: 0o644, flag: "wx" });
+        134:     // Re-check containment immediately before the rename to narrow the
+        135:     // time-of-check/time-of-use window on the destination ancestors.
+        136:     await guard.assert(filePath);
+        137:     await rename(temporaryPath, filePath);
+        138:   } catch (error) {
+        139:     // Best-effort cleanup of the temp file on any failure. The temp name
+        140:     // carries an unpredictable random suffix, so an ancestor swapped to a
+        141:     // symlink cannot steer this unlink onto an attacker-named external file:
+        142:     // it either removes the real temp file or fails ENOENT through the swap.
+        143:     // The pre-write `wx` write and the pre-write/pre-rename containment
+        144:     // asserts are what prevent writing *through* a swap; this cleanup only
+        145:     // targets the unpredictable temp path and never a caller-supplied one.
+        146:     await unlink(temporaryPath).catch(() => {});
+        147:     throw error;
+        148:   }
+        149: }
+        150: 
+        151: export async function removeOptional(guard, filePath) {
+        152:   // Re-check containment immediately before the removal for the same reason.
+        153:   await guard.assert(filePath);
+        154:   try {
+        155:     await unlink(filePath);
+        156:   } catch (error) {
+        157:     if (error.code !== "ENOENT") throw error;
+        158:   }
+        159: }
+        160: 
+        161: export async function loadLocalState(guard, root) {
+        162:   const manifestFile = path.join(root, MANIFEST_PATH);
+        163:   const workflowFile = path.join(root, WORKFLOW_PATH);
+        164:   await guard.assert(manifestFile);
+        165:   await guard.assert(workflowFile);
+        166:   const manifestSource = await readOptional(manifestFile);
+        167:   return {
+        168:     manifestFile,
+        169:     workflowFile,
+        170:     manifest: manifestSource === null ? null : decodeManifest(manifestSource, manifestFile),
+        171:     workflow: await readOptional(workflowFile),
+        172:   };
+        173: }
+        
+        --------
+        
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        scripts/consumer-installer/plan.mjs:
+        1: // Pure lifecycle planning for the consumer installer: resource action planning,
+        2: // manifest construction, action descriptions, managed-state assertions, and
+        3: // source-override resolution. Every function here depends only on decoded
+        4: // snapshots and options — no filesystem, `gh`, git, or environment access — so
+        5: // it imports only the codecs leaf.
+        6: import {
+        7:   MANIFEST_PATH,
+        8:   MANIFEST_SCHEMA_VERSION,
+        9:   ROUTING_LABELS,
+        10:   SECRET_NAME,
+        11:   TEMPLATE_PATH,
+        12:   WORKFLOW_PATH,
+        13:   sameRepository,
+        14:   sha256,
+        15:   variableValues,
+        16: } from "./codecs.mjs";
+        17: 
+        18: export function assertManifestRepository(manifest, repository) {
+        19:   if (manifest && !sameRepository(manifest.repository, repository)) {
+        20:     throw new Error(
+        21:       `${MANIFEST_PATH} manages ${manifest.repository}, not ${repository}`,
+        22:     );
+        23:   }
+        24: }
+        25: 
+        26: export function assertWorkflowCanBeManaged(command, local, templateSource) {
+        27:   if (!local.manifest) {
+        28:     if (command === "update") {
+        29:       throw new Error(`update requires ${MANIFEST_PATH}; run install first`);
+        30:     }
+        31:     if (local.workflow !== null && local.workflow !== templateSource) {
+        32:       throw new Error(`${WORKFLOW_PATH} exists and is not managed by sd-github-review`);
+        33:     }
+        34:     return;
+        35:   }
+        36:   if (local.manifest.state === "uninstalling") {
+        37:     throw new Error("an uninstall is incomplete; rerun uninstall before installing or updating");
+        38:   }
+        39:   if (
+        40:     local.workflow === null &&
+        41:     local.manifest.state !== "pending"
+        42:   ) {
+        43:     throw new Error(`${WORKFLOW_PATH} is missing from an active managed installation`);
+        44:   }
+        45:   if (
+        46:     local.workflow !== null &&
+        47:     // A-013: the modification guard protects a completed (active) install from
+        48:     // clobbering operator edits. A pending manifest is mid-transaction (a prior
+        49:     // install/update/adopt was interrupted); installOrUpdate rewrites the
+        50:     // workflow unconditionally, so a pending workflow-hash mismatch is expected
+        51:     // interrupted state, not operator drift, and must resume rather than throw.
+        52:     local.manifest.state !== "pending" &&
+        53:     sha256(local.workflow) !== local.manifest.workflow.sha256
+        54:   ) {
+        55:     throw new Error(
+        56:       `${WORKFLOW_PATH} was modified after installation; preserve or reconcile it manually before update`,
+        57:     );
+        58:   }
+        59: }
+        60: 
+        61: export function planResources(configuration, snapshot, existingManifest, setSecretRequested) {
+        62:   const actions = [];
+        63:   const variables = {};
+        64:   for (const [name, desiredValue] of Object.entries(variableValues(configuration))) {
+        65:     const prior = existingManifest?.resources.variables[name];
+        66:     const currentValue = snapshot.variables.get(name);
+        67:     let owned = prior?.owned ?? currentValue === undefined;
+        68:     if (currentValue === undefined) {
+        69:       owned = true;
+        70:       actions.push({ kind: "set-variable", name, value: desiredValue });
+        71:     } else if (currentValue !== desiredValue) {
+        72:       if (!prior?.owned) {
+        73:         throw new Error(
+        74:           `GitHub variable ${name} already exists with a different unowned value; reconcile it manually`,
+        75:         );
+        76:       }
+        77:       actions.push({ kind: "set-variable", name, value: desiredValue });
+        78:     }
+        79:     variables[name] = { value: desiredValue, owned };
+        80:   }
+        81: 
+        82:   const labels = ROUTING_LABELS.map((label) => {
+        83:     const prior = existingManifest?.resources.labels.find(({ name }) => name === label.name);
+        84:     const exists = snapshot.labels.has(label.name);
+        85:     if (!exists) actions.push({ kind: "create-label", label });
+        86:     return { name: label.name, owned: exists ? (prior?.owned ?? false) : true };
+        87:   });
+        88: 
+        89:   const secretExists = snapshot.secrets.has(SECRET_NAME);
+        90:   const priorSecret = existingManifest?.resources.secret;
+        91:   if (!secretExists && !setSecretRequested) {
+        92:     throw new Error(
+        93:       `${SECRET_NAME} is missing; rerun with --set-secret or pipe it to --secret-stdin`,
+        94:     );
+        95:   }
+        96:   if (setSecretRequested) actions.push({ kind: "set-secret" });
+        97:   const secret = {
+        98:     name: SECRET_NAME,
+        99:     owned: secretExists ? (priorSecret?.owned ?? false) : true,
+        100:   };
+        101:   return { actions, resources: { variables, secret, labels } };
+        102: }
+        103: 
+        104: export function createManifest({ state, repository, templateSha, configuration, resources, release }) {
+        105:   return {
+        106:     schemaVersion: MANIFEST_SCHEMA_VERSION,
+        107:     tool: "sd-github-review",
+        108:     state,
+        109:     repository,
+        110:     workflow: { path: WORKFLOW_PATH, sha256: templateSha },
+        111:     source: {
+        112:       template: TEMPLATE_PATH,
+        113:       sha256: templateSha,
+        114:       commit: release.commit,
+        115:       tag: release.tag,
+        116:       released: release.released,
+        117:     },
+        118:     configuration,
+        119:     resources,
+        120:   };
+        121: }
+        122: 
+        123: export function publicAction(action) {
+        124:   switch (action.kind) {
+        125:     case "set-variable":
+        126:       return `set GitHub variable ${action.name}`;
+        127:     case "create-label":
+        128:       return `create GitHub label ${action.label.name}`;
+        129:     case "set-secret":
+        130:       return `set GitHub secret ${SECRET_NAME}`;
+        131:     case "delete-variable":
+        132:       return `delete GitHub variable ${action.name}`;
+        133:     case "delete-label":
+        134:       return `delete GitHub label ${action.name}`;
+        135:     case "delete-secret":
+        136:       return `delete GitHub secret ${SECRET_NAME}`;
+        137:     default:
+        138:       throw new Error(`unsupported lifecycle action ${action.kind}`);
+        139:   }
+        140: }
+        141: 
+        142: function overrideInput(optionValue, envValue, envName) {
+        143:   if (optionValue !== undefined && optionValue !== null) {
+        144:     return optionValue;
+        145:   }
+        146:   if (envValue !== undefined && envValue !== null) {
+        147:     // An explicitly-set-but-empty env var must not silently skip the declared
+        148:     // provenance path; mirror parseReleaseTag's empty-env handling.
+        149:     if (envValue === "") {
+        150:       throw new Error(`${envName} is set but empty; provide a value or unset it`);
+        151:     }
+        152:     return envValue;
+        153:   }
+        154:   return undefined;
+        155: }
+        156: 
+        157: export function sourceOverride(options, env) {
+        158:   const tag = overrideInput(options.sourceTag, env.SD_SOURCE_TAG, "SD_SOURCE_TAG");
+        159:   const commit = overrideInput(options.sourceCommit, env.SD_SOURCE_COMMIT, "SD_SOURCE_COMMIT");
+        160:   return tag || commit ? { tag: tag ?? null, commit: commit ?? null } : undefined;
+        161: }
+        
+        --------
+        
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        scripts/consumer-installer/transport.mjs:
+        1: // Transport layer for the consumer installer: bounded subprocess execution,
+        2: // secret-safe error mapping, the `gh` CLI seam, and the installer's own source
+        3: // git/provenance resolution. It imports only the codecs leaf so the downhill
+        4: // dependency direction stays intact.
+        5: import { execFile, execFileSync, spawnSync } from "node:child_process";
+        6: import { readFile } from "node:fs/promises";
+        7: import path from "node:path";
+        8: import { promisify } from "node:util";
+        9: import {
+        10:   COMMIT_PATTERN,
+        11:   RELEASE_TAG_PATTERN,
+        12:   SECRET_NAME,
+        13:   TEMPLATE_PATH,
+        14:   resolveOverride,
+        15: } from "./codecs.mjs";
+        16: 
+        17: const execFileAsync = promisify(execFile);
+        18: 
+        19: // Bounded wall-clock deadlines for the installer's own subprocesses, so a hung
+        20: // network call or a credential helper waiting on a prompt cannot stall the
+        21: // installer forever. `gh` subprocesses reach the network (repo/label/secret
+        22: // APIs), so they get the larger bound; local `git` metadata reads get the
+        23: // smaller one. Both are positive and fixed here, never derived from input.
+        24: export const GH_COMMAND_TIMEOUT_MS = 120_000;
+        25: export const GIT_COMMAND_TIMEOUT_MS = 30_000;
+        26: 
+        27: function redact(value, secret) {
+        28:   if (!secret || typeof value !== "string") return value;
+        29:   return value.replaceAll(secret, "[redacted]");
+        30: }
+        31: 
+        32: function commandFailure(command, args, result, secret) {
+        33:   const stderr = redact(result.stderr?.trim(), secret);
+        34:   const detail = stderr || `exit status ${result.status ?? "unknown"}`;
+        35:   // Redact the args too: a secret can be passed via options.secret, and the
+        36:   // nonzero-exit path must not leak it when the timeout/startup paths do not.
+        37:   const redactedArgs = args.map((arg) => redact(arg, secret)).join(" ");
+        38:   return new Error(`${command} ${redactedArgs} failed: ${detail}`);
+        39: }
+        40: 
+        41: function commandTimeout(command, args, timeoutMs, secret, readOnly) {
+        42:   // Name the command and its (secret-redacted) args, never stdin, and match the
+        43:   // recovery guidance to the command's effect. A killed mutating subprocess
+        44:   // (variable/secret/label set or delete) may have partially applied a remote
+        45:   // change, so the operator reconciles state; a read-only query (the repo,
+        46:   // variable, secret, and label list calls behind inspect()) has no side effect
+        47:   // to reconcile, so a plain retry is safe.
+        48:   const redactedArgs = args.map((arg) => redact(arg, secret)).join(" ");
+        49:   const guidance = readOnly
+        50:     ? "the read was interrupted — retry once GitHub is responsive"
+        51:     : "verify no partial change was applied before retrying";
+        52:   return new Error(
+        53:     `${command} ${redactedArgs} timed out after ${timeoutMs}ms; ${guidance}`,
+        54:   );
+        55: }
+        56: 
+        57: // Shared interpretation of a spawnSync-shaped result. Both the synchronous
+        58: // runCommand and the asynchronous runCommandAsync route through this so the
+        59: // timeout wording, secret redaction, and failure mapping cannot diverge.
+        60: function interpretCommandResult(command, args, result, options, timeoutMs) {
+        61:   if (result.error) {
+        62:     if (result.error.code === "ETIMEDOUT") {
+        63:       throw commandTimeout(command, args, timeoutMs, options.secret, options.readOnly);
+        64:     }
+        65:     throw new Error(`${command} could not start: ${redact(result.error.message, options.secret)}`);
+        66:   }
+        67:   if (result.status !== 0) {
+        68:     throw commandFailure(command, args, result, options.secret);
+        69:   }
+        70:   return result.stdout ?? "";
+        71: }
+        72: 
+        73: function parseCommandJson(command, args, output) {
+        74:   try {
+        75:     return JSON.parse(output);
+        76:   } catch {
+        77:     throw new Error(`${command} ${args.join(" ")} returned invalid JSON`);
+        78:   }
+        79: }
+        80: 
+        81: function runCommand(command, args, options = {}) {
+        82:   const spawnImpl = options.spawnImpl ?? spawnSync;
+        83:   const timeoutMs = options.timeoutMs ?? GH_COMMAND_TIMEOUT_MS;
+        84:   const result = spawnImpl(command, args, {
+        85:     cwd: options.cwd,
+        86:     encoding: "utf8",
+        87:     env: process.env,
+        88:     input: options.input,
+        89:     stdio: options.inherit ? "inherit" : undefined,
+        90:     timeout: timeoutMs,
+        91:     killSignal: "SIGTERM",
+        92:   });
+        93:   return interpretCommandResult(command, args, result, options, timeoutMs);
+        94: }
+        95: 
+        96: // execFile represents a timeout in two ways across Node versions: a string code
+        97: // "ETIMEDOUT", or a killSignal-kill (killed + signal === killSignal) with NO
+        98: // error code. execFile ALSO kills the child with killSignal on a maxBuffer
+        99: // overflow, but that rejection carries a string code
+        100: // ("ERR_CHILD_PROCESS_STDIO_MAXBUFFER"); requiring the code to be absent keeps a
+        101: // maxBuffer (or any other coded kill) from being misreported as a timeout.
+        102: function isTimeoutKill(error, killSignal) {
+        103:   if (error.code === "ETIMEDOUT") return true;
+        104:   return Boolean(error.killed) && error.signal === killSignal && error.code == null;
+        105: }
+        106: 
+        107: // Asynchronous sibling of runCommand for independent read-only queries that can
+        108: // overlap. It maps execFile's rejection into the same spawnSync-shaped result
+        109: // interpretCommandResult understands. Not used for mutations, which stay on the
+        110: // ordered synchronous path.
+        111: async function runCommandAsync(command, args, options = {}) {
+        112:   const execImpl = options.execImpl ?? execFileAsync;
+        113:   const timeoutMs = options.timeoutMs ?? GH_COMMAND_TIMEOUT_MS;
+        114:   let result;
+        115:   try {
+        116:     const { stdout } = await execImpl(command, args, {
+        117:       cwd: options.cwd,
+        118:       encoding: "utf8",
+        119:       env: process.env,
+        120:       timeout: timeoutMs,
+        121:       killSignal: "SIGTERM",
+        122:     });
+        123:     result = { error: null, status: 0, stdout, stderr: "" };
+        124:   } catch (error) {
+        125:     if (isTimeoutKill(error, "SIGTERM")) {
+        126:       result = {
+        127:         error: Object.assign(new Error("timed out"), { code: "ETIMEDOUT" }),
+        128:         status: null,
+        129:         stdout: "",
+        130:         stderr: error.stderr ?? "",
+        131:       };
+        132:     } else if (typeof error.code === "number") {
+        133:       result = { error: null, status: error.code, stdout: error.stdout ?? "", stderr: error.stderr ?? "" };
+        134:     } else {
+        135:       result = { error, status: null, stdout: "", stderr: "" };
+        136:     }
+        137:   }
+        138:   return interpretCommandResult(command, args, result, options, timeoutMs);
+        139: }
+        140: 
+        141: export class GitHubCli {
+        142:   // spawnImpl/timeoutMs are injectable so fake-child-process tests can drive the
+        143:   // timeout, redaction, and recovery-guidance paths without a real subprocess.
+        144:   // execImpl is the async execFile seam used only by the concurrent read path
+        145:   // (inspect); spawnImpl remains the synchronous seam for all mutations, so
+        146:   // installation state transitions stay ordered. Both are injectable for tests.
+        147:   constructor({ spawnImpl = spawnSync, execImpl = execFileAsync, timeoutMs = GH_COMMAND_TIMEOUT_MS } = {}) {
+        148:     this.spawnImpl = spawnImpl;
+        149:     this.execImpl = execImpl;
+        150:     this.timeoutMs = timeoutMs;
+        151:   }
+        152: 
+        153:   run(command, args, options = {}) {
+        154:     return runCommand(command, args, {
+        155:       ...options,
+        156:       spawnImpl: this.spawnImpl,
+        157:       timeoutMs: this.timeoutMs,
+        158:     });
+        159:   }
+        160: 
+        161:   runJson(command, args) {
+        162:     // runJson only wraps read-only list/view queries, so a timeout gets the
+        163:     // plain-retry guidance rather than the mutation reconciliation wording.
+        164:     const output = this.run(command, args, { readOnly: true });
+        165:     return parseCommandJson(command, args, output);
+        166:   }
+        167: 
+        168:   // Asynchronous read used by inspect so its independent queries can overlap.
+        169:   async #runJsonAsync(command, args) {
+        170:     const output = await runCommandAsync(command, args, {
+        171:       readOnly: true,
+        172:       execImpl: this.execImpl,
+        173:       timeoutMs: this.timeoutMs,
+        174:     });
+        175:     return parseCommandJson(command, args, output);
+        176:   }
+        177: 
+        178:   async inspect(repository) {
+        179:     // Four independent, read-only queries — a fixed, bounded fan-out with no
+        180:     // cross-dependency, so they run concurrently rather than summing round trips.
+        181:     const [repo, variables, secrets, labels] = await Promise.all([
+        182:       this.#runJsonAsync("gh", ["repo", "view", repository, "--json", "nameWithOwner"]),
+        183:       this.#runJsonAsync("gh", ["variable", "list", "--repo", repository, "--json", "name,value"]),
+        184:       this.#runJsonAsync("gh", ["secret", "list", "--repo", repository, "--json", "name"]),
+        185:       this.#runJsonAsync("gh", [
+        186:         "label",
+        187:         "list",
+        188:         "--repo",
+        189:         repository,
+        190:         "--limit",
+        191:         "1000",
+        192:         "--json",
+        193:         "name,color,description",
+        194:       ]),
+        195:     ]);
+        196:     return {
+        197:       repository: repo.nameWithOwner,
+        198:       variables: new Map(variables.map(({ name, value }) => [name, value])),
+        199:       secrets: new Set(secrets.map(({ name }) => name)),
+        200:       labels: new Map(labels.map((label) => [label.name, label])),
+        201:     };
+        202:   }
+        203: 
+        204:   async setVariable(repository, name, value) {
+        205:     this.run("gh", ["variable", "set", name, "--repo", repository, "--body", value]);
+        206:   }
+        207: 
+        208:   async deleteVariable(repository, name) {
+        209:     this.run("gh", ["variable", "delete", name, "--repo", repository]);
+        210:   }
+        211: 
+        212:   async createLabel(repository, label) {
+        213:     this.run("gh", [
+        214:       "label",
+        215:       "create",
+        216:       label.name,
+        217:       "--repo",
+        218:       repository,
+        219:       "--color",
+        220:       label.color,
+        221:       "--description",
+        222:       label.description,
+        223:     ]);
+        224:   }
+        225: 
+        226:   async deleteLabel(repository, name) {
+        227:     this.run("gh", ["label", "delete", name, "--repo", repository, "--yes"]);
+        228:   }
+        229: 
+        230:   async setSecret(repository, { interactive = false, value } = {}) {
+        231:     const args = ["secret", "set", SECRET_NAME, "--repo", repository];
+        232:     if (interactive) {
+        233:       this.run("gh", args, { inherit: true });
+        234:       return;
+        235:     }
+        236:     if (typeof value !== "string" || value.length === 0) {
+        237:       throw new Error("secret input must be nonempty");
+        238:     }
+        239:     this.run("gh", args, { input: value, secret: value });
+        240:   }
+        241: 
+        242:   async deleteSecret(repository) {
+        243:     this.run("gh", ["secret", "delete", SECRET_NAME, "--repo", repository]);
+        244:   }
+        245: }
+        246: 
+        247: export function gitOutput(target, args, execImpl = execFileSync, timeoutMs = GIT_COMMAND_TIMEOUT_MS) {
+        248:   try {
+        249:     return execImpl("git", ["-C", target, ...args], {
+        250:       encoding: "utf8",
+        251:       stdio: ["ignore", "pipe", "pipe"],
+        252:       timeout: timeoutMs,
+        253:       killSignal: "SIGTERM",
+        254:     }).trim();
+        255:   } catch (error) {
+        256:     if (error && error.code === "ETIMEDOUT") {
+        257:       // Every gitOutput call is a read-only metadata query, so a timeout has no
+        258:       // side effect to reconcile; the safe recovery is simply to retry.
+        259:       throw new Error(
+        260:         `${target}: git ${args.join(" ")} timed out after ${timeoutMs}ms; ` +
+        261:           "the read was interrupted — retry once the source checkout is responsive",
+        262:       );
+        263:     }
+        264:     const detail = typeof error.stderr === "string" && error.stderr.trim()
+        265:       ? error.stderr.trim()
+        266:       : error.message;
+        267:     throw new Error(`${target}: git ${args.join(" ")} failed: ${detail}`);
+        268:   }
+        269: }
+        270: 
+        271: // Git seam for the installer's own source root, mirroring gitOutput. Injected in
+        272: // tests via dependencies.gitImpl so provenance resolution is deterministic;
+        273: // execImpl is a narrower seam so a fake-child test can drive gitOutput's own
+        274: // bounded-timeout path directly.
+        275: export function makeSourceGit(sourceRoot, execImpl = execFileSync) {
+        276:   return {
+        277:     head() {
+        278:       return gitOutput(sourceRoot, ["rev-parse", "HEAD"], execImpl);
+        279:     },
+        280:     exactTag() {
+        281:       try {
+        282:         return gitOutput(sourceRoot, ["describe", "--tags", "--exact-match", "HEAD"], execImpl);
+        283:       } catch {
+        284:         return null;
+        285:       }
+        286:     },
+        287:     templateDirty() {
+        288:       return gitOutput(sourceRoot, ["status", "--porcelain", "--", TEMPLATE_PATH], execImpl).length > 0;
+        289:     },
+        290:   };
+    [33m...(output was truncated)...[92m
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        test/installer-dependency-boundaries.test.js:
+        1: import assert from "node:assert/strict";
+        2: import { readdirSync, readFileSync } from "node:fs";
+        3: import test from "node:test";
+        4: import { fileURLToPath } from "node:url";
+        5: 
+        6: // A-009: enforce the allowed-import matrix for the decomposed consumer installer
+        7: // so the one-way layering direction is frozen. The codecs leaf imports no local
+        8: // installer module; transport/persistence/plan import only the leaf; the public
+        9: // orchestrator (scripts/consumer-installer.mjs) imports the four submodules.
+        10: // This prevents a future edit from silently re-inverting an edge (e.g. plan
+        11: // reaching into transport, or a leaf importing a sibling) and reintroducing the
+        12: // monolith the finding split apart.
+        13: 
+        14: const MODULES_DIR = fileURLToPath(new URL("../scripts/consumer-installer/", import.meta.url));
+        15: const ORCHESTRATOR = fileURLToPath(new URL("../scripts/consumer-installer.mjs", import.meta.url));
+        16: 
+        17: // Each installer module maps to the local installer modules it MAY import,
+        18: // expressed as bare specifiers relative to the importing module. A module not
+        19: // listed here fails the completeness check below, forcing this matrix to be
+        20: // updated whenever a new installer module is added.
+        21: const ALLOWED = {
+        22:   "consumer-installer/codecs.mjs": [],
+        23:   "consumer-installer/transport.mjs": ["./codecs.mjs"],
+        24:   "consumer-installer/persistence.mjs": ["./codecs.mjs"],
+        25:   "consumer-installer/plan.mjs": ["./codecs.mjs"],
+        26:   "consumer-installer.mjs": [
+        27:     "./consumer-installer/codecs.mjs",
+        28:     "./consumer-installer/transport.mjs",
+        29:     "./consumer-installer/persistence.mjs",
+        30:     "./consumer-installer/plan.mjs",
+        31:   ],
+        32: };
+        33: 
+        34: const LEAVES = ["consumer-installer/codecs.mjs"];
+        35: 
+        36: function submoduleFiles() {
+        37:   return readdirSync(MODULES_DIR)
+        38:     .filter((name) => name.endsWith(".mjs"))
+        39:     .map((name) => `consumer-installer/${name}`)
+        40:     .sort();
+        41: }
+        42: 
+        43: // Match `import … from "<spec>"`, `export … from "<spec>"`, and side-effect-only
+        44: // `import "<spec>";` against a local (./ or ../) installer specifier. A bare
+        45: // side-effect import still creates a dependency edge, so the boundary check must
+        46: // not let it bypass the matrix.
+        47: function localImports(absolutePath) {
+        48:   const source = readFileSync(absolutePath, "utf8");
+        49:   const imports = new Set();
+        50:   const patterns = [
+        51:     /from\s+["'](\.\.?\/[\w./-]+\.mjs)["']/gu,
+        52:     /import\s+["'](\.\.?\/[\w./-]+\.mjs)["']/gu,
+        53:   ];
+        54:   for (const pattern of patterns) {
+        55:     let match;
+        56:     while ((match = pattern.exec(source)) !== null) {
+        57:       imports.add(match[1]);
+        58:     }
+        59:   }
+        60:   return [...imports];
+        61: }
+        62: 
+        63: function moduleKeyToPath(key) {
+        64:   return fileURLToPath(new URL(`../scripts/${key}`, import.meta.url));
+        65: }
+        66: 
+        67: test("every installer module is covered by the allowed-import matrix", () => {
+        68:   const submodules = submoduleFiles();
+        69:   for (const name of submodules) {
+        70:     assert.ok(
+        71:       Object.prototype.hasOwnProperty.call(ALLOWED, name),
+        72:       `scripts/${name} is not covered by the allowed-import matrix; update the matrix`,
+        73:     );
+        74:   }
+        75:   for (const name of Object.keys(ALLOWED)) {
+        76:     if (name === "consumer-installer.mjs") continue;
+        77:     assert.ok(submodules.includes(name), `matrix lists scripts/${name} but the module does not exist`);
+        78:   }
+        79: });
+        80: 
+        81: test("each installer module imports only modules allowed by the layering", () => {
+        82:   for (const [name, allowed] of Object.entries(ALLOWED)) {
+        83:     const imports = localImports(name === "consumer-installer.mjs" ? ORCHESTRATOR : moduleKeyToPath(name));
+        84:     for (const dependency of imports) {
+        85:       assert.ok(
+        86:         allowed.includes(dependency),
+        87:         `scripts/${name} imports ${dependency}, which the layering forbids`,
+        88:       );
+        89:     }
+        90:   }
+        91: });
+        92: 
+        93: test("leaf installer modules import no local installer module", () => {
+        94:   for (const leaf of LEAVES) {
+        95:     assert.deepEqual(
+        96:       localImports(moduleKeyToPath(leaf)),
+        97:       [],
+        98:       `scripts/${leaf} is a leaf and must not import any local installer module`,
+        99:     );
+        100:   }
+        101: });
+        102: 
+        103: test("the installer dependency graph has no cycle", () => {
+        104:   // Resolve every matrix edge to an absolute-relative key rooted at scripts/ so
+        105:   // the graph is comparable across importing directories, then run a DFS that
+        106:   // fails on any back edge.
+        107:   const graph = new Map();
+        108:   for (const [name, allowed] of Object.entries(ALLOWED)) {
+        109:     const fromDir = name.includes("/") ? name.slice(0, name.lastIndexOf("/")) : "";
+        110:     const resolved = allowed.map((spec) => {
+        111:       const withoutDot = spec.replace(/^\.\//u, "").replace(/^\.\.\//u, "");
+        112:       if (spec.startsWith("../")) return withoutDot; // relative to scripts/
+        113:       return fromDir ? `${fromDir}/${withoutDot}` : withoutDot;
+        114:     });
+        115:     graph.set(name, resolved);
+        116:   }
+        117:   const state = new Map();
+        118:   const visit = (node, stack) => {
+        119:     if (state.get(node) === "done") return;
+        120:     assert.ok(state.get(node) !== "active", `import cycle detected through ${[...stack, node].join(" -> ")}`);
+        121:     state.set(node, "active");
+        122:     for (const next of graph.get(node) ?? []) visit(next, [...stack, node]);
+        123:     state.set(node, "done");
+        124:   };
+        125:   for (const node of graph.keys()) visit(node, []);
+        126: });
+        
+        --------
+        
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        test/installer-modules.test.js:
+        1: import assert from "node:assert/strict";
+        2: import { createHash } from "node:crypto";
+        3: import { mkdtemp, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
+        4: import os from "node:os";
+        5: import path from "node:path";
+        6: import test from "node:test";
+        7: 
+        8: import {
+        9:   DEFAULT_CONFIG,
+        10:   HISTORICAL_TEMPLATE_HASHES,
+        11:   MANIFEST_PATH,
+        12:   ROUTING_LABELS,
+        13:   SECRET_NAME,
+        14:   WORKFLOW_PATH,
+        15:   decodeManifest,
+        16:   formatReport,
+        17:   manifestJson,
+        18:   normalizeRepository,
+        19:   parseArguments,
+        20:   parseGitHubRemote,
+        21:   recognizeTemplate,
+        22:   resolveConfiguration,
+        23:   resolveOverride,
+        24:   sameRepository,
+        25:   sha256,
+        26:   validateConfiguration,
+        27:   variableValues,
+        28: } from "../scripts/consumer-installer/codecs.mjs";
+        29: import {
+        30:   GitHubCli,
+        31:   gitOutput,
+        32:   resolveSourceRelease,
+        33: } from "../scripts/consumer-installer/transport.mjs";
+        34: import {
+        35:   atomicWrite,
+        36:   loadLocalState,
+        37:   makePathGuard,
+        38:   readOptional,
+        39:   removeOptional,
+        40: } from "../scripts/consumer-installer/persistence.mjs";
+        41: import {
+        42:   assertManifestRepository,
+        43:   assertWorkflowCanBeManaged,
+        44:   createManifest,
+        45:   planResources,
+        46:   publicAction,
+        47:   sourceOverride,
+        48: } from "../scripts/consumer-installer/plan.mjs";
+        49: 
+        50: const sha256Hex = (value) => createHash("sha256").update(value).digest("hex");
+        51: 
+        52: function snapshot({ variables = {}, secrets = [], labels = [] } = {}) {
+        53:   return {
+        54:     variables: new Map(Object.entries(variables)),
+        55:     secrets: new Set(secrets),
+        56:     labels: new Map(labels.map((name) => [name, { name }])),
+        57:   };
+        58: }
+        59: 
+        60: // ---------------------------------------------------------------------------
+        61: // codecs (leaf)
+        62: // ---------------------------------------------------------------------------
+        63: 
+        64: test("codecs: sameRepository is case-insensitive and normalizeRepository enforces OWNER/REPO", () => {
+        65:   assert.equal(sameRepository("Acme/Repo", "acme/repo"), true);
+        66:   assert.equal(normalizeRepository("acme/repo"), "acme/repo");
+        67:   assert.throws(() => normalizeRepository("not-a-repo"), /OWNER\/REPO/u);
+        68: });
+        69: 
+        70: test("codecs: validateConfiguration enforces the provider allowlist and model shape", () => {
+        71:   const ok = validateConfiguration(DEFAULT_CONFIG);
+        72:   assert.equal(ok.provider, "openrouter");
+        73:   assert.throws(() => validateConfiguration({ ...DEFAULT_CONFIG, provider: "nope" }), /provider must be one of/u);
+        74:   assert.throws(
+        75:     () => validateConfiguration({ provider: "openrouter", cheapModel: "openrouter/x", deepModel: "bad" }),
+        76:     /deep model must use the openrouter\/<model-id> form/u,
+        77:   );
+        78: });
+        79: 
+        80: test("codecs: resolveConfiguration falls back to an existing manifest then defaults", () => {
+        81:   const existing = { configuration: { provider: "openai", cheapModel: "gpt-a", deepModel: "gpt-b" } };
+        82:   assert.deepEqual(resolveConfiguration({}, existing), existing.configuration);
+        83:   assert.deepEqual(resolveConfiguration({}, null), { ...DEFAULT_CONFIG });
+        84:   assert.equal(resolveConfiguration({ provider: "openai", cheapModel: "gpt-a", deepModel: "gpt-b" }, null).provider, "openai");
+        85: });
+        86: 
+        87: test("codecs: parseGitHubRemote handles https/ssh and rejects non-GitHub remotes", () => {
+        88:   assert.equal(parseGitHubRemote("https://github.com/acme/consumer.git"), "acme/consumer");
+        89:   assert.equal(parseGitHubRemote("git@github.com:acme/consumer.git"), "acme/consumer");
+        90:   assert.equal(parseGitHubRemote("https://gitlab.com/acme/consumer.git"), null);
+        91: });
+        92: 
+        93: test("codecs: parseArguments accepts a valid install and rejects mismatched flags", () => {
+        94:   const options = parseArguments(["install", "--github", "acme/consumer", "--dry-run"]);
+        95:   assert.deepEqual(options, { command: "install", repository: "acme/consumer", dryRun: true });
+        96:   assert.deepEqual(parseArguments([]), { help: true });
+        97:   assert.throws(() => parseArguments(["check", "--set-secret"]), /check does not accept secret input/u);
+        98:   assert.throws(() => parseArguments(["install", "--yes"]), /does not accept --yes/u);
+        99: });
+        100: 
+        101: test("codecs: resolveOverride requires both a 40-hex commit and a v-semver tag", () => {
+        102:   assert.deepEqual(
+        103:     resolveOverride({ tag: "v1.2.3", commit: "a".repeat(40) }),
+        104:     { commit: "a".repeat(40), tag: "v1.2.3", released: false },
+        105:   );
+        106:   assert.throws(() => resolveOverride({ tag: "v1.2.3", commit: "short" }), /40-character hex/u);
+        107:   assert.throws(() => resolveOverride({ tag: null, commit: "a".repeat(40) }), /v<semver> release tag/u);
+        108: });
+        109: 
+        110: test("codecs: recognizeTemplate matches the current template and allow-listed history only", () => {
+        111:   assert.deepEqual(recognizeTemplate("abc", "abc", HISTORICAL_TEMPLATE_HASHES), { label: "current source" });
+        112:   const historical = HISTORICAL_TEMPLATE_HASHES[0];
+        113:   assert.deepEqual(
+        114:     recognizeTemplate(historical.sha256, "abc", HISTORICAL_TEMPLATE_HASHES),
+        115:     { label: historical.tag },
+        116:   );
+        117:   assert.equal(recognizeTemplate("unknown", "abc", HISTORICAL_TEMPLATE_HASHES), null);
+        118: });
+        119: 
+        120: test("codecs: decodeManifest round-trips a schema-2 manifest and rejects a foreign label", () => {
+        121:   const templateSha = sha256Hex("workflow-body");
+        122:   const configuration = { ...DEFAULT_CONFIG };
+        123:   const manifest = createManifest({
+        124:     state: "active",
+        125:     repository: "acme/consumer",
+        126:     templateSha,
+        127:     configuration,
+        128:     resources: {
+        129:       variables: Object.fromEntries(
+        130:         Object.entries(variableValues(configuration)).map(([name, value]) => [name, { value, owned: true }]),
+        131:       ),
+        132:       secret: { name: SECRET_NAME, owned: true },
+        133:       labels: ROUTING_LABELS.map(({ name }) => ({ name, owned: true })),
+        134:     },
+        135:     release: { commit: "a".repeat(40), tag: "v1.0.0", released: true },
+        136:   });
+        137:   const decoded = decodeManifest(manifestJson(manifest));
+        138:   assert.equal(decoded.repository, "acme/consumer");
+        139:   const tampered = { ...manifest, resources: { ...manifest.resources, labels: [{ name: "review:bogus", owned: true }] } };
+        140:   assert.throws(() => decodeManifest(manifestJson(tampered)), /label ownership/u);
+        141: });
+        142: 
+        143: test("codecs: formatReport renders healthy check and dry-run action lists", () => {
+        144:   assert.equal(
+        145:     formatReport({ command: "check", ok: true, repository: "acme/consumer" }),
+        146:     "Installation is healthy for acme/consumer.",
+        147:   );
+        148:   assert.equal(
+        149:     formatReport({ command: "install", ok: true, dryRun: true, repository: "acme/consumer", actions: ["do a thing"] }),
+        150:     "install dry run for acme/consumer:\n- do a thing",
+        151:   );
+        152: });
+        153: 
+        154: // ---------------------------------------------------------------------------
+        155: // plan (pure)
+        156: // ---------------------------------------------------------------------------
+        157: 
+        158: test("plan: planResources creates missing resources and marks them owned", () => {
+        159:   const { actions, resources } = planResources(DEFAULT_CONFIG, snapshot(), null, true);
+        160:   const kinds = actions.map((action) => action.kind).sort();
+        161:   assert.deepEqual(kinds, [
+        162:     "create-label",
+        163:     "create-label",
+        164:     "create-label",
+        165:     "create-label",
+        166:     "create-label",
+        167:     "set-secret",
+        168:     "set-variable",
+        169:     "set-variable",
+        170:     "set-variable",
+        171:   ]);
+        172:   assert.equal(resources.secret.owned, true);
+        173:   assert.ok(Object.values(resources.variables).every((entry) => entry.owned === true));
+        174: });
+        175: 
+        176: test("plan: planResources preserves matching unowned resources and rejects an unowned conflict", () => {
+        177:   const existing = snapshot({
+        178:     variables: { PR_AGENT_MODEL_PROVIDER: "openrouter", CHEAP_REVIEW_MODEL: DEFAULT_CONFIG.cheapModel, DEEP_REVIEW_MODEL: DEFAULT_CONFIG.deepModel },
+        179:     secrets: [SECRET_NAME],
+        180:     labels: ROUTING_LABELS.map(({ name }) => name),
+        181:   });
+        182:   const { actions, resources } = planResources(DEFAULT_CONFIG, existing, null, false);
+        183:   assert.deepEqual(actions, []);
+        184:   assert.equal(resources.secret.owned, false);
+        185:   const conflicting = snapshot({
+        186:     variables: { PR_AGENT_MODEL_PROVIDER: "different", CHEAP_REVIEW_MODEL: DEFAULT_CONFIG.cheapModel, DEEP_REVIEW_MODEL: DEFAULT_CONFIG.deepModel },
+        187:     secrets: [SECRET_NAME],
+        188:   });
+        189:   assert.throws(() => planResources(DEFAULT_CONFIG, conflicting, null, false), /already exists with a different unowned value/u);
+        190: });
+        191: 
+        192: test("plan: planResources without a secret and without --set-secret fails closed", () => {
+        193:   assert.throws(() => planResources(DEFAULT_CONFIG, snapshot(), null, false), /is missing; rerun with --set-secret/u);
+        194: });
+        195: 
+        196: test("plan: assertWorkflowCanBeManaged rejects an unmanaged workflow but resumes a pending one", () => {
+        197:   assert.throws(
+        198:     () => assertWorkflowCanBeManaged("install", { manifest: null, workflow: "operator edit" }, "template"),
+        199:     /is not managed by sd-github-review/u,
+        200:   );
+        201:   assert.throws(
+        202:     () => assertWorkflowCanBeManaged("update", { manifest: null, workflow: null }, "template"),
+        203:     /update requires/u,
+        204:   );
+        205:   // A pending manifest with a mismatched workflow hash must resume, not throw.
+        206:   assert.doesNotThrow(() =>
+        207:     assertWorkflowCanBeManaged(
+        208:       "install",
+        209:       { manifest: { state: "pending", workflow: { sha256: "other" } }, workflow: "drifted" },
+        210:       "template",
+        211:     ),
+        212:   );
+        213: });
+        214: 
+        215: test("plan: assertWorkflowCanBeManaged rejects operator drift on an active install", () => {
+        216:   assert.throws(
+        217:     () =>
+        218:       assertWorkflowCanBeManaged(
+        219:         "update",
+        220:         { manifest: { state: "active", workflow: { sha256: sha256("original") } }, workflow: "edited" },
+        221:         "template",
+        222:       ),
+        223:     /was modified after installation/u,
+        224:   );
+        225: });
+        226: 
+        227: test("plan: assertManifestRepository rejects a foreign manifest and publicAction is exhaustive", () => {
+        228:   assert.throws(() => assertManifestRepository({ repository: "acme/other" }, "acme/consumer"), /manages acme\/other/u);
+        229:   assert.doesNotThrow(() => assertManifestRepository(null, "acme/consumer"));
+        230:   assert.equal(publicAction({ kind: "set-variable", name: "X" }), "set GitHub variable X");
+        231:   assert.equal(publicAction({ kind: "delete-secret" }), `delete GitHub secret ${SECRET_NAME}`);
+        232:   assert.throws(() => publicAction({ kind: "nope" }), /unsupported lifecycle action/u);
+        233: });
+        234: 
+        235: test("plan: sourceOverride reads options then env, rejecting an explicitly empty env var", () => {
+        236:   assert.equal(sourceOverride({}, {}), undefined);
+        237:   assert.deepEqual(sourceOverride({ sourceTag: "v1.0.0" }, {}), { tag: "v1.0.0", commit: null });
+        238:   assert.deepEqual(sourceOverride({}, { SD_SOURCE_COMMIT: "a".repeat(40) }), { tag: null, commit: "a".repeat(40) });
+        239:   assert.throws(() => sourceOverride({}, { SD_SOURCE_TAG: "" }), /SD_SOURCE_TAG is set but empty/u);
+        240: });
+        241: 
+        242: test("plan: createManifest encodes the (released, tag) provenance pair verbatim", () => {
+        243:   const manifest = createManifest({
+        244:     state: "pending",
+        245:     repository: "acme/consumer",
+        246:     templateSha: "deadbeef",
+        247:     configuration: DEFAULT_CONFIG,
+        248:     resources: { variables: {}, secret: { name: SECRET_NAME, owned: true }, labels: [] },
+        249:     release: { commit: "a".repeat(40), tag: "v2.0.0", released: true },
+        250:   });
+        251:   assert.equal(manifest.source.released, true);
+        252:   assert.equal(manifest.source.tag, "v2.0.0");
+        253:   assert.equal(manifest.workflow.sha256, "deadbeef");
+        254: });
+        255: 
+        256: // ---------------------------------------------------------------------------
+        257: // transport (imports codecs)
+        258: // ---------------------------------------------------------------------------
+        259: 
+        260: test("transport: GitHubCli redacts the secret from a failed secret-set subprocess", async () => {
+        261:   const secret = "sk-super-secret-value";
+        262:   const fakeSpawn = (command, args, options) => ({
+        263:     status: 1,
+        264:     stdout: "",
+        265:     stderr: `refused: token ${options.input} rejected`,
+        266:     error: null,
+        267:   });
+        268:   const cli = new GitHubCli({ spawnImpl: fakeSpawn });
+        269:   await assert.rejects(
+        270:     () => cli.setSecret("acme/consumer", { value: secret }),
+        271:     (error) => {
+        272:       assert.ok(!error.message.includes(secret), "the secret must not appear in the error");
+        273:       assert.ok(error.message.includes("[redacted]"), "the secret must be redacted");
+        274:       return true;
+        275:     },
+        276:   );
+        277: });
+        278: 
+        279: test("transport: GitHubCli maps a subprocess timeout to reconciliation guidance", async () => {
+        280:   const fakeSpawn = () => ({
+        281:     status: null,
+        282:     stdout: "",
+        283:     stderr: "",
+        284:     error: Object.assign(new Error("timed out"), { code: "ETIMEDOUT" }),
+        285:   });
+        286:   const cli = new GitHubCli({ spawnImpl: fakeSpawn });
+        287:   await assert.rejects(
+        288:     () => cli.setVariable("acme/consumer", "PR_AGENT_MODEL_PROVIDER", "openrouter"),
+        289:     /timed out after .*verify no partial change was applied/u,
+        290:   );
+    [33m...(output was truncated)...[92m
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mLLM Response:[36m
+    [][39m
+[39mLLM Response:[36m
+    [][39m
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        Summarize the code review in one sentence.
+        --Reviewed Changes--
+        diff --git a/package.json b/package.json
+        index 84ad828..89a8ff5 100644
+        --- a/package.json
+        +++ b/package.json
+        @@ -9,7 +9,7 @@
+             "node": ">=24"
+           },
+           "scripts": {
+        -    "check": "node --check src/index.js && node --check src/operations.js && node --check src/operation-contract.js && node --check src/router.js && node --check src/protocol.js && node --check src/receipt.js && node --check src/risk-context.js && node --check src/reviewer-dispatch.js && node --check src/normalize.js && node --check src/path-match.js && node --check src/github.js && node --check scripts/consumer-installer.mjs && node --check scripts/install-consumer.mjs && node --check scripts/validate-action-metadata.mjs && node --check scripts/check-coverage.mjs && node --check scripts/validate-ci-parity.mjs",
+        +    "check": "node --check src/index.js && node --check src/operations.js && node --check src/operation-contract.js && node --check src/router.js && node --check src/protocol.js && node --check src/receipt.js && node --check src/risk-context.js && node --check src/reviewer-dispatch.js && node --check src/normalize.js && node --check src/path-match.js && node --check src/github.js && node --check scripts/consumer-installer.mjs && node --check scripts/consumer-installer/codecs.mjs && node --check scripts/consumer-installer/transport.mjs && node --check scripts/consumer-installer/persistence.mjs && node --check scripts/consumer-installer/plan.mjs && node --check scripts/install-consumer.mjs && node --check scripts/validate-action-metadata.mjs && node --check scripts/check-coverage.mjs && node --check scripts/validate-ci-parity.mjs",
+             "validate:metadata": "node scripts/validate-action-metadata.mjs",
+             "validate:release": "node scripts/validate-action-metadata.mjs --release-tag",
+             "validate:ci-parity": "node scripts/validate-ci-parity.mjs",
+        
+        diff --git a/scripts/check-coverage.mjs b/scripts/check-coverage.mjs
+        index ce4487b..bd363bf 100644
+        --- a/scripts/check-coverage.mjs
+        +++ b/scripts/check-coverage.mjs
+        @@ -18,13 +18,26 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
+         
+         // Coverage is measured only for shipped product code; test files, fixtures, and
+         // dev tooling are excluded so the numbers reflect what consumers actually run.
+        -const INCLUDES = ["src/**", "scripts/consumer-installer.mjs", "scripts/install-consumer.mjs"];
+        +const INCLUDES = [
+        +  "src/**",
+        +  "scripts/consumer-installer.mjs",
+        +  "scripts/consumer-installer/**",
+        +  "scripts/install-consumer.mjs",
+        +];
+         
+         // [lines, branches, functions] minimum percentages.
+         const GLOBAL_FLOOR = { lines: 88, branches: 77, functions: 88 };
+         const FILE_FLOORS = {
+           "src/index.js": { lines: 95, branches: 82, functions: 88 },
+        -  "scripts/consumer-installer.mjs": { lines: 82, branches: 73, functions: 85 },
+        +  // A-009 split scripts/consumer-installer.mjs into the four focused modules
+        +  // below. Floors sit a few points under observed coverage (orchestrator
+        +  // 90.78/81.90/100; codecs 89.02/75.83/95; transport 95.59/83.52/93.55;
+        +  // persistence 97.69/92.86/92.31; plan 96.89/95.83/100).
+        +  "scripts/consumer-installer.mjs": { lines: 86, branches: 77, functions: 95 },
+        +  "scripts/consumer-installer/codecs.mjs": { lines: 84, branches: 70, functions: 90 },
+        +  "scripts/consumer-installer/transport.mjs": { lines: 90, branches: 78, functions: 88 },
+        +  "scripts/consumer-installer/persistence.mjs": { lines: 93, branches: 87, functions: 87 },
+        +  "scripts/consumer-installer/plan.mjs": { lines: 92, branches: 90, functions: 95 },
+           "scripts/install-consumer.mjs": { lines: 70, branches: 45, functions: 60 },
+         };
+         
+        
+        diff --git a/scripts/consumer-installer.mjs b/scripts/consumer-installer.mjs
+        index 8fff098..0387090 100644
+        --- a/scripts/consumer-installer.mjs
+        +++ b/scripts/consumer-installer.mjs
+        @@ -1,768 +1,82 @@
+        -import { createHash, randomBytes } from "node:crypto";
+        -import { execFile, execFileSync, spawnSync } from "node:child_process";
+        -import { lstat, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+        +// Orchestration for the consumer installer lifecycle (A-009). This module wires
+        +// the pure codecs, the transport/`gh` seam, local persistence, and pure
+        +// planning into the install/update/adopt/check/uninstall flows, and remains the
+        +// single public module: it re-exports every symbol the CLI entrypoint and the
+        +// test suite import so the decomposition is behavior-preserving.
+        +import { readFile } from "node:fs/promises";
+         import path from "node:path";
+        -import { promisify } from "node:util";
+        -
+        -const execFileAsync = promisify(execFile);
+        -
+        -export const MANIFEST_PATH = ".github/sd-github-review.json";
+        -export const WORKFLOW_PATH = ".github/workflows/ai-review-router.yml";
+        -export const TEMPLATE_PATH = "examples/pr-agent-router.yml";
+        -export const SECRET_NAME = "PR_AGENT_MODEL_API_KEY";
+        -export const DEFAULT_CONFIG = Object.freeze({
+        -  provider: "openrouter",
+        -  cheapModel: "openrouter/qwen/qwen3-coder-30b-a3b-instruct",
+        -  deepModel: "openrouter/moonshotai/kimi-k2.6",
+        -});
+        -
+        -export const ROUTING_LABELS = Object.freeze([
+        -  Object.freeze({
+        -    name: "review:cheap",
+        -    color: "0e8a16",
+        -    description: "Route to the routine AI reviewer",
+        -  }),
+        -  Object.freeze({
+        -    name: "review:deep",
+        -    color: "5319e7",
+        -    description: "Route to the deeper AI reviewer",
+        -  }),
+        -  Object.freeze({
+        -    name: "review:copilot",
+        -    color: "1d76db",
+        -    description: "Route to GitHub Copilot code review",
+        -  }),
+        -  Object.freeze({
+        -    name: "review:none",
+        -    color: "b60205",
+        -    description: "Disable AI review for this pull request",
+        -  }),
+        -  Object.freeze({
+        -    name: "review:auto",
+        -    color: "fbca04",
+        -    description: "Use automatic AI review routing",
+        -  }),
+        -]);
+        -
+        -export const SUPPORTED_PROVIDERS = Object.freeze([
+        -  "openai",
+        -  "gemini",
+        -  "openrouter",
+        -  "anthropic",
+        -  "cohere",
+        -  "replicate",
+        -  "groq",
+        -  "sambanova",
+        -  "xai",
+        -  "deepseek",
+        -  "deepinfra",
+        -  "mistral",
+        -  "codestral",
+        -]);
+        -const SUPPORTED_PROVIDER_SET = new Set(SUPPORTED_PROVIDERS);
+        -const CONFIG_VARIABLES = Object.freeze({
+        -  PR_AGENT_MODEL_PROVIDER: "provider",
+        -  CHEAP_REVIEW_MODEL: "cheapModel",
+        -  DEEP_REVIEW_MODEL: "deepModel",
+        -});
+        -const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
+        -const REPOSITORY_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u;
+        -const LIFECYCLE_STATES = new Set(["pending", "active", "uninstalling"]);
+        -const MAX_MODEL_LENGTH = 256;
+        -// Bounded wall-clock deadlines for the installer's own subprocesses, so a hung
+        -// network call or a credential helper waiting on a prompt cannot stall the
+        -// installer forever. `gh` subprocesses reach the network (repo/label/secret
+        -// APIs), so they get the larger bound; local `git` metadata reads get the
+        -// smaller one. Both are positive and fixed here, never derived from input.
+        -export const GH_COMMAND_TIMEOUT_MS = 120_000;
+        -export const GIT_COMMAND_TIMEOUT_MS = 30_000;
+        -
+        -// Consumer-manifest schema version. Bumped 1 -> 2 to record source provenance
+        -// (commit, tag, released) on the source template. Distinct from the action
+        -// contract descriptor's schemaVersion in config/routed-review-setup-v1.json.
+        -export const MANIFEST_SCHEMA_VERSION = 2;
+        -const COMMIT_PATTERN = /^[0-9a-f]{40}$/u;
+        -const RELEASE_TAG_PATTERN =
+        -  /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
+        -
+        -// A-019 adoption registry. Versioned repository data, not a contextual guess:
+        -// the exact SHA-256 of every historical `examples/pr-agent-router.yml` a
+        -// consumer may have copied manually per SETUP-PR-AGENT.md. `adopt` recognizes
+        -// only these hashes (plus the current template, matched dynamically) and then
+        -// converges the workflow to the current source. When the shipped template
+        -// changes, add the superseded release's hash here so its manual installs stay
+        -// adoptable. Hashes are exact bytes; there is no fuzzy/semantic matching.
+        -export const HISTORICAL_TEMPLATE_HASHES = Object.freeze([
+        -  Object.freeze({
+        -    tag: "v0.1.0",
+        -    sha256: "fb372116ae1853da92865ddf03c79dd93dcc174ac0f7979eda3eefdcf336bc18",
+        -  }),
+        -]);
+        -
+        -function isObject(value) {
+        -  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+        -}
+        -
+        -function sha256(value) {
+        -  return createHash("sha256").update(value).digest("hex");
+        -}
+        -
+        -function redact(value, secret) {
+        -  if (!secret || typeof value !== "string") return value;
+        -  return value.replaceAll(secret, "[redacted]");
+        -}
+        -
+        -function commandFailure(command, args, result, secret) {
+        -  const stderr = redact(result.stderr?.trim(), secret);
+        -  const detail = stderr || `exit status ${result.status ?? "unknown"}`;
+        -  // Redact the args too: a secret can be passed via options.secret, and the
+        -  // nonzero-exit path must not leak it when the timeout/startup paths do not.
+        -  const redactedArgs = args.map((arg) => redact(arg, secret)).join(" ");
+        -  return new Error(`${command} ${redactedArgs} failed: ${detail}`);
+        -}
+        -
+        -function commandTimeout(command, args, timeoutMs, secret, readOnly) {
+        -  // Name the command and its (secret-redacted) args, never stdin, and match the
+        -  // recovery guidance to the command's effect. A killed mutating subprocess
+        -  // (variable/secret/label set or delete) may have partially applied a remote
+        -  // change, so the operator reconciles state; a read-only query (the repo,
+        -  // variable, secret, and label list calls behind inspect()) has no side effect
+        -  // to reconcile, so a plain retry is safe.
+        -  const redactedArgs = args.map((arg) => redact(arg, secret)).join(" ");
+        -  const guidance = readOnly
+        -    ? "the read was interrupted — retry once GitHub is responsive"
+        -    : "verify no partial change was applied before retrying";
+        -  return new Error(
+        -    `${command} ${redactedArgs} timed out after ${timeoutMs}ms; ${guidance}`,
+        -  );
+        -}
+        -
+        -// Shared interpretation of a spawnSync-shaped result. Both the synchronous
+        -// runCommand and the asynchronous runCommandAsync route through this so the
+        -// timeout wording, secret redaction, and failure mapping cannot diverge.
+        -function interpretCommandResult(command, args, result, options, timeoutMs) {
+        -  if (result.error) {
+        -    if (result.error.code === "ETIMEDOUT") {
+        -      throw commandTimeout(command, args, timeoutMs, options.secret, options.readOnly);
+        -    }
+        -    throw new Error(`${command} could not start: ${redact(result.error.message, options.secret)}`);
+        -  }
+        -  if (result.status !== 0) {
+        -    throw commandFailure(command, args, result, options.secret);
+        -  }
+        -  return result.stdout ?? "";
+        -}
+        -
+        -function parseCommandJson(command, args, output) {
+        -  try {
+        -    return JSON.parse(output);
+        -  } catch {
+        -    throw new Error(`${command} ${args.join(" ")} returned invalid JSON`);
+        -  }
+        -}
+        -
+        -function runCommand(command, args, options = {}) {
+        -  const spawnImpl = options.spawnImpl ?? spawnSync;
+        -  const timeoutMs = options.timeoutMs ?? GH_COMMAND_TIMEOUT_MS;
+        -  const result = spawnImpl(command, args, {
+        -    cwd: options.cwd,
+        -    encoding: "utf8",
+        -    env: process.env,
+        -    input: options.input,
+        -    stdio: options.inherit ? "inherit" : undefined,
+        -    timeout: timeoutMs,
+        -    killSignal: "SIGTERM",
+        -  });
+        -  return interpretCommandResult(command, args, result, options, timeoutMs);
+        -}
+        -
+        -// execFile represents a timeout in two ways across Node versions: a string code
+        -// "ETIMEDOUT", or a killSignal-kill (killed + signal === killSignal) with NO
+        -// error code. execFile ALSO kills the child with killSignal on a maxBuffer
+        -// overflow, but that rejection carries a string code
+        -// ("ERR_CHILD_PROCESS_STDIO_MAXBUFFER"); requiring the code to be absent keeps a
+        -// maxBuffer (or any other coded kill) from being misreported as a timeout.
+        -function isTimeoutKill(error, killSignal) {
+        -  if (error.code === "ETIMEDOUT") return true;
+        -  return Boolean(error.killed) && error.signal === killSignal && error.code == null;
+        -}
+        -
+        -// Asynchronous sibling of runCommand for independent read-only queries that can
+        -// overlap. It maps execFile's rejection into the same spawnSync-shaped result
+        -// interpretCommandResult understands. Not used for mutations, which stay on the
+        -// ordered synchronous path.
+        -async function runCommandAsync(command, args, options = {}) {
+        -  const execImpl = options.execImpl ?? execFileAsync;
+        -  const timeoutMs = options.timeoutMs ?? GH_COMMAND_TIMEOUT_MS;
+        -  let result;
+        -  try {
+        -    const { stdout } = await execImpl(command, args, {
+        -      cwd: options.cwd,
+        -      encoding: "utf8",
+        -      env: process.env,
+        -      timeout: timeoutMs,
+        -      killSignal: "SIGTERM",
+        -    });
+        -    result = { error: null, status: 0, stdout, stderr: "" };
+        -  } catch (error) {
+        -    if (isTimeoutKill(error, "SIGTERM")) {
+        -      result = {
+        -        error: Object.assign(new Error("timed out"), { code: "ETIMEDOUT" }),
+        -        status: null,
+        -        stdout: "",
+        -        stderr: error.stderr ?? "",
+        -      };
+        -    } else if (typeof error.code === "number") {
+        -      result = { error: null, status: error.code, stdout: error.stdout ?? "", stderr: error.stderr ?? "" };
+        -    } else {
+        -      result = { error, status: null, stdout: "", stderr: "" };
+        -    }
+        -  }
+        -  return interpretCommandResult(command, args, result, options, timeoutMs);
+        -}
+        -
+        -export class GitHubCli {
+        -  // spawnImpl/timeoutMs are injectable so fake-child-process tests can drive the
+        -  // timeout, redaction, and recovery-guidance paths without a real subprocess.
+        -  // execImpl is the async execFile seam used only by the concurrent read path
+        -  // (inspect); spawnImpl remains the synchronous seam for all mutations, so
+        -  // installation state transitions stay ordered. Both are injectable for tests.
+        -  constructor({ spawnImpl = spawnSync, execImpl = execFileAsync, timeoutMs = GH_COMMAND_TIMEOUT_MS } = {}) {
+        -    this.spawnImpl = spawnImpl;
+        -    this.execImpl = execImpl;
+        -    this.timeoutMs = timeoutMs;
+        -  }
+    [33m...(output was truncated)...[92m
+        
+        **Presentation example:**
+        ```
+        🎵 PATTERN COMPOSER 🎵
+        "Your symphony of patterns sounds magnificent! Factory method opens the first movement,
+        decorators add depth and texture, and observer masterfully completes the composition.
+        The Gang of Four gives a standing ovation from the stalls."
+        ```
+        
+        ---
+        - Your response will be parsed programmatically, so do not include any additional text.
+        - Do not include the issues by itself to the summary, they are already provided in the context.
+        - Use Markdown formatting in your response.
+        [39m
+
+[39mLLM Response:[36m
+    The consumer installer has been elegantly refactored from a monolithic script into a modular architecture, splitting pure codecs, transport, local persistence, and planning into separate leaf modules with strict, enforced one-way dependencies, improving maintainability, testability, and clarity without changing functional behavior.
+    
+    <!-- award -->
+    🏛️ ARCHITECTURAL VIRTUOSO 🏛️
+    "Your architecture is like the Parthenon of modern code: proportional, harmonious, and seems
+    to withstand the pressure of time and changing requirements. Vitruvius records your patterns
+    for future generations."[39m
+
+[44m  +  +  +  ---==<<[ CODE REVIEW[22m ]>>==---  +  +  +  [0m
+[1m[42m ✅  No issues found [49m in [44m 9 [49m files[0m
+
+[1m✨  SUMMARY [0m
+The consumer installer has been elegantly refactored from a monolithic script into a modular architecture, splitting pure codecs, transport, local persistence, and planning into separate leaf modules with strict, enforced one-way dependencies, improving maintainability, testability, and clarity without changing functional behavior.
+
+🏛️ ARCHITECTURAL VIRTUOSO 🏛️
+"Your architecture is like the Parthenon of modern code: proportional, harmonious, and seems
+to withstand the pressure of time and changing requirements. Vitruvius records your patterns
+for future generations."
+

@@ -1,0 +1,123 @@
+{
+  "attemptId": "review-0d0c95641f41350aedd57c67",
+  "plan": {
+    "configurationDigest": "fd3ff633c0cb480516dc246fb53ef7cee3669e4b8350eea2a83c89e4da98536c",
+    "execution": "skipped",
+    "familyGate": {
+      "batchSize": 0,
+      "currentRound": 0,
+      "exactHead": "d444e24b1341081000c4b4fe063ee2fbdb60047c",
+      "families": [],
+      "repeatedFamilies": [],
+      "roundsAvoided": 0,
+      "schemaVersion": 1,
+      "siblingFindings": 0,
+      "state": "inactive"
+    },
+    "findingFamilies": [],
+    "fixPolicy": "auto",
+    "localPolicy": "optional",
+    "policyDigest": "a96e80ae152d682c198e8079d13d41081e9024038dcdfdfc24d51447a0462c4d",
+    "policyId": "explicit-none",
+    "providers": [],
+    "riskClass": "substantive",
+    "riskReasons": [
+      "source",
+      "tests"
+    ],
+    "schemaVersion": 1,
+    "scope": "branch_delta",
+    "successor": "first"
+  },
+  "schemaVersion": 1,
+  "target": {
+    "base": "608c91c7081820cb35360fdb3eaf47df8619484e",
+    "contentDigest": "23eade11cdf7e0919c8fdae8e7d7f3441b0430cff777a9efdb113c5863c7ca55",
+    "head": "d444e24b1341081000c4b4fe063ee2fbdb60047c",
+    "identity": "1c751a9fdb0b1cfce5d9a6eea96200fa2b6bd978bd7a17523701404e1a2c9d83",
+    "paths": [
+      {
+        "digest": "757479a473a7755945f6208e9a35a807df87d67810cdcbd13240de8d6b1bde48",
+        "kind": "file",
+        "path": ".trellis/spec/backend/directory-structure.md"
+      },
+      {
+        "digest": "97c59d48c74c010d30a0fc3215418980d081a73bc48d77f671c397a68a4b2f3a",
+        "kind": "file",
+        "path": ".trellis/tasks/07-25-define-review-candidate-catalog/research/catalog-reuse-map.md"
+      },
+      {
+        "digest": "6ed4684677c62757e2130d5f00efb7328232a149f68a07ef7e984db59a497de2",
+        "kind": "file",
+        "path": ".trellis/tasks/07-25-define-review-candidate-catalog/task.json"
+      },
+      {
+        "digest": "721eea8a6237653a6a045c3769c404343e131c84f1a6cdf3d1493734b5b988e6",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/candidate-safe-projection.invalid.json"
+      },
+      {
+        "digest": "de242bcf22bca348d4b7a22692c9ea789ce27e55f6644bfca94482ab7fc3dd79",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/candidate-safe-projection.valid.json"
+      },
+      {
+        "digest": "32fca2c614df0c8792ca49227b98f4c7e6cd28dbb6e9c24bd084c8b160106204",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/catalog-fail-closed.invalid.json"
+      },
+      {
+        "digest": "33021e02424a68321235fa7f20ab0de93db70f0fd69415ed0cafbf01692442e9",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/catalog-privacy-fields.invalid.json"
+      },
+      {
+        "digest": "185167eae6dd3f38843ab100ce838f5e978199ff001be7e00bcf41fc81ef1fce",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/catalog-retention.fake-clock.json"
+      },
+      {
+        "digest": "45a4485a1e1036f268ac59e276b65050e82096dbc9fa8fc23cf2a4b1f7ea6168",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/prompt-profile-registry.invalid.json"
+      },
+      {
+        "digest": "33eee4c727b263e562da70697973d309699b08a7b074ad71ba8e06e919a8786b",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/prompt-profile-registry.valid.json"
+      },
+      {
+        "digest": "8820c6156d894eca20a1161a47316d27af4a9ec6c6638217625c937856247faf",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/review-candidate-catalog.invalid.json"
+      },
+      {
+        "digest": "ac54ed254215215c9f2b59b9b278c1c86f7712d306db3dd80f8400b05d73c161",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/review-candidate-catalog.valid.json"
+      },
+      {
+        "digest": "4560e479a2cf7f03cef7da29f9200203cb429f37d81c7d51546792c2453ebc68",
+        "kind": "file",
+        "path": "package.json"
+      },
+      {
+        "digest": "fce85861d12a66a0e5247cb0060162785b5b2a2d2f7264854774f86c026185c4",
+        "kind": "file",
+        "path": "src/review-candidate-catalog.js"
+      },
+      {
+        "digest": "7307a7e944a54627738dba056495cc2906d95382b7c0e5adb6d2cd0dd184bfae",
+        "kind": "file",
+        "path": "test/dependency-boundaries.test.js"
+      },
+      {
+        "digest": "18d77c65ac7ab20bf5e83e3f6ba5b0151f2d3815f95d7be2d214f25e5c516bcd",
+        "kind": "file",
+        "path": "test/review-candidate-catalog.test.js"
+      }
+    ],
+    "repository": "github.com/platypeeps/sd-github-review",
+    "scope": "branch_delta"
+  }
+}

@@ -1,0 +1,156 @@
+{
+  "tool": "prism",
+  "version": "1.0",
+  "runId": "60a22af9db9080d86cd0026b0dec0a30",
+  "repo": {
+    "root": "/Users/sven/repos/platypeeps/sd-github-review",
+    "head": "a35817218cc87313eddc3ccf8441c0b6cd89e808",
+    "branch": "feat/install-routed-review-consumer"
+  },
+  "inputs": {
+    "mode": "range",
+    "range": "1b94b128b8a96eb476d140d7164bb4c61e9d7090..a35817218cc87313eddc3ccf8441c0b6cd89e808"
+  },
+  "summary": {
+    "counts": {
+      "low": 2,
+      "medium": 3,
+      "high": 0
+    },
+    "highestSeverity": "medium"
+  },
+  "findings": [
+    {
+      "id": "bbffadccb84ab73c",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "REVIEW_ROUTE_MODE not checked by installer",
+      "message": "The manifest, workflows, and documentation repeatedly warn that REVIEW_ROUTE_MODE is required for safe operation, but neither install nor check will currently verify its presence. Users could miss this and incur unwanted billing if the workflow or docs become out of sync.",
+      "suggestion": "If possible, update installer scripts and manifest logic to manage, check for, and optionally create REVIEW_ROUTE_MODE as a tracked variable, as is being suggested in the planned task.",
+      "confidence": 0.9,
+      "locations": [
+        {
+          "path": ".github/sd-github-review.json",
+          "lines": {
+            "start": 1,
+            "end": 74
+          }
+        }
+      ],
+      "tags": [
+        "correctness",
+        "maintainability"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "643be742bb92482b",
+      "severity": "medium",
+      "category": "security",
+      "title": "Sensitive provider key risk in event-driven lane fallback",
+      "message": "Both ai-review-router.yml and pr-agent-router.yml contain logic that explicitly warns about falling back to 'auto', which may consume paid resources or leak provider keys if REVIEW_ROUTE_MODE is unset or misspelled. The reviewer trust model depends heavily on this variable.",
+      "suggestion": "In addition to fail-closed at the workflow level, enforce this variable at install/check time, and periodically audit for removal or typo (e.g., via a scheduled test or linter). Consider explicitly alerting on GitHub when in an undefined or dangerous state.",
+      "confidence": 0.95,
+      "locations": [
+        {
+          "path": "examples/pr-agent-router.yml",
+          "lines": {
+            "start": 6,
+            "end": 30
+          }
+        }
+      ],
+      "tags": [
+        "security",
+        "correctness"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "74c0c43aac47ed41",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "Hard-coded assertion for workflow count replaced, but exampleCount is still fixed",
+      "message": "In test/metadata.test.js, the assertion for workflowCount is replaced by a dynamic comparison to the actual files on disk, but exampleCount is still set to 7, which may silently break if the number of examples changes.",
+      "suggestion": "Change the assertion on exampleCount to also enumerate the corresponding files on disk, similarly to the new assertion for workflows.",
+      "confidence": 0.95,
+      "locations": [
+        {
+          "path": "test/metadata.test.js",
+          "lines": {
+            "start": 146,
+            "end": 148
+          }
+        }
+      ],
+      "tags": [
+        "test",
+        "maintainability"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "605c58a6a101c286",
+      "severity": "low",
+      "category": "docs",
+      "title": "Stale documentation comment for reviewer variable management",
+      "message": "The README.md and consumer-installer.md files both describe REVIEW_ROUTE_MODE as not being managed by the installer, but the change log and acceptance criteria suggest that this is about to change (see .trellis/tasks/08-15-installer-managed-route-mode/). There is a risk of drift between documentation and real installer behavior.",
+      "suggestion": "Clearly annotate in README.md and .trellis/spec/backend/consumer-installer.md that if and when REVIEW_ROUTE_MODE becomes installer-managed, this documentation and all install/uninstall/check instructions must be updated.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": ".trellis/spec/backend/consumer-installer.md",
+          "lines": {
+            "start": 131,
+            "end": 137
+          }
+        }
+      ],
+      "tags": [
+        "docs",
+        "maintainability"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "445957da5f7acd06",
+      "severity": "low",
+      "category": "docs",
+      "title": "Complexity and workflow cross-dependencies not summarized",
+      "message": "There are complex interdependencies between the event-driven and durable lanes (e.g., which supports independent-review-floor, and how mode is routed). Currently, a new maintainer may spend significant time recovering these rules from comments and task docs.",
+      "suggestion": "Consider consolidating these routing and fail-closed rules in a `CONTRIBUTING.md` or a top-level architecture document to reduce onboarding friction and future integration errors.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": "examples/pr-agent-router.yml",
+          "lines": {
+            "start": 6,
+            "end": 48
+          }
+        }
+      ],
+      "tags": [
+        "docs",
+        "maintainability"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ],
+  "timing": {
+    "gitMs": 0,
+    "llmMs": 7900,
+    "totalMs": 7922
+  },
+  "_provenance": [
+    {
+      "ai_generated": true,
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ]
+}

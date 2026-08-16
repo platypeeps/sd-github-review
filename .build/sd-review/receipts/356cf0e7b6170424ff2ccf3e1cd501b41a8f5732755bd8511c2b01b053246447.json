@@ -1,0 +1,465 @@
+{
+  "attemptId": "review-a8d2ac0f1e243ba017c1a02d",
+  "attempts": [
+    {
+      "artifact": "runs/review-a8d2ac0f1e243ba017c1a02d/gito",
+      "diagnostic": "2026-08-09 14:17:04 INFO: Bootstrapping Gito v4.4.1... \u001b[90m[verbosity=1]\u001b[39m 2026-08-09 14:17:04 INFO: get_repo_context: Using local repo... 2026-08-09 14:17:04 INFO: Loading project-specific configuration from file:////Users/sven/repos/platypeeps/sd-github-review/.gito/config.toml... 2026-08-09 14:17:04 INFO: Making merge-base diff: \u001b[32mINDEX\u001b[39m vs \u001b[33mc3ec5f648f604d0f936b86a79425cc79ffc7fd7b\u001b[39m 2026-08-09 14:17:05 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 14:17:05 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 14:17:05 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 14:17:06 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 14:17:06 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 14:17:06 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 14:17:06 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 14:17:06 INFO: HTTP Request: POST ht...",
+      "durationMs": 6726,
+      "exitCode": 0,
+      "findings": [],
+      "provider": {
+        "adapter": "gito",
+        "costTier": "medium",
+        "dataHandling": "private-network",
+        "id": "gito",
+        "qualityTier": "standard",
+        "timeoutSeconds": 600,
+        "version": "builtin-v1"
+      },
+      "startedAt": 1786306623.4357572,
+      "status": "clean"
+    },
+    {
+      "artifact": "runs/review-a8d2ac0f1e243ba017c1a02d/prism",
+      "diagnostic": "{ \"tool\": \"prism\", \"version\": \"1.0\", \"runId\": \"7e3727fcb393ea95f5b60c967eb6028c\", \"repo\": { \"root\": \"/Users/sven/repos/platypeeps/sd-github-review\", \"head\": \"2dd02f895f3deed2ba1dc916ed2ea5d2d7f4022b\", \"branch\": \"feat/08-08-installer-durable-lane\" }, \"inputs\": { \"mode\": \"range\", \"range\": \"c3ec5f648f604d0f936b86a79425cc79ffc7fd7b..2dd02f895f3deed2ba1dc916ed2ea5d2d7f4022b\" }, \"summary\": { \"counts\": { \"low\": 2, \"medium\": 7, \"high\": 1 }, \"highestSeverity\": \"high\" }, \"findings\": [ { \"id\": \"866ded4bda3f3949\", \"severity\": \"high\", \"category\": \"security\", \"title\": \"Possible Time-of-check-Time-of-use (TOCTOU) race in atomicWriteIfChanged\", \"message\": \"atomicWriteIfChanged reads the file, checks content, and then writes if needed. Between the check and the write, another process may alter the file, causing unanticipated overwrites or data races.\", \"suggestion\": \"Ensure the atomic write checks file content immediately before overwriting, potentially using a filesystem lock or migrate to using fs.writeFile with the { flag: 'wx' } option, or check mtime before and after, and retry if changed between read and write.\", \"confidence\": 0.8, \"locations\": [ { \"path\": \"scripts/consumer-installer/persi...",
+      "durationMs": 13210,
+      "exitCode": 0,
+      "findings": [
+        {
+          "disposition": "outstanding",
+          "family": "security",
+          "line": 164,
+          "path": "scripts/consumer-installer/persistence.mjs",
+          "severity": "high",
+          "summary": "Possible Time-of-check-Time-of-use (TOCTOU) race in atomicWriteIfChanged"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "correctness",
+          "line": 38,
+          "path": "scripts/consumer-installer.mjs",
+          "severity": "medium",
+          "summary": "Potential false negative in hash comparison for managed files"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "performance",
+          "line": 100,
+          "path": "scripts/consumer-installer.mjs",
+          "severity": "medium",
+          "summary": "readManagedSources reads all files regardless of usage"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "correctness",
+          "line": 208,
+          "path": "scripts/consumer-installer.mjs",
+          "severity": "medium",
+          "summary": "Adopt or update can drop additional fields from non-schema fields"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "correctness",
+          "line": 490,
+          "path": "scripts/consumer-installer.mjs",
+          "severity": "medium",
+          "summary": "No dry-run write in uninstall can mask permission/collision problems"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "correctness",
+          "line": 515,
+          "path": "scripts/consumer-installer.mjs",
+          "severity": "medium",
+          "summary": "Uninstall will not remove files for legacy manifests present on disk"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "correctness",
+          "line": 180,
+          "path": "scripts/consumer-installer/plan.mjs",
+          "severity": "medium",
+          "summary": "Hardcoded mapping in createManifest breaks extensibility"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "correctness",
+          "line": 58,
+          "path": "test/installer-modules.test.js",
+          "severity": "medium",
+          "summary": "Missing field validation in manifestBody test utility"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "performance",
+          "line": 38,
+          "path": "scripts/consumer-installer.mjs",
+          "severity": "low",
+          "summary": "Double stringification in isConverged manifest comparison"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "maintainability",
+          "line": 172,
+          "path": "test/consumer-installer.test.js",
+          "severity": "low",
+          "summary": "Extensive repeat of file lists in managedFileState and similar functions"
+        }
+      ],
+      "provider": {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      },
+      "startedAt": 1786306623.435717,
+      "status": "findings"
+    }
+  ],
+  "confidence": {
+    "granted": false,
+    "limitations": []
+  },
+  "createdAt": 1786306636.646667,
+  "disposition": {
+    "fixPolicy": "auto",
+    "maximumFixCommitsBeforeRemote": 1,
+    "outstanding": 10
+  },
+  "findings": [
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "2fd94ebfa86c4488",
+      "line": 38,
+      "path": "scripts/consumer-installer.mjs",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "correctness"
+      ],
+      "summary": "Potential false negative in hash comparison for managed files"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "933e65dda527aced",
+      "line": 38,
+      "path": "scripts/consumer-installer.mjs",
+      "providers": [
+        "prism"
+      ],
+      "severity": "low",
+      "sourceFamilies": [
+        "performance"
+      ],
+      "summary": "Double stringification in isConverged manifest comparison"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "fdeb2598e932ccaf",
+      "line": 100,
+      "path": "scripts/consumer-installer.mjs",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "performance"
+      ],
+      "summary": "readManagedSources reads all files regardless of usage"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "726287e25415ede4",
+      "line": 208,
+      "path": "scripts/consumer-installer.mjs",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "correctness"
+      ],
+      "summary": "Adopt or update can drop additional fields from non-schema fields"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "c53fc00f62012263",
+      "line": 490,
+      "path": "scripts/consumer-installer.mjs",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "correctness"
+      ],
+      "summary": "No dry-run write in uninstall can mask permission/collision problems"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "48d9819fe2768581",
+      "line": 515,
+      "path": "scripts/consumer-installer.mjs",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "correctness"
+      ],
+      "summary": "Uninstall will not remove files for legacy manifests present on disk"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "34e5028326620059",
+      "line": 164,
+      "path": "scripts/consumer-installer/persistence.mjs",
+      "providers": [
+        "prism"
+      ],
+      "severity": "high",
+      "sourceFamilies": [
+        "security"
+      ],
+      "summary": "Possible Time-of-check-Time-of-use (TOCTOU) race in atomicWriteIfChanged"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "6fd949b94721d4a6",
+      "line": 180,
+      "path": "scripts/consumer-installer/plan.mjs",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "correctness"
+      ],
+      "summary": "Hardcoded mapping in createManifest breaks extensibility"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "4f7eb4ad7c380fc6",
+      "line": 172,
+      "path": "test/consumer-installer.test.js",
+      "providers": [
+        "prism"
+      ],
+      "severity": "low",
+      "sourceFamilies": [
+        "maintainability"
+      ],
+      "summary": "Extensive repeat of file lists in managedFileState and similar functions"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "1700720533a8b97f",
+      "line": 58,
+      "path": "test/installer-modules.test.js",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "correctness"
+      ],
+      "summary": "Missing field validation in manifestBody test utility"
+    }
+  ],
+  "outcome": "findings",
+  "plan": {
+    "configurationDigest": "fd3ff633c0cb480516dc246fb53ef7cee3669e4b8350eea2a83c89e4da98536c",
+    "execution": "parallel",
+    "familyGate": {
+      "batchSize": 0,
+      "currentRound": 0,
+      "exactHead": "2dd02f895f3deed2ba1dc916ed2ea5d2d7f4022b",
+      "families": [],
+      "repeatedFamilies": [],
+      "roundsAvoided": 0,
+      "schemaVersion": 1,
+      "siblingFindings": 0,
+      "state": "inactive"
+    },
+    "findingFamilies": [],
+    "fixPolicy": "auto",
+    "localPolicy": "optional",
+    "policyDigest": "344035b06d318e7bc4e9fd71edc474b077bd39d886b3593394bbce3017ee0907",
+    "policyId": "substantive-ensemble",
+    "providers": [
+      {
+        "adapter": "gito",
+        "costTier": "medium",
+        "dataHandling": "private-network",
+        "id": "gito",
+        "qualityTier": "standard",
+        "timeoutSeconds": 600,
+        "version": "builtin-v1"
+      },
+      {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      }
+    ],
+    "riskClass": "substantive",
+    "riskReasons": [
+      "executable-configuration",
+      "source",
+      "tests"
+    ],
+    "schemaVersion": 1,
+    "scope": "branch_delta",
+    "successor": "first"
+  },
+  "receiptId": "356cf0e7b6170424ff2ccf3e1cd501b41a8f5732755bd8511c2b01b053246447",
+  "remoteGate": {
+    "reason": "actionable-local-findings",
+    "state": "blocked"
+  },
+  "schemaVersion": 1,
+  "target": {
+    "base": "c3ec5f648f604d0f936b86a79425cc79ffc7fd7b",
+    "contentDigest": "0e4aca7e416197283afcbc23bce409216c31f5740b5ff6b5a0ae137d013f56ed",
+    "head": "2dd02f895f3deed2ba1dc916ed2ea5d2d7f4022b",
+    "identity": "2db5bc57e62907d5835db7cd7191c559caa1d9d1f183efea3283a2207148fa08",
+    "paths": [
+      {
+        "digest": "84fbcfbffe3db95dd5ea3c75fd193df85d05c13b5f970f0018a938a3e96c29e0",
+        "kind": "file",
+        "path": ".trellis/spec/backend/consumer-installer.md"
+      },
+      {
+        "digest": "f6db75150e59d73a1eed8d2463933884b2a5e5570d8c0331ac76921cf68b8484",
+        "kind": "file",
+        "path": ".trellis/spec/backend/directory-structure.md"
+      },
+      {
+        "digest": "21af463405023528d954d11b3a258556bcbc7b4ba4e24e834934e7a1ba18ee5a",
+        "kind": "file",
+        "path": ".trellis/spec/backend/index.md"
+      },
+      {
+        "digest": "634ed9087f2abab1f638b63c4b722a6c15da5d2455f09ed4dd8edc31aaa312df",
+        "kind": "file",
+        "path": ".trellis/tasks/08-08-installer-durable-lane/prd.md"
+      },
+      {
+        "digest": "26198bc2d0cf5389e010d5ef2ae38042bd86dfecd7b5ad9524f9fa24b83491b7",
+        "kind": "file",
+        "path": ".trellis/tasks/08-08-installer-durable-lane/task.json"
+      },
+      {
+        "digest": "44d867fe0f8fbf655e1961bea26400922caea3a9e09a18020378ce2088676915",
+        "kind": "file",
+        "path": "DESIGN.md"
+      },
+      {
+        "digest": "07f6a510cbc3d120e5efd0f32bc74324994bd86e9ced167d1dd758ead6b392d0",
+        "kind": "file",
+        "path": "README.md"
+      },
+      {
+        "digest": "bd9709f453901ac6ecef2b5f7849ee0fd8e7a1c62d7d6b8804f14953c8c38cf8",
+        "kind": "file",
+        "path": "SETUP-PR-AGENT.md"
+      },
+      {
+        "digest": "e29014306303ddd25f1db38d92866ec7ef7ccc602641b13afe42b711c67aa368",
+        "kind": "file",
+        "path": "examples/sd-review.yml"
+      },
+      {
+        "digest": "e0656c9369b09bb7fea035b70c47b42c1221a22583c2b38f44206026fb3bc93f",
+        "kind": "file",
+        "path": "scripts/consumer-installer.mjs"
+      },
+      {
+        "digest": "1abc140bb4b9517b05e2b795ffe62b97cf050327d8c74584b21be4c2127d1d84",
+        "kind": "file",
+        "path": "scripts/consumer-installer/codecs.mjs"
+      },
+      {
+        "digest": "2c7acf526f962c95efe3374b4220638e4a04a1677f4f1509d94ec80dce193fae",
+        "kind": "file",
+        "path": "scripts/consumer-installer/persistence.mjs"
+      },
+      {
+        "digest": "29c2f4cdec27e24fbabed895ac5200f5a246709dcfd061e85396b16a85ad6564",
+        "kind": "file",
+        "path": "scripts/consumer-installer/plan.mjs"
+      },
+      {
+        "digest": "bc01a902ed165951a20c1726e89bf8517281c122abbeedc4f08268f1eeefd116",
+        "kind": "file",
+        "path": "scripts/consumer-installer/transport.mjs"
+      },
+      {
+        "digest": "7f4394a4d840e21983774f3be8144a948858f144c603e89ee18c19291741ed1c",
+        "kind": "file",
+        "path": "test/consumer-installer.test.js"
+      },
+      {
+        "digest": "de282a90b37300edc06cf610c597ad51baa90c4d617c1c0c14d325d7eb8654a6",
+        "kind": "file",
+        "path": "test/installer-modules.test.js"
+      },
+      {
+        "digest": "9043d6479148797c064302780b6ff9883237676225720983093b19e102ef20ee",
+        "kind": "file",
+        "path": "test/metadata.test.js"
+      }
+    ],
+    "repository": "github.com/platypeeps/sd-github-review",
+    "scope": "branch_delta"
+  }
+}

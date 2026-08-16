@@ -9,7 +9,7 @@ deployment with one smoke pull request that publishes a real receipt Check Run.
 
 Zero deployments have been observed. Across the 19 local `platypeeps` checkouts:
 
-- `config/routed-review-setup-v1.json` — the path `scripts/sd-ai-command-pack-review.py:31`
+- `config/routed-review-setup-v1.json` — the path `~/.agents/bin/sd-ai-command-pack-review.py:31`
   probes for an installed descriptor — exists in exactly one repository, `sd-github-review`
   itself, which is the router's own published artifact rather than a consumer installation.
 - The .github/workflows/sd-review.yml lane the descriptor names — a `workflow_dispatch`

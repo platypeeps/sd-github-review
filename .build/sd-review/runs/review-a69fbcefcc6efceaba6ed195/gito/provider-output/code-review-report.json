@@ -1,0 +1,21 @@
+{
+    "issues": {},
+    "summary": "This change robustly implements local-attested review contracts, receipts, authorization, status, and usage projections for protocol v2, with thorough validation of every field and privacy boundary, fully covered by comprehensive new test fixtures and test cases.",
+    "number_of_processed_files": 16,
+    "total_issues": 0,
+    "created_at": "2026-08-05 04:46:06",
+    "model": "gpt-4.1",
+    "pipeline_out": {},
+    "processing_warnings": [],
+    "target": {
+        "git_platform_type": "GitHub",
+        "repo_url": "https://github.com/platypeeps/sd-github-review",
+        "pull_request_id": null,
+        "what": null,
+        "against": "025231def282eab883b1fdd3559f099394aa850e",
+        "commit_sha": "2170be13d7820360ee3240cb1daf58fa05778f9e",
+        "filters": "",
+        "use_merge_base": true,
+        "active_branch": "feat/define-local-review-attestation-contracts"
+    }
+}

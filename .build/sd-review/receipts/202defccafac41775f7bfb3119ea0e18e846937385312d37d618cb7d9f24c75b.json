@@ -1,0 +1,114 @@
+{
+  "attemptId": "review-6b3656e999d9501a3058f0bf",
+  "attempts": [
+    {
+      "artifact": "runs/review-6b3656e999d9501a3058f0bf/prism",
+      "diagnostic": "{ \"tool\": \"prism\", \"version\": \"1.0\", \"runId\": \"685ee7476becc685e2aeeebdc3dbc1db\", \"repo\": { \"root\": \"/Users/sven/repos/platypeeps/sd-github-review\", \"head\": \"7e854554eb52d55867219462017d40e4457eee77\", \"branch\": \"chore/08-09-followups\" }, \"inputs\": { \"mode\": \"range\", \"range\": \"bfa7347a32dcff6385bca2fa6620830af169b60f..7e854554eb52d55867219462017d40e4457eee77\" }, \"summary\": { \"counts\": { \"low\": 0, \"medium\": 0, \"high\": 0 }, \"highestSeverity\": \"\" }, \"findings\": [], \"timing\": { \"gitMs\": 0, \"llmMs\": 979, \"totalMs\": 982 } }",
+      "durationMs": 1090,
+      "exitCode": 0,
+      "findings": [],
+      "provider": {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      },
+      "startedAt": 1786303825.496598,
+      "status": "clean"
+    }
+  ],
+  "confidence": {
+    "granted": true,
+    "limitations": []
+  },
+  "createdAt": 1786303826.5880508,
+  "disposition": {
+    "fixPolicy": "auto",
+    "maximumFixCommitsBeforeRemote": 1,
+    "outstanding": 0
+  },
+  "findings": [],
+  "outcome": "clean",
+  "plan": {
+    "configurationDigest": "fd3ff633c0cb480516dc246fb53ef7cee3669e4b8350eea2a83c89e4da98536c",
+    "execution": "serial",
+    "familyGate": {
+      "batchSize": 0,
+      "currentRound": 0,
+      "exactHead": "7e854554eb52d55867219462017d40e4457eee77",
+      "families": [],
+      "repeatedFamilies": [],
+      "roundsAvoided": 0,
+      "schemaVersion": 1,
+      "siblingFindings": 0,
+      "state": "inactive"
+    },
+    "findingFamilies": [],
+    "fixPolicy": "auto",
+    "localPolicy": "optional",
+    "policyDigest": "552efa9f806ea6f78247523d8b3a2d5d83f565737a0c3078b7775fb68ba4b1be",
+    "policyId": "metadata-cheapest",
+    "providers": [
+      {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      }
+    ],
+    "riskClass": "metadata",
+    "riskReasons": [
+      "metadata-only"
+    ],
+    "schemaVersion": 1,
+    "scope": "branch_delta",
+    "successor": "first"
+  },
+  "receiptId": "202defccafac41775f7bfb3119ea0e18e846937385312d37d618cb7d9f24c75b",
+  "remoteGate": {
+    "reason": "local-stage-terminal",
+    "state": "eligible"
+  },
+  "schemaVersion": 1,
+  "target": {
+    "base": "bfa7347a32dcff6385bca2fa6620830af169b60f",
+    "contentDigest": "8e0fbf7873b114bee37c0d782446d92e160be5cbb17bee0605fd2494b863807d",
+    "head": "7e854554eb52d55867219462017d40e4457eee77",
+    "identity": "3770093c1da30cee4b2788bce94eedfff962f1d5158220ff0e5ce131cbb8cbe2",
+    "paths": [
+      {
+        "digest": "b5439938d6a8e09e6eaa1516309eeaa9c40b8ea016a579a3155d5b9ad48b8689",
+        "kind": "file",
+        "path": ".trellis/tasks/08-08-installer-durable-lane/task.json"
+      },
+      {
+        "digest": "97ba035987cb9e25c2d5a4cafaeafd284cc9725e4962b0bfc966fd60d3c21a38",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-review-coordinator-stale-check/check.jsonl"
+      },
+      {
+        "digest": "0df56d0e84b0a98474795056511c3819d90cf8de1947b58aef08d4b880b491b5",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-review-coordinator-stale-check/implement.jsonl"
+      },
+      {
+        "digest": "df95b35659548de4455566ea24e610d3cd1e0ed9b881c9ce785396051fbb2a04",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-review-coordinator-stale-check/prd.md"
+      },
+      {
+        "digest": "1a3f547a43b6683739a38527f98794cbc61fed9d30879de6b96474d1cbe52b58",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-review-coordinator-stale-check/task.json"
+      }
+    ],
+    "repository": "github.com/platypeeps/sd-github-review",
+    "scope": "branch_delta"
+  }
+}

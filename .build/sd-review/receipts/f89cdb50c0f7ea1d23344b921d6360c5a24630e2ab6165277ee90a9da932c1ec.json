@@ -1,0 +1,299 @@
+{
+  "attemptId": "review-ca411807e96c16ab8d8707f5",
+  "attempts": [
+    {
+      "artifact": "runs/review-ca411807e96c16ab8d8707f5/gito",
+      "diagnostic": "Installed 113 packages in 211ms 2026-08-09 12:55:35 INFO: Bootstrapping Gito v4.4.1... \u001b[90m[verbosity=1]\u001b[39m 2026-08-09 12:55:35 INFO: get_repo_context: Using local repo... 2026-08-09 12:55:35 INFO: Loading project-specific configuration from file:////Users/sven/repos/platypeeps/sd-github-review/.gito/config.toml... 2026-08-09 12:55:35 INFO: Making merge-base diff: \u001b[32mINDEX\u001b[39m vs \u001b[33m053f156c626d1c3901193d3dc76d487eb4dcc2ed\u001b[39m 2026-08-09 12:55:37 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 12:55:37 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 12:55:37 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 12:55:37 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 12:55:37 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 12:55:38 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 12:55:38 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 12:5...",
+      "durationMs": 8889,
+      "exitCode": 0,
+      "findings": [],
+      "provider": {
+        "adapter": "gito",
+        "costTier": "medium",
+        "dataHandling": "private-network",
+        "id": "gito",
+        "qualityTier": "standard",
+        "timeoutSeconds": 600,
+        "version": "builtin-v1"
+      },
+      "startedAt": 1786301730.972672,
+      "status": "clean"
+    },
+    {
+      "artifact": "runs/review-ca411807e96c16ab8d8707f5/prism",
+      "diagnostic": "{ \"tool\": \"prism\", \"version\": \"1.0\", \"runId\": \"6b099d4f4886e42de1899f9f6a2bca9c\", \"repo\": { \"root\": \"/Users/sven/repos/platypeeps/sd-github-review\", \"head\": \"4eea38d0b853ac76ef14976a92bc0a3c94ebe8f1\", \"branch\": \"feat/08-09-descriptor-contract-path\" }, \"inputs\": { \"mode\": \"range\", \"range\": \"053f156c626d1c3901193d3dc76d487eb4dcc2ed..4eea38d0b853ac76ef14976a92bc0a3c94ebe8f1\" }, \"summary\": { \"counts\": { \"low\": 1, \"medium\": 1, \"high\": 1 }, \"highestSeverity\": \"high\" }, \"findings\": [ { \"id\": \"3fd19118a3fa7182\", \"severity\": \"high\", \"category\": \"correctness\", \"title\": \"Broken link or path in documentation or consumer instructions\", \"message\": \"In README.md, SETUP-COPILOT.md, and SETUP-PR-AGENT.md, the displayed path is 'config/routed-review-setup-v1.json' but the link target is now 'contract/routed-review-setup-v1.json'. This is intentional (see design.md), but it could confuse users who expect the file to exist at the displayed path. If documentation consumers follow the link, they may misunderstand where to place the file, and automated tools checking for broken links may report errors.\", \"suggestion\": \"Add explanatory text adjacent to each instance, as already started, explicitly stat...",
+      "durationMs": 7291,
+      "exitCode": 0,
+      "findings": [
+        {
+          "disposition": "outstanding",
+          "family": "correctness",
+          "line": 132,
+          "path": "README.md",
+          "severity": "high",
+          "summary": "Broken link or path in documentation or consumer instructions"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "testing",
+          "line": 63,
+          "path": "test/metadata.test.js",
+          "severity": "medium",
+          "summary": "Potential for missing parent directory in test fixture after path change"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "docs",
+          "line": 158,
+          "path": "DESIGN.md",
+          "severity": "low",
+          "summary": "Inconsistent descriptor path references in DESIGN.md comments and links"
+        }
+      ],
+      "provider": {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      },
+      "startedAt": 1786301730.9726322,
+      "status": "findings"
+    }
+  ],
+  "confidence": {
+    "granted": false,
+    "limitations": []
+  },
+  "createdAt": 1786301739.863123,
+  "disposition": {
+    "fixPolicy": "auto",
+    "maximumFixCommitsBeforeRemote": 1,
+    "outstanding": 3
+  },
+  "findings": [
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "44260dbe526d7656",
+      "line": 158,
+      "path": "DESIGN.md",
+      "providers": [
+        "prism"
+      ],
+      "severity": "low",
+      "sourceFamilies": [
+        "docs"
+      ],
+      "summary": "Inconsistent descriptor path references in DESIGN.md comments and links"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "bf19e3971fc5f9d7",
+      "line": 132,
+      "path": "README.md",
+      "providers": [
+        "prism"
+      ],
+      "severity": "high",
+      "sourceFamilies": [
+        "correctness"
+      ],
+      "summary": "Broken link or path in documentation or consumer instructions"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "e6172a41bc32b4f0",
+      "line": 63,
+      "path": "test/metadata.test.js",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "testing"
+      ],
+      "summary": "Potential for missing parent directory in test fixture after path change"
+    }
+  ],
+  "outcome": "findings",
+  "plan": {
+    "configurationDigest": "fd3ff633c0cb480516dc246fb53ef7cee3669e4b8350eea2a83c89e4da98536c",
+    "execution": "parallel",
+    "familyGate": {
+      "batchSize": 0,
+      "currentRound": 0,
+      "exactHead": "4eea38d0b853ac76ef14976a92bc0a3c94ebe8f1",
+      "families": [],
+      "repeatedFamilies": [],
+      "roundsAvoided": 0,
+      "schemaVersion": 1,
+      "siblingFindings": 0,
+      "state": "inactive"
+    },
+    "findingFamilies": [],
+    "fixPolicy": "auto",
+    "localPolicy": "optional",
+    "policyDigest": "11123eb5da1c6d619381b6481729da120b4ec19fba04e97600b3a2453ac7aaa1",
+    "policyId": "substantive-ensemble",
+    "providers": [
+      {
+        "adapter": "gito",
+        "costTier": "medium",
+        "dataHandling": "private-network",
+        "id": "gito",
+        "qualityTier": "standard",
+        "timeoutSeconds": 600,
+        "version": "builtin-v1"
+      },
+      {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      }
+    ],
+    "riskClass": "substantive",
+    "riskReasons": [
+      "executable-configuration",
+      "source",
+      "state-contract",
+      "tests"
+    ],
+    "schemaVersion": 1,
+    "scope": "branch_delta",
+    "successor": "first"
+  },
+  "receiptId": "f89cdb50c0f7ea1d23344b921d6360c5a24630e2ab6165277ee90a9da932c1ec",
+  "remoteGate": {
+    "reason": "actionable-local-findings",
+    "state": "blocked"
+  },
+  "schemaVersion": 1,
+  "target": {
+    "base": "053f156c626d1c3901193d3dc76d487eb4dcc2ed",
+    "contentDigest": "50bc111c8618e9809c4ad1dab9e9d4053e2e0629ba74b19e657223e609c29902",
+    "head": "4eea38d0b853ac76ef14976a92bc0a3c94ebe8f1",
+    "identity": "140f9bd7382a28207cd2181d1ce6b08e6cdf05ed206b468f4f92d2f0947b9e3f",
+    "paths": [
+      {
+        "digest": "a6e6f57759bd548c73d6ac14b8612e570f651b49ae9dd4fdf83d174f964119e6",
+        "kind": "file",
+        "path": ".trellis/spec/backend/consumer-installer.md"
+      },
+      {
+        "digest": "675f151a30978d0de58bb3655bb8a3dc91fb0a83ce9227d62a95c6038ffb9e5d",
+        "kind": "file",
+        "path": ".trellis/spec/backend/directory-structure.md"
+      },
+      {
+        "digest": "c4b6c96b6b3c12d72ce71212549a4f74081f36f8594fe7d0b3e26fe8f673ca59",
+        "kind": "file",
+        "path": ".trellis/tasks/08-08-installer-durable-lane/design.md"
+      },
+      {
+        "digest": "5b2d6cbe49bbfda9ac50fdb01f27d53ccfbe98e8ab0935a8cf5a3f3877f05249",
+        "kind": "file",
+        "path": ".trellis/tasks/08-08-installer-durable-lane/implement.md"
+      },
+      {
+        "digest": "08fa6e7e8d9d680976699fdecf40a54ba372d30cd6e8dfb32057f4d4eac607fe",
+        "kind": "file",
+        "path": ".trellis/tasks/08-08-installer-durable-lane/prd.md"
+      },
+      {
+        "digest": "c8ce37080f79cdae6be80e388874295cd7672edeb8baa76d41ad37adb98046b9",
+        "kind": "file",
+        "path": ".trellis/tasks/08-08-installer-durable-lane/task.json"
+      },
+      {
+        "digest": "a044ee7750f4b1e1345d58acba64ebeddf95c999a2f714034ca9d013b62b4482",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-descriptor-contract-path/check.jsonl"
+      },
+      {
+        "digest": "d2e18a771363228e3ec90463f360601f5526d49886f1e9ad2706de33559ec0e9",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-descriptor-contract-path/design.md"
+      },
+      {
+        "digest": "a2ac2bbc5bcd5caca33cb7b4fc50d6983ec65089f9873988240141df4dfedb38",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-descriptor-contract-path/implement.jsonl"
+      },
+      {
+        "digest": "19924508f52fe41988dda4bbaadaca3f37a941636facc2219c9bb1f56f1a3632",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-descriptor-contract-path/implement.md"
+      },
+      {
+        "digest": "a377e958cc7e37d3b6272543b4101951c01e8d50a25db0f13aeeda168a7337ca",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-descriptor-contract-path/prd.md"
+      },
+      {
+        "digest": "cc71a5fe3d902902e7b2ae500fc37b1174db35fac625bf576fc66bd5efefe07e",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-descriptor-contract-path/task.json"
+      },
+      {
+        "digest": "3519aa9172cfcb975824dfd2e40ec740e5b44340534508757a654d36d097b771",
+        "kind": "file",
+        "path": "DESIGN.md"
+      },
+      {
+        "digest": "88bc09fe251dd8610b6c814b74af76133724e5c5450e388b1d90b7ef335ddd24",
+        "kind": "file",
+        "path": "README.md"
+      },
+      {
+        "digest": "d1f40215a32cf214c8e9dda6b226ba36dcb4ff57ec92d6fb59dac8dfaa4cd43b",
+        "kind": "file",
+        "path": "SETUP-COPILOT.md"
+      },
+      {
+        "digest": "6c62fed65700e9e2f25c6e3a52ebcbb92c59ae512a94e3b1bb2a73f381fa43d5",
+        "kind": "file",
+        "path": "SETUP-PR-AGENT.md"
+      },
+      {
+        "digest": "83e590cc27a2707feaba79f414c7e446b4203d2c6cc484627063458ff922b7fa",
+        "kind": "file",
+        "path": "contract/routed-review-setup-v1.json"
+      },
+      {
+        "digest": "fe25c14ecbb82c7a472fffc0731660435f0b52d69603357b991f310d0441f130",
+        "kind": "file",
+        "path": "scripts/validate-action-metadata.mjs"
+      },
+      {
+        "digest": "bdcc0c10eec65a61881d5d223ab417179fadcff3d7c0df489ea70796068c9ca4",
+        "kind": "file",
+        "path": "test/metadata.test.js"
+      },
+      {
+        "digest": "f14af771aadd582fbd0e329cbf6cb0c11fced7e64a8968d76784966bcfa40bf7",
+        "kind": "file",
+        "path": "test/operation-contract.test.js"
+      }
+    ],
+    "repository": "github.com/platypeeps/sd-github-review",
+    "scope": "branch_delta"
+  }
+}

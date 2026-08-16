@@ -1,0 +1,18 @@
+{
+  "artifact": "runs/review-9ed681162ec149a19aba6895/gito",
+  "diagnostic": "Downloading pygments (1.2MiB) Downloading openai (1.6MiB) Downloading cryptography (3.8MiB) Downloading pydantic-core (1.8MiB) Downloading beartype (1.3MiB) Downloading burner-redis (1.2MiB) Downloading lupa (1.1MiB) Downloaded burner-redis Downloaded pygments Downloaded lupa Downloaded beartype Downloaded openai Downloaded pydantic-core Downloaded cryptography Installed 113 packages in 187ms 2026-08-04 20:13:24 INFO: Bootstrapping Gito v4.4.1... \u001b[90m[verbosity=1]\u001b[39m 2026-08-04 20:13:24 INFO: get_repo_context: Using local repo... 2026-08-04 20:13:24 INFO: Loading project-specific configuration from file:////Users/sven/repos/platypeeps/sd-github-review/.gito/config.toml... 2026-08-04 20:13:24 INFO: Making merge-base diff: \u001b[32mINDEX\u001b[39m vs \u001b[33mfa7f8cf50d84c3c89b518bd9d8231c39342e6d23\u001b[39m 2026-08-04 20:13:26 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-04 20:13:26 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-04 20:13:26 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-04 20:13:27 INFO: HTTP Request: POST https://api.openai.com/v1/chat...",
+  "durationMs": 13983,
+  "exitCode": 0,
+  "findings": [],
+  "provider": {
+    "adapter": "gito",
+    "costTier": "medium",
+    "dataHandling": "private-network",
+    "id": "gito",
+    "qualityTier": "standard",
+    "timeoutSeconds": 600,
+    "version": "builtin-v1"
+  },
+  "startedAt": 1785895997.084061,
+  "status": "clean"
+}

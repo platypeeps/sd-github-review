@@ -1,0 +1,21 @@
+{
+    "issues": {},
+    "summary": "These changes install this repository as a consumer of its own routed-review Action by carefully updating specifications, documentation, workflows, configuration, acceptance criteria, and the validation test suite to reflect new managed resources while preserving installer integrity and robustly preventing silent billing errors.\n\n<!-- award -->\n\ud83d\udee1\ufe0f GATE GUARDIAN \ud83d\udee1\ufe0f\n\"No bad data shall pass your vigilant defense. Users may enter\nthe most bizarre combinations, but your code stands firm, like a sentinel at the gates\nof the data city. 'You shall not pass!' it speaks to invalid format.\"",
+    "number_of_processed_files": 17,
+    "total_issues": 0,
+    "created_at": "2026-08-15 15:33:06",
+    "model": "gpt-4.1",
+    "pipeline_out": {},
+    "processing_warnings": [],
+    "target": {
+        "git_platform_type": "GitHub",
+        "repo_url": "https://github.com/platypeeps/sd-github-review",
+        "pull_request_id": null,
+        "what": null,
+        "against": "1b94b128b8a96eb476d140d7164bb4c61e9d7090",
+        "commit_sha": "8b0056b3762dafdff51278b9c6edf4c52d13ca3b",
+        "filters": "",
+        "use_merge_base": true,
+        "active_branch": "feat/install-routed-review-consumer"
+    }
+}

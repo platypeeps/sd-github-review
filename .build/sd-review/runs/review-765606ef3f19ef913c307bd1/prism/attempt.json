@@ -1,0 +1,83 @@
+{
+  "artifact": "runs/review-765606ef3f19ef913c307bd1/prism",
+  "diagnostic": "{ \"tool\": \"prism\", \"version\": \"1.0\", \"runId\": \"98ee45da1e69ebe3d787c90b0c66bda3\", \"repo\": { \"root\": \"/Users/sven/repos/platypeeps/sd-github-review\", \"head\": \"e5366431844e10e8cf66cdbbe7d873246c4ccbfc\", \"branch\": \"feat/trellis-seeded-task-start-gate\" }, \"inputs\": { \"mode\": \"range\", \"range\": \"ab4d2e1f8bb2d50db32f62fd86d62a7bed0217d1..e5366431844e10e8cf66cdbbe7d873246c4ccbfc\" }, \"summary\": { \"counts\": { \"low\": 2, \"medium\": 5, \"high\": 1 }, \"highestSeverity\": \"high\" }, \"findings\": [ { \"id\": \"5ce1dc6b6f0c40bc\", \"severity\": \"high\", \"category\": \"bug\", \"title\": \"Missing error handling for subprocess.run failure in trellis-task-start-gate.py\", \"message\": \"If subprocess.run in trellis-task-start-gate.py (line 53) fails due to a missing or broken Node.js runtime, only OSError is caught, but KeyboardInterrupt or unexpected exceptions will crash the script and potentially leave the task in a partial state.\", \"suggestion\": \"Wrap the subprocess.run call in a broader try/except to catch all exceptions and return a clean error message and appropriate exit code.\", \"confidence\": 0.9, \"locations\": [ { \"path\": \"scripts/trellis-task-start-gate.py\", \"lines\": { \"start\": 53, \"end\": 67 } } ], \"tags\": [ \"ro...",
+  "durationMs": 10700,
+  "exitCode": 0,
+  "findings": [
+    {
+      "disposition": "outstanding",
+      "family": "bug",
+      "line": 53,
+      "path": "scripts/trellis-task-start-gate.py",
+      "severity": "high",
+      "summary": "Missing error handling for subprocess.run failure in trellis-task-start-gate.py"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "security",
+      "line": 27,
+      "path": "scripts/trellis-task-start-gate.py",
+      "severity": "medium",
+      "summary": "Possible path traversal with <task-dir> argument"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "correctness",
+      "line": 28,
+      "path": "scripts/trellis-task-start-gate.py",
+      "severity": "medium",
+      "summary": "Potential inconsistency with task directory path in trellis-task-start-gate.py"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "performance",
+      "line": 53,
+      "path": "scripts/trellis-task-start-gate.py",
+      "severity": "medium",
+      "summary": "Potentially slow subprocess call for seeded-task preflight"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "correctness",
+      "line": 69,
+      "path": "scripts/trellis-task-start-gate.py",
+      "severity": "medium",
+      "summary": "Ambiguous error reporting when seeded-task produces no findings"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "testing",
+      "line": 1,
+      "path": "test/trellis-task-start-gate.test.js",
+      "severity": "medium",
+      "summary": "Test cases in trellis-task-start-gate.test.js do not validate side effects"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "maintainability",
+      "line": 34,
+      "path": "scripts/trellis-task-start-gate.py",
+      "severity": "low",
+      "summary": "Duplicated logic for skipping gate in absence of Node or preflight pack"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "style",
+      "line": 78,
+      "path": "scripts/trellis-task-start-gate.py",
+      "severity": "low",
+      "summary": "Overly long lines in trellis-task-start-gate.py"
+    }
+  ],
+  "provider": {
+    "adapter": "prism",
+    "costTier": "low",
+    "dataHandling": "private-network",
+    "id": "prism",
+    "qualityTier": "standard",
+    "timeoutSeconds": 300,
+    "version": "builtin-v1"
+  },
+  "startedAt": 1786810037.588089,
+  "status": "findings"
+}

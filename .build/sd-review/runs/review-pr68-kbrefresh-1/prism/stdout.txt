@@ -1,0 +1,134 @@
+{
+  "tool": "prism",
+  "version": "1.0",
+  "runId": "94b65a6dd3521559e512177e77ef2b04",
+  "repo": {
+    "root": "/Users/sven/repos/platypeeps/sd-github-review",
+    "head": "32a156b23b4f8afe6219d5fee5467a240e3e897f",
+    "branch": "feat/08-09-descriptor-contract-path"
+  },
+  "inputs": {
+    "mode": "range",
+    "range": "053f156c626d1c3901193d3dc76d487eb4dcc2ed..32a156b23b4f8afe6219d5fee5467a240e3e897f"
+  },
+  "summary": {
+    "counts": {
+      "low": 2,
+      "medium": 2,
+      "high": 0
+    },
+    "highestSeverity": "medium"
+  },
+  "findings": [
+    {
+      "id": "41839efce9794720",
+      "severity": "medium",
+      "category": "docs",
+      "title": "Potential documentation/user error by dual-path description",
+      "message": "In several documentation files, the instructions clarify that the published descriptor should be copied from 'contract/' to 'config/' for consumer repositories. However, if users misunderstand and only update one location, setup discovery will fail.",
+      "suggestion": "Add explicit warnings and a short troubleshooting section or example to avoid user confusion and accidental misplacement, clearly illustrating both the published and consumer path and their respective roles.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": "README.md, SETUP-COPILOT.md, SETUP-PR-AGENT.md",
+          "lines": {
+            "start": 1,
+            "end": 1
+          }
+        }
+      ],
+      "tags": [
+        "docs",
+        "user guide",
+        "installation"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "d64a94ce483eea84",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "Update all references to descriptor path consistently",
+      "message": "The move from 'config/routed-review-setup-v1.json' to 'contract/routed-review-setup-v1.json' is being performed throughout the codebase and documentation. It's important to ensure that all references (including in comments, tests, CI scripts, and documentation) point to the new location except where the consumer's installed path is referred to.",
+      "suggestion": "Double-check all references to 'routed-review-setup-v1.json', especially in doc links and test setups, to ensure no instance is mistakenly left referencing the old path. Pay extra attention to example, fixture, or code comments that differentiate between 'published' and 'installed' usages.",
+      "confidence": 0.95,
+      "locations": [
+        {
+          "path": "multiple files",
+          "lines": {
+            "start": 1,
+            "end": 1
+          }
+        }
+      ],
+      "tags": [
+        "migration",
+        "path update",
+        "consistency"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "22805303af612bda",
+      "severity": "low",
+      "category": "maintainability",
+      "title": "Add newlines to end of new JSON files",
+      "message": "The new .trellis/tasks/08-09-descriptor-contract-path/task.json file does not end with a newline, which may cause issues with some linters or processing scripts.",
+      "suggestion": "Ensure all JSON files end with a newline character to improve compatibility and conform to encoding standards.",
+      "confidence": 1,
+      "locations": [
+        {
+          "path": ".trellis/tasks/08-09-descriptor-contract-path/task.json",
+          "lines": {
+            "start": 26,
+            "end": 26
+          }
+        }
+      ],
+      "tags": [
+        "file format",
+        "consistency"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "353ba62847ccdec2",
+      "severity": "low",
+      "category": "maintainability",
+      "title": "Double-check directory cleanup after file move",
+      "message": "After moving 'config/routed-review-setup-v1.json' to 'contract/routed-review-setup-v1.json', the config/ directory could become empty and redundant. Empty directories should be removed unless intended for future use.",
+      "suggestion": "Ensure 'config/' is removed if it is empty post-move, and update any .gitignore or related housekeeping scripts.",
+      "confidence": 0.95,
+      "locations": [
+        {
+          "path": "config/",
+          "lines": {
+            "start": 1,
+            "end": 1
+          }
+        }
+      ],
+      "tags": [
+        "migration",
+        "filesystem"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ],
+  "timing": {
+    "gitMs": 0,
+    "llmMs": 6865,
+    "totalMs": 6891
+  },
+  "_provenance": [
+    {
+      "ai_generated": true,
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ]
+}

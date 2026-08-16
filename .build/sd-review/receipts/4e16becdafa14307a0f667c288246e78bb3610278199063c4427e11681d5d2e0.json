@@ -1,0 +1,172 @@
+{
+  "attemptId": "review-69001b2e4964c0523957878c",
+  "attempts": [
+    {
+      "artifact": "runs/review-69001b2e4964c0523957878c/gito",
+      "diagnostic": "2026-08-05 09:08:25 INFO: Bootstrapping Gito v4.4.1... \u001b[90m[verbosity=1]\u001b[39m 2026-08-05 09:08:26 INFO: get_repo_context: Using local repo... 2026-08-05 09:08:26 INFO: Loading project-specific configuration from file:////Users/sven/repos/platypeeps/sd-github-review/.gito/config.toml... 2026-08-05 09:08:26 INFO: Making merge-base diff: \u001b[32mINDEX\u001b[39m vs \u001b[33m0eacc0750208a22d6504632271372f18e9c40e57\u001b[39m 2026-08-05 09:08:27 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-05 09:08:27 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-05 09:08:27 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-05 09:08:27 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-05 09:08:27 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-05 09:08:28 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-05 09:08:28 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-05 09:08:56 INFO: HTTP Request: POST ht...",
+      "durationMs": 41048,
+      "exitCode": 0,
+      "findings": [],
+      "provider": {
+        "adapter": "gito",
+        "costTier": "medium",
+        "dataHandling": "private-network",
+        "id": "gito",
+        "qualityTier": "standard",
+        "timeoutSeconds": 600,
+        "version": "builtin-v1"
+      },
+      "startedAt": 1785942504.694334,
+      "status": "clean"
+    },
+    {
+      "artifact": "runs/review-69001b2e4964c0523957878c/prism",
+      "diagnostic": "{ \"tool\": \"prism\", \"version\": \"1.0\", \"runId\": \"d0d6f3190d500acd5d5a7d96e9aa349c\", \"repo\": { \"root\": \"/Users/sven/repos/platypeeps/sd-github-review\", \"head\": \"22b2bae77b5b8287a94badaf371707fab08565fa\", \"branch\": \"feat/07-25-compile-routed-review-configuration\" }, \"inputs\": { \"mode\": \"range\", \"range\": \"0eacc0750208a22d6504632271372f18e9c40e57..22b2bae77b5b8287a94badaf371707fab08565fa\" }, \"summary\": { \"counts\": { \"low\": 0, \"medium\": 0, \"high\": 0 }, \"highestSeverity\": \"\" }, \"findings\": [], \"timing\": { \"gitMs\": 0, \"llmMs\": 21000, \"totalMs\": 21021 } }",
+      "durationMs": 21117,
+      "exitCode": 0,
+      "findings": [],
+      "provider": {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      },
+      "startedAt": 1785942504.694298,
+      "status": "clean"
+    }
+  ],
+  "confidence": {
+    "granted": true,
+    "limitations": []
+  },
+  "createdAt": 1785942545.7431529,
+  "disposition": {
+    "fixPolicy": "auto",
+    "maximumFixCommitsBeforeRemote": 1,
+    "outstanding": 0
+  },
+  "findings": [],
+  "outcome": "clean",
+  "plan": {
+    "configurationDigest": "fd3ff633c0cb480516dc246fb53ef7cee3669e4b8350eea2a83c89e4da98536c",
+    "execution": "parallel",
+    "familyGate": {
+      "batchSize": 0,
+      "currentRound": 0,
+      "exactHead": "22b2bae77b5b8287a94badaf371707fab08565fa",
+      "families": [],
+      "repeatedFamilies": [],
+      "roundsAvoided": 0,
+      "schemaVersion": 1,
+      "siblingFindings": 0,
+      "state": "inactive"
+    },
+    "findingFamilies": [],
+    "fixPolicy": "auto",
+    "localPolicy": "optional",
+    "policyDigest": "268943027f2c9563f8e23503d0061f3e3603266940376734f1f6c46d64d3748e",
+    "policyId": "substantive-ensemble",
+    "providers": [
+      {
+        "adapter": "gito",
+        "costTier": "medium",
+        "dataHandling": "private-network",
+        "id": "gito",
+        "qualityTier": "standard",
+        "timeoutSeconds": 600,
+        "version": "builtin-v1"
+      },
+      {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      }
+    ],
+    "riskClass": "substantive",
+    "riskReasons": [
+      "source",
+      "tests"
+    ],
+    "schemaVersion": 1,
+    "scope": "branch_delta",
+    "successor": "first"
+  },
+  "receiptId": "4e16becdafa14307a0f667c288246e78bb3610278199063c4427e11681d5d2e0",
+  "remoteGate": {
+    "reason": "local-stage-terminal",
+    "state": "eligible"
+  },
+  "schemaVersion": 1,
+  "target": {
+    "base": "0eacc0750208a22d6504632271372f18e9c40e57",
+    "contentDigest": "0106812849bf1920b144340c35a126c32625b417e7e04cc55c673d174d40bc6e",
+    "head": "22b2bae77b5b8287a94badaf371707fab08565fa",
+    "identity": "eae5d7a0c8931023f2b3bda425f4dbb865e1fda7520b68d5f432e8c33aabe3ed",
+    "paths": [
+      {
+        "digest": "03e4d3c5c129d721f3182f39292fe42808c95dc6641a6ffc603a3d4f27af74fb",
+        "kind": "file",
+        "path": ".trellis/spec/backend/directory-structure.md"
+      },
+      {
+        "digest": "dd5349ca6bdb894e863bd57d31f689d297a44df74f91adfb89299abd744d9c89",
+        "kind": "file",
+        "path": ".trellis/spec/backend/quality-guidelines.md"
+      },
+      {
+        "digest": "8b6dada6ec475524cbf280e6029245ea559eef27a56d29369899f2b5db4d8443",
+        "kind": "file",
+        "path": ".trellis/tasks/07-25-compile-routed-review-configuration/task.json"
+      },
+      {
+        "digest": "9b8f023f0ce9a880c342582e315a1a3c001fa037a7f5b81ca5f9cf547ba89504",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/routed-review-catalog-projection.valid.json"
+      },
+      {
+        "digest": "54c86c13ded61d63a332f332abb9e853577087eaa31fc97cc9f981f9b79b5651",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/routed-review-handler-profiles.valid.json"
+      },
+      {
+        "digest": "0ad62254371c121c90bff72a84bf69b29f6ba2d1d762914b39d2ab5002fa8364",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/routed-review-source.invalid.json"
+      },
+      {
+        "digest": "3fef6a57a9d10aef958e3248a637c60112f9662c43305b385c5fcfd838306d23",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/routed-review-source.valid.json"
+      },
+      {
+        "digest": "b435fec906e5dbe29a64b71c61b75a4dcd3010c9c82914179c41feedec6e8c5f",
+        "kind": "file",
+        "path": "package.json"
+      },
+      {
+        "digest": "a1b7585d57fdd9210ecfd0b9f2cf2627d65fb34409c7e7a8dbd329e6a1b2efbb",
+        "kind": "file",
+        "path": "src/routed-review-compiler.js"
+      },
+      {
+        "digest": "73f1de47862a815e581f97ee534eaf1608689c99ef0345a171e8f7407ed4bed5",
+        "kind": "file",
+        "path": "test/dependency-boundaries.test.js"
+      },
+      {
+        "digest": "95b909ef9d0cfd45161e47f42ff07960d067e78ac8408e22ca6f71b7d3cb6fa2",
+        "kind": "file",
+        "path": "test/routed-review-compiler.test.js"
+      }
+    ],
+    "repository": "github.com/platypeeps/sd-github-review",
+    "scope": "branch_delta"
+  }
+}

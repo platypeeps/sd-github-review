@@ -1,0 +1,77 @@
+{
+  "attemptId": "review-0a0859cf9df50ea3433b72da",
+  "plan": {
+    "configurationDigest": "fd3ff633c0cb480516dc246fb53ef7cee3669e4b8350eea2a83c89e4da98536c",
+    "execution": "serial",
+    "familyGate": {
+      "batchSize": 0,
+      "currentRound": 0,
+      "exactHead": "0e8928227cc0ebe3ed759dc80a0e5f8f9df697eb",
+      "families": [],
+      "repeatedFamilies": [],
+      "roundsAvoided": 0,
+      "schemaVersion": 1,
+      "siblingFindings": 0,
+      "state": "inactive"
+    },
+    "findingFamilies": [],
+    "fixPolicy": "auto",
+    "localPolicy": "optional",
+    "policyDigest": "f97a27dfbd36323def4d2970b95384db81fa63d2227d6a8310602eb3618ea61d",
+    "policyId": "metadata-cheapest",
+    "providers": [
+      {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      }
+    ],
+    "riskClass": "metadata",
+    "riskReasons": [
+      "metadata-only"
+    ],
+    "schemaVersion": 1,
+    "scope": "branch_delta",
+    "successor": "first"
+  },
+  "schemaVersion": 1,
+  "target": {
+    "base": "9a6cdb990f71e894744a10f418033dede700d3bf",
+    "contentDigest": "b1278e5637f971ea7538d058325e0e486542722f0852ae0ad6794ca36248a273",
+    "head": "0e8928227cc0ebe3ed759dc80a0e5f8f9df697eb",
+    "identity": "ec1ae13eee3c2835e268821151eb6a3e8fd6256376ee693f3101138901792bee",
+    "paths": [
+      {
+        "digest": "d7e002e9b1e7d9d257e787864e6c07f8e97d35217047586ec1acd50f3d1ae10a",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-review-coordinator-stale-check/prd.md"
+      },
+      {
+        "digest": "bde9fbdcf65534f2341b2e31faa5ae79b63fde844f36f9d7f1b890195c919fad",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-review-gate-advisory-convergence/check.jsonl"
+      },
+      {
+        "digest": "d4763d69652128346b2950390f51cc04cdd52fb1ee3f2d582960bb7f5f47be53",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-review-gate-advisory-convergence/implement.jsonl"
+      },
+      {
+        "digest": "16db31714c725868e93dafa03605aba1b9c079f1a1b4b783f96166902eea9f5d",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-review-gate-advisory-convergence/prd.md"
+      },
+      {
+        "digest": "56a12796415eec6df20108a80f20d63b18a8672f9daacbbd6d05a4104497ac62",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-review-gate-advisory-convergence/task.json"
+      }
+    ],
+    "repository": "github.com/platypeeps/sd-github-review",
+    "scope": "branch_delta"
+  }
+}

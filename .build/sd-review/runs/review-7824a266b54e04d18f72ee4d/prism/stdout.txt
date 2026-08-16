@@ -1,0 +1,181 @@
+{
+  "tool": "prism",
+  "version": "1.0",
+  "runId": "01efcf5a2eb789c4962474be150820ae",
+  "repo": {
+    "root": "/Users/sven/repos/platypeeps/sd-github-review",
+    "head": "cb2df2dfe4f52586ad542fbabd0912b37856cb8b",
+    "branch": "feat/install-routed-review-consumer"
+  },
+  "inputs": {
+    "mode": "range",
+    "range": "1b94b128b8a96eb476d140d7164bb4c61e9d7090..cb2df2dfe4f52586ad542fbabd0912b37856cb8b"
+  },
+  "summary": {
+    "counts": {
+      "low": 5,
+      "medium": 1,
+      "high": 0
+    },
+    "highestSeverity": "medium"
+  },
+  "findings": [
+    {
+      "id": "d64b2d41d3cdba54",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "Explicit route required but not installer-verified",
+      "message": "The event-driven workflow in 'ai-review-router.yml' now enforces an explicit `REVIEW_ROUTE_MODE` value and fails closed if not set, as intended. However, there is no installer-side verification to ensure this variable's existence, risking misconfiguration at install time, leading to workflow failures on PR events. The manifest (.github/sd-github-review.json) does not contain or manage this variable.",
+      "suggestion": "Add installation-time verification for `REVIEW_ROUTE_MODE` (or make it installer-managed), or update documentation to strongly warn operators that omission will break the workflow, not just cause a harmless fallback.",
+      "confidence": 0.9,
+      "locations": [
+        {
+          "path": ".github/workflows/ai-review-router.yml",
+          "lines": {
+            "start": 17,
+            "end": 38
+          }
+        }
+      ],
+      "tags": [
+        "installer",
+        "workflow",
+        "config"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "1736113ada69ff5f",
+      "severity": "low",
+      "category": "docs",
+      "title": "Orphaned comments if resource handling changes",
+      "message": "Comments in several workflow and manifest files (e.g., .github/sd-github-review.json variables section, workflow steps) describe explicit ownership and fail-closed/billing guardrails. If the handling of installer-managed resources changes in the future, these comments may become inaccurate if not updated together.",
+      "suggestion": "Clearly document in one authoritative place which variables/resources are installer managed versus operator set, and reference that doc in comments instead of duplicating logic/explanations. Periodically review for drift.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": ".github/sd-github-review.json",
+          "lines": {
+            "start": 36,
+            "end": 68
+          }
+        }
+      ],
+      "tags": [
+        "docs",
+        "config"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "4648e46e9d2ed912",
+      "severity": "low",
+      "category": "maintainability",
+      "title": "Hardcoded list of providers may drift from upstream changes",
+      "message": "Both workflows (ai-review-router.yml and sd-review.yml) enumerate supported model providers in their PR-Agent configuration validation logic. This hardcoded list will need to be kept in sync with PR-Agent upstreams to avoid accidental breakage or missed providers.",
+      "suggestion": "Centralize the list of supported providers in a shared config or document the need for explicit synchronization with upstreams. Consider externalizing the provider list if feasible.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": ".github/workflows/ai-review-router.yml",
+          "lines": {
+            "start": 57,
+            "end": 81
+          }
+        }
+      ],
+      "tags": [
+        "config",
+        "future-proof"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "9fd42cc61ef87dfb",
+      "severity": "low",
+      "category": "maintainability",
+      "title": "Duplicate logic for PR-Agent model prefix validation",
+      "message": "Both ai-review-router.yml and sd-review.yml contain nearly identical shell logic for PR_AGENT_MODEL_PROVIDER/model prefix validation. Duplicating this logic raises risk of accidental drift or inconsistent validation if one file is updated and the other isn't.",
+      "suggestion": "Consolidate the validation logic into a reusable script, or document a testing strategy that keeps both files synchronized.",
+      "confidence": 0.85,
+      "locations": [
+        {
+          "path": ".github/workflows/ai-review-router.yml",
+          "lines": {
+            "start": 57,
+            "end": 81
+          }
+        }
+      ],
+      "tags": [
+        "maintainability",
+        "duplication"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "f402d325d6a21fbe",
+      "severity": "low",
+      "category": "testing",
+      "title": "Example JSONL tasks include instructional placeholder lines",
+      "message": ".trellis/tasks/08-15-installer-managed-route-mode/check.jsonl and implement.jsonl are present with placeholder lines starting with _example. These could cause confusion and should not remain in a committed baseline.",
+      "suggestion": "Remove the placeholder/example line from these .jsonl files before marking the task as implemented, or add real test case entries.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": ".trellis/tasks/08-15-installer-managed-route-mode/check.jsonl",
+          "lines": {
+            "start": 1,
+            "end": 1
+          }
+        }
+      ],
+      "tags": [
+        "task",
+        "docs"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "74cf6ad6e407246a",
+      "severity": "low",
+      "category": "testing",
+      "title": "Example JSONL tasks include instructional placeholder lines",
+      "message": ".trellis/tasks/08-15-installer-managed-route-mode/check.jsonl and implement.jsonl are present with placeholder lines starting with _example. These could cause confusion and should not remain in a committed baseline.",
+      "suggestion": "Remove the placeholder/example line from these .jsonl files before marking the task as implemented, or add real test case entries.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": ".trellis/tasks/08-15-installer-managed-route-mode/implement.jsonl",
+          "lines": {
+            "start": 1,
+            "end": 1
+          }
+        }
+      ],
+      "tags": [
+        "task",
+        "docs"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ],
+  "timing": {
+    "gitMs": 0,
+    "llmMs": 10635,
+    "totalMs": 10656
+  },
+  "_provenance": [
+    {
+      "ai_generated": true,
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ]
+}

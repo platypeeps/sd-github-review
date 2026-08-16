@@ -1,0 +1,18 @@
+{
+  "artifact": "runs/review-69001b2e4964c0523957878c/gito",
+  "diagnostic": "2026-08-05 09:08:25 INFO: Bootstrapping Gito v4.4.1... \u001b[90m[verbosity=1]\u001b[39m 2026-08-05 09:08:26 INFO: get_repo_context: Using local repo... 2026-08-05 09:08:26 INFO: Loading project-specific configuration from file:////Users/sven/repos/platypeeps/sd-github-review/.gito/config.toml... 2026-08-05 09:08:26 INFO: Making merge-base diff: \u001b[32mINDEX\u001b[39m vs \u001b[33m0eacc0750208a22d6504632271372f18e9c40e57\u001b[39m 2026-08-05 09:08:27 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-05 09:08:27 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-05 09:08:27 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-05 09:08:27 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-05 09:08:27 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-05 09:08:28 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-05 09:08:28 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-05 09:08:56 INFO: HTTP Request: POST ht...",
+  "durationMs": 41048,
+  "exitCode": 0,
+  "findings": [],
+  "provider": {
+    "adapter": "gito",
+    "costTier": "medium",
+    "dataHandling": "private-network",
+    "id": "gito",
+    "qualityTier": "standard",
+    "timeoutSeconds": 600,
+    "version": "builtin-v1"
+  },
+  "startedAt": 1785942504.694334,
+  "status": "clean"
+}

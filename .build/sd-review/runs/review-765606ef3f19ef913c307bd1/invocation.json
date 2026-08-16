@@ -1,0 +1,133 @@
+{
+  "attemptId": "review-765606ef3f19ef913c307bd1",
+  "plan": {
+    "configurationDigest": "fd3ff633c0cb480516dc246fb53ef7cee3669e4b8350eea2a83c89e4da98536c",
+    "execution": "parallel",
+    "familyGate": {
+      "batchSize": 0,
+      "currentRound": 0,
+      "exactHead": "e5366431844e10e8cf66cdbbe7d873246c4ccbfc",
+      "families": [],
+      "repeatedFamilies": [],
+      "roundsAvoided": 0,
+      "schemaVersion": 1,
+      "siblingFindings": 0,
+      "state": "inactive"
+    },
+    "findingFamilies": [],
+    "fixPolicy": "auto",
+    "localPolicy": "optional",
+    "policyDigest": "8f9282c88ef3c6c9250f272f157ed91c1bba5bdd22fc2d289342c3d81f957238",
+    "policyId": "substantive-ensemble",
+    "providers": [
+      {
+        "adapter": "gito",
+        "costTier": "medium",
+        "dataHandling": "private-network",
+        "id": "gito",
+        "qualityTier": "standard",
+        "timeoutSeconds": 600,
+        "version": "builtin-v1"
+      },
+      {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      }
+    ],
+    "riskClass": "substantive",
+    "riskReasons": [
+      "executable-configuration",
+      "source",
+      "tests"
+    ],
+    "schemaVersion": 1,
+    "scope": "branch_delta",
+    "successor": "first"
+  },
+  "schemaVersion": 1,
+  "target": {
+    "base": "ab4d2e1f8bb2d50db32f62fd86d62a7bed0217d1",
+    "contentDigest": "51047d46c70335c6a4dbc38ddeb49732080e7f426e5a67b560575b014d7de41e",
+    "head": "e5366431844e10e8cf66cdbbe7d873246c4ccbfc",
+    "identity": "09da2cadc1c61b6ac006d70b5f2a4655b8e909b013d6ba4d83e9dc1b11a199ff",
+    "paths": [
+      {
+        "digest": "b701516cbf0c157540288a88c4bf333a8801912781dd77f3c54230d9e907b711",
+        "kind": "file",
+        "path": ".trellis/scripts/common/io.py"
+      },
+      {
+        "digest": "4f59c65a0ade0ed15f98fab87b09d1bc3c8aeb21d62a46cbce6fcad8f4308770",
+        "kind": "file",
+        "path": ".trellis/scripts/task.py"
+      },
+      {
+        "digest": "6c688f35090f314b18fedff614973406bcaf27d78a5e5db7ad2b161cc8291b03",
+        "kind": "file",
+        "path": ".trellis/spec/backend/directory-structure.md"
+      },
+      {
+        "digest": null,
+        "kind": "deleted",
+        "path": ".trellis/tasks/08-15-task-manifest-ready-gate/check.jsonl"
+      },
+      {
+        "digest": null,
+        "kind": "deleted",
+        "path": ".trellis/tasks/08-15-task-manifest-ready-gate/implement.jsonl"
+      },
+      {
+        "digest": "6c7182f9f09ba5be585baf3ebb58604ea85f868366b723706bd1b877d77c135e",
+        "kind": "file",
+        "path": ".trellis/tasks/archive/2026-08/08-15-task-manifest-ready-gate/check.jsonl"
+      },
+      {
+        "digest": "4eb748219562d665eb1c2469f6361c94f9a9bd1449c38fcac19cb89f1dc8781f",
+        "kind": "file",
+        "path": ".trellis/tasks/archive/2026-08/08-15-task-manifest-ready-gate/implement.jsonl"
+      },
+      {
+        "digest": "11aa0d32cf34f54d55edef3b7f3b0a98aba3a177fdc0da05119857c4415bb2cf",
+        "kind": "file",
+        "path": ".trellis/tasks/archive/2026-08/08-15-task-manifest-ready-gate/prd.md"
+      },
+      {
+        "digest": "ed36d1ddb2ed064864825c06f2a41bc7b7930794bb46897c6630dd292f6a98f0",
+        "kind": "file",
+        "path": ".trellis/tasks/archive/2026-08/08-15-task-manifest-ready-gate/task.json"
+      },
+      {
+        "digest": "0fa9e949024b8413e7ab3256b58f9d3b6fb6dfab571dfadeda80527b51dbe15f",
+        "kind": "file",
+        "path": ".trellis/workflow.md"
+      },
+      {
+        "digest": "3a78dfee9c0e22bd52a403a936c937aede4d328f9a6479e89668f86bcc527604",
+        "kind": "file",
+        "path": ".trellis/workspace/sdelmas/index.md"
+      },
+      {
+        "digest": "ca755b7ec3d92eea1e3cbe5305519dcaf4e2d179e5998f0c62ce3ef00fb19b8f",
+        "kind": "file",
+        "path": ".trellis/workspace/sdelmas/journal-2.md"
+      },
+      {
+        "digest": "9fe640a302a226cb2e2bfe98d67d839248774e54b41f2b4c3f5b1e1fe0b34adb",
+        "kind": "file",
+        "path": "scripts/trellis-task-start-gate.py"
+      },
+      {
+        "digest": "95481528cfdd8838641e63871b03202a3c30e338746ec8d5d38413c7d2a09992",
+        "kind": "file",
+        "path": "test/trellis-task-start-gate.test.js"
+      }
+    ],
+    "repository": "github.com/platypeeps/sd-github-review",
+    "scope": "branch_delta"
+  }
+}

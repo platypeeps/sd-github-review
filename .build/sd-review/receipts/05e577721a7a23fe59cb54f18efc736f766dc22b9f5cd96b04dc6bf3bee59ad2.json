@@ -1,0 +1,365 @@
+{
+  "attemptId": "review-0fd845f085417c36672a801f",
+  "attempts": [
+    {
+      "artifact": "runs/review-0fd845f085417c36672a801f/prism",
+      "diagnostic": "{ \"tool\": \"prism\", \"version\": \"1.0\", \"runId\": \"0d645e289e27a086e8a7b0daa9f1b28a\", \"repo\": { \"root\": \"/Users/sven/repos/platypeeps/sd-github-review\", \"head\": \"109d5d6d05d7aff33a55f179308b76f3d16a4762\", \"branch\": \"feat/08-09-review-coordinator-stale-check\" }, \"inputs\": { \"mode\": \"range\", \"range\": \"ef27d3a79e98ea7537a3226f0c4f063f5c0fef60..109d5d6d05d7aff33a55f179308b76f3d16a4762\" }, \"summary\": { \"counts\": { \"low\": 3, \"medium\": 5, \"high\": 1 }, \"highestSeverity\": \"high\" }, \"findings\": [ { \"id\": \"872a6f9705a0b88a\", \"severity\": \"high\", \"category\": \"correctness\", \"title\": \"PRD contains conflicting acceptance criteria and implementation guidance\", \"message\": \"In `.trellis/tasks/08-09-review-coordinator-stale-check/prd.md` (especially lines 67-153), the requirements describe both a 'reuse only passing cache' policy and an explicit override indicating that upstream supersedes this. The document may mislead future implementers into reproducing now-rejected behaviors.\", \"suggestion\": \"Restructure or highlight the current, active requirements and deprecated/superseded guidance to prevent confusion, and ensure only the upstream-driven contract is prominently stated as the implementation direc...",
+      "durationMs": 14866,
+      "exitCode": 0,
+      "findings": [
+        {
+          "disposition": "outstanding",
+          "family": "correctness",
+          "line": 67,
+          "path": ".trellis/tasks/08-09-review-coordinator-stale-check/prd.md",
+          "severity": "high",
+          "summary": "PRD contains conflicting acceptance criteria and implementation guidance"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "docs",
+          "line": 140,
+          "path": ".trellis/spec/backend/directory-structure.md",
+          "severity": "medium",
+          "summary": "Documentation introduces implementation details as specification"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "docs",
+          "line": 1,
+          "path": ".trellis/tasks/08-09-review-coordinator-stale-check/design.md",
+          "severity": "medium",
+          "summary": "Design doc presents implementation as converged direction despite conflicting upstream requirements"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "docs",
+          "line": 1,
+          "path": ".trellis/tasks/08-09-review-coordinator-stale-check/implement.md",
+          "severity": "medium",
+          "summary": "Implementation plan may mislead as canonical without prominent disclaimer"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "docs",
+          "line": 1,
+          "path": ".trellis/tasks/08-09-review-coordinator-stale-check/task.json",
+          "severity": "medium",
+          "summary": "Task appears 'in_progress' despite documented hard block"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "docs",
+          "line": 1,
+          "path": ".trellis/tasks/08-09-review-gate-advisory-convergence/task.json",
+          "severity": "medium",
+          "summary": "Inconsistent task state declaration"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "docs",
+          "line": 140,
+          "path": ".trellis/spec/backend/directory-structure.md",
+          "severity": "low",
+          "summary": "Documentation on repo-vendored boundary risks staleness"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "docs",
+          "line": 110,
+          "path": ".trellis/spec/guides/cross-layer-thinking-guide.md",
+          "severity": "low",
+          "summary": "Checklist item is ambiguous for non-experts"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "docs",
+          "line": 60,
+          "path": ".trellis/tasks/08-09-review-coordinator-stale-check/implement.md",
+          "severity": "low",
+          "summary": "Redundant or ambiguous process documentation"
+        }
+      ],
+      "provider": {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      },
+      "startedAt": 1786320997.439229,
+      "status": "findings"
+    }
+  ],
+  "confidence": {
+    "granted": false,
+    "limitations": []
+  },
+  "createdAt": 1786321012.306549,
+  "disposition": {
+    "fixPolicy": "auto",
+    "maximumFixCommitsBeforeRemote": 1,
+    "outstanding": 9
+  },
+  "findings": [
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "2da78cfc490e3ba6",
+      "line": 140,
+      "path": ".trellis/spec/backend/directory-structure.md",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "docs"
+      ],
+      "summary": "Documentation introduces implementation details as specification"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "452abfb979588cec",
+      "line": 140,
+      "path": ".trellis/spec/backend/directory-structure.md",
+      "providers": [
+        "prism"
+      ],
+      "severity": "low",
+      "sourceFamilies": [
+        "docs"
+      ],
+      "summary": "Documentation on repo-vendored boundary risks staleness"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "4215cbaaa2bbdbce",
+      "line": 110,
+      "path": ".trellis/spec/guides/cross-layer-thinking-guide.md",
+      "providers": [
+        "prism"
+      ],
+      "severity": "low",
+      "sourceFamilies": [
+        "docs"
+      ],
+      "summary": "Checklist item is ambiguous for non-experts"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "62c0bd8c1c1dbd22",
+      "line": 1,
+      "path": ".trellis/tasks/08-09-review-coordinator-stale-check/design.md",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "docs"
+      ],
+      "summary": "Design doc presents implementation as converged direction despite conflicting upstream requirements"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "6b0c55627f09622f",
+      "line": 1,
+      "path": ".trellis/tasks/08-09-review-coordinator-stale-check/implement.md",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "docs"
+      ],
+      "summary": "Implementation plan may mislead as canonical without prominent disclaimer"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "3ee602d6ab87665f",
+      "line": 60,
+      "path": ".trellis/tasks/08-09-review-coordinator-stale-check/implement.md",
+      "providers": [
+        "prism"
+      ],
+      "severity": "low",
+      "sourceFamilies": [
+        "docs"
+      ],
+      "summary": "Redundant or ambiguous process documentation"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "2e411fd68fd83891",
+      "line": 67,
+      "path": ".trellis/tasks/08-09-review-coordinator-stale-check/prd.md",
+      "providers": [
+        "prism"
+      ],
+      "severity": "high",
+      "sourceFamilies": [
+        "correctness"
+      ],
+      "summary": "PRD contains conflicting acceptance criteria and implementation guidance"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "59495d110866d7c0",
+      "line": 1,
+      "path": ".trellis/tasks/08-09-review-coordinator-stale-check/task.json",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "docs"
+      ],
+      "summary": "Task appears 'in_progress' despite documented hard block"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "7d0170c852517e92",
+      "line": 1,
+      "path": ".trellis/tasks/08-09-review-gate-advisory-convergence/task.json",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "docs"
+      ],
+      "summary": "Inconsistent task state declaration"
+    }
+  ],
+  "outcome": "findings",
+  "plan": {
+    "configurationDigest": "fd3ff633c0cb480516dc246fb53ef7cee3669e4b8350eea2a83c89e4da98536c",
+    "execution": "serial",
+    "familyGate": {
+      "batchSize": 0,
+      "currentRound": 0,
+      "exactHead": "109d5d6d05d7aff33a55f179308b76f3d16a4762",
+      "families": [],
+      "repeatedFamilies": [],
+      "roundsAvoided": 0,
+      "schemaVersion": 1,
+      "siblingFindings": 0,
+      "state": "inactive"
+    },
+    "findingFamilies": [],
+    "fixPolicy": "auto",
+    "localPolicy": "optional",
+    "policyDigest": "c02e65eeef16521107b4ed2a561896f13a1aa4abbb3a5889d0d9443c1340a468",
+    "policyId": "metadata-cheapest",
+    "providers": [
+      {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      }
+    ],
+    "riskClass": "metadata",
+    "riskReasons": [
+      "metadata-only"
+    ],
+    "schemaVersion": 1,
+    "scope": "branch_delta",
+    "successor": "first"
+  },
+  "receiptId": "05e577721a7a23fe59cb54f18efc736f766dc22b9f5cd96b04dc6bf3bee59ad2",
+  "remoteGate": {
+    "reason": "actionable-local-findings",
+    "state": "blocked"
+  },
+  "schemaVersion": 1,
+  "target": {
+    "base": "ef27d3a79e98ea7537a3226f0c4f063f5c0fef60",
+    "contentDigest": "d9546df18616a4d64a742252b9392ab3dd45b9b282c7ad421fd1546d08925ad6",
+    "head": "109d5d6d05d7aff33a55f179308b76f3d16a4762",
+    "identity": "8f40487452e46234fab95c2f9c57f1bda88e1dc45cbb23cf7dc10d6897bfde03",
+    "paths": [
+      {
+        "digest": "13df4861389c22b9fad8233d87325689b90c222b0cc8e0e4117fedd304c4e098",
+        "kind": "file",
+        "path": ".trellis/spec/backend/directory-structure.md"
+      },
+      {
+        "digest": "ccaa0cc50091ddf681e61fbdc7382381919f6f5ad46a367382f8bd66ffd07d3b",
+        "kind": "file",
+        "path": ".trellis/spec/guides/cross-layer-thinking-guide.md"
+      },
+      {
+        "digest": "f3accf58c443d7d2aa68d1a588ce7e7e115ddd181debc5fbb53bc63fdca78018",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-review-coordinator-stale-check/design.md"
+      },
+      {
+        "digest": "207f03cf8798a757201efe2bdef29963a996e709d84fb42b9b6da2787290fc88",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-review-coordinator-stale-check/implement.md"
+      },
+      {
+        "digest": "ac742a5a1d1d7f075173b46e27a513bb8ecfe80a0163c6357dab79f1ebeef673",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-review-coordinator-stale-check/prd.md"
+      },
+      {
+        "digest": "84457afb3ffbaf368d3141814dc8db097e038b3750d964d03d04a18d7c7d17ea",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-review-coordinator-stale-check/task.json"
+      },
+      {
+        "digest": "33985e586bbd89851896dae41c9c5caa5d49a18c358d783a0e0c4a6e4e1b5d47",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-review-gate-advisory-convergence/prd.md"
+      },
+      {
+        "digest": "12b01d3f7549c4011edd5a7fd2dadc5f8021f010387a695e9ac423a86418dbd7",
+        "kind": "file",
+        "path": ".trellis/tasks/08-09-review-gate-advisory-convergence/task.json"
+      }
+    ],
+    "repository": "github.com/platypeeps/sd-github-review",
+    "scope": "branch_delta"
+  }
+}

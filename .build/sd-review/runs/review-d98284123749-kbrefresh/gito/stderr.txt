@@ -1,0 +1,26 @@
+2026-08-09 14:09:30 INFO: Bootstrapping Gito v4.4.1... [90m[verbosity=1][39m
+2026-08-09 14:09:30 INFO: get_repo_context: Using local repo...
+2026-08-09 14:09:30 INFO: Loading project-specific configuration from file:////Users/sven/repos/platypeeps/sd-github-review/.gito/config.toml...
+2026-08-09 14:09:30 INFO: Making merge-base diff: [32mINDEX[39m vs [33mc3ec5f648f604d0f936b86a79425cc79ffc7fd7b[39m
+2026-08-09 14:09:31 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-09 14:09:32 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-09 14:09:32 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-09 14:09:32 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-09 14:09:32 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-09 14:09:32 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-09 14:09:32 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-09 14:09:32 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-09 14:09:33 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-09 14:09:33 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-09 14:09:33 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-09 14:09:33 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-09 14:09:33 INFO: Running pipeline... [env: [33mlocal[39m]
+2026-08-09 14:09:33 INFO: Running pipeline step: jira
+2026-08-09 14:09:33 [31mERROR[39m: [31mJira configuration error: JIRA_URL is not set[39m
+2026-08-09 14:09:33 [33mWARNING[39m: [33mPipeline step "jira" returned no result (None).[39m
+2026-08-09 14:09:33 INFO: Running pipeline step: linear
+2026-08-09 14:09:33 [31mERROR[39m: [31mLINEAR_API_KEY environment variable is not set[39m
+2026-08-09 14:09:33 [33mWARNING[39m: [33mPipeline step "linear" returned no result (None).[39m
+2026-08-09 14:09:35 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-08-09 14:09:35 INFO: Report saved to file:////Users/sven/repos/platypeeps/sd-github-review/.build/sd-review/runs/review-d98284123749-kbrefresh/gito/provider-output/code-review-report.json
+2026-08-09 14:09:35 INFO: Loading project-specific configuration from file:////Users/sven/repos/platypeeps/sd-github-review/.gito/config.toml...

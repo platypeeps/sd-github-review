@@ -1,0 +1,361 @@
+{
+  "attemptId": "review-12f6d53bf796e923bd95c6af",
+  "attempts": [
+    {
+      "artifact": "runs/review-12f6d53bf796e923bd95c6af/gito",
+      "diagnostic": "Downloading pygments (1.2MiB) Downloading cryptography (3.8MiB) Downloading beartype (1.3MiB) Downloading openai (1.6MiB) Downloading pydantic-core (1.8MiB) Downloaded pygments Downloaded beartype Downloaded openai Downloaded pydantic-core Downloaded cryptography Installed 105 packages in 148ms 2026-08-15 09:58:28 INFO: Bootstrapping Gito v4.4.3... \u001b[90m[verbosity=1]\u001b[39m 2026-08-15 09:58:29 INFO: get_repo_context: Using local repo... 2026-08-15 09:58:29 INFO: Loading project-specific configuration from file:////Users/sven/repos/platypeeps/sd-github-review/.gito/config.toml... 2026-08-15 09:58:29 INFO: Making merge-base diff: \u001b[32mINDEX\u001b[39m vs \u001b[33mab4d2e1f8bb2d50db32f62fd86d62a7bed0217d1\u001b[39m 2026-08-15 09:58:30 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-15 09:58:30 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-15 09:58:30 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-15 09:58:31 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-15 09:58:31 INFO: HTTP Request: POST https://api.openai.com/v...",
+      "durationMs": 11848,
+      "exitCode": 0,
+      "findings": [],
+      "provider": {
+        "adapter": "gito",
+        "costTier": "medium",
+        "dataHandling": "private-network",
+        "id": "gito",
+        "qualityTier": "standard",
+        "timeoutSeconds": 600,
+        "version": "builtin-v1"
+      },
+      "startedAt": 1786809501.485913,
+      "status": "clean"
+    },
+    {
+      "artifact": "runs/review-12f6d53bf796e923bd95c6af/prism",
+      "diagnostic": "{ \"tool\": \"prism\", \"version\": \"1.0\", \"runId\": \"5a5f701b91a4684f7d82dcfd96ec542f\", \"repo\": { \"root\": \"/Users/sven/repos/platypeeps/sd-github-review\", \"head\": \"d1e056136d88c861c5950480314f332d38585e52\", \"branch\": \"feat/trellis-seeded-task-start-gate\" }, \"inputs\": { \"mode\": \"range\", \"range\": \"ab4d2e1f8bb2d50db32f62fd86d62a7bed0217d1..d1e056136d88c861c5950480314f332d38585e52\" }, \"summary\": { \"counts\": { \"low\": 3, \"medium\": 4, \"high\": 0 }, \"highestSeverity\": \"medium\" }, \"findings\": [ { \"id\": \"8bbabb95db7f4a5c\", \"severity\": \"medium\", \"category\": \"correctness\", \"title\": \"Missing file existence check before using repo-owned pre-start gate script\", \"message\": \"In the new logic for running a repo-owned pre-start gate script in .trellis/scripts/task.py (lines 96-113), PRE_START_GATE is assumed to exist or be a relative path from repo_root. If PRE_START_GATE is changed or moved in the future or repo_root is not accurately determined, this could introduce a silent failure or bypass of the intended check.\", \"suggestion\": \"Consider adding a more robust check that raises or logs a warning/error if PRE_START_GATE is not found and document the behavior if it is missing or not executable.\", \"confi...",
+      "durationMs": 9662,
+      "exitCode": 0,
+      "findings": [
+        {
+          "disposition": "outstanding",
+          "family": "correctness",
+          "line": 96,
+          "path": ".trellis/scripts/task.py",
+          "severity": "medium",
+          "summary": "Missing file existence check before using repo-owned pre-start gate script"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "security",
+          "line": 102,
+          "path": ".trellis/scripts/task.py",
+          "severity": "medium",
+          "summary": "Potential command injection/race condition risk in pre-start gate subprocess"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "testing",
+          "line": 33,
+          "path": "test/trellis-task-start-gate.test.js",
+          "severity": "medium",
+          "summary": "Regression test leaves temporary directories that may accumulate on disk if interrupted"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "correctness",
+          "line": 129,
+          "path": "test/trellis-task-start-gate.test.js",
+          "severity": "medium",
+          "summary": "No coverage for invalid JSON from preflight in test suite"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "correctness",
+          "line": 102,
+          "path": ".trellis/scripts/task.py",
+          "severity": "low",
+          "summary": "Potential misbehavior if gate process fails without error"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "style",
+          "line": 17,
+          "path": "scripts/trellis-task-start-gate.py",
+          "severity": "low",
+          "summary": "Long import lists without grouping could impair readability"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "maintainability",
+          "line": 16,
+          "path": "test/trellis-task-start-gate.test.js",
+          "severity": "low",
+          "summary": "Repeated hardcoded path logic for repo root and script locations"
+        }
+      ],
+      "provider": {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      },
+      "startedAt": 1786809501.485877,
+      "status": "findings"
+    }
+  ],
+  "confidence": {
+    "granted": false,
+    "limitations": []
+  },
+  "createdAt": 1786809513.3345048,
+  "disposition": {
+    "fixPolicy": "auto",
+    "localDispositions": {
+      "047fec6584765582": "rebutted",
+      "3ec68bb2cb22ef63": "rebutted",
+      "7c22492ab13fce37": "rebutted",
+      "ad31500fb651688f": "rebutted",
+      "d2eca924a088ac02": "rebutted",
+      "d500923094f13b05": "rebutted",
+      "e818b3eae8a64d5b": "rebutted"
+    },
+    "maximumFixCommitsBeforeRemote": 1,
+    "outstanding": 0
+  },
+  "findings": [
+    {
+      "disposition": "rebutted",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "d500923094f13b05",
+      "line": 96,
+      "path": ".trellis/scripts/task.py",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "correctness"
+      ],
+      "summary": "Missing file existence check before using repo-owned pre-start gate script"
+    },
+    {
+      "disposition": "rebutted",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "3ec68bb2cb22ef63",
+      "line": 102,
+      "path": ".trellis/scripts/task.py",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "security"
+      ],
+      "summary": "Potential command injection/race condition risk in pre-start gate subprocess"
+    },
+    {
+      "disposition": "rebutted",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "e818b3eae8a64d5b",
+      "line": 102,
+      "path": ".trellis/scripts/task.py",
+      "providers": [
+        "prism"
+      ],
+      "severity": "low",
+      "sourceFamilies": [
+        "correctness"
+      ],
+      "summary": "Potential misbehavior if gate process fails without error"
+    },
+    {
+      "disposition": "rebutted",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "ad31500fb651688f",
+      "line": 17,
+      "path": "scripts/trellis-task-start-gate.py",
+      "providers": [
+        "prism"
+      ],
+      "severity": "low",
+      "sourceFamilies": [
+        "style"
+      ],
+      "summary": "Long import lists without grouping could impair readability"
+    },
+    {
+      "disposition": "rebutted",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "d2eca924a088ac02",
+      "line": 16,
+      "path": "test/trellis-task-start-gate.test.js",
+      "providers": [
+        "prism"
+      ],
+      "severity": "low",
+      "sourceFamilies": [
+        "maintainability"
+      ],
+      "summary": "Repeated hardcoded path logic for repo root and script locations"
+    },
+    {
+      "disposition": "rebutted",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "7c22492ab13fce37",
+      "line": 33,
+      "path": "test/trellis-task-start-gate.test.js",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "testing"
+      ],
+      "summary": "Regression test leaves temporary directories that may accumulate on disk if interrupted"
+    },
+    {
+      "disposition": "rebutted",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "047fec6584765582",
+      "line": 129,
+      "path": "test/trellis-task-start-gate.test.js",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "correctness"
+      ],
+      "summary": "No coverage for invalid JSON from preflight in test suite"
+    }
+  ],
+  "outcome": "findings",
+  "plan": {
+    "configurationDigest": "fd3ff633c0cb480516dc246fb53ef7cee3669e4b8350eea2a83c89e4da98536c",
+    "execution": "parallel",
+    "familyGate": {
+      "batchSize": 0,
+      "currentRound": 0,
+      "exactHead": "d1e056136d88c861c5950480314f332d38585e52",
+      "families": [],
+      "repeatedFamilies": [],
+      "roundsAvoided": 0,
+      "schemaVersion": 1,
+      "siblingFindings": 0,
+      "state": "inactive"
+    },
+    "findingFamilies": [],
+    "fixPolicy": "auto",
+    "localPolicy": "optional",
+    "policyDigest": "0500aba0ef8653c1b449ab4457fbc5db0e0a3ecc4c77022a3bbfc1c4a663f5d4",
+    "policyId": "substantive-ensemble",
+    "providers": [
+      {
+        "adapter": "gito",
+        "costTier": "medium",
+        "dataHandling": "private-network",
+        "id": "gito",
+        "qualityTier": "standard",
+        "timeoutSeconds": 600,
+        "version": "builtin-v1"
+      },
+      {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      }
+    ],
+    "riskClass": "substantive",
+    "riskReasons": [
+      "executable-configuration",
+      "source",
+      "tests"
+    ],
+    "schemaVersion": 1,
+    "scope": "branch_delta",
+    "successor": "first"
+  },
+  "receiptId": "edd484a4bff7e41a88660113605d4193953f0220e66ccf58bbbff40fdf4587d7",
+  "remoteGate": {
+    "reason": "local-stage-terminal",
+    "state": "eligible"
+  },
+  "schemaVersion": 1,
+  "target": {
+    "base": "ab4d2e1f8bb2d50db32f62fd86d62a7bed0217d1",
+    "contentDigest": "c552aed5333b0e6cbc5ed6d7ff2839d928d5111f7ac45ef45ca9f82892b49fe8",
+    "head": "d1e056136d88c861c5950480314f332d38585e52",
+    "identity": "fd455b4ca1e9d61a89eb0741c02c13ff28e7daf52dc4b19fdbbe65af90a1a4b6",
+    "paths": [
+      {
+        "digest": "b701516cbf0c157540288a88c4bf333a8801912781dd77f3c54230d9e907b711",
+        "kind": "file",
+        "path": ".trellis/scripts/common/io.py"
+      },
+      {
+        "digest": "4f59c65a0ade0ed15f98fab87b09d1bc3c8aeb21d62a46cbce6fcad8f4308770",
+        "kind": "file",
+        "path": ".trellis/scripts/task.py"
+      },
+      {
+        "digest": "6c688f35090f314b18fedff614973406bcaf27d78a5e5db7ad2b161cc8291b03",
+        "kind": "file",
+        "path": ".trellis/spec/backend/directory-structure.md"
+      },
+      {
+        "digest": "6c7182f9f09ba5be585baf3ebb58604ea85f868366b723706bd1b877d77c135e",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-task-manifest-ready-gate/check.jsonl"
+      },
+      {
+        "digest": "4eb748219562d665eb1c2469f6361c94f9a9bd1449c38fcac19cb89f1dc8781f",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-task-manifest-ready-gate/implement.jsonl"
+      },
+      {
+        "digest": "11aa0d32cf34f54d55edef3b7f3b0a98aba3a177fdc0da05119857c4415bb2cf",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-task-manifest-ready-gate/prd.md"
+      },
+      {
+        "digest": "f56d9f9e18f1f72d214417361c56830c0cb77a870512e7704d831014faf83430",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-task-manifest-ready-gate/task.json"
+      },
+      {
+        "digest": "0fa9e949024b8413e7ab3256b58f9d3b6fb6dfab571dfadeda80527b51dbe15f",
+        "kind": "file",
+        "path": ".trellis/workflow.md"
+      },
+      {
+        "digest": "d6be3d3de9bdc866c345d6c326c8f9362cb381ca984a06e802eaf4b39c066f2f",
+        "kind": "file",
+        "path": "scripts/trellis-task-start-gate.py"
+      },
+      {
+        "digest": "e7229e23ba1349c9982c28e83a1ca17fca3cd7265f655c65dd0dfe2d65371487",
+        "kind": "file",
+        "path": "test/trellis-task-start-gate.test.js"
+      }
+    ],
+    "repository": "github.com/platypeeps/sd-github-review",
+    "scope": "branch_delta"
+  }
+}

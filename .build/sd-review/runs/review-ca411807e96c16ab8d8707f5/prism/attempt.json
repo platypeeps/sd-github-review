@@ -1,0 +1,43 @@
+{
+  "artifact": "runs/review-ca411807e96c16ab8d8707f5/prism",
+  "diagnostic": "{ \"tool\": \"prism\", \"version\": \"1.0\", \"runId\": \"6b099d4f4886e42de1899f9f6a2bca9c\", \"repo\": { \"root\": \"/Users/sven/repos/platypeeps/sd-github-review\", \"head\": \"4eea38d0b853ac76ef14976a92bc0a3c94ebe8f1\", \"branch\": \"feat/08-09-descriptor-contract-path\" }, \"inputs\": { \"mode\": \"range\", \"range\": \"053f156c626d1c3901193d3dc76d487eb4dcc2ed..4eea38d0b853ac76ef14976a92bc0a3c94ebe8f1\" }, \"summary\": { \"counts\": { \"low\": 1, \"medium\": 1, \"high\": 1 }, \"highestSeverity\": \"high\" }, \"findings\": [ { \"id\": \"3fd19118a3fa7182\", \"severity\": \"high\", \"category\": \"correctness\", \"title\": \"Broken link or path in documentation or consumer instructions\", \"message\": \"In README.md, SETUP-COPILOT.md, and SETUP-PR-AGENT.md, the displayed path is 'config/routed-review-setup-v1.json' but the link target is now 'contract/routed-review-setup-v1.json'. This is intentional (see design.md), but it could confuse users who expect the file to exist at the displayed path. If documentation consumers follow the link, they may misunderstand where to place the file, and automated tools checking for broken links may report errors.\", \"suggestion\": \"Add explanatory text adjacent to each instance, as already started, explicitly stat...",
+  "durationMs": 7291,
+  "exitCode": 0,
+  "findings": [
+    {
+      "disposition": "outstanding",
+      "family": "correctness",
+      "line": 132,
+      "path": "README.md",
+      "severity": "high",
+      "summary": "Broken link or path in documentation or consumer instructions"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "testing",
+      "line": 63,
+      "path": "test/metadata.test.js",
+      "severity": "medium",
+      "summary": "Potential for missing parent directory in test fixture after path change"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "docs",
+      "line": 158,
+      "path": "DESIGN.md",
+      "severity": "low",
+      "summary": "Inconsistent descriptor path references in DESIGN.md comments and links"
+    }
+  ],
+  "provider": {
+    "adapter": "prism",
+    "costTier": "low",
+    "dataHandling": "private-network",
+    "id": "prism",
+    "qualityTier": "standard",
+    "timeoutSeconds": 300,
+    "version": "builtin-v1"
+  },
+  "startedAt": 1786301730.9726322,
+  "status": "findings"
+}

@@ -1,0 +1,28 @@
+{
+  "tool": "prism",
+  "version": "1.0",
+  "runId": "d0d6f3190d500acd5d5a7d96e9aa349c",
+  "repo": {
+    "root": "/Users/sven/repos/platypeeps/sd-github-review",
+    "head": "22b2bae77b5b8287a94badaf371707fab08565fa",
+    "branch": "feat/07-25-compile-routed-review-configuration"
+  },
+  "inputs": {
+    "mode": "range",
+    "range": "0eacc0750208a22d6504632271372f18e9c40e57..22b2bae77b5b8287a94badaf371707fab08565fa"
+  },
+  "summary": {
+    "counts": {
+      "low": 0,
+      "medium": 0,
+      "high": 0
+    },
+    "highestSeverity": ""
+  },
+  "findings": [],
+  "timing": {
+    "gitMs": 0,
+    "llmMs": 21000,
+    "totalMs": 21021
+  }
+}

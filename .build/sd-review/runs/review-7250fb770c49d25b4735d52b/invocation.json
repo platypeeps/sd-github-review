@@ -1,0 +1,164 @@
+{
+  "attemptId": "review-7250fb770c49d25b4735d52b",
+  "plan": {
+    "configurationDigest": "fd3ff633c0cb480516dc246fb53ef7cee3669e4b8350eea2a83c89e4da98536c",
+    "execution": "parallel",
+    "familyGate": {
+      "batchSize": 0,
+      "currentRound": 0,
+      "exactHead": "a35817218cc87313eddc3ccf8441c0b6cd89e808",
+      "families": [],
+      "repeatedFamilies": [],
+      "roundsAvoided": 0,
+      "schemaVersion": 1,
+      "siblingFindings": 0,
+      "state": "inactive"
+    },
+    "findingFamilies": [],
+    "fixPolicy": "auto",
+    "localPolicy": "optional",
+    "policyDigest": "d357f9f91bb9e885fe0f530eb916a8ae3ef84fa751cfc92f1dc09a5a973d8e3a",
+    "policyId": "substantive-ensemble",
+    "providers": [
+      {
+        "adapter": "gito",
+        "costTier": "medium",
+        "dataHandling": "private-network",
+        "id": "gito",
+        "qualityTier": "standard",
+        "timeoutSeconds": 600,
+        "version": "builtin-v1"
+      },
+      {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      }
+    ],
+    "riskClass": "substantive",
+    "riskReasons": [
+      "executable-configuration",
+      "source",
+      "state-contract",
+      "tests"
+    ],
+    "schemaVersion": 1,
+    "scope": "branch_delta",
+    "successor": "first"
+  },
+  "schemaVersion": 1,
+  "target": {
+    "base": "1b94b128b8a96eb476d140d7164bb4c61e9d7090",
+    "contentDigest": "a5397194686aacb7db2d1801be797bf7551f4db2db21f75dd1ffb76962624810",
+    "head": "a35817218cc87313eddc3ccf8441c0b6cd89e808",
+    "identity": "19825deb7ff91128df467d47e1b921651efaf6d7a997f01f26838262c8b19aba",
+    "paths": [
+      {
+        "digest": "10c8b20210f1791da3cc4ca45abf3b78a6afc018757bf5f1d2e5fcd724631a15",
+        "kind": "file",
+        "path": ".github/sd-github-review.json"
+      },
+      {
+        "digest": "eba0bb9e767b2302ea13c3dc999d977470721eee6ace71b9585a7da7305a28f7",
+        "kind": "file",
+        "path": ".github/workflows/ai-review-router.yml"
+      },
+      {
+        "digest": "ed2004779c84e136fa7f2d197fbbdd0f7cdb16c59f9dd615649ae1c547b81f58",
+        "kind": "file",
+        "path": ".github/workflows/sd-review.yml"
+      },
+      {
+        "digest": "c20e2cd099f7666dd6cb4efb24ea477493ed62d1ae699054aa5a8750bb66881c",
+        "kind": "file",
+        "path": ".trellis/spec/backend/consumer-installer.md"
+      },
+      {
+        "digest": "2f6a13136f556c262d7ca0eb753c29f73c23fe99aa07121893dfe256d4733c6e",
+        "kind": "file",
+        "path": ".trellis/spec/backend/directory-structure.md"
+      },
+      {
+        "digest": "38f72b347a7379c3a0d1dff84627d9e86acfa64d72861ad12054d914fa3b8a96",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-installer-managed-route-mode/check.jsonl"
+      },
+      {
+        "digest": "7119ad577d1f9f5a1a1b23db357319fc2db1a5f818e16a971bb4082ee536cfb3",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-installer-managed-route-mode/implement.jsonl"
+      },
+      {
+        "digest": "b18d8ebbfe61edf2e90fb305667d5f2fb8a0298d63b5f65b8fa4bb80ce62b77a",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-installer-managed-route-mode/prd.md"
+      },
+      {
+        "digest": "140ef18becbfae1173b803c6c686b2332503078f67a3ccfd64b03c0b61d40aba",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-installer-managed-route-mode/task.json"
+      },
+      {
+        "digest": "7bbd8c9a43d5c75c24db69188937d70ac8f68dd5a49c0aad8fc465f7dc99125f",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-remote-review-channel-authority/check.jsonl"
+      },
+      {
+        "digest": "b4ad4abfe0237a10fd1bfc5d5081e94e74fffbeda1480bde3cbb8db6dac7abb2",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-remote-review-channel-authority/design.md"
+      },
+      {
+        "digest": "5cdbe5d7d315cf09238a234bc4775ca39aeb81b3b976337fe88fbbf8c6795a84",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-remote-review-channel-authority/implement.jsonl"
+      },
+      {
+        "digest": "151a55fc5c7bb73e50dda12123392e99c814e5f51239ac8ef186605ea91ffb39",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-remote-review-channel-authority/implement.md"
+      },
+      {
+        "digest": "d9b706bf2367acb78b3a250c59f9707aebc6469280520b8ac4cac85e3b5df2a8",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-remote-review-channel-authority/prd.md"
+      },
+      {
+        "digest": "f8b01c3fef37bf9e76895e73f8bf90d9610092fc540e8188d60f77c42ea63b96",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-remote-review-channel-authority/task.json"
+      },
+      {
+        "digest": "637cc3747554c6abe410238ee30449ba3b7c663daed71e85e502db691a21ffef",
+        "kind": "file",
+        "path": "README.md"
+      },
+      {
+        "digest": "83e590cc27a2707feaba79f414c7e446b4203d2c6cc484627063458ff922b7fa",
+        "kind": "file",
+        "path": "config/routed-review-setup-v1.json"
+      },
+      {
+        "digest": "eba0bb9e767b2302ea13c3dc999d977470721eee6ace71b9585a7da7305a28f7",
+        "kind": "file",
+        "path": "examples/pr-agent-router.yml"
+      },
+      {
+        "digest": "ed2004779c84e136fa7f2d197fbbdd0f7cdb16c59f9dd615649ae1c547b81f58",
+        "kind": "file",
+        "path": "examples/sd-review.yml"
+      },
+      {
+        "digest": "fcc12e8ae9c5e019cdf7c1d76059ed2a368397efc7aaa67fbe9c02d0637c245b",
+        "kind": "file",
+        "path": "test/metadata.test.js"
+      }
+    ],
+    "repository": "github.com/platypeeps/sd-github-review",
+    "scope": "branch_delta"
+  }
+}

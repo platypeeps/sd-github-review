@@ -1,0 +1,21 @@
+{
+    "issues": {},
+    "summary": "The consumer installer has been elegantly refactored from a monolithic script into a modular architecture, splitting pure codecs, transport, local persistence, and planning into separate leaf modules with strict, enforced one-way dependencies, improving maintainability, testability, and clarity without changing functional behavior.\n\n<!-- award -->\n\ud83c\udfdb\ufe0f ARCHITECTURAL VIRTUOSO \ud83c\udfdb\ufe0f\n\"Your architecture is like the Parthenon of modern code: proportional, harmonious, and seems\nto withstand the pressure of time and changing requirements. Vitruvius records your patterns\nfor future generations.\"",
+    "number_of_processed_files": 9,
+    "total_issues": 0,
+    "created_at": "2026-08-04 20:13:27",
+    "model": "gpt-4.1",
+    "pipeline_out": {},
+    "processing_warnings": [],
+    "target": {
+        "git_platform_type": "GitHub",
+        "repo_url": "https://github.com/platypeeps/sd-github-review",
+        "pull_request_id": null,
+        "what": null,
+        "against": "fa7f8cf50d84c3c89b518bd9d8231c39342e6d23",
+        "commit_sha": "22d4399944090ff5c45fac6a57d8ee3b963209cd",
+        "filters": "",
+        "use_merge_base": true,
+        "active_branch": "refactor/a-009-decompose-consumer-installer"
+    }
+}

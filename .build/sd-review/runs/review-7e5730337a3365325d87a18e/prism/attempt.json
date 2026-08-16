@@ -1,0 +1,18 @@
+{
+  "artifact": "runs/review-7e5730337a3365325d87a18e/prism",
+  "diagnostic": "{ \"tool\": \"prism\", \"version\": \"1.0\", \"runId\": \"0974f9669e7e00cb209734137cec3165\", \"repo\": { \"root\": \"/Users/sven/repos/platypeeps/sd-github-review\", \"head\": \"25ad4a1365f2c4dd638d10cf7362ee7c4c7947dd\", \"branch\": \"feat/prove-routed-lane\" }, \"inputs\": { \"mode\": \"range\", \"range\": \"e9aae3328717e23903051f379bfd81a9fef85a1a..25ad4a1365f2c4dd638d10cf7362ee7c4c7947dd\" }, \"summary\": { \"counts\": { \"low\": 0, \"medium\": 0, \"high\": 0 }, \"highestSeverity\": \"\" }, \"findings\": [], \"timing\": { \"gitMs\": 0, \"llmMs\": 1349, \"totalMs\": 1351 } }",
+  "durationMs": 1431,
+  "exitCode": 0,
+  "findings": [],
+  "provider": {
+    "adapter": "prism",
+    "costTier": "low",
+    "dataHandling": "private-network",
+    "id": "prism",
+    "qualityTier": "standard",
+    "timeoutSeconds": 300,
+    "version": "builtin-v1"
+  },
+  "startedAt": 1786831383.861266,
+  "status": "clean"
+}

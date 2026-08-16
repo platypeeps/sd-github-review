@@ -1,0 +1,107 @@
+{
+  "artifact": "runs/review-d98284123749-kbrefresh/prism",
+  "diagnostic": "{ \"tool\": \"prism\", \"version\": \"1.0\", \"runId\": \"8037dc09d81a18c1d905b7ff7a2154cb\", \"repo\": { \"root\": \"/Users/sven/repos/platypeeps/sd-github-review\", \"head\": \"d98284123749f82d110cc51a8260cb05f3ef636c\", \"branch\": \"feat/08-08-installer-durable-lane\" }, \"inputs\": { \"mode\": \"range\", \"range\": \"c3ec5f648f604d0f936b86a79425cc79ffc7fd7b..d98284123749f82d110cc51a8260cb05f3ef636c\" }, \"summary\": { \"counts\": { \"low\": 4, \"medium\": 7, \"high\": 0 }, \"highestSeverity\": \"medium\" }, \"findings\": [ { \"id\": \"fcfbfe8d6cbca078\", \"severity\": \"medium\", \"category\": \"correctness\", \"title\": \"Install/Update/Uninstall logic for file management expanded but may miss error handling on atomicWriteIfChanged\", \"message\": \"The install, update, and adopt flows now use atomicWriteIfChanged to avoid unnecessary file writes. However, as this is new logic, error handling for partial updates (one file fails, others succeed) is insufficiently discussed and partially missing. This could leave the system in a confusing or inconsistent state.\", \"suggestion\": \"Consider adding transaction-like or compensating mechanisms when using multiple atomicWriteIfChanged calls, or provide stronger assurances that steps are not partially e...",
+  "durationMs": 26686,
+  "exitCode": 0,
+  "findings": [
+    {
+      "disposition": "outstanding",
+      "family": "correctness",
+      "line": 249,
+      "path": "scripts/consumer-installer.mjs",
+      "severity": "medium",
+      "summary": "Install/Update/Uninstall logic for file management expanded but may miss error handling on atomicWriteIfChanged"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "bug",
+      "line": 353,
+      "path": "scripts/consumer-installer.mjs",
+      "severity": "medium",
+      "summary": "Potential race between check and update when durable resources are missing"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "bug",
+      "line": 170,
+      "path": "scripts/consumer-installer/persistence.mjs",
+      "severity": "medium",
+      "summary": "Atomic write operations may not be strictly atomic for concurrent processes"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "correctness",
+      "line": 170,
+      "path": "scripts/consumer-installer/persistence.mjs",
+      "severity": "medium",
+      "summary": "Unilateral assumption about unchanged file bytes for adoption and migration"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "security",
+      "line": 170,
+      "path": "scripts/consumer-installer/persistence.mjs",
+      "severity": "medium",
+      "summary": "No explicit sensitive file permission hardening for managed files"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "correctness",
+      "line": 62,
+      "path": "scripts/consumer-installer/plan.mjs",
+      "severity": "medium",
+      "summary": "Potential drift between managed resources and validation tables"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "testing",
+      "line": 106,
+      "path": "test/consumer-installer.test.js",
+      "severity": "medium",
+      "summary": "Test coverage relies on repeated logic between code and test"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "docs",
+      "line": 1,
+      "path": ".trellis/spec/backend/consumer-installer.md",
+      "severity": "low",
+      "summary": "Extensive inline documentation in code blocks may fall out of sync"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "style",
+      "line": 62,
+      "path": "scripts/consumer-installer/plan.mjs",
+      "severity": "low",
+      "summary": "Redundant null-check pattern in assertDurableResourcesCanBeManaged"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "maintainability",
+      "line": 15,
+      "path": "test/consumer-installer.test.js",
+      "severity": "low",
+      "summary": "Tests may mask maintainability issues via copy-pasted structures"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "maintainability",
+      "line": 61,
+      "path": "test/installer-modules.test.js",
+      "severity": "low",
+      "summary": "Multiple examples of literal test values for manifest shape"
+    }
+  ],
+  "provider": {
+    "adapter": "prism",
+    "costTier": "low",
+    "dataHandling": "private-network",
+    "id": "prism",
+    "qualityTier": "standard",
+    "timeoutSeconds": 300,
+    "version": "builtin-v1"
+  },
+  "startedAt": 1786306169.797392,
+  "status": "findings"
+}

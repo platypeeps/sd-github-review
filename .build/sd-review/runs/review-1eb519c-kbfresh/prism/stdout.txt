@@ -1,0 +1,232 @@
+{
+  "tool": "prism",
+  "version": "1.0",
+  "runId": "b75e23c5c28ea20d2d54174cc04e3642",
+  "repo": {
+    "root": "/Users/sven/repos/platypeeps/sd-github-review",
+    "head": "1eb519cbb355b08170b2479f466fe566f7db8cd3",
+    "branch": "feat/08-09-review-coordinator-stale-check"
+  },
+  "inputs": {
+    "mode": "range",
+    "range": "ef27d3a79e98ea7537a3226f0c4f063f5c0fef60..1eb519cbb355b08170b2479f466fe566f7db8cd3"
+  },
+  "summary": {
+    "counts": {
+      "low": 8,
+      "medium": 0,
+      "high": 0
+    },
+    "highestSeverity": "low"
+  },
+  "findings": [
+    {
+      "id": "b51c207be0e5c8b3",
+      "severity": "low",
+      "category": "docs",
+      "title": "Possible confusion from retaining alternative, superseded implementation documents in the repo",
+      "message": "design.md and implement.md are retained as documentation of an approach that was tried and reverted, but both files include strong warnings at the top. Without clear repository organization, maintainers may mistake them for actionable plans, risking rework or redundant effort.",
+      "suggestion": "Move superseded or historical design artifacts to a subdirectory clearly marked for abandoned/parked tasks, or add additional warnings in README.md or other entry points.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": ".trellis/tasks/08-09-review-coordinator-stale-check/design.md",
+          "lines": {
+            "start": 1,
+            "end": 183
+          }
+        }
+      ],
+      "tags": [
+        "docs",
+        "maintainability"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "b785b5a8f549d28d",
+      "severity": "low",
+      "category": "docs",
+      "title": "Long explanatory notes and cross-references risk documentation drift",
+      "message": "Large sections of 'prd.md', 'design.md', and 'implement.md' quote or summarize evidence from upstream issues and reference historical context. While this is valuable, there is a risk that these references or conclusions will diverge from real-time upstream progress, leading to confusion.",
+      "suggestion": "Periodically audit and synchronize with upstream task/issue references to prevent drift. Where possible, reference immutable commit hashes or archive links.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": ".trellis/tasks/08-09-review-coordinator-stale-check/prd.md",
+          "lines": {
+            "start": 64,
+            "end": 154
+          }
+        }
+      ],
+      "tags": [
+        "docs",
+        "cross-references"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "947d1bc4a3eb01c4",
+      "severity": "low",
+      "category": "docs",
+      "title": "Extensive use of strikethrough and superseded material in requirements and acceptance criteria",
+      "message": "The PRD and other documentation sections rely on extensive strikethroughs and inline text marking items as 'superseded,' with pointers both to upstream tasks and to already-abandoned approaches. While this preserves decision history, it may degrade readability for maintainers attempting to ascertain the present requirements and contract, increasing risk of misapplication.",
+      "suggestion": "Consider separating superseded requirements and acceptance criteria into an 'Abandoned Approaches' or 'History' section, making the current requirements clear and easily distinguishable.",
+      "confidence": 0.9,
+      "locations": [
+        {
+          "path": ".trellis/tasks/08-09-review-coordinator-stale-check/prd.md",
+          "lines": {
+            "start": 76,
+            "end": 154
+          }
+        }
+      ],
+      "tags": [
+        "docs",
+        "requirements",
+        "readability"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "100b4f3b3dd965f3",
+      "severity": "low",
+      "category": "docs",
+      "title": "No explicit reference to canonical location of upstream task",
+      "message": "The documentation references an upstream task both by code and by GitHub issue, but does not link directly to a canonical issue or task in the code, requiring maintainers to search for the reference.",
+      "suggestion": "Include an explicit http(s) link to the upstream PR/issue in the 'blockedOn' or relevant section for direct navigation.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": ".trellis/tasks/08-09-review-coordinator-stale-check/prd.md",
+          "lines": {
+            "start": 160,
+            "end": 201
+          }
+        }
+      ],
+      "tags": [
+        "docs",
+        "cross-references"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "7e66e1eed53fca6c",
+      "severity": "low",
+      "category": "docs",
+      "title": "Use of subjective or ambiguous task statuses in task.json",
+      "message": "Task objects use status fields such as 'planning' and 'in_progress' for work that is actually 'blocked' or 'parked', relying on conventions in the 'title' and 'notes' to communicate parked/blocked status. This could lead to confusion or mis-filtering in automation or reporting tools that rely on the status field programmatically.",
+      "suggestion": "If possible, extend schema to explicitly support 'blocked' or 'parked' as first-class status values, or document clearly for downstream consumers that status may not reflect actual task state without reading 'blocked' and 'notes'.",
+      "confidence": 0.95,
+      "locations": [
+        {
+          "path": ".trellis/tasks/08-09-review-coordinator-stale-check/task.json",
+          "lines": {
+            "start": 6,
+            "end": 7
+          }
+        }
+      ],
+      "tags": [
+        "docs",
+        "metadata",
+        "status"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "1cee0337bd553171",
+      "severity": "low",
+      "category": "docs",
+      "title": "Null completedAt fields in parked or blocked tasks",
+      "message": "Task JSON leaves 'completedAt' as null for parked/blocked tasks, even though no further work is planned until upstream changes. This may have downstream effects on reporting tools or metrics expecting explicit completion or closure if no further work is intended locally.",
+      "suggestion": "Consider setting a closure, archival, or failed status with an appropriate timestamp, or document the intended semantics for 'completedAt' in these cases.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": ".trellis/tasks/08-09-review-coordinator-stale-check/task.json",
+          "lines": {
+            "start": 13,
+            "end": 13
+          }
+        }
+      ],
+      "tags": [
+        "docs",
+        "metadata"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "f76682af0482e74b",
+      "severity": "low",
+      "category": "docs",
+      "title": "Blocked state and reason only in notes/blockedOn keys but not surfaced at top level",
+      "message": "Blocked status and root cause are tracked in custom keys 'blocked: true' and 'blockedOn', and echoed in 'notes', in lieu of a standardized top-level status or field. Tools not designed for these conventions may miss or mishandle the explicit blocked state.",
+      "suggestion": "If the task engine or consumer supports it, surface blocked/blockedOn at the highest available semantic level and propagate to downstream systems as structured fields.",
+      "confidence": 0.95,
+      "locations": [
+        {
+          "path": ".trellis/tasks/08-09-review-coordinator-stale-check/task.json",
+          "lines": {
+            "start": 39,
+            "end": 44
+          }
+        }
+      ],
+      "tags": [
+        "docs",
+        "metadata",
+        "status"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "44171abca1fe8168",
+      "severity": "low",
+      "category": "docs",
+      "title": "Vague use of 'notes' and 'meta' for critical state tracking",
+      "message": "Critical state information (parked status, block reason, handling conventions) appears only in 'notes' and 'meta', which risk being overlooked if not handled as first-class fields.",
+      "suggestion": "Document and enforce conventions for where such information must be placed, and update any task tooling to promote or highlight these fields.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": ".trellis/tasks/08-09-review-gate-advisory-convergence/task.json",
+          "lines": {
+            "start": 25,
+            "end": 30
+          }
+        }
+      ],
+      "tags": [
+        "docs",
+        "metadata",
+        "status"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ],
+  "timing": {
+    "gitMs": 0,
+    "llmMs": 16816,
+    "totalMs": 16831
+  },
+  "_provenance": [
+    {
+      "ai_generated": true,
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ]
+}

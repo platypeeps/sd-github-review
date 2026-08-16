@@ -1,0 +1,62 @@
+{
+  "attemptId": "review-7e5730337a3365325d87a18e",
+  "plan": {
+    "configurationDigest": "fd3ff633c0cb480516dc246fb53ef7cee3669e4b8350eea2a83c89e4da98536c",
+    "execution": "serial",
+    "familyGate": {
+      "batchSize": 0,
+      "currentRound": 0,
+      "exactHead": "25ad4a1365f2c4dd638d10cf7362ee7c4c7947dd",
+      "families": [],
+      "repeatedFamilies": [],
+      "roundsAvoided": 0,
+      "schemaVersion": 1,
+      "siblingFindings": 0,
+      "state": "inactive"
+    },
+    "findingFamilies": [],
+    "fixPolicy": "auto",
+    "localPolicy": "optional",
+    "policyDigest": "b6fdd8a6cddaa6a4d63617a8115957ec2a00355883b2557401e779c644a2e8f6",
+    "policyId": "metadata-cheapest",
+    "providers": [
+      {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      }
+    ],
+    "riskClass": "metadata",
+    "riskReasons": [
+      "metadata-only"
+    ],
+    "schemaVersion": 1,
+    "scope": "branch_delta",
+    "successor": "first"
+  },
+  "schemaVersion": 1,
+  "target": {
+    "base": "e9aae3328717e23903051f379bfd81a9fef85a1a",
+    "contentDigest": "0b48e4aabfe87cfdd5732d108a4f1033a24b36ab5b5c3e823b34816c66b519f3",
+    "head": "25ad4a1365f2c4dd638d10cf7362ee7c4c7947dd",
+    "identity": "1ccb6c5662f722ddcf0d328e400a6a374fe492219a2b55d3ef5afb2042925398",
+    "paths": [
+      {
+        "digest": "d96a7303483e1cf5a11bcbb951b3120cbd4bd017125b377eba9cd54d199f3111",
+        "kind": "file",
+        "path": ".trellis/spec/backend/consumer-installer.md"
+      },
+      {
+        "digest": "f82b3420d22cc11d10660e6829c0c85b875a6c47071a6c61e8ef683391ea9cbb",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-prove-routed-lane/task.json"
+      }
+    ],
+    "repository": "github.com/platypeeps/sd-github-review",
+    "scope": "branch_delta"
+  }
+}

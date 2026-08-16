@@ -1,0 +1,21 @@
+{
+    "issues": {},
+    "summary": "This change set adds comprehensive protocol v2 support for \"local-attested\" review contracts, bringing rigorous schema validation\u2014with clear privacy boundaries and trust models\u2014for new message types (attestation requests, reviews, receipts, status, usage), and supplies accompanying validation tests and fixtures for both valid and invalid cases.",
+    "number_of_processed_files": 16,
+    "total_issues": 0,
+    "created_at": "2026-08-05 05:03:14",
+    "model": "gpt-4.1",
+    "pipeline_out": {},
+    "processing_warnings": [],
+    "target": {
+        "git_platform_type": "GitHub",
+        "repo_url": "https://github.com/platypeeps/sd-github-review",
+        "pull_request_id": null,
+        "what": null,
+        "against": "origin/main",
+        "commit_sha": "2d2e0f0bfd7acff96e56ad7d52ebb6f65e7192f4",
+        "filters": "fixtures/protocol/v2/local-attestation-request.invalid.json,fixtures/protocol/v2/local-attestation-request.valid.json,fixtures/protocol/v2/local-authorization.invalid.json,fixtures/protocol/v2/local-authorization.valid.json,fixtures/protocol/v2/local-receipt.invalid.json,fixtures/protocol/v2/local-receipt.valid.json,fixtures/protocol/v2/local-status.invalid.json,fixtures/protocol/v2/local-status.valid.json,fixtures/protocol/v2/outcomes.invalid.json,fixtures/protocol/v2/outcomes.valid.json,fixtures/protocol/v2/self-reported-usage.invalid.json,fixtures/protocol/v2/self-reported-usage.valid.json,fixtures/protocol/v2/source-contracts.invalid.json,fixtures/protocol/v2/source-contracts.valid.json,src/protocol-v2.js,test/protocol-v2.test.js",
+        "use_merge_base": true,
+        "active_branch": "feat/define-local-review-attestation-contracts"
+    }
+}

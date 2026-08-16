@@ -1,0 +1,439 @@
+{
+  "attemptId": "review-0b87adb5c2eff23fb26f4551",
+  "attempts": [
+    {
+      "artifact": "runs/review-0b87adb5c2eff23fb26f4551/gito",
+      "diagnostic": "2026-08-09 14:00:39 INFO: Bootstrapping Gito v4.4.1... \u001b[90m[verbosity=1]\u001b[39m 2026-08-09 14:00:39 INFO: get_repo_context: Using local repo... 2026-08-09 14:00:39 INFO: Loading project-specific configuration from file:////Users/sven/repos/platypeeps/sd-github-review/.gito/config.toml... 2026-08-09 14:00:39 INFO: Making merge-base diff: \u001b[32mINDEX\u001b[39m vs \u001b[33mc3ec5f648f604d0f936b86a79425cc79ffc7fd7b\u001b[39m 2026-08-09 14:00:40 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 14:00:40 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 14:00:40 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 14:00:41 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 14:00:41 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 14:00:41 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 14:00:41 INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\" 2026-08-09 14:00:41 INFO: HTTP Request: POST ht...",
+      "durationMs": 7579,
+      "exitCode": 0,
+      "findings": [],
+      "provider": {
+        "adapter": "gito",
+        "costTier": "medium",
+        "dataHandling": "private-network",
+        "id": "gito",
+        "qualityTier": "standard",
+        "timeoutSeconds": 600,
+        "version": "builtin-v1"
+      },
+      "startedAt": 1786305637.77397,
+      "status": "clean"
+    },
+    {
+      "artifact": "runs/review-0b87adb5c2eff23fb26f4551/prism",
+      "diagnostic": "{ \"tool\": \"prism\", \"version\": \"1.0\", \"runId\": \"55922a7f50cd022d04297aac624fb3eb\", \"repo\": { \"root\": \"/Users/sven/repos/platypeeps/sd-github-review\", \"head\": \"ffe3917cc37d32af82ce62c775352f0a22707609\", \"branch\": \"feat/08-08-installer-durable-lane\" }, \"inputs\": { \"mode\": \"range\", \"range\": \"c3ec5f648f604d0f936b86a79425cc79ffc7fd7b..ffe3917cc37d32af82ce62c775352f0a22707609\" }, \"summary\": { \"counts\": { \"low\": 1, \"medium\": 4, \"high\": 4 }, \"highestSeverity\": \"high\" }, \"findings\": [ { \"id\": \"6c2c9e083d6be6a8\", \"severity\": \"high\", \"category\": \"correctness\", \"title\": \"'isConverged' extends correctness beyond hash comparison\", \"message\": \"Idempotency is now defined as convergence on the manifest and plan, not just equality of file hashes. Future updates to configuration, manifest shape, or non-file state must be reflected here or idempotency will be broken, possibly leaving installs in an inconsistent state.\", \"suggestion\": \"Ensure that isConverged is always updated together with any new fields or structural changes to the manifest or planned actions.\", \"confidence\": 0.95, \"locations\": [ { \"path\": \"scripts/consumer-installer.mjs\", \"lines\": { \"start\": 153, \"end\": 176 } } ], \"tags\": [ \"idemp...",
+      "durationMs": 13699,
+      "exitCode": 0,
+      "findings": [
+        {
+          "disposition": "outstanding",
+          "family": "correctness",
+          "line": 153,
+          "path": "scripts/consumer-installer.mjs",
+          "severity": "high",
+          "summary": "'isConverged' extends correctness beyond hash comparison"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "correctness",
+          "line": 58,
+          "path": "scripts/consumer-installer/plan.mjs",
+          "severity": "high",
+          "summary": "Guard checks for unmanaged durable resources on update/install/adopt"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "correctness",
+          "line": 12,
+          "path": "scripts/consumer-installer/transport.mjs",
+          "severity": "high",
+          "summary": "Incorrect release provenance check: installer now checks all source artifacts, not just main workflow"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "correctness",
+          "line": 166,
+          "path": "test/consumer-installer.test.js",
+          "severity": "high",
+          "summary": "Tests: check for converged run verifies mtime and plan, not just file contents"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "correctness",
+          "line": 483,
+          "path": "scripts/consumer-installer.mjs",
+          "severity": "medium",
+          "summary": "Uninstall only removes files tracked in manifest (by version/resource)"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "correctness",
+          "line": 98,
+          "path": "scripts/consumer-installer/codecs.mjs",
+          "severity": "medium",
+          "summary": "Version-gated validation is now explicit for manifest schema migration"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "performance",
+          "line": 164,
+          "path": "scripts/consumer-installer/persistence.mjs",
+          "severity": "medium",
+          "summary": "Avoid unnecessary file writes for managed resources"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "testing",
+          "line": 31,
+          "path": "test/consumer-installer.test.js",
+          "severity": "medium",
+          "summary": "Tests parameterize durable resource checks, preventing drift"
+        },
+        {
+          "disposition": "outstanding",
+          "family": "docs",
+          "line": 41,
+          "path": "README.md",
+          "severity": "low",
+          "summary": "Documentation synced precisely with new behavior and resource set"
+        }
+      ],
+      "provider": {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      },
+      "startedAt": 1786305637.7739289,
+      "status": "findings"
+    }
+  ],
+  "confidence": {
+    "granted": false,
+    "limitations": []
+  },
+  "createdAt": 1786305651.474528,
+  "disposition": {
+    "fixPolicy": "auto",
+    "maximumFixCommitsBeforeRemote": 1,
+    "outstanding": 9
+  },
+  "findings": [
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "1c128e158c3bc9d2",
+      "line": 41,
+      "path": "README.md",
+      "providers": [
+        "prism"
+      ],
+      "severity": "low",
+      "sourceFamilies": [
+        "docs"
+      ],
+      "summary": "Documentation synced precisely with new behavior and resource set"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "8dc06cdd9d186c12",
+      "line": 153,
+      "path": "scripts/consumer-installer.mjs",
+      "providers": [
+        "prism"
+      ],
+      "severity": "high",
+      "sourceFamilies": [
+        "correctness"
+      ],
+      "summary": "'isConverged' extends correctness beyond hash comparison"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "bd5938ff2adea762",
+      "line": 483,
+      "path": "scripts/consumer-installer.mjs",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "correctness"
+      ],
+      "summary": "Uninstall only removes files tracked in manifest (by version/resource)"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "67f29be47165da25",
+      "line": 98,
+      "path": "scripts/consumer-installer/codecs.mjs",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "correctness"
+      ],
+      "summary": "Version-gated validation is now explicit for manifest schema migration"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "f6fdd70800659110",
+      "line": 164,
+      "path": "scripts/consumer-installer/persistence.mjs",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "performance"
+      ],
+      "summary": "Avoid unnecessary file writes for managed resources"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "99d809c1c3b4e8dc",
+      "line": 58,
+      "path": "scripts/consumer-installer/plan.mjs",
+      "providers": [
+        "prism"
+      ],
+      "severity": "high",
+      "sourceFamilies": [
+        "correctness"
+      ],
+      "summary": "Guard checks for unmanaged durable resources on update/install/adopt"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "318004fe4b0b03a3",
+      "line": 12,
+      "path": "scripts/consumer-installer/transport.mjs",
+      "providers": [
+        "prism"
+      ],
+      "severity": "high",
+      "sourceFamilies": [
+        "correctness"
+      ],
+      "summary": "Incorrect release provenance check: installer now checks all source artifacts, not just main workflow"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "b8713475546e6581",
+      "line": 31,
+      "path": "test/consumer-installer.test.js",
+      "providers": [
+        "prism"
+      ],
+      "severity": "medium",
+      "sourceFamilies": [
+        "testing"
+      ],
+      "summary": "Tests parameterize durable resource checks, preventing drift"
+    },
+    {
+      "disposition": "outstanding",
+      "families": [
+        "other"
+      ],
+      "family": "other",
+      "id": "d78502cad6185644",
+      "line": 166,
+      "path": "test/consumer-installer.test.js",
+      "providers": [
+        "prism"
+      ],
+      "severity": "high",
+      "sourceFamilies": [
+        "correctness"
+      ],
+      "summary": "Tests: check for converged run verifies mtime and plan, not just file contents"
+    }
+  ],
+  "outcome": "findings",
+  "plan": {
+    "configurationDigest": "fd3ff633c0cb480516dc246fb53ef7cee3669e4b8350eea2a83c89e4da98536c",
+    "execution": "parallel",
+    "familyGate": {
+      "batchSize": 0,
+      "currentRound": 0,
+      "exactHead": "ffe3917cc37d32af82ce62c775352f0a22707609",
+      "families": [],
+      "repeatedFamilies": [],
+      "roundsAvoided": 0,
+      "schemaVersion": 1,
+      "siblingFindings": 0,
+      "state": "inactive"
+    },
+    "findingFamilies": [],
+    "fixPolicy": "auto",
+    "localPolicy": "optional",
+    "policyDigest": "d6db7e4439666daf6fee72904754e99cc535292f5fcd23d11a0c94d9d7af5144",
+    "policyId": "substantive-ensemble",
+    "providers": [
+      {
+        "adapter": "gito",
+        "costTier": "medium",
+        "dataHandling": "private-network",
+        "id": "gito",
+        "qualityTier": "standard",
+        "timeoutSeconds": 600,
+        "version": "builtin-v1"
+      },
+      {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      }
+    ],
+    "riskClass": "substantive",
+    "riskReasons": [
+      "executable-configuration",
+      "source",
+      "tests"
+    ],
+    "schemaVersion": 1,
+    "scope": "branch_delta",
+    "successor": "first"
+  },
+  "receiptId": "fddb942e31e2e06157ad5d721377d5e7307cb15a94b0f0b1e168d8f76f58531f",
+  "remoteGate": {
+    "reason": "actionable-local-findings",
+    "state": "blocked"
+  },
+  "schemaVersion": 1,
+  "target": {
+    "base": "c3ec5f648f604d0f936b86a79425cc79ffc7fd7b",
+    "contentDigest": "74d4f14026960f2908d7269309315b4c7569950f58167e8d149135d1c99e5484",
+    "head": "ffe3917cc37d32af82ce62c775352f0a22707609",
+    "identity": "7d4e89a00d6c645f99274f5a81c9704c7a9b521e78ec1c5bb3a46f31c40a4fbf",
+    "paths": [
+      {
+        "digest": "5c848810144ea30cdc1cd7c10bf80775092c1de42cbc06a177bd6aa909ac3dfc",
+        "kind": "file",
+        "path": ".trellis/spec/backend/consumer-installer.md"
+      },
+      {
+        "digest": "f6db75150e59d73a1eed8d2463933884b2a5e5570d8c0331ac76921cf68b8484",
+        "kind": "file",
+        "path": ".trellis/spec/backend/directory-structure.md"
+      },
+      {
+        "digest": "21af463405023528d954d11b3a258556bcbc7b4ba4e24e834934e7a1ba18ee5a",
+        "kind": "file",
+        "path": ".trellis/spec/backend/index.md"
+      },
+      {
+        "digest": "634ed9087f2abab1f638b63c4b722a6c15da5d2455f09ed4dd8edc31aaa312df",
+        "kind": "file",
+        "path": ".trellis/tasks/08-08-installer-durable-lane/prd.md"
+      },
+      {
+        "digest": "26198bc2d0cf5389e010d5ef2ae38042bd86dfecd7b5ad9524f9fa24b83491b7",
+        "kind": "file",
+        "path": ".trellis/tasks/08-08-installer-durable-lane/task.json"
+      },
+      {
+        "digest": "44d867fe0f8fbf655e1961bea26400922caea3a9e09a18020378ce2088676915",
+        "kind": "file",
+        "path": "DESIGN.md"
+      },
+      {
+        "digest": "07f6a510cbc3d120e5efd0f32bc74324994bd86e9ced167d1dd758ead6b392d0",
+        "kind": "file",
+        "path": "README.md"
+      },
+      {
+        "digest": "bd9709f453901ac6ecef2b5f7849ee0fd8e7a1c62d7d6b8804f14953c8c38cf8",
+        "kind": "file",
+        "path": "SETUP-PR-AGENT.md"
+      },
+      {
+        "digest": "e29014306303ddd25f1db38d92866ec7ef7ccc602641b13afe42b711c67aa368",
+        "kind": "file",
+        "path": "examples/sd-review.yml"
+      },
+      {
+        "digest": "bd6c24bcc5b67709da664e856351580f0c55040ccc0e5c4ac8e07816d3376e3a",
+        "kind": "file",
+        "path": "scripts/consumer-installer.mjs"
+      },
+      {
+        "digest": "015024574762c8f015a1f96928e26106e3b8c6c25a67b5051e00b4ba469433d6",
+        "kind": "file",
+        "path": "scripts/consumer-installer/codecs.mjs"
+      },
+      {
+        "digest": "2c7acf526f962c95efe3374b4220638e4a04a1677f4f1509d94ec80dce193fae",
+        "kind": "file",
+        "path": "scripts/consumer-installer/persistence.mjs"
+      },
+      {
+        "digest": "917c981190227be98e44c71975c02aec1911d750d83875177ec2fc0aeb1fea29",
+        "kind": "file",
+        "path": "scripts/consumer-installer/plan.mjs"
+      },
+      {
+        "digest": "9be89ce8506007aa6e40b970ddcac6d18ba7b40a9f5eb350cf813e30c0d36bc0",
+        "kind": "file",
+        "path": "scripts/consumer-installer/transport.mjs"
+      },
+      {
+        "digest": "c7a502a0cf5a6898c167c72d16d55e99ed945bd606ca28b7b922ae817dfb36f2",
+        "kind": "file",
+        "path": "test/consumer-installer.test.js"
+      },
+      {
+        "digest": "de282a90b37300edc06cf610c597ad51baa90c4d617c1c0c14d325d7eb8654a6",
+        "kind": "file",
+        "path": "test/installer-modules.test.js"
+      },
+      {
+        "digest": "9043d6479148797c064302780b6ff9883237676225720983093b19e102ef20ee",
+        "kind": "file",
+        "path": "test/metadata.test.js"
+      }
+    ],
+    "repository": "github.com/platypeeps/sd-github-review",
+    "scope": "branch_delta"
+  }
+}

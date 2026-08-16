@@ -1,0 +1,21 @@
+{
+    "issues": {},
+    "summary": "This change robustly extends the installer to manage additional durable workflow resources (the descriptor and the on-demand review lane) in a fully declarative, collision-safe, test-covered, and schema-migratable way, with model-driven resource tracking, manifest validation, and precise filesystem/state convergence logic throughout the installation lifecycle.",
+    "number_of_processed_files": 12,
+    "total_issues": 0,
+    "created_at": "2026-08-09 14:17:08",
+    "model": "gpt-4.1",
+    "pipeline_out": {},
+    "processing_warnings": [],
+    "target": {
+        "git_platform_type": "GitHub",
+        "repo_url": "https://github.com/platypeeps/sd-github-review",
+        "pull_request_id": null,
+        "what": null,
+        "against": "c3ec5f648f604d0f936b86a79425cc79ffc7fd7b",
+        "commit_sha": "2dd02f895f3deed2ba1dc916ed2ea5d2d7f4022b",
+        "filters": "",
+        "use_merge_base": true,
+        "active_branch": "feat/08-08-installer-durable-lane"
+    }
+}

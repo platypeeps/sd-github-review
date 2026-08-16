@@ -23,7 +23,7 @@ with `dispatch.phase: "observed"` and a `completedAt`. Measured twice:
 
 The coordinator polls inside that window and stores what it finds:
 
-- `scripts/sd-ai-command-pack-review.py:2133` — the receipt is queried only
+- `~/.agents/bin/sd-ai-command-pack-review.py:2133` — the receipt is queried only
   `if state.get("remoteReceipt") is None`, so a stored receipt is never
   refreshed.
 - `:2153` — `_advance(state_path, state, "receipt", remoteReceipt=receipt)`

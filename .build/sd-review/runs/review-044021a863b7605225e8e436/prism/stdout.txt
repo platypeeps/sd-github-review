@@ -1,0 +1,28 @@
+{
+  "tool": "prism",
+  "version": "1.0",
+  "runId": "969b438adca5d797a6c70908c0d8d7f1",
+  "repo": {
+    "root": "/Users/sven/repos/platypeeps/sd-github-review",
+    "head": "942a4b6031b4191505bc3e0756d6e8791d27f425",
+    "branch": "feat/prove-routed-lane"
+  },
+  "inputs": {
+    "mode": "range",
+    "range": "e9aae3328717e23903051f379bfd81a9fef85a1a..942a4b6031b4191505bc3e0756d6e8791d27f425"
+  },
+  "summary": {
+    "counts": {
+      "low": 0,
+      "medium": 0,
+      "high": 0
+    },
+    "highestSeverity": ""
+  },
+  "findings": [],
+  "timing": {
+    "gitMs": 0,
+    "llmMs": 1279,
+    "totalMs": 1288
+  }
+}

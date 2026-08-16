@@ -1,0 +1,2141 @@
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        diff --git a/.trellis/spec/backend/directory-structure.md b/.trellis/spec/backend/directory-structure.md
+        index e4fe58b..ad6af5d 100644
+        --- a/.trellis/spec/backend/directory-structure.md
+        +++ b/.trellis/spec/backend/directory-structure.md
+        @@ -210,6 +210,49 @@ single queryable source for priority, ownership, dependencies, and status.
+           nothing else, so their rationale survived only in that commit's message and
+           every one of them ranked as the bare fallback `parked`. Answering "is this
+           still valid?" meant reading git history.
+        +- Treat `.trellis/**` as **template-managed, not vendored**. The two managed
+        +  trees in this repository behave oppositely and the pack's rule does not carry
+        +  over. `.trellis/.template-hashes.json` records the content hash Trellis last
+        +  wrote; `trellis update` compares it and, for a file the user modified, prompts
+        +  to overwrite, keep, or write `.new`. Trellis's own reference lists
+        +  `.trellis/workflow.md`, `.trellis/config.yaml`, `.trellis/spec/**`, and
+        +  `.trellis/scripts/**` as editable by default and states that update
+        +  recognizing the result as user-modified is normal. So a hash entry means
+        +  "reconciled by prompt", not "refuses your edit" — the opposite of
+        +  `pack.install-audit`.
+        +
+        +  ```bash
+        +  # Is this path template-managed, and has anyone already diverged from it?
+        +  python3 - <<'EOF'
+        +  import hashlib, json, pathlib
+        +  h = json.load(open(".trellis/.template-hashes.json"))["hashes"]
+        +  for f, recorded in sorted(h.items()):
+        +      p = pathlib.Path(f)
+        +      if p.is_file() and hashlib.sha256(p.read_bytes()).hexdigest() != recorded:
+        +          print("locally modified:", f)
+        +  EOF
+        +  ```
+        +
+        +  When a change must land in that tree, keep the tracked file's diff generic and
+        +  minimal and put the repository-specific knowledge in a repo-owned path — a new
+        +  file under `scripts/` carries no hash entry, so update never prompts for it.
+        +  The diff you leave in a tracked file is the diff a human reconciles at the
+        +  next update prompt.
+        +
+        +  Check what a lifecycle extension point can actually do before designing
+        +  against it. `run_task_hooks` in `.trellis/scripts/common/task_utils.py` prints
+        +  `[WARN] Hook failed` on a nonzero exit and returns; Trellis documents only
+        +  `after_*` events. An `after_start` hook therefore cannot refuse a start, and
+        +  the ready gate at `.trellis/workflow.md` needs a check that runs *before* the
+        +  status write — `cmd_start` in `.trellis/scripts/task.py`, which is the only
+        +  path that flips a task to `in_progress`. `task.py create` activates the
+        +  session pointer without that flip, so it is correctly outside the gate; a new
+        +  task's manifests are always seed-only.
+        +
+        +  Observed 2026-08-15: the pack rule was applied to `.trellis/` by analogy and a
+        +  working route was nearly abandoned as unsafe. Both files involved were
+        +  unmodified from template while 11 of the 259 tracked paths had already
+        +  diverged.
+         - Keep consumer installation lifecycle code under `scripts/consumer-installer.mjs`
+           and `scripts/consumer-installer/`, with a thin `scripts/install-consumer.mjs`
+           entrypoint. It may manage consumer files and bounded GitHub metadata, but must
+        
+        --------
+        
+        ----ADDITIONAL CONTEXT: FULL FILE CONTENT AFTER APPLYING REVIEWED CHANGES----
+        1: # Directory Structure
+        2: 
+        3: > Module boundaries for the GitHub Action and its repository tooling.
+        4: 
+        5: ## Directory Layout
+        6: 
+        7: ```text
+        8: src/                   # dependency-free Action runtime
+        9:   index.js             # standalone/durable entrypoint and GitHub outputs
+        10:   operations.js        # on-demand route/acknowledge/finalize/query orchestration
+        11:   router.js            # route-policy owner: routeReview + selectProtocolRoute
+        12:   protocol.js          # versioned request/receipt decoding, canonical identity, decodeRoutingInputs
+        13:   protocol-v2.js       # pure v2 budget-aware contracts: decoders, vocabularies, fingerprints
+        14:   retention-policy.js  # pure standard-v1 retention/deletion/legal-hold/purge contracts (injected time)
+        15:   review-candidate-catalog.js # pure immutable candidate/prompt-profile catalog, safe projection, retention classification (injected time)
+        16:   routed-review-compiler.js # pure compiler: explicit-mode v2 source + catalog safe projection/handler profiles -> canonical manifest with source/catalog/output digests
+        17:   review-budget-ledger.js # pure leaf: authoritative budget observations, shared/independent pools, idempotent reservations/leases, overdrawn/quarantine, retention classification (injected time)
+        18:   review-plan-authorization.js # pure: exact-head managed plan preparation, trusted-command/route-label precedence, bounded /review options discovery, control-plane request shaping, idempotent durable authorization/deferral (injected time)
+        19:   review-usage-reconciliation.js # pure leaf: monotonic reconciliation of an authorized reserve against full actual usage/cost, soft budget_overrun vs hard policy_violation classification, overdrawn/quarantine, preserved unknown usage, retention classification (injected time)
+        20:   review-deferred-recovery.js # pure leaf: bounded deferred records, explicit idempotent authorized recovery creating a distinct linked attempt, changed-head supersession, exact-head assurance/gate Check projection with monotonic revision + compare-and-swap, repository-lifecycle eligibility, retention classification (injected time)
+        21:   receipt.js           # exact-head Check Run receipt storage and reconciliation
+        22:   risk-context.js      # shared normalized routing-context builder
+        23:   reviewer-dispatch.js # shared Copilot presence probe and reviewer request
+        24:   normalize.js         # leaf: value canonicalizers and input parsers
+        25:   path-match.js        # leaf: glob matching and sensitive-file selection
+        26:   github.js            # GitHub REST transport
+        27: test/                # node:test suites mirroring runtime boundaries
+        28: fixtures/protocol/   # canonical versioned protocol behavior fixtures
+        29: fixtures/setup/      # read-only setup discovery fixtures
+        30: contract/            # published versioned setup capability descriptor; deliberately
+        31:                      # NOT config/, which is the path consumers install their own
+        32:                      # copy to and the vendored probe reads (R1)
+        33: scripts/             # repository validation, consumer lifecycle, and SD pack helpers
+        34:   install-consumer.mjs        # thin consumer-installer CLI entrypoint (process I/O)
+        35:   consumer-installer.mjs      # consumer lifecycle orchestration + public re-exports
+        36:   consumer-installer/         # decomposed installer boundaries (downhill deps)
+        37:     codecs.mjs                # leaf: constants, manifest/config/CLI codecs, validation
+        38:     transport.mjs             # gh/git subprocess transport, GitHubCli, provenance
+        39:     persistence.mjs           # path-containment guard, atomic write/remove, local state
+        40:     plan.mjs                  # pure lifecycle planning from decoded snapshots
+        41: examples/            # consumer-owned workflow templates
+        42:   sd-review.yml      # durable workflow_dispatch lane; its `name:` must equal the
+        43:                      # descriptor's workflow.name, which GitHub reports as the
+        44:                      # workflow metadata name the probe validates
+        45: docs/                # project and release operations
+        46: .github/workflows/   # repository CI only
+        47: ```
+        48: 
+        49: `action.yml` is the public runtime manifest. `DESIGN.md` owns architecture and
+        50: routing semantics; `README.md` owns consumer installation.
+        51: 
+        52: ## Planning Ownership
+        53: 
+        54: Unfinished phases, risks, and follow-up work belong in independently valid
+        55: `.trellis/tasks/<task>/` records. Keep `README.md`, `DESIGN.md`, and `docs/`
+        56: focused on current behavior and operating procedures so they do not become a
+        57: second backlog that can drift from Trellis.
+        58: 
+        59: When retiring a standalone roadmap, first classify every entry as completed or
+        60: open. Record completion evidence in the migration task, create one Trellis task
+        61: for each independently deliverable open outcome, and only then delete the
+        62: roadmap and remove forward-looking references from live documentation.
+        63: 
+        64: ```text
+        65: # Wrong: the same future work is tracked in two places
+        66: DESIGN.md: "Planned backend: ..."
+        67: docs/<standalone-roadmap>.md: "Phase 4: ..."
+        68: 
+        69: # Correct: current contract in docs, remaining work in Trellis
+        70: DESIGN.md: "Supported backend contract: ..."
+        71: .trellis/tasks/<task>/prd.md: acceptance criteria for the open outcome
+        72: ```
+        73: 
+        74: This convention prevents completed work from being recreated and preserves a
+        75: single queryable source for priority, ownership, dependencies, and status.
+        76: 
+        77: ## Module Organization
+        78: 
+        79: - Keep one downhill dependency direction. Leaf utilities import no local
+        80:   module; the codecs import only leaves; the policy owner imports the codec
+        81:   seam plus leaves; services and entrypoints import the policy owner. The codec
+        82:   (`src/protocol.js`) and persistence (`src/receipt.js`) layers must never
+        83:   import route policy. `test/dependency-boundaries.test.js` enforces the whole
+        84:   allowed-import matrix, including that `selectProtocolRoute` is defined in
+        85:   exactly one module.
+        86: - Put value canonicalizers (mode/route/confidence) and input parsers
+        87:   (list/command/label/trust/event-gate) in `src/normalize.js`; put glob
+        88:   matching and sensitive-file selection in `src/path-match.js`. Both are leaves
+        89:   with no local imports.
+        90: - Put the route policy in `src/router.js`: the automatic `routeReview` decision
+        91:   and the versioned `selectProtocolRoute` (floors, local-evidence reduction,
+        92:   successor handling). It is the single policy owner and imports the
+        93:   `decodeRoutingInputs` codec seam plus leaf canonicalizers, never codec
+        94:   internals.
+        95: - Put versioned routed-review decoding, privacy validation, stable hashing,
+        96:   receipt envelopes, and the `decodeRoutingInputs` typed routing-input record in
+        97:   `src/protocol.js`. It must not access the network, filesystem, environment,
+        98:   GitHub output surfaces, or route policy.
+        99: - Put pure versioned contract definitions — v2 budget-aware wire/storage shapes
+        100:   in `src/protocol-v2.js`, the `standard-v1` retention/deletion/legal-hold/
+        101:   purge contracts in `src/retention-policy.js`, and the immutable review
+        102:   candidate/prompt-profile catalog with its bounded safe projection and
+        103:   reference-aware retention classification in
+        104:   `src/review-candidate-catalog.js`, and the authoritative budget observations,
+        105:   shared/independent pools, idempotent reservations/leases, explicit
+        106:   overdrawn/quarantine state, and standard-v1 retention classification in
+        107:   `src/review-budget-ledger.js` — in their own leaf modules. The pure
+        108:   routed-review configuration compiler in `src/routed-review-compiler.js` sits
+        109:   one layer above those leaves: it imports the v2 source decoder from
+        110:   `src/protocol-v2.js` and the candidate safe projection from
+        111:   `src/review-candidate-catalog.js`, then compiles an explicit-mode v2 source
+        112:   (with a managed catalog safe projection or standalone setup-discovered handler
+        113:   profiles) into a canonical manifest with stable source, catalog, and output
+        114:   digests. It infers no mode and takes no ambient input beyond its arguments.
+        115:   Like `src/protocol.js` they must not access the network, filesystem,
+        116:   environment, GitHub output surfaces, or route policy, and they take no
+        117:   ambient time: every lifecycle/expiry computation receives an injected
+        118:   `nowIso` so fake-clock tests are deterministic. Each record carries exactly
+        119:   one retention data class; a conflicting classification fails closed rather
+        120:   than selecting the longer duration. New `src/*.js` modules must be added to
+        121:   the `check` script's `node --check` list and registered in
+        122:   `test/dependency-boundaries.test.js`.
+        123: - Put HTTP mechanics and GitHub endpoint methods in `src/github.js`.
+        124: - Put durable Check Run marker encoding, receipt lookup/reconciliation, and
+        125:   trusted successor-compare normalization in `src/receipt.js`; match
+        126:   bookkeeping paths through `src/path-match.js`, not the router.
+        127: - Put the shared normalized routing-context assembly in `src/risk-context.js`
+        128:   and the shared Copilot presence probe plus reviewer request in
+        129:   `src/reviewer-dispatch.js`. Both entrypoints use these services;
+        130:   entrypoint-specific concerns (standalone command/label/trust, the durable
+        131:   policy block, `route==="auto"` file gating, and successor compare) stay at the
+        132:   entrypoints.
+        133: - Put durable operation input staging, dispatch, bounded outputs, and summaries
+        134:   in `src/operations.js`; keep standalone event staging and the thin process
+        135:   entrypoint in `src/index.js`. Standalone stays policy-free and calls
+        136:   `routeReview` directly, never `selectProtocolRoute`.
+        137: - Mirror each boundary in `test/router.test.js`, `test/protocol.test.js`,
+        138:   `test/receipt.test.js`, `test/github.test.js`, `test/operations.test.js`,
+        139:   `test/action.test.js`, `test/dependency-boundaries.test.js`, and
+        140:   `test/shared-service-parity.test.js`.
+        141: - Put repository-only validation in `scripts/`; it must not become part of the
+        142:   shipped Action runtime.
+        143: - Treat every `scripts/sd-ai-command-pack-*` path as **vendored, not repo-owned**.
+        144:   Those files are installed copies from the `sd-ai-command-pack` source
+        145:   repository. The deterministic `pack.install-audit` check fails any local edit
+        146:   to one, reporting `installed target drifted from pack <version> content:
+        147:   <path>`, and the next pack refresh would overwrite the edit regardless. Change
+        148:   pack behavior upstream and consume it through a refresh; change pack
+        149:   *configuration* through the repo-owned JSON files under `.sd-ai-command-pack/`.
+        150: 
+        151:   ```text
+        152:   # Wrong: task planning names a vendored path as the change site
+        153:   relatedFiles: ["scripts/sd-ai-command-pack-review.py"]
+        154: 
+        155:   # Correct: establish ownership from the repository, not from memory
+        156:   git log --oneline -- scripts/sd-ai-command-pack-review.py  # only "chore: refresh ..." -> vendored
+        157:   node scripts/sd-ai-command-pack-review-preflight.mjs       # the gate that refuses the edit
+        158:   ```
+        159: 
+        160:   Derive the editable set from the audit rather than from a list here: a list in
+        161:   this document goes stale silently while the audit stays authoritative. As
+        162:   observed against pack 0.64.3 it admitted only
+        163:   `.sd-ai-command-pack/{check,pr-body-scope,review-preflight,review}.json`.
+        164: 
+        165:   Establish ownership before planning, not after implementing: a task that
+        166:   reaches validation before discovering the boundary has already written work it
+        167:   must revert.
+        168: 
+        169:   A task parked on "resumes when a pack refresh carries the fix" is **not**
+        170:   cleared by the refresh happening. Nothing re-reads that sentence: the
+        171:   `PARKED:` title prefix and the `blocked`/`blockedOn` fields are what the
+        172:   backlog ranker machine-reads, so the task stays invisible until someone
+        173:   clears them by hand. Re-verify such a park against the vendored file itself,
+        174:   not against the pack version number — a refresh that bumps the version
+        175:   without touching the file proves nothing in either direction.
+        176: 
+        177:   ```bash
+        178:   # Which refresh last touched the file, and is the installed copy pristine?
+        179:   git log --oneline -2 -- scripts/sd-ai-command-pack-review.py
+        180:   python3 scripts/sd-ai-command-pack-install-audit.py   # prints payload provenance
+        181:   ```
+        182: 
+        183:   Observed 2026-08-15: `review.py` last changed at 0.71.1 while the repository
+        184:   had already advanced to 0.71.6, so the version alone answered neither
+        185:   question. The park outlived its blocker by four refreshes and the backlog
+        186:   reported one actionable task where there were two.
+        187: 
+        188:   Park a task with its resume condition in `blockedOn`, not with the `PARKED:`
+        189:   prefix alone. The prefix marks *that* a task is parked and nothing more:
+        190:   `candidate_block_status` in `scripts/sd-ai-command-pack-work-loop.py` returns
+        191:   `reason_text or "parked"`, so a prefix-only park ranks as the literal string
+        192:   `parked` and a backlog report cannot tell a deliberate scope decision from a
+        193:   dependency block. Write what would unpark it and how to falsify it — the
+        194:   command or artifact to re-derive, not prose — because the next sweep re-checks
+        195:   the field, never the commit that created the park.
+        196: 
+        197:   ```bash
+        198:   # Does every parked record carry a reason the ranker can surface?
+        199:   python3 - <<'EOF'
+        200:   import json, pathlib
+        201:   for p in sorted(pathlib.Path(".trellis/tasks").iterdir()):
+        202:       if not p.is_dir() or p.name == "archive": continue
+        203:       t = json.loads((p / "task.json").read_text())
+        204:       if t.get("title", "").startswith("PARKED:") and not t.get("blockedOn"):
+        205:           print("prefix-only park:", p.name)
+        206:   EOF
+        207:   ```
+        208: 
+        209:   Observed 2026-08-15: sixteen tasks parked by one commit carried the prefix and
+        210:   nothing else, so their rationale survived only in that commit's message and
+        211:   every one of them ranked as the bare fallback `parked`. Answering "is this
+        212:   still valid?" meant reading git history.
+        213: - Treat `.trellis/**` as **template-managed, not vendored**. The two managed
+        214:   trees in this repository behave oppositely and the pack's rule does not carry
+        215:   over. `.trellis/.template-hashes.json` records the content hash Trellis last
+        216:   wrote; `trellis update` compares it and, for a file the user modified, prompts
+        217:   to overwrite, keep, or write `.new`. Trellis's own reference lists
+        218:   `.trellis/workflow.md`, `.trellis/config.yaml`, `.trellis/spec/**`, and
+        219:   `.trellis/scripts/**` as editable by default and states that update
+        220:   recognizing the result as user-modified is normal. So a hash entry means
+        221:   "reconciled by prompt", not "refuses your edit" — the opposite of
+        222:   `pack.install-audit`.
+        223: 
+        224:   ```bash
+        225:   # Is this path template-managed, and has anyone already diverged from it?
+        226:   python3 - <<'EOF'
+        227:   import hashlib, json, pathlib
+        228:   h = json.load(open(".trellis/.template-hashes.json"))["hashes"]
+        229:   for f, recorded in sorted(h.items()):
+        230:       p = pathlib.Path(f)
+        231:       if p.is_file() and hashlib.sha256(p.read_bytes()).hexdigest() != recorded:
+        232:           print("locally modified:", f)
+        233:   EOF
+    [33m...(output was truncated)...[92m
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        diff --git a/.trellis/tasks/08-15-task-manifest-ready-gate/check.jsonl b/.trellis/tasks/08-15-task-manifest-ready-gate/check.jsonl
+        deleted file mode 100644
+        index 8dff769..0000000
+        --- a/.trellis/tasks/08-15-task-manifest-ready-gate/check.jsonl
+        +++ /dev/null
+        @@ -1,1 +0,0 @@
+        -{"file": ".trellis/spec/backend/directory-structure.md", "reason": "The park-hygiene rules this record must satisfy while parked, including carrying a real resume condition rather than a bare PARKED: prefix."}
+        
+        --------
+        
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        diff --git a/.trellis/tasks/08-15-task-manifest-ready-gate/implement.jsonl b/.trellis/tasks/08-15-task-manifest-ready-gate/implement.jsonl
+        deleted file mode 100644
+        index 6cc3766..0000000
+        --- a/.trellis/tasks/08-15-task-manifest-ready-gate/implement.jsonl
+        +++ /dev/null
+        @@ -1,1 +0,0 @@
+        -{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Establishes that scripts/sd-ai-command-pack-* is vendored and pack.install-audit refuses local edits, which is why this gate is upstream work and the task is parked."}
+        
+        --------
+        
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        diff --git a/.trellis/workflow.md b/.trellis/workflow.md
+        index 7775a93..b5d1b9a 100644
+        --- a/.trellis/workflow.md
+        +++ b/.trellis/workflow.md
+        @@ -423,6 +423,8 @@ Delete the seed `_example` line once real entries exist (optional — it's skipp
+         
+         Ready gate: both `implement.jsonl` and `check.jsonl` must contain at least one real `{"file": "...", "reason": "..."}` entry before `task.py start`. The seed `_example` row alone is not ready.
+         
+        +This is enforced, not advisory: `task.py start` runs `scripts/trellis-task-start-gate.py` before it writes any state, and a nonzero result refuses the start and names the offending files. Entries may reference only `.trellis/spec/**` or another task's `research/**` — a code path is rejected as a reference outside the allowed roots. `task.py create` is deliberately outside the gate, since a new task's manifests are always seed-only.
+        +
+         Skip this step only when both files already have real curated entries.
+         
+         [/Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Reasonix, Trae]
+        
+        --------
+        
+        ----ADDITIONAL CONTEXT: FULL FILE CONTENT AFTER APPLYING REVIEWED CHANGES----
+        1: # Development Workflow
+        2: 
+        3: ---
+        4: 
+        5: ## Core Principles
+        6: 
+        7: 1. **Plan before code** — figure out what to do before you start
+        8: 2. **Specs injected, not remembered** — guidelines are injected via hook/skill, not recalled from memory
+        9: 3. **Persist everything** — research, decisions, and lessons all go to files; conversations get compacted, files don't
+        10: 4. **Incremental development** — one task at a time
+        11: 5. **Capture learnings** — after each task, review and write new knowledge back to spec
+        12: 
+        13: ---
+        14: 
+        15: ## Trellis System
+        16: 
+        17: ### Developer Identity
+        18: 
+        19: On first use, initialize your identity:
+        20: 
+        21: ```bash
+        22: python3 ./.trellis/scripts/init_developer.py <your-name>
+        23: ```
+        24: 
+        25: Creates `.trellis/.developer` (gitignored) + `.trellis/workspace/<your-name>/`.
+        26: 
+        27: ### Spec System
+        28: 
+        29: `.trellis/spec/` holds coding guidelines organized by package and layer.
+        30: 
+        31: - `.trellis/spec/<package>/<layer>/index.md` — entry point with **Pre-Development Checklist** + **Quality Check**. Actual guidelines live in the `.md` files it points to.
+        32: - `.trellis/spec/guides/index.md` — cross-package thinking guides.
+        33: 
+        34: ```bash
+        35: python3 ./.trellis/scripts/get_context.py --mode packages   # list packages / layers
+        36: ```
+        37: 
+        38: **When to update spec**: new pattern/convention found · bug-fix prevention to codify · new technical decision.
+        39: 
+        40: ### Task System
+        41: 
+        42: Every task has its own directory under `.trellis/tasks/{MM-DD-name}/` holding `task.json`, `prd.md`, optional `design.md`, optional `implement.md`, optional `research/`, and context manifests (`implement.jsonl`, `check.jsonl`) for sub-agent-capable platforms.
+        43: 
+        44: ```bash
+        45: # Task lifecycle
+        46: python3 ./.trellis/scripts/task.py create "<title>" [--slug <name>] [--parent <dir>]
+        47: python3 ./.trellis/scripts/task.py start <name>          # set active task (session-scoped when available)
+        48: python3 ./.trellis/scripts/task.py current --source      # show active task and source
+        49: python3 ./.trellis/scripts/task.py finish                # clear active task (triggers after_finish hooks)
+        50: python3 ./.trellis/scripts/task.py archive <name>        # move to archive/{year-month}/
+        51: python3 ./.trellis/scripts/task.py list [--mine] [--status <s>]
+        52: python3 ./.trellis/scripts/task.py list-archive
+        53: 
+        54: # Code-spec context (injected into implement/check agents via JSONL).
+        55: # `implement.jsonl` / `check.jsonl` are seeded on `task create` for sub-agent-capable
+        56: # platforms; the AI curates real spec + research entries during planning when needed.
+        57: python3 ./.trellis/scripts/task.py add-context <name> <action> <file> <reason>
+        58: python3 ./.trellis/scripts/task.py list-context <name> [action]
+        59: python3 ./.trellis/scripts/task.py validate <name>
+        60: 
+        61: # Task metadata
+        62: python3 ./.trellis/scripts/task.py set-branch <name> <branch>
+        63: python3 ./.trellis/scripts/task.py set-base-branch <name> <branch>    # PR target
+        64: python3 ./.trellis/scripts/task.py set-scope <name> <scope>
+        65: 
+        66: # Hierarchy (parent/child)
+        67: python3 ./.trellis/scripts/task.py add-subtask <parent> <child>
+        68: python3 ./.trellis/scripts/task.py remove-subtask <parent> <child>
+        69: 
+        70: # PR creation
+        71: python3 ./.trellis/scripts/task.py create-pr [name] [--dry-run]
+        72: ```
+        73: 
+        74: > Run `python3 ./.trellis/scripts/task.py --help` to see the authoritative, up-to-date list.
+        75: 
+        76: **Current-task mechanism**: `task.py create` creates the task directory and (when session identity is available) auto-sets the per-session active-task pointer so the planning breadcrumb fires immediately. `task.py start` writes the same pointer (idempotent if already set) and flips `task.json.status` from `planning` to `in_progress`. State is stored under `.trellis/.runtime/sessions/`. If no context key is available from hook input, `TRELLIS_CONTEXT_ID`, or a platform-native session environment variable, there is no active task and `task.py start` fails with a session identity hint. `task.py finish` deletes the current session file (status unchanged). `task.py archive <task>` writes `status=completed`, moves the directory to `archive/`, and deletes any runtime session files that still point at the archived task.
+        77: 
+        78: ### Workspace System
+        79: 
+        80: Records every AI session for cross-session tracking under `.trellis/workspace/<developer>/`.
+        81: 
+        82: - `journal-N.md` — session log. **Max 2000 lines per file**; a new `journal-(N+1).md` is auto-created when exceeded.
+        83: - `index.md` — personal index (total sessions, last active).
+        84: 
+        85: ```bash
+        86: python3 ./.trellis/scripts/add_session.py --title "Title" --commit "hash" --summary "Summary"
+        87: ```
+        88: 
+        89: ### Context Script
+        90: 
+        91: ```bash
+        92: python3 ./.trellis/scripts/get_context.py                            # full session runtime
+        93: python3 ./.trellis/scripts/get_context.py --mode packages            # available packages + spec layers
+        94: python3 ./.trellis/scripts/get_context.py --mode phase --step <X.Y>  # detailed guide for a workflow step
+        95: ```
+        96: 
+        97: ---
+        98: 
+        99: <!--
+        100:   WORKFLOW-STATE BREADCRUMB CONTRACT (read this before editing the tag blocks below)
+        101: 
+        102:   The [workflow-state:STATUS] blocks embedded in the ## Phase Index section
+        103:   below are the SINGLE source of truth for the per-turn `<workflow-state>`
+        104:   breadcrumb that every supported AI platform's UserPromptSubmit hook
+        105:   reads. inject-workflow-state.py (Python platforms) and
+        106:   inject-workflow-state.js (OpenCode plugin) only parse them — there is no
+        107:   fallback dict baked into the scripts after v0.5.0-rc.0.
+        108: 
+        109:   STATUS charset: [A-Za-z0-9_-]+. When the hook can't find a tag, it
+        110:   degrades to a generic "Refer to workflow.md for current step." line —
+        111:   intentionally visible so users notice and fix a broken workflow.md.
+        112: 
+        113:   INVARIANT (test/regression.test.ts):
+        114:     Every workflow-walkthrough step marked `[required · once]` must have a
+        115:     matching enforcement line in its phase's [workflow-state:*] block. The
+        116:     breadcrumb is the only per-turn channel; if a mandatory step isn't
+        117:     mentioned there, the AI silently skips it (Phase 1 planning gate
+        118:     skip and Phase 3.4 commit skip both manifested via this gap).
+        119: 
+        120:   TAG ↔ PHASE scoping:
+        121:     [workflow-state:no_task]      → no active task; before Phase 1
+        122:     [workflow-state:planning]     → all of Phase 1 (status='planning')
+        123:     [workflow-state:planning-inline] → Codex inline variant of Phase 1
+        124:     [workflow-state:in_progress]  → Phase 2 + Phase 3.2-3.4
+        125:                                     (status stays 'in_progress' from
+        126:                                     task.py start until task.py archive)
+        127:     [workflow-state:in_progress-inline] → Codex inline variant of Phase 2/3
+        128:     [workflow-state:completed]    → currently DEAD: cmd_archive flips
+        129:                                     status and moves the dir in the same
+        130:                                     call, so the resolver loses the
+        131:                                     pointer (block kept for a future
+        132:                                     explicit in_progress→completed
+        133:                                     transition)
+        134: 
+        135:   Editing checklist:
+        136:     - When you change a [workflow-state:STATUS] block, also check the
+        137:       matching phase's `[required · once]` walkthrough steps for sync
+        138:     - Run `trellis update` after editing to push the new bodies to
+        139:       downstream user projects (block-level managed replacement)
+        140:     - Full runtime contract:
+        141:       .trellis/spec/cli/backend/workflow-state-contract.md
+        142: -->
+        143: 
+        144: ## Phase Index
+        145: 
+        146: ```
+        147: Phase 1: Plan    → classify, get task-creation consent, then write planning artifacts
+        148: Phase 2: Execute → implement only after task status is in_progress
+        149: Phase 3: Finish  → verify, update spec, commit, and wrap up
+        150: ```
+        151: 
+        152: ### Request Triage
+        153: 
+        154: - Simple conversation or small task: ask only whether this turn should create a Trellis task. If the user says no, skip Trellis for this session.
+        155: - Complex task: ask whether you may create a Trellis task and enter planning. If the user says no, do not do broad inline implementation; explain, clarify scope, or suggest a smaller split.
+        156: - User approval to create a task is not approval to start implementation. Planning still happens first.
+        157: 
+        158: ### Planning Artifacts
+        159: 
+        160: - `prd.md` — requirements, constraints, and acceptance criteria. Do not put technical design or execution checklists here.
+        161: - `design.md` — technical design for complex tasks: boundaries, contracts, data flow, tradeoffs, compatibility, rollout / rollback shape.
+        162: - `implement.md` — execution plan for complex tasks: ordered checklist, validation commands, review gates, and rollback points.
+        163: - `implement.jsonl` / `check.jsonl` — spec and research manifests for sub-agent context. They do not replace `implement.md`.
+        164: - Lightweight tasks may be PRD-only. Complex tasks must have `prd.md`, `design.md`, and `implement.md` before `task.py start`.
+        165: 
+        166: ### Parent / Child Task Trees
+        167: 
+        168: Use a parent task when one user request contains several independently verifiable deliverables. The parent task owns the source requirement set, the task map, cross-child acceptance criteria, and final integration review; it normally should not be the implementation target unless it also has direct work.
+        169: 
+        170: Use child tasks for deliverables that can be planned, implemented, checked, and archived independently. Parent/child structure is not a dependency system: if one child must wait for another, write that ordering in the child `prd.md` / `implement.md` and keep each child's acceptance criteria testable.
+        171: 
+        172: Create new children with `task.py create "<title>" --slug <name> --parent <parent-dir>`. Link existing tasks with `task.py add-subtask <parent> <child>`, and unlink mistakes with `task.py remove-subtask <parent> <child>`.
+        173: 
+        174: <!-- Per-turn breadcrumb: shown when there is no active task (before Phase 1) -->
+        175: 
+        176: [workflow-state:no_task]
+        177: No active task. First classify the current turn and ask for task-creation consent before creating any Trellis task.
+        178: Simple conversation / small task: ask only whether this turn should create a Trellis task. If the user says no, skip Trellis for this session.
+        179: Complex task: ask the user if you can create a Trellis task and enter the planning phase. If the user says no, explain, clarify scope, or suggest a smaller split.
+        180: [/workflow-state:no_task]
+        181: 
+        182: ### Phase 1: Plan
+        183: - 1.0 Create task `[required · once]` (only after task-creation consent)
+        184: - 1.1 Requirement exploration `[required · repeatable]` (`prd.md`; complex tasks also need `design.md` + `implement.md`)
+        185: - 1.2 Research `[optional · repeatable]`
+        186: - 1.3 Configure context `[required · once]` — Claude Code, Cursor, OpenCode, Codex, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Reasonix (sub-agent-dispatch platforms only; inline platforms skip)
+        187: - 1.4 Activate task `[required · once]` (review gate, then `task.py start`; status → in_progress)
+        188: - 1.5 Completion criteria
+        189: 
+        190: <!-- Per-turn breadcrumb: shown throughout Phase 1 (status='planning') -->
+        191: 
+        192: [workflow-state:planning]
+        193: Load `trellis-brainstorm`; stay in planning.
+        194: Lightweight: `prd.md` can be enough. Complex: finish `prd.md`, `design.md`, and `implement.md`; ask for review before `task.py start`.
+        195: Multi-deliverable scope: consider a parent task plus independently verifiable child tasks; dependencies must be written in child artifacts, not implied by tree position.
+        196: Sub-agent mode: curate `implement.jsonl` and `check.jsonl` as spec/research manifests before start.
+        197: [/workflow-state:planning]
+        198: 
+        199: <!-- Per-turn breadcrumb: shown throughout Phase 1 when codex.dispatch_mode=inline.
+        200:      Codex-only opt-in alternate to [workflow-state:planning]. The main agent
+        201:      edits code directly in Phase 2, so jsonl curation is skipped —
+        202:      the inline workflow loads `trellis-before-dev` instead of injecting JSONL
+        203:      into a sub-agent. -->
+        204: 
+        205: [workflow-state:planning-inline]
+        206: Load `trellis-brainstorm`; stay in planning.
+        207: Lightweight: `prd.md` can be enough. Complex: finish `prd.md`, `design.md`, and `implement.md`; ask for review before `task.py start`.
+        208: Multi-deliverable scope: consider a parent task plus independently verifiable child tasks; dependencies must be written in child artifacts, not implied by tree position.
+        209: Inline mode: skip jsonl curation; Phase 2 reads artifacts/specs via `trellis-before-dev`.
+        210: [/workflow-state:planning-inline]
+        211: 
+        212: ### Phase 2: Execute
+        213: - 2.1 Implement `[required · repeatable]`
+        214: - 2.2 Quality check `[required · repeatable]`
+        215: - 2.3 Rollback `[on demand]`
+        216: 
+        217: <!-- Per-turn breadcrumb: shown while status='in_progress'.
+        218:      Scope: all of Phase 2 + Phase 3.2-3.4 (status stays 'in_progress' from
+        219:      task.py start until task.py archive; only archive flips it). The body
+        220:      therefore must cover every required step from implementation through
+        221:      commit, including Phase 3.3 spec update and Phase 3.4 commit. -->
+        222: 
+        223: Sub-agent dispatch protocol applies to all platforms and all sub-agents, including class-2 Codex/Gemini/Qoder/Copilot/ZCode/Reasonix/Trae and `trellis-research`: every dispatch prompt starts with `Active task: <task path from task.py current>` before role-specific instructions.
+        224: 
+        225: [workflow-state:in_progress]
+        226: Tools: `trellis-implement` / `trellis-research` are sub-agent types only (Task/Agent tool, NOT Skill; there is no skill by these names). `trellis-update-spec` is a skill. `trellis-check` exists as both; prefer the Agent form when verifying after code changes.
+        227: Flow: `trellis-implement` -> `trellis-check` -> `trellis-update-spec` -> commit (Phase 3.4) -> `/trellis:finish-work`.
+        228: Main-session default: dispatch implement/check sub-agents. Sub-agent self-exemption: if already running as `trellis-implement`, do NOT spawn another `trellis-implement` or `trellis-check`; if already running as `trellis-check`, do NOT spawn another `trellis-check` or `trellis-implement`. Dispatch is main session only.
+        229: Dispatch prompt starts with `Active task: <task path from task.py current>`. Read context: jsonl entries -> `prd.md` -> `design.md if present` -> `implement.md if present`.
+        230: [/workflow-state:in_progress]
+        231: 
+        232: <!-- Per-turn breadcrumb: shown while status='in_progress' when
+        233:      codex.dispatch_mode=inline. Codex-only opt-in alternate to
+        234:      [workflow-state:in_progress]. The main session edits code directly
+        235:      instead of dispatching sub-agents. -->
+        236: 
+        237: [workflow-state:in_progress-inline]
+        238: Flow: `trellis-before-dev` -> edit -> `trellis-check` -> validation -> `trellis-update-spec` -> commit (Phase 3.4) -> `/trellis:finish-work`.
+        239: Do not dispatch implement/check sub-agents in inline mode.
+        240: Read context: `prd.md` -> `design.md if present` -> `implement.md if present`, plus relevant spec/research loaded by skills.
+        241: [/workflow-state:in_progress-inline]
+        242: 
+        243: ### Phase 3: Finish
+        244: - 3.2 Debug retrospective `[on demand]`
+        245: - 3.3 Spec update `[required · once]`
+        246: - 3.4 Commit changes `[required · once]`
+        247: - 3.5 Wrap-up reminder
+        248: 
+        249: > Note: step 3.1 was folded into 2.2 (last-iteration full-scope check) and 3.4 (commit preamble). Numbering kept stable to avoid breaking external references.
+        250: 
+        251: <!-- Per-turn breadcrumb: shown while status='completed'.
+        252:      Currently DEAD in normal flow: cmd_archive writes status='completed' in
+        253:      the same call that moves the task dir to archive/, so the active-task
+        254:      resolver loses the pointer and the hook never fires on archived tasks.
+        255:      Block preserved for a future status-transition redesign (e.g. an
+        256:      explicit in_progress→completed command). Edit through the same spec
+        257:      channel as the live blocks. -->
+        258: 
+        259: [workflow-state:completed]
+        260: Code committed. Run `/trellis:finish-work`; if dirty, return to Phase 3.4 first.
+        261: [/workflow-state:completed]
+        262: 
+        263: ### Rules
+        264: 
+        265: 1. Identify which Phase you're in, then continue from the next step there
+        266: 2. Run steps in order inside each Phase; `[required]` steps can't be skipped
+        267: 3. Phases can roll back (e.g., Execute reveals a prd defect → return to Plan to fix, then re-enter Execute)
+        268: 4. Steps tagged `[once]` are skipped if the output already exists; don't re-run
+        269: 5. Artifact presence informs the next step; missing `design.md` / `implement.md` is valid for lightweight tasks and incomplete planning for complex tasks.
+        270: 
+        271: ### Active Task Routing
+        272: 
+        273: When a user request matches one of these intents inside an active task, route first, then load the detailed phase step if needed.
+        274: 
+    [33m...(output was truncated)...[92m
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        diff --git a/.trellis/workspace/sdelmas/index.md b/.trellis/workspace/sdelmas/index.md
+        index 4723ef0..440cfc1 100644
+        --- a/.trellis/workspace/sdelmas/index.md
+        +++ b/.trellis/workspace/sdelmas/index.md
+        @@ -8,7 +8,7 @@
+         
+         <!-- @@@auto:current-status -->
+         - **Active File**: `journal-2.md`
+        -- **Total Sessions**: 65
+        +- **Total Sessions**: 66
+         - **Last Active**: 2026-08-15
+         <!-- @@@/auto:current-status -->
+         
+        @@ -19,7 +19,7 @@
+         <!-- @@@auto:active-documents -->
+         | File | Lines | Status |
+         |------|-------|--------|
+        -| `journal-2.md` | ~667 | Active |
+        +| `journal-2.md` | ~710 | Active |
+         | `journal-1.md` | ~1992 | Archived |
+         <!-- @@@/auto:active-documents -->
+         
+        @@ -30,6 +30,7 @@
+         <!-- @@@auto:session-history -->
+         | # | Date | Title | Commits | Branch |
+         |---|------|-------|---------|--------|
+        +| 66 | 2026-08-15 | Enforce the Trellis context-manifest ready gate at task start | `4fd0723`, `d1e0561`, `026b9e1`, `41f1652` | `feat/trellis-seeded-task-start-gate` |
+         | 65 | 2026-08-15 | File the two follow-ups PR #81 earned, and correct one of them before merge | `28fd6a5`, `a047494`, `dae66d9` | `chore/followup-tasks-from-pr-81` |
+         | 64 | 2026-08-15 | Record machine-readable resume conditions on the parked backlog | `85a260f`, `5d9e394`, `45d01c5` | `chore/parked-task-resume-conditions` |
+         | 63 | 2026-08-15 | Close review-coordinator stale-check on the shipped upstream fix | `5e52330`, `be8de04`, `5a2fc50` | `feat/08-09-review-coordinator-stale-check` |
+        
+        --------
+        
+        ----ADDITIONAL CONTEXT: FULL FILE CONTENT AFTER APPLYING REVIEWED CHANGES----
+        1: # Workspace Index - sdelmas
+        2: 
+        3: > Journal tracking for AI development sessions.
+        4: 
+        5: ---
+        6: 
+        7: ## Current Status
+        8: 
+        9: <!-- @@@auto:current-status -->
+        10: - **Active File**: `journal-2.md`
+        11: - **Total Sessions**: 66
+        12: - **Last Active**: 2026-08-15
+        13: <!-- @@@/auto:current-status -->
+        14: 
+        15: ---
+        16: 
+        17: ## Active Documents
+        18: 
+        19: <!-- @@@auto:active-documents -->
+        20: | File | Lines | Status |
+        21: |------|-------|--------|
+        22: | `journal-2.md` | ~710 | Active |
+        23: | `journal-1.md` | ~1992 | Archived |
+        24: <!-- @@@/auto:active-documents -->
+        25: 
+        26: ---
+        27: 
+        28: ## Session History
+        29: 
+        30: <!-- @@@auto:session-history -->
+        31: | # | Date | Title | Commits | Branch |
+        32: |---|------|-------|---------|--------|
+        33: | 66 | 2026-08-15 | Enforce the Trellis context-manifest ready gate at task start | `4fd0723`, `d1e0561`, `026b9e1`, `41f1652` | `feat/trellis-seeded-task-start-gate` |
+        34: | 65 | 2026-08-15 | File the two follow-ups PR #81 earned, and correct one of them before merge | `28fd6a5`, `a047494`, `dae66d9` | `chore/followup-tasks-from-pr-81` |
+        35: | 64 | 2026-08-15 | Record machine-readable resume conditions on the parked backlog | `85a260f`, `5d9e394`, `45d01c5` | `chore/parked-task-resume-conditions` |
+        36: | 63 | 2026-08-15 | Close review-coordinator stale-check on the shipped upstream fix | `5e52330`, `be8de04`, `5a2fc50` | `feat/08-09-review-coordinator-stale-check` |
+        37: | 62 | 2026-08-14 | chore: refresh sd-ai-command-pack to 0.71.6 | `39460db768aa77bcbca64c573f73bfea395ad9e7` | `chore/sd-ai-command-pack-0-71-6` |
+        38: | 61 | 2026-08-14 | sd-ai-command-pack 0.71.5 refresh | `3a2c74f784877a6c19cc5baed15c376a350583cc` | `chore/sd-ai-command-pack-0.71.5` |
+        39: | 60 | 2026-08-13 | sd-ai-command-pack 0.71.4 refresh | `b24257b5915532ba0e9a86c5da7b8876cc77eb4f` | `chore/sd-ai-command-pack-0.71.4` |
+        40: | 59 | 2026-08-12 | Refresh SD AI command pack to 0.71.2 | `eeb93971f614f46d29296f1fb13652cb5db81d59` | `chore/sd-ai-command-pack-0.71.2` |
+        41: | 58 | 2026-08-09 | Park the two review-defect tasks on upstream ownership | `b644fc2`, `a0b51c3`, `9e52f31`, `34703c8`, `109d5d6`, `1eb519c` | `feat/08-09-review-coordinator-stale-check` |
+        42: | 57 | 2026-08-09 | Record the two review-gate defects surfaced by PR #70 | `34a5372`, `0e89282` | `docs/08-09-pr70-followups` |
+        43: | 56 | 2026-08-09 | Installer ships the discovery descriptor and the durable sd-review.yml lane | `64f0a2b`, `ffe3917`, `d982841`, `2dd02f8`, `84da6b2`, `8fffc76`, `c9e49c7` | `feat/08-08-installer-durable-lane` |
+        44: | 55 | 2026-08-09 | Follow-ups from the descriptor contract-path ship | `7e854554eb52d55867219462017d40e4457eee77` | `chore/08-09-followups` |
+        45: | 54 | 2026-08-09 | Move the published setup descriptor off the consumer discovery path | `38a8042`, `4eea38d`, `32a156b`, `e25d0d2`, `aa750e3`, `3a89173`, `d930ffe` | `feat/08-09-descriptor-contract-path` |
+        46: | 53 | 2026-08-05 | Ship v2 standard-v1 deletion-receipt decoder + residual retention fixtures (PR #54) | `94edfac`, `b704e95`, `5a9fd57`, `391ed90` | `feat/08-04-define-v2-retention-standard-v1-contracts` |
+        47: | 52 | 2026-08-05 | Ship v2 quarantine status and clearance contracts (task 08-04) | `33e31ca`, `7c6dfeb` | `feat/08-04-define-v2-quarantine-clearance-contracts` |
+        48: | 51 | 2026-08-05 | Ship v2 review:none enforcement + local-attestation envelope proofs (08-04) | `9026211`, `78bb5df`, `338b560` | `feat/08-04-define-v2-local-attestation-envelope` |
+        49: | 50 | 2026-08-05 | Ship deferred review recovery contract (PR #51) | `bbd720a`, `ff20e5a`, `7680c5b39870735a83e701d4918cc2920363fb6f` | `feat/07-25-define-deferred-review-recovery` |
+        50: | 49 | 2026-08-05 | Ship review usage reconciliation contract (PR #50) | `4aa484b`, `eb7f1f4`, `c6bac29` | `feat/07-25-define-review-usage-reconciliation` |
+        51: | 48 | 2026-08-05 | Authorize budget-aware review plans (PR #49) | `d08a37b`, `a37535c`, `7dbfa95`, `0aea6e5` | `feat/07-25-authorize-budget-aware-review-plans` |
+        52: | 47 | 2026-08-05 | Ship review budget ledger contract (PR #48) | `694d194`, `27705c9`, `36694a1`, `6aa7452`, `388e830` | `feat/07-25-define-review-budget-ledger` |
+        53: | 46 | 2026-08-05 | Compile routed review configuration (07-25) — ship iteration 5 | `352baa8`, `22b2bae`, `d98c30b`, `17cf1a8` | `feat/07-25-compile-routed-review-configuration` |
+        54: | 45 | 2026-08-05 | Iteration 4: define review candidate catalog standard-v1 contract | `006cebd`, `502238b`, `d444e24` | `feat/07-25-define-review-candidate-catalog` |
+        55: | 44 | 2026-08-05 | Define standard-v1 review data retention policy contract | `ddeb58e`, `00f6f58` | `feat/07-25-define-review-data-retention-policy` |
+        56: | 43 | 2026-08-05 | Define local review attestation contracts (07-25) — implement + ship PR #44 | `5f80759`, `689d755`, `2170be1`, `58311b0` | `feat/define-local-review-attestation-contracts` |
+        57: | 42 | 2026-08-04 | Compile parallel reviewer plans (07-25) — implement + ship PR #43 | `116e1ca`, `2114409` | `feat/compile-parallel-reviewer-plans` |
+        58: | 41 | 2026-08-04 | Ship v2 budget-review contract core (07-25) with Copilot CAS + gate-hole fixes | `3069c55`, `7e2e3d1` | `feat/define-budget-review-v2-contracts` |
+        59: | 40 | 2026-08-04 | Decompose consumer installer lifecycle (A-009) | `22d4399` | `refactor/a-009-decompose-consumer-installer` |
+        60: | 39 | 2026-08-04 | Consolidate routing policy boundaries (A-008) | `8743298`, `874f47a`, `785bb52`, `deda6a0` | `codex/consolidate-routing-policy-boundaries` |
+        61: | 38 | 2026-08-04 | Bound review remote operations (A-012): request + subprocess timeouts | `a8a9523`, `c91e9e2`, `b48e8a5`, `c44afc1`, `68c4819`, `958c759`, `1436553` | `codex/bound-review-remote-operations` |
+        62: | 37 | 2026-08-04 | Align local full-check with CI package gates (A-017) | `787b8e4`, `5943855`, `37a8d56`, `b376d60`, `01fd778` | `codex/align-local-full-check-with-ci` |
+        63: | 36 | 2026-08-04 | Implement adopt operation for manually installed review workflows (A-019) | `50d2d53`, `9d15726`, `1d9d892`, `ab82fc3` | `feat/adopt-manual-review-installations` |
+        64: | 35 | 2026-08-04 | A-006: subprocess coverage for shipped Action + installer entrypoints | `3442f55`, `f221675`, `d991083` | `test/shipped-review-process-boundaries` |
+        65: | 34 | 2026-08-04 | Reject symlinked installer targets (A-005) | `e559742`, `d8fc6e9`, `157aae1`, `85e23f7` | `fix/reject-symlinked-installer-targets` |
+        66: | 33 | 2026-08-04 | Publish v0.2.0 traceable installer release (A-007) | `b8d4872`, `3c7d53f` | `main` |
+        67: | 32 | 2026-08-04 | A-007 in-authority code/docs: schema-2 traceable installer provenance | `d72918f`, `b49a30c` | `publish-traceable-installer-release` |
+        68: | 31 | 2026-08-03 | Refresh sd-ai-command-pack to 0.64.3 | `e3ba20d18770de076630053a93cc456c11fe73c8` | `refresh-sd-ai-command-pack-0.64.3` |
+        69: | 30 | 2026-07-27 | Refresh sd-ai-command-pack to 0.55.2 | `75b10fe153e7c0de143c6c7b14584702438d12e6` | `codex/refresh-sd-ai-command-pack-0-55-2` |
+        70: | 29 | 2026-07-26 | Refresh sd-ai-command-pack to 0.54.0 | `a3759488ef445254f7c8d07a544b192cc186c3a8`, `55f4db89168c6c6249a82be8743397c3211582cb` | `codex/refresh-sd-ai-command-pack-0-54-0` |
+        71: | 28 | 2026-07-26 | Route high-risk PR-Agent reviews | `4ca429b` | `codex/route-high-risk-to-external-reviewer` |
+        72: | 27 | 2026-07-25 | Converge audit remediation planning PR | `89e05b`, `3a256c`, `f69e617` | `codex/use-qwen-for-cheap-pr-agent-reviews` |
+        73: | 26 | 2026-07-25 | Repository audit remediation planning and task repair | `cc1e755` | `codex/use-qwen-for-cheap-pr-agent-reviews` |
+        74: | 25 | 2026-07-25 | Converge routed-review planning wave | `41ded21`, `6d53117`, `69e7d18`, `6605475` | `codex/routed-review-planning-wave` |
+        75: | 24 | 2026-07-25 | Converge Qwen cheap-review default PR | `0c3e761`, `991be66`, `3400ad6` | `codex/qwen-cheap-review-default` |
+        76: | 23 | 2026-07-24 | Use Qwen for cheap PR-Agent reviews | `24915bd` | `main` |
+        77: | 22 | 2026-07-24 | Pilot durable routed-review runtime | `743c0f90358466f2a05b564f27c731a1a4d6c9b2` | `codex/pilot-routed-review-runtime-handoff` |
+        78: | 21 | 2026-07-24 | Validate PR-Agent adapter pilot | `4f78755`, `0af452f`, `e15656d`, `88585ea` | `codex/validate-external-reviewer-adapters` |
+        79: | 20 | 2026-07-24 | Consumer installer lifecycle | `8a41dc8191f3139806efcfbc027b84f734ef4369`, `a6352654bbbebb656d51c063d87449ca86ca916a` | `codex/add-consumer-installer` |
+        80: | 19 | 2026-07-24 | Select Kimi K2.6 for PR-Agent pilot | `0e738ae` | `codex/use-kimi-26-for-pr-agent-pilot` |
+        81: | 18 | 2026-07-24 | Close setup automation evaluation | `bdb05e8`, `adcf1c0`, `5fb6116` | `codex/close-setup-automation-no-build` |
+        82: | 17 | 2026-07-24 | Publish v0.1.0 and complete consumer smoke | `d6cbb69`, `87f519a`, `178e71a`, `938ab6d`, `b4dc415`, `b977696`, `73a71b6`, `b803bc3`, `f95c39e`, `b652b2b`, `0216228` | `codex/complete-v010-release-consumer-smoke` |
+        83: | 16 | 2026-07-23 | Add PR-Agent adapter support | `b2bf702`, `000210b` | `codex/add-pr-agent-support` |
+        84: | 15 | 2026-07-23 | Add bounded GitHub API retry policy | `522f87361a6a96adc75e0867a78290fe4156eaf8`, `8b7c2c4608eb27899dfac63de85abe6af1b39b33`, `a902681aa3a6f9513816e5e2bf0f1e0a0563f10c` | `codex/add-github-api-retry-policy` |
+        85: | 14 | 2026-07-23 | Implement on-demand routed-review dispatch | `013f78256f0a3c5f01be15cef768f5da06fd8f23`, `10a5729bcc4989923891dcff65501129823b9b18` | `codex/implement-on-demand-routed-review-dispatch` |
+        86: | 13 | 2026-07-23 | Implement durable routed-review receipts | `9b9fd9bcd6294dc6f8223e100010140f22fa9170`, `4f16606c36b7138962d7bbf747c5d1f1dde63bcf` | `codex/implement-durable-routed-review-receipts` |
+        87: | 12 | 2026-07-23 | Implement routed-review protocol core | `4d29fe3ec9e3005e2fe76e32f31f945bac7f2c8c`, `a28ce2a812dd831cefb30dc0737157d11940ef6a`, `6e907f46d24e9c4e593983212ace489c7228542b`, `ecd283897aa1ad57586c94e08e358b8b33dee9f9`, `be126cb84fd1de5c47fef0d48a4bff0ed15df3f9`, `f7657e7d13febec04afd1a0b464f4f774e02c7f7` | `codex/implement-routed-review-protocol-core` |
+        88: | 11 | 2026-07-23 | Decompose routed-review runtime delivery | `88c2ee3555ab8d48d3d8538feb9ff8a25a0d0a2a` | `codex/decompose-routed-review-runtime` |
+        89: | 10 | 2026-07-23 | Enforce public repository metadata policy | `9a49c8aedc4564892a303ffaa8794f3ceb9313c1` | `codex/define-public-trellis-metadata-policy` |
+        90: | 9 | 2026-07-23 | Reconcile roadmap PR with current main | `f5623e4`, `0871b80` | `codex/consolidate-project-roadmap` |
+        91: | 8 | 2026-07-22 | Consolidate roadmap into Trellis backlog | `cef1651`, `eb89c28` | `codex/consolidate-project-roadmap` |
+        92: | 7 | 2026-07-23 | Validate Trellis task metadata consistency | `0e2f57a`, `59afe99`, `9a690ea`, `8face3a` | `codex/validate-trellis-task-metadata` |
+        93: | 6 | 2026-07-22 | Finalize routed-review receipt contract PR | `b0717e1` | `codex/publish-routed-review-receipt-contract` |
+        94: | 5 | 2026-07-22 | Publish routed-review receipt contract plan | `4b922f4`, `01b0d7b`, `157b031`, `0e1982c`, `a4b743e` | `codex/publish-routed-review-receipt-contract` |
+        95: | 4 | 2026-07-22 | Close tracked workspace review loop | `5171df4`, `87be303` | `codex/enforce-housekeeping-finish-work` |
+        96: | 3 | 2026-07-22 | Finish-work merge attestation and pack refresh | `291a9f2`, `f618ec1`, `5165ad2`, `2c2d614` | `codex/enforce-housekeeping-finish-work` |
+        97: | 2 | 2026-07-21 | Complete Trellis project guidelines | `293c562`, `1220888`, `28d2167`, `a12920d` | `codex/archive-bootstrap-guidelines` |
+        98: | 1 | 2026-07-21 | Harden GitHub review router for pilot | `5480cb1`, `6e2de0b`, `9d10ac1`, `8308353`, `e12ad52`, `1f72733` | `codex/harden-first-release` |
+        99: <!-- @@@/auto:session-history -->
+        100: 
+        101: ---
+        102: 
+        103: ## Notes
+        104: 
+        105: - Sessions are appended to journal files
+        106: - New journal file created when current exceeds 2000 lines
+        107: - Use `add_session.py` to record sessions
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        diff --git a/.trellis/workspace/sdelmas/journal-2.md b/.trellis/workspace/sdelmas/journal-2.md
+        index 989b9b5..8e5482d 100644
+        --- a/.trellis/workspace/sdelmas/journal-2.md
+        +++ b/.trellis/workspace/sdelmas/journal-2.md
+        @@ -669,3 +669,44 @@ Filed task-manifest-ready-gate and remote-review-channel-authority as follow-ups
+         ### Next Steps
+         
+         - None - task complete
+        +
+        +
+        +## Session 66: Enforce the Trellis context-manifest ready gate at task start
+        +
+        +**Date**: 2026-08-15
+        +**Task**: Enforce the Trellis context-manifest ready gate at task start
+        +**Branch**: `feat/trellis-seeded-task-start-gate`
+        +
+        +### Summary
+        +
+        +Wired the pack's existing seeded-task check into task.py start so a task whose implement.jsonl and check.jsonl hold only the seed row is refused before any state is written, and recorded why .trellis/ is editable where the vendored pack is not.
+        +
+        +### Main Changes
+        +
+        +- Added scripts/trellis-task-start-gate.py and a generic pre-start hook in .trellis/scripts/task.py; an after_start hook cannot refuse a start because run_task_hooks only warns
+        +- Fixed write_json to emit a trailing newline, removing a review finding that recurred on every PR touching a task.json
+        +- Recorded the template-managed vs vendored distinction in .trellis/spec/backend/directory-structure.md and marked the workflow.md ready gate as enforced
+        +
+        +
+        +### Git Commits
+        +
+        +| Hash | Message |
+        +|------|---------|
+        +| `4fd0723` | feat: refuse a Trellis task start when its context manifests are seed-only |
+        +| `d1e0561` | fix: address review findings on the pre-start ready gate |
+        +| `026b9e1` | fix: handle a failed preflight spawn and use the repo's python command in tests |
+        +| `41f1652` | chore(task): archive 08-15-task-manifest-ready-gate |
+        +
+        +### Testing
+        +
+        +- [OK] npm test: 640 pass, 0 fail (635 before)
+        +- [OK] review preflight: 0 failures
+        +- [OK] seed-only start refused, curated start allowed, scaffold exemption intact
+        +
+        +### Status
+        +
+        +[OK] **Completed**
+        +
+        +### Next Steps
+        +
+        +- None - task complete
+        
+        --------
+        
+        ----ADDITIONAL CONTEXT: FULL FILE CONTENT AFTER APPLYING REVIEWED CHANGES----
+        1: # Journal - sdelmas (Part 2)
+        2: 
+        3: > Continuation from `journal-1.md` (archived at ~2000 lines)
+        4: > Started: 2026-08-05
+        5: 
+        6: ---
+        7: 
+        8: 
+        9: 
+        10: ## Session 50: Ship deferred review recovery contract (PR #51)
+        11: 
+        12: **Date**: 2026-08-05
+        13: **Task**: Ship deferred review recovery contract (PR #51)
+        14: **Branch**: `feat/07-25-define-deferred-review-recovery`
+        15: 
+        16: ### Summary
+        17: 
+        18: Work-loop iteration 4: implemented the pure-leaf deferred review recovery contract, converged the Copilot review loop (one real fix + one evidenced rebuttal), and finalized for merge.
+        19: 
+        20: ### Main Changes
+        21: 
+        22: - Added src/review-deferred-recovery.js: bounded deferred records, explicit idempotent authorized recovery with distinct linked attempts, changed-head supersession, exact-head Check projection with monotonic revision + compare-and-swap, repository-lifecycle eligibility, injected-time retention classification wired into retention-policy.js
+        23: - Fixed Copilot round-1 finding: cross-tenant transfer kept identity immutable (destination tenant now non-key audit metadata) so digest-addressed deferralFingerprint/headKey stay consistent with stored identity; rebutted the collection-cardinality finding with per-record/retention bound evidence
+        24: 
+        25: 
+        26: ### Git Commits
+        27: 
+        28: | Hash | Message |
+        29: |------|---------|
+        30: | `bbd720a` | feat: add deferred review recovery contract |
+        31: | `ff20e5a` | fix: keep deferred-recovery identity immutable across cross-tenant transfer |
+        32: | `7680c5b39870735a83e701d4918cc2920363fb6f` | chore(task): archive 07-25-define-deferred-review-recovery |
+        33: 
+        34: ### Testing
+        35: 
+        36: - [OK] node --test test/review-deferred-recovery.test.js: 38/38 pass
+        37: - [OK] node --test full suite: 579/579 pass
+        38: - [OK] npm run check: exit 0
+        39: - [OK] sd-check gate 7/7; Prism 0 findings; Gito no issues; Copilot round 2 clean (0 unresolved threads)
+        40: 
+        41: ### Status
+        42: 
+        43: [OK] **Completed**
+        44: 
+        45: ### Next Steps
+        46: 
+        47: - None - task complete
+        48: 
+        49: 
+        50: ## Session 51: Ship v2 review:none enforcement + local-attestation envelope proofs (08-04)
+        51: 
+        52: **Date**: 2026-08-05
+        53: **Task**: Ship v2 review:none enforcement + local-attestation envelope proofs (08-04)
+        54: **Branch**: `feat/08-04-define-v2-local-attestation-envelope`
+        55: 
+        56: ### Summary
+        57: 
+        58: Closed the review:none under-enforcement hole in decodeReviewOutcomes with two fail-closed guards keyed on the reason code, and added AC-mapped fixtures/tests proving the envelope binding (AC1), review:none enforcement (AC2a), and v1-receipt rejection (AC2b). Three-round planning-adversarial review (host + Codex) converged clean; both review providers (Prism advisory-only, Copilot no comments) clean on PR #52.
+        59: 
+        60: ### Main Changes
+        61: 
+        62: - decodeReviewOutcomes: review_none reason can neither satisfy assurance nor free the gate (two guards, reason-keyed, independent-axes preserved)
+        63: - Added sanctioned review:none valid outcome + three invalid review_none outcomes (incl. {completed,review_none} full-pass hole)
+        64: - AC1/AC2a/AC2b tests; AC2b passes real v1 receipts directly to v2 local decoders (schema-major rejection)
+        65: 
+        66: 
+        67: ### Git Commits
+        68: 
+        69: | Hash | Message |
+        70: |------|---------|
+        71: | `9026211` | feat(protocol-v2): enforce review:none gate/assurance and prove v1 rejection |
+        72: | `78bb5df` | chore(task): record branch for 08-04-define-v2-local-attestation-envelope |
+        73: | `338b560` | chore(task): archive 08-04-define-v2-local-attestation-envelope |
+        74: 
+        75: ### Testing
+        76: 
+        77: - [OK] node --test test/protocol-v2.test.js: 49/49
+        78: - [OK] npm test: 582/582
+        79: - [OK] npm run test:coverage x2: 93.0% lines / 82.4% branches (above floors)
+        80: - [OK] npm run check, validate:metadata, validate:ci-parity
+        81: - [OK] deterministic sd-check 7/7; review-preflight 0 failures
+        82: 
+        83: ### Status
+        84: 
+        85: [OK] **Completed**
+        86: 
+        87: ### Next Steps
+        88: 
+        89: - None - task complete
+        90: 
+        91: 
+        92: ## Session 52: Ship v2 quarantine status and clearance contracts (task 08-04)
+        93: 
+        94: **Date**: 2026-08-05
+        95: **Task**: Ship v2 quarantine status and clearance contracts (task 08-04)
+        96: **Branch**: `feat/08-04-define-v2-quarantine-clearance-contracts`
+        97: 
+        98: ### Summary
+        99: 
+        100: Added three fail-closed v2 decoders (quarantine status, clearance request, clearance response) completing parent AC13, plus residual outcome reason-code fixtures for input_ineligible/incomplete_token_limit/budget_overrun/candidate_quarantined (parent AC10 residual). Shipped via PR #53.
+        101: 
+        102: ### Main Changes
+        103: 
+        104: - decodeQuarantineStatus enforces decisionFingerprint<->state invariant and cross-links cleared status to clearing response fingerprint
+        105: - decodeClearanceRequest kept identity-/authority-free via extended forbidden-field walk; decodeClearanceResponse binds audit identity + requestFingerprint
+        106: - Added valid/invalid fixtures for three contracts and four residual outcome reason codes
+        107: 
+        108: 
+        109: ### Git Commits
+        110: 
+        111: | Hash | Message |
+        112: |------|---------|
+        113: | `33e31ca` | feat: add v2 quarantine status and clearance contracts |
+        114: | `7c6dfeb` | chore(task): archive 08-04-define-v2-quarantine-clearance-contracts |
+        115: 
+        116: ### Testing
+        117: 
+        118: - [OK] npm test: 588 pass / 0 fail
+        119: - [OK] npm run test:coverage: 93.11% lines / 82.49% branches / 97.17% funcs
+        120: - [OK] check, validate:metadata, validate:ci-parity green; Prism 0 findings; Copilot 0 comments
+        121: 
+        122: ### Status
+        123: 
+        124: [OK] **Completed**
+        125: 
+        126: ### Next Steps
+        127: 
+        128: - None - task complete
+        129: 
+        130: 
+        131: ## Session 53: Ship v2 standard-v1 deletion-receipt decoder + residual retention fixtures (PR #54)
+        132: 
+        133: **Date**: 2026-08-05
+        134: **Task**: Ship v2 standard-v1 deletion-receipt decoder + residual retention fixtures (PR #54)
+        135: **Branch**: `feat/08-04-define-v2-retention-standard-v1-contracts`
+        136: 
+        137: ### Summary
+        138: 
+        139: Added decodeDeletionReceipt (idempotent, digest-self-verifying, status-gated deadlines, recursive authority deny-list) and the four residual AC2 fixture families to complete the parent retention contract. Converged Copilot review: fixed nested-authority bypass and size-gate ordering.
+        140: 
+        141: ### Main Changes
+        142: 
+        143: - decodeDeletionReceipt: digest recompute over {tenant,repository,actor,reason,requestId,requestedAt}; status-gated deletedAt (live 7d / backup 35d); deadlines hard-asserted to standard-v1
+        144: - Recursive authority deny-list (rejectFieldNames) rejects request-form + result-form grants at any nesting depth; size-gate runs first
+        145: - Residual AC2 fixtures: destructive-authorization, transfer/removal lifecycle, deletion-journal restore, coverage-gaps (5 valid/invalid pairs, self-validated)
+        146: 
+        147: 
+        148: ### Git Commits
+        149: 
+        150: | Hash | Message |
+        151: |------|---------|
+        152: | `94edfac` | feat: add v2 standard-v1 deletion-receipt decoder and residual retention fixtures |
+        153: | `b704e95` | fix: reject deletion-receipt authority grants at any nesting depth |
+        154: | `5a9fd57` | refactor: size-gate deletion-receipt before the authority walk |
+        155: | `391ed90` | chore(task): archive 08-04-define-v2-retention-standard-v1-contracts |
+        156: 
+        157: ### Testing
+        158: 
+        159: - [OK] npm test — 595 pass / 0 fail
+        160: - [OK] npm run test:coverage — 93.22% lines / 82.76% branches / 97.18% funcs
+        161: - [OK] check + validate:metadata + validate:ci-parity + review-preflight (0 fail)
+        162: - [OK] Copilot PR #54 — APPROVED after 2 verified fixes
+        163: 
+        164: ### Status
+        165: 
+        166: [OK] **Completed**
+        167: 
+        168: ### Next Steps
+        169: 
+        170: - None - task complete
+        171: 
+        172: 
+        173: ## Session 54: Move the published setup descriptor off the consumer discovery path
+        174: 
+        175: **Date**: 2026-08-09
+        176: **Task**: Move the published setup descriptor off the consumer discovery path
+        177: **Branch**: `feat/08-09-descriptor-contract-path`
+        178: 
+        179: ### Summary
+        180: 
+        181: This repository published routed-review-setup-v1.json at config/, the single path the consumer setup-discovery probe reads, so probing this repository classified it as having the durable on-demand lane installed and then failed looking up workflow metadata that does not exist. Moved the published copy to contract/ and classified every reference into readers that move, consumer instructions that must name both paths, and consumer-probe references that stay.
+        182: 
+        183: ### Main Changes
+        184: 
+        185: - Moved config/routed-review-setup-v1.json to contract/ and repointed every reader: validate-action-metadata.mjs, test/metadata.test.js, test/operation-contract.test.js, DESIGN.md, and two backend specs
+        186: - Kept config/ as the documented consumer install destination in README, SETUP-COPILOT, and SETUP-PR-AGENT, and stated the published-versus-installed distinction explicitly in DESIGN.md
+        187: - Recorded the path rule as a Wrong/Correct pair in .trellis/spec/backend/consumer-installer.md so a future edit cannot move the file back silently
+        188: - Fixed a Copilot finding in 08-08-installer-durable-lane: its prerequisite grep matched the bare basename, returning identical hits before and after the move, so it could never fail
+        189: - Parked 08-08-installer-durable-lane on this task and redirected its design D1
+        190: 
+        191: 
+        192: ### Git Commits
+        193: 
+        194: | Hash | Message |
+        195: |------|---------|
+        196: | `38a8042` | fix(contract): publish the setup descriptor at contract/, off the probe path |
+        197: | `4eea38d` | docs(spec): record the published-descriptor path rule as a consumer-installer contract |
+        198: | `32a156b` | docs: name both descriptor paths instead of a mismatched link |
+        199: | `e25d0d2` | docs: state the descriptor source and destination as an explicit copy |
+        200: | `aa750e3` | fix(task): make the 08-08 prerequisite check able to fail |
+        201: | `3a89173` | docs(task): reconcile the descriptor grep counts with the shipped tree |
+        202: | `d930ffe` | chore(task): record the task branch before finalization |
+        203: 
+        204: ### Testing
+        205: 
+        206: - [OK] npm test: 608 tests, 608 pass, 0 fail
+        207: - [OK] npm run validate:metadata: 1171 tracked public paths, pinned to v0.3.0
+        208: - [OK] typed sd-check: 7/7 passed
+        209: - [OK] review preflight: 0 failures, 1 warning (two task directories, the documented split)
+        210: - [OK] setup probe against this repository: absent / setup-descriptor-absent (was unavailable / HTTP 404)
+        211: 
+        212: ### Status
+        213: 
+        214: [OK] **Completed**
+        215: 
+        216: ### Next Steps
+        217: 
+        218: - None - task complete
+        219: 
+        220: 
+        221: ## Session 55: Follow-ups from the descriptor contract-path ship
+        222: 
+        223: **Date**: 2026-08-09
+        224: **Task**: Follow-ups from the descriptor contract-path ship
+        225: **Branch**: `chore/08-09-followups`
+        226: 
+        227: ### Summary
+        228: 
+        229: Cleared the blockedOn marker on 08-08-installer-durable-lane now that 08-09-descriptor-contract-path merged in #68, and recorded the review-coordinator state-replay defect found while shipping it as its own task with a reproduction and evidence.
+        230: 
+        231: ### Main Changes
+        232: 
+        233: - Removed blockedOn from 08-08-installer-durable-lane so the backlog ranker can select it; 08-08-fleet-rollout-smoke correctly stays blocked on 08-08
+        234: - Created 08-09-review-coordinator-stale-check with the cached-check reproduction, the _state_identity analysis, and a correction of the two earlier environment-isolation misdiagnoses
+        235: 
+        236: 
+        237: ### Git Commits
+        238: 
+    [33m...(output was truncated)...[92m
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        scripts/trellis-task-start-gate.py:
+        1: #!/usr/bin/env python3
+        2: # -*- coding: utf-8 -*-
+        3: """Pre-start ready gate for Trellis tasks.
+        4: 
+        5: `.trellis/workflow.md` requires both `implement.jsonl` and `check.jsonl` to hold
+        6: a real entry before `task.py start`; the seed `_example` row alone is not ready.
+        7: The enforcing check already ships in the SD AI command pack as the
+        8: `seeded-task` command of `sd-ai-command-pack-review-preflight.mjs`. This script
+        9: is the wiring between the two, and lives here rather than under
+        10: `.trellis/scripts/` so the Trellis runtime keeps a generic "honor a repo gate"
+        11: hook instead of a hard-coded pack path.
+        12: 
+        13: Usage:
+        14:     python3 scripts/trellis-task-start-gate.py <task-dir>
+        15: 
+        16: Exit codes:
+        17:     0  start may proceed -- the manifests are ready, or the toolchain is absent
+        18:     1  start refused -- the preflight's own findings are printed, or the
+        19:        preflight is present but failed to report
+        20:     2  bad invocation
+        21: """
+        22: 
+        23: from __future__ import annotations
+        24: 
+        25: import json
+        26: import shutil
+        27: import subprocess
+        28: import sys
+        29: from pathlib import Path
+        30: 
+        31: REPO_ROOT = Path(__file__).resolve().parent.parent
+        32: PREFLIGHT = Path("scripts/sd-ai-command-pack-review-preflight.mjs")
+        33: PREFLIGHT_TIMEOUT_SECONDS = 60
+        34: 
+        35: 
+        36: def main(argv: list[str]) -> int:
+        37:     if len(argv) != 2:
+        38:         print("usage: trellis-task-start-gate.py <task-dir>", file=sys.stderr)
+        39:         return 2
+        40: 
+        41:     node = shutil.which("node")
+        42:     preflight = REPO_ROOT / PREFLIGHT
+        43:     if node is None:
+        44:         print("[skip] ready gate not run: node is not on PATH", file=sys.stderr)
+        45:         return 0
+        46:     if not preflight.is_file():
+        47:         print(f"[skip] ready gate not run: {PREFLIGHT} is missing", file=sys.stderr)
+        48:         return 0
+        49: 
+        50:     task_dir = Path(argv[1]).resolve()
+        51:     try:
+        52:         rel_dir = task_dir.relative_to(REPO_ROOT).as_posix()
+        53:     except ValueError:
+        54:         rel_dir = str(task_dir)
+        55: 
+        56:     try:
+        57:         proc = subprocess.run(
+        58:             [node, str(preflight), "seeded-task", "--task-dir", rel_dir, "--json"],
+        59:             cwd=REPO_ROOT,
+        60:             capture_output=True,
+        61:             text=True,
+        62:             timeout=PREFLIGHT_TIMEOUT_SECONDS,
+        63:         )
+        64:     except subprocess.TimeoutExpired:
+        65:         # This gate sits on an interactive command; a hung preflight must fail
+        66:         # the start rather than hang it.
+        67:         print(
+        68:             f"Ready gate could not evaluate {rel_dir}: seeded-task did not finish "
+        69:             f"within {PREFLIGHT_TIMEOUT_SECONDS}s",
+        70:             file=sys.stderr,
+        71:         )
+        72:         return 1
+        73:     except OSError as exc:
+        74:         # `node` resolved on PATH but the spawn still failed -- a permission
+        75:         # change or a file removed between the check and the call. A controlled
+        76:         # refusal beats a traceback out of `task.py start`.
+        77:         print(f"Ready gate could not evaluate {rel_dir}: {exc}", file=sys.stderr)
+        78:         return 1
+        79: 
+        80:     try:
+        81:         report = json.loads(proc.stdout)
+        82:     except json.JSONDecodeError:
+        83:         # Absent tooling has no opinion and is handled above. Tooling that is
+        84:         # present and still failed to report is a broken gate, and a gate that
+        85:         # cannot evaluate must not certify -- a rejected --task-dir would
+        86:         # otherwise wave the start through.
+        87:         print(f"Ready gate could not evaluate {rel_dir}: seeded-task produced no JSON report", file=sys.stderr)
+        88:         if proc.stderr.strip():
+        89:             print(proc.stderr.strip(), file=sys.stderr)
+        90:         return 1
+        91: 
+        92:     if report.get("status") == "valid":
+        93:         return 0
+        94: 
+        95:     print(f"Ready gate failed for {rel_dir} (.trellis/workflow.md):", file=sys.stderr)
+        96:     for finding in report.get("findings", []):
+        97:         print(
+        98:             f"  {finding.get('reasonCode')} | {finding.get('path')} | {finding.get('message')}",
+        99:             file=sys.stderr,
+        100:         )
+        101:     return 1
+        102: 
+        103: 
+        104: if __name__ == "__main__":
+        105:     sys.exit(main(sys.argv))
+        
+        --------
+        
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        test/trellis-task-start-gate.test.js:
+        1: // Regression coverage for the pre-start ready gate wired into `task.py start`.
+        2: // `.trellis/workflow.md` requires a real entry in both context manifests before
+        3: // a task starts; the enforcing check ships in the vendored command pack as
+        4: // `review-preflight.mjs seeded-task`, and `scripts/trellis-task-start-gate.py`
+        5: // is the repo-owned wiring. These tests pin the exit-code contract that makes
+        6: // the gate refuse a start rather than merely warn about one.
+        7: 
+        8: import assert from "node:assert/strict";
+        9: import { execFile } from "node:child_process";
+        10: import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+        11: import os, { platform } from "node:os";
+        12: import path from "node:path";
+        13: import test from "node:test";
+        14: import { fileURLToPath } from "node:url";
+        15: import { promisify } from "node:util";
+        16: 
+        17: const execFileAsync = promisify(execFile);
+        18: const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+        19: const GATE = path.join(REPO_ROOT, "scripts", "trellis-task-start-gate.py");
+        20: const PREFLIGHT_NAME = "sd-ai-command-pack-review-preflight.mjs";
+        21: // Same resolution the repository already uses in .opencode/lib/session-utils.js.
+        22: const PYTHON_CMD = platform() === "win32" ? "python" : "python3";
+        23: 
+        24: const SEED_ROW = JSON.stringify({
+        25:   _example: 'Fill with {"file": "<path>", "reason": "<why>"}.',
+        26: });
+        27: const REAL_ROW = JSON.stringify({
+        28:   file: ".trellis/spec/backend/directory-structure.md",
+        29:   reason: "Repository layout rules this task must respect.",
+        30: });
+        31: 
+        32: // The gate resolves its repository root from its own location, so a copy of it
+        33: // alongside a copy of the (import-free) preflight makes a throwaway directory a
+        34: // complete environment. Fixtures therefore never land in the real tasks tree,
+        35: // where a crashed run would leave a task the backlog and preflight would see.
+        36: async function makeSandbox() {
+        37:   const root = await mkdtemp(path.join(os.tmpdir(), "trellis-gate-"));
+        38:   await mkdir(path.join(root, "scripts"), { recursive: true });
+        39:   for (const script of [PREFLIGHT_NAME, "trellis-task-start-gate.py"]) {
+        40:     await writeFile(
+        41:       path.join(root, "scripts", script),
+        42:       await readFile(path.join(REPO_ROOT, "scripts", script), "utf8"),
+        43:       "utf8",
+        44:     );
+        45:   }
+        46:   return root;
+        47: }
+        48: 
+        49: async function runGate(taskDir, root = REPO_ROOT) {
+        50:   const gate = path.join(root, "scripts", "trellis-task-start-gate.py");
+        51:   // A sandbox root is not a git repository, so the preflight cannot resolve a
+        52:   // default branch from origin/HEAD; naming it keeps the verdict about the
+        53:   // manifests rather than about the sandbox.
+        54:   const env = { ...process.env, SD_AI_COMMAND_PACK_DEFAULT_BRANCH: "main" };
+        55:   try {
+        56:     const { stdout, stderr } = await execFileAsync(PYTHON_CMD, [gate, taskDir], { cwd: root, env });
+        57:     return { code: 0, stdout, stderr };
+        58:   } catch (error) {
+        59:     return { code: error.code, stdout: error.stdout ?? "", stderr: error.stderr ?? "" };
+        60:   }
+        61: }
+        62: 
+        63: function taskRecord(suffix) {
+        64:   return {
+        65:     id: suffix,
+        66:     name: suffix,
+        67:     title: "Gate probe fixture",
+        68:     description: "Temporary fixture exercising the pre-start ready gate.",
+        69:     status: "planning",
+        70:     dev_type: null,
+        71:     scope: null,
+        72:     package: null,
+        73:     priority: "P3",
+        74:     creator: "test",
+        75:     assignee: "test",
+        76:     createdAt: "2026-01-01",
+        77:     completedAt: null,
+        78:     branch: null,
+        79:     base_branch: "main",
+        80:     worktree_path: null,
+        81:     commit: null,
+        82:     pr_url: null,
+        83:     subtasks: [],
+        84:     children: [],
+        85:     parent: null,
+        86:     relatedFiles: [],
+        87:     notes: "",
+        88:     meta: {},
+        89:     blocked: false,
+        90:     blockedOn: null,
+        91:   };
+        92: }
+        93: 
+        94: // The preflight only accepts an exact `.trellis/tasks/MM-DD-name` directory, so
+        95: // the fixture keeps that shape inside a sandbox root rather than in the real
+        96: // tasks tree.
+        97: async function withTaskDir(rows, run) {
+        98:   const suffix = "gate-probe";
+        99:   const root = await makeSandbox();
+        100:   const taskDir = path.join(root, ".trellis", "tasks", `01-01-${suffix}`);
+        101:   await mkdir(taskDir, { recursive: true });
+        102:   await writeFile(path.join(taskDir, "implement.jsonl"), `${rows}\n`, "utf8");
+        103:   await writeFile(path.join(taskDir, "check.jsonl"), `${rows}\n`, "utf8");
+        104:   // The seeded-task command inspects the whole task record, so the fixture
+        105:   // needs a task.json and prd.md that are themselves valid; otherwise the
+        106:   // manifest verdict is masked by unrelated findings.
+        107:   await writeFile(path.join(taskDir, "task.json"), `${JSON.stringify(taskRecord(suffix), null, 2)}\n`, "utf8");
+        108:   await writeFile(
+        109:     path.join(taskDir, "prd.md"),
+        110:     "# Gate probe fixture\n\n## Goal\n\nExercise the pre-start ready gate.\n\n" +
+        111:       "## Acceptance Criteria\n\n- [ ] The gate reports a verdict for this directory.\n",
+        112:     "utf8",
+        113:   );
+        114:   try {
+        115:     return await run(path.relative(root, taskDir), root);
+        116:   } finally {
+        117:     await rm(root, { recursive: true, force: true });
+        118:   }
+        119: }
+        120: 
+        121: test("gate refuses a task whose manifests hold only the seed row", async () => {
+        122:   const result = await withTaskDir(SEED_ROW, runGate);
+        123:   assert.equal(result.code, 1, "a seed-only task must refuse the start");
+        124:   assert.match(result.stderr, /task_context_seed/);
+        125:   assert.match(result.stderr, /implement\.jsonl/);
+        126:   assert.match(result.stderr, /check\.jsonl/);
+        127: });
+        128: 
+        129: test("gate allows a task whose manifests carry a real entry", async () => {
+        130:   const result = await withTaskDir(REAL_ROW, runGate);
+        131:   assert.equal(result.code, 0, `curated manifests must pass; stderr: ${result.stderr}`);
+        132: });
+        133: 
+        134: test("gate rejects a bad invocation without pretending the task is ready", async () => {
+        135:   for (const argv of [[], [".", "extra"]]) {
+        136:     const result = await execFileAsync(PYTHON_CMD, [GATE, ...argv], { cwd: REPO_ROOT }).then(
+        137:       () => ({ code: 0, stderr: "" }),
+        138:       (error) => ({ code: error.code, stderr: error.stderr ?? "" }),
+        139:     );
+        140:     assert.equal(result.code, 2, `argv ${JSON.stringify(argv)} must be a usage error`);
+        141:     assert.match(result.stderr, /usage:/);
+        142:   }
+        143: });
+        144: 
+        145: test("gate refuses a task directory the preflight will not accept", async () => {
+        146:   // A missing directory comes back as a structured finding; option-like and
+        147:   // traversal paths are rejected before the preflight reports at all. Both
+        148:   // shapes must refuse -- a gate that cannot evaluate must not wave the start
+        149:   // through.
+        150:   for (const argv of [".trellis/tasks/01-01-does-not-exist", "--repo", "../../etc"]) {
+        151:     const result = await runGate(argv);
+        152:     assert.equal(result.code, 1, `argv ${JSON.stringify(argv)} must refuse the start`);
+        153:     assert.match(result.stderr, /Ready gate (failed for|could not evaluate)/);
+        154:   }
+        155: });
+        156: 
+        157: test("gate degrades visibly rather than refusing when the preflight is unreachable", async () => {
+        158:   // A gate that cannot report must not block every start on unrelated tooling
+        159:   // breakage. Running from a directory with no command pack exercises that path
+        160:   // through the script's own missing-preflight branch.
+        161:   const parent = await mkdtemp(path.join(os.tmpdir(), "trellis-gate-nopack-"));
+        162:   const copied = path.join(parent, "scripts");
+        163:   await mkdir(copied, { recursive: true });
+        164:   await writeFile(path.join(copied, "trellis-task-start-gate.py"), await readFile(GATE, "utf8"), "utf8");
+        165:   try {
+        166:     const result = await execFileAsync(
+        167:       PYTHON_CMD,
+        168:       [path.join(copied, "trellis-task-start-gate.py"), parent],
+        169:       { cwd: parent },
+        170:     ).then(
+        171:       (ok) => ({ code: 0, stderr: ok.stderr }),
+        172:       (error) => ({ code: error.code, stderr: error.stderr ?? "" }),
+        173:     );
+        174:     assert.equal(result.code, 0, "a missing command pack must not block the start");
+        175:     assert.match(result.stderr, /\[skip\] ready gate not run/);
+        176:   } finally {
+        177:     await rm(parent, { recursive: true, force: true });
+        178:   }
+        179: });
+        
+        --------
+        
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mLLM Response:[36m
+    [][39m
+[39mLLM Response:[36m
+    [][39m
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        Summarize the code review in one sentence.
+        --Reviewed Changes--
+        diff --git a/.trellis/spec/backend/directory-structure.md b/.trellis/spec/backend/directory-structure.md
+        index e4fe58b..ad6af5d 100644
+        --- a/.trellis/spec/backend/directory-structure.md
+        +++ b/.trellis/spec/backend/directory-structure.md
+        @@ -210,6 +210,49 @@ single queryable source for priority, ownership, dependencies, and status.
+           nothing else, so their rationale survived only in that commit's message and
+           every one of them ranked as the bare fallback `parked`. Answering "is this
+           still valid?" meant reading git history.
+        +- Treat `.trellis/**` as **template-managed, not vendored**. The two managed
+        +  trees in this repository behave oppositely and the pack's rule does not carry
+        +  over. `.trellis/.template-hashes.json` records the content hash Trellis last
+        +  wrote; `trellis update` compares it and, for a file the user modified, prompts
+        +  to overwrite, keep, or write `.new`. Trellis's own reference lists
+        +  `.trellis/workflow.md`, `.trellis/config.yaml`, `.trellis/spec/**`, and
+        +  `.trellis/scripts/**` as editable by default and states that update
+        +  recognizing the result as user-modified is normal. So a hash entry means
+        +  "reconciled by prompt", not "refuses your edit" — the opposite of
+        +  `pack.install-audit`.
+        +
+        +  ```bash
+        +  # Is this path template-managed, and has anyone already diverged from it?
+        +  python3 - <<'EOF'
+        +  import hashlib, json, pathlib
+        +  h = json.load(open(".trellis/.template-hashes.json"))["hashes"]
+        +  for f, recorded in sorted(h.items()):
+        +      p = pathlib.Path(f)
+        +      if p.is_file() and hashlib.sha256(p.read_bytes()).hexdigest() != recorded:
+        +          print("locally modified:", f)
+        +  EOF
+        +  ```
+        +
+        +  When a change must land in that tree, keep the tracked file's diff generic and
+        +  minimal and put the repository-specific knowledge in a repo-owned path — a new
+        +  file under `scripts/` carries no hash entry, so update never prompts for it.
+        +  The diff you leave in a tracked file is the diff a human reconciles at the
+        +  next update prompt.
+        +
+        +  Check what a lifecycle extension point can actually do before designing
+        +  against it. `run_task_hooks` in `.trellis/scripts/common/task_utils.py` prints
+        +  `[WARN] Hook failed` on a nonzero exit and returns; Trellis documents only
+        +  `after_*` events. An `after_start` hook therefore cannot refuse a start, and
+        +  the ready gate at `.trellis/workflow.md` needs a check that runs *before* the
+        +  status write — `cmd_start` in `.trellis/scripts/task.py`, which is the only
+        +  path that flips a task to `in_progress`. `task.py create` activates the
+        +  session pointer without that flip, so it is correctly outside the gate; a new
+        +  task's manifests are always seed-only.
+        +
+        +  Observed 2026-08-15: the pack rule was applied to `.trellis/` by analogy and a
+        +  working route was nearly abandoned as unsafe. Both files involved were
+        +  unmodified from template while 11 of the 259 tracked paths had already
+        +  diverged.
+         - Keep consumer installation lifecycle code under `scripts/consumer-installer.mjs`
+           and `scripts/consumer-installer/`, with a thin `scripts/install-consumer.mjs`
+           entrypoint. It may manage consumer files and bounded GitHub metadata, but must
+        
+        diff --git a/.trellis/tasks/08-15-task-manifest-ready-gate/check.jsonl b/.trellis/tasks/08-15-task-manifest-ready-gate/check.jsonl
+        deleted file mode 100644
+        index 8dff769..0000000
+        --- a/.trellis/tasks/08-15-task-manifest-ready-gate/check.jsonl
+        +++ /dev/null
+        @@ -1,1 +0,0 @@
+        -{"file": ".trellis/spec/backend/directory-structure.md", "reason": "The park-hygiene rules this record must satisfy while parked, including carrying a real resume condition rather than a bare PARKED: prefix."}
+        
+        diff --git a/.trellis/tasks/08-15-task-manifest-ready-gate/implement.jsonl b/.trellis/tasks/08-15-task-manifest-ready-gate/implement.jsonl
+        deleted file mode 100644
+        index 6cc3766..0000000
+        --- a/.trellis/tasks/08-15-task-manifest-ready-gate/implement.jsonl
+        +++ /dev/null
+        @@ -1,1 +0,0 @@
+        -{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Establishes that scripts/sd-ai-command-pack-* is vendored and pack.install-audit refuses local edits, which is why this gate is upstream work and the task is parked."}
+        
+        diff --git a/.trellis/workflow.md b/.trellis/workflow.md
+        index 7775a93..b5d1b9a 100644
+        --- a/.trellis/workflow.md
+        +++ b/.trellis/workflow.md
+        @@ -423,6 +423,8 @@ Delete the seed `_example` line once real entries exist (optional — it's skipp
+         
+         Ready gate: both `implement.jsonl` and `check.jsonl` must contain at least one real `{"file": "...", "reason": "..."}` entry before `task.py start`. The seed `_example` row alone is not ready.
+         
+        +This is enforced, not advisory: `task.py start` runs `scripts/trellis-task-start-gate.py` before it writes any state, and a nonzero result refuses the start and names the offending files. Entries may reference only `.trellis/spec/**` or another task's `research/**` — a code path is rejected as a reference outside the allowed roots. `task.py create` is deliberately outside the gate, since a new task's manifests are always seed-only.
+        +
+         Skip this step only when both files already have real curated entries.
+         
+         [/Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Reasonix, Trae]
+        
+        diff --git a/.trellis/workspace/sdelmas/index.md b/.trellis/workspace/sdelmas/index.md
+        index 4723ef0..440cfc1 100644
+        --- a/.trellis/workspace/sdelmas/index.md
+        +++ b/.trellis/workspace/sdelmas/index.md
+        @@ -8,7 +8,7 @@
+         
+         <!-- @@@auto:current-status -->
+         - **Active File**: `journal-2.md`
+        -- **Total Sessions**: 65
+        +- **Total Sessions**: 66
+         - **Last Active**: 2026-08-15
+         <!-- @@@/auto:current-status -->
+         
+        @@ -19,7 +19,7 @@
+         <!-- @@@auto:active-documents -->
+         | File | Lines | Status |
+         |------|-------|--------|
+        -| `journal-2.md` | ~667 | Active |
+        +| `journal-2.md` | ~710 | Active |
+         | `journal-1.md` | ~1992 | Archived |
+         <!-- @@@/auto:active-documents -->
+         
+        @@ -30,6 +30,7 @@
+         <!-- @@@auto:session-history -->
+         | # | Date | Title | Commits | Branch |
+         |---|------|-------|---------|--------|
+        +| 66 | 2026-08-15 | Enforce the Trellis context-manifest ready gate at task start | `4fd0723`, `d1e0561`, `026b9e1`, `41f1652` | `feat/trellis-seeded-task-start-gate` |
+         | 65 | 2026-08-15 | File the two follow-ups PR #81 earned, and correct one of them before merge | `28fd6a5`, `a047494`, `dae66d9` | `chore/followup-tasks-from-pr-81` |
+         | 64 | 2026-08-15 | Record machine-readable resume conditions on the parked backlog | `85a260f`, `5d9e394`, `45d01c5` | `chore/parked-task-resume-conditions` |
+         | 63 | 2026-08-15 | Close review-coordinator stale-check on the shipped upstream fix | `5e52330`, `be8de04`, `5a2fc50` | `feat/08-09-review-coordinator-stale-check` |
+        
+        diff --git a/.trellis/workspace/sdelmas/journal-2.md b/.trellis/workspace/sdelmas/journal-2.md
+        index 989b9b5..8e5482d 100644
+        --- a/.trellis/workspace/sdelmas/journal-2.md
+        +++ b/.trellis/workspace/sdelmas/journal-2.md
+        @@ -669,3 +669,44 @@ Filed task-manifest-ready-gate and remote-review-channel-authority as follow-ups
+         ### Next Steps
+         
+         - None - task complete
+        +
+        +
+        +## Session 66: Enforce the Trellis context-manifest ready gate at task start
+        +
+        +**Date**: 2026-08-15
+        +**Task**: Enforce the Trellis context-manifest ready gate at task start
+        +**Branch**: `feat/trellis-seeded-task-start-gate`
+        +
+        +### Summary
+        +
+        +Wired the pack's existing seeded-task check into task.py start so a task whose implement.jsonl and check.jsonl hold only the seed row is refused before any state is written, and recorded why .trellis/ is editable where the vendored pack is not.
+        +
+        +### Main Changes
+        +
+        +- Added scripts/trellis-task-start-gate.py and a generic pre-start hook in .trellis/scripts/task.py; an after_start hook cannot refuse a start because run_task_hooks only warns
+        +- Fixed write_json to emit a trailing newline, removing a review finding that recurred on every PR touching a task.json
+        +- Recorded the template-managed vs vendored distinction in .trellis/spec/backend/directory-structure.md and marked the workflow.md ready gate as enforced
+        +
+        +
+        +### Git Commits
+        +
+        +| Hash | Message |
+        +|------|---------|
+        +| `4fd0723` | feat: refuse a Trellis task start when its context manifests are seed-only |
+        +| `d1e0561` | fix: address review findings on the pre-start ready gate |
+        +| `026b9e1` | fix: handle a failed preflight spawn and use the repo's python command in tests |
+        +| `41f1652` | chore(task): archive 08-15-task-manifest-ready-gate |
+        +
+        +### Testing
+        +
+        +- [OK] npm test: 640 pass, 0 fail (635 before)
+        +- [OK] review preflight: 0 failures
+        +- [OK] seed-only start refused, curated start allowed, scaffold exemption intact
+        +
+        +### Status
+        +
+        +[OK] **Completed**
+        +
+        +### Next Steps
+        +
+        +- None - task complete
+        
+        diff --git a/scripts/trellis-task-start-gate.py b/scripts/trellis-task-start-gate.py
+        new file mode 100644
+        index 0000000..5a11c94
+        --- /dev/null
+        +++ b/scripts/trellis-task-start-gate.py
+        @@ -0,0 +1,105 @@
+        +#!/usr/bin/env python3
+        +# -*- coding: utf-8 -*-
+        +"""Pre-start ready gate for Trellis tasks.
+        +
+        +`.trellis/workflow.md` requires both `implement.jsonl` and `check.jsonl` to hold
+        +a real entry before `task.py start`; the seed `_example` row alone is not ready.
+        +The enforcing check already ships in the SD AI command pack as the
+        +`seeded-task` command of `sd-ai-command-pack-review-preflight.mjs`. This script
+        +is the wiring between the two, and lives here rather than under
+        +`.trellis/scripts/` so the Trellis runtime keeps a generic "honor a repo gate"
+        +hook instead of a hard-coded pack path.
+        +
+        +Usage:
+        +    python3 scripts/trellis-task-start-gate.py <task-dir>
+        +
+        +Exit codes:
+        +    0  start may proceed -- the manifests are ready, or the toolchain is absent
+        +    1  start refused -- the preflight's own findings are printed, or the
+        +       preflight is present but failed to report
+        +    2  bad invocation
+        +"""
+        +
+        +from __future__ import annotations
+        +
+        +import json
+        +import shutil
+        +import subprocess
+        +import sys
+        +from pathlib import Path
+        +
+        +REPO_ROOT = Path(__file__).resolve().parent.parent
+        +PREFLIGHT = Path("scripts/sd-ai-command-pack-review-preflight.mjs")
+        +PREFLIGHT_TIMEOUT_SECONDS = 60
+        +
+        +
+        +def main(argv: list[str]) -> int:
+        +    if len(argv) != 2:
+        +        print("usage: trellis-task-start-gate.py <task-dir>", file=sys.stderr)
+        +        return 2
+        +
+        +    node = shutil.which("node")
+        +    preflight = REPO_ROOT / PREFLIGHT
+        +    if node is None:
+        +        print("[skip] ready gate not run: node is not on PATH", file=sys.stderr)
+        +        return 0
+        +    if not preflight.is_file():
+        +        print(f"[skip] ready gate not run: {PREFLIGHT} is missing", file=sys.stderr)
+        +        return 0
+        +
+        +    task_dir = Path(argv[1]).resolve()
+        +    try:
+        +        rel_dir = task_dir.relative_to(REPO_ROOT).as_posix()
+        +    except ValueError:
+        +        rel_dir = str(task_dir)
+        +
+        +    try:
+        +        proc = subprocess.run(
+        +            [node, str(preflight), "seeded-task", "--task-dir", rel_dir, "--json"],
+        +            cwd=REPO_ROOT,
+        +            capture_output=True,
+        +            text=True,
+        +            timeout=PREFLIGHT_TIMEOUT_SECONDS,
+        +        )
+        +    except subprocess.TimeoutExpired:
+        +        # This gate sits on an interactive command; a hung preflight must fail
+        +        # the start rather than hang it.
+        +        print(
+        +            f"Ready gate could not evaluate {rel_dir}: seeded-task did not finish "
+        +            f"within {PREFLIGHT_TIMEOUT_SECONDS}s",
+        +            file=sys.stderr,
+        +        )
+        +        return 1
+        +    except OSError as exc:
+        +        # `node` resolved on PATH but the spawn still failed -- a permission
+        +        # change or a file removed between the check and the call. A controlled
+        +        # refusal beats a traceback out of `task.py start`.
+        +        print(f"Ready gate could not evaluate {rel_dir}: {exc}", file=sys.stderr)
+        +        return 1
+        +
+        +    try:
+        +        report = json.loads(proc.stdout)
+        +    except json.JSONDecodeError:
+        +        # Absent tooling has no opinion and is handled above. Tooling that is
+        +        # present and still failed to report is a broken gate, and a gate that
+        +        # cannot evaluate must not certify -- a rejected --task-dir would
+        +        # otherwise wave the start through.
+        +        print(f"Ready gate could not evaluate {rel_dir}: seeded-task produced no JSON report", file=sys.stderr)
+        +        if proc.stderr.strip():
+        +            print(proc.stderr.strip(), file=sys.stderr)
+        +        return 1
+        +
+        +    if report.get("status") == "valid":
+        +        return 0
+        +
+        +    print(f"Ready gate failed for {rel_dir} (.trellis/workflow.md):", file=sys.stderr)
+        +    for finding in report.get("findings", []):
+        +        print(
+        +            f"  {finding.get('reasonCode')} | {finding.get('path')} | {finding.get('message')}",
+        +            file=sys.stderr,
+        +        )
+        +    return 1
+        +
+        +
+        +if __name__ == "__main__":
+        +    sys.exit(main(sys.argv))
+        
+        diff --git a/test/trellis-task-start-gate.test.js b/test/trellis-task-start-gate.test.js
+        new file mode 100644
+        index 0000000..b4c14db
+        --- /dev/null
+        +++ b/test/trellis-task-start-gate.test.js
+        @@ -0,0 +1,179 @@
+        +// Regression coverage for the pre-start ready gate wired into `task.py start`.
+        +// `.trellis/workflow.md` requires a real entry in both context manifests before
+        +// a task starts; the enforcing check ships in the vendored command pack as
+        +// `review-preflight.mjs seeded-task`, and `scripts/trellis-task-start-gate.py`
+        +// is the repo-owned wiring. These tests pin the exit-code contract that makes
+        +// the gate refuse a start rather than merely warn about one.
+        +
+        +import assert from "node:assert/strict";
+        +import { execFile } from "node:child_process";
+    [33m...(output was truncated)...[92m
+        
+        **Presentation example:**
+        ```
+        🎵 PATTERN COMPOSER 🎵
+        "Your symphony of patterns sounds magnificent! Factory method opens the first movement,
+        decorators add depth and texture, and observer masterfully completes the composition.
+        The Gang of Four gives a standing ovation from the stalls."
+        ```
+        
+        ---
+        - Your response will be parsed programmatically, so do not include any additional text.
+        - Do not include the issues by itself to the summary, they are already provided in the context.
+        - Use Markdown formatting in your response.
+        [39m
+
+[39mLLM Response:[36m
+    The reviewed changes robustly enforce the Trellis task context-manifest ready gate at task start with a well-abstracted Python entry point, thorough documentation, and a comprehensive regression test suite verifying all contract and error conditions.
+    
+    <!-- award -->
+    🧪 TESTING ALCHEMIST 🧪
+    "In your testing crucible you mixed reagents of edge cases, catalyst of boundary conditions and essence of unit tests. The philosopher's stone of quality was born — your code is now immortal in the face of regression!"
+    
+    <!-- award -->
+    🏛️ ARCHITECTURAL VIRTUOSO 🏛️
+    "Your architecture is like the Parthenon of modern code: proportional, harmonious, and seems to withstand the pressure of time and changing requirements. Vitruvius records your patterns for future generations."[39m
+
+[44m  +  +  +  ---==<<[ CODE REVIEW[22m ]>>==---  +  +  +  [0m
+[1m[42m ✅  No issues found [49m in [44m 8 [49m files[0m
+
+[1m✨  SUMMARY [0m
+The reviewed changes robustly enforce the Trellis task context-manifest ready gate at task start with a well-abstracted Python entry point, thorough documentation, and a comprehensive regression test suite verifying all contract and error conditions.
+
+🧪 TESTING ALCHEMIST 🧪
+"In your testing crucible you mixed reagents of edge cases, catalyst of boundary conditions and essence of unit tests. The philosopher's stone of quality was born — your code is now immortal in the face of regression!"
+
+🏛️ ARCHITECTURAL VIRTUOSO 🏛️
+"Your architecture is like the Parthenon of modern code: proportional, harmonious, and seems to withstand the pressure of time and changing requirements. Vitruvius records your patterns for future generations."
+

@@ -1,0 +1,110 @@
+{
+  "attemptId": "review-9a485eb338736e9fd61e81d9",
+  "attempts": [
+    {
+      "artifact": "runs/review-9a485eb338736e9fd61e81d9/prism",
+      "diagnostic": "{ \"tool\": \"prism\", \"version\": \"1.0\", \"runId\": \"3588fe76f95a0cf109a1ac02bf8ed1bf\", \"repo\": { \"root\": \"/Users/sven/repos/platypeeps/sd-github-review\", \"head\": \"f8145b4fade185b9672f174111c12d3f8cb40ff5\", \"branch\": \"docs/remote-review-channel-authority-findings\" }, \"inputs\": { \"mode\": \"range\", \"range\": \"559a8f72b90e0f4a1594c96b1962c234a3fa618b..f8145b4fade185b9672f174111c12d3f8cb40ff5\" }, \"summary\": { \"counts\": { \"low\": 0, \"medium\": 0, \"high\": 0 }, \"highestSeverity\": \"\" }, \"findings\": [], \"timing\": { \"gitMs\": 0, \"llmMs\": 1154, \"totalMs\": 1164 } }",
+      "durationMs": 1206,
+      "exitCode": 0,
+      "findings": [],
+      "provider": {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      },
+      "startedAt": 1786825684.974747,
+      "status": "clean"
+    }
+  ],
+  "confidence": {
+    "granted": true,
+    "limitations": []
+  },
+  "createdAt": 1786825686.182365,
+  "disposition": {
+    "fixPolicy": "auto",
+    "localDispositions": {},
+    "maximumFixCommitsBeforeRemote": 1,
+    "outstanding": 0
+  },
+  "findings": [],
+  "outcome": "clean",
+  "plan": {
+    "configurationDigest": "fd3ff633c0cb480516dc246fb53ef7cee3669e4b8350eea2a83c89e4da98536c",
+    "execution": "serial",
+    "familyGate": {
+      "batchSize": 0,
+      "currentRound": 0,
+      "exactHead": "f8145b4fade185b9672f174111c12d3f8cb40ff5",
+      "families": [],
+      "repeatedFamilies": [],
+      "roundsAvoided": 0,
+      "schemaVersion": 1,
+      "siblingFindings": 0,
+      "state": "inactive"
+    },
+    "findingFamilies": [],
+    "fixPolicy": "auto",
+    "localPolicy": "optional",
+    "policyDigest": "0172de0aa607618ce6d7b5af6a8ef35b340070eef1b3ef94d122a50df1701073",
+    "policyId": "documentation-cheapest",
+    "providers": [
+      {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      }
+    ],
+    "riskClass": "documentation",
+    "riskReasons": [
+      "documentation-only"
+    ],
+    "schemaVersion": 1,
+    "scope": "branch_delta",
+    "successor": "first"
+  },
+  "receiptId": "480528cb6902ecd43e481798eb15791d577b9aef3315e40f860c49b8266801a2",
+  "remoteGate": {
+    "reason": "local-stage-terminal",
+    "state": "eligible"
+  },
+  "schemaVersion": 1,
+  "target": {
+    "base": "559a8f72b90e0f4a1594c96b1962c234a3fa618b",
+    "contentDigest": "e1fc5aa7108195e94be9b21cc49de21478b71e594c778054c41468c474b1dafe",
+    "head": "f8145b4fade185b9672f174111c12d3f8cb40ff5",
+    "identity": "3129682291bedf8958c6846d6c2978f0a5c98d784a179887b3c4bdc084ff3c26",
+    "paths": [
+      {
+        "digest": "d485f8a61b96d3c9074283b264b162a471759d3b3bcfefdd30a4f2f8965940e0",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-remote-review-channel-authority/design.md"
+      },
+      {
+        "digest": "1177a2ee06e9b6057c212e7402cdeaf4b4a23da6749c9b3c69b1cfbda6c0d60d",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-remote-review-channel-authority/prd.md"
+      },
+      {
+        "digest": "bf8f71b5ce9764a0f9f235d375f1077efa42086fe69d3d0cf7b17d840ce783e8",
+        "kind": "file",
+        "path": ".trellis/workspace/sdelmas/index.md"
+      },
+      {
+        "digest": "399faae657a356f3675c6fde6351a2f49c1187b61b79cc85a646f8f4dd77fd67",
+        "kind": "file",
+        "path": ".trellis/workspace/sdelmas/journal-2.md"
+      }
+    ],
+    "repository": "github.com/platypeeps/sd-github-review",
+    "scope": "branch_delta"
+  }
+}

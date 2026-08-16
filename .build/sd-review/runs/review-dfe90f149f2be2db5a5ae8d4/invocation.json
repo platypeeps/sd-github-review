@@ -1,0 +1,62 @@
+{
+  "attemptId": "review-dfe90f149f2be2db5a5ae8d4",
+  "plan": {
+    "configurationDigest": "fd3ff633c0cb480516dc246fb53ef7cee3669e4b8350eea2a83c89e4da98536c",
+    "execution": "serial",
+    "familyGate": {
+      "batchSize": 0,
+      "currentRound": 0,
+      "exactHead": "39c9f3f3ab557abfc20d94d280b1e41abc2ce534",
+      "families": [],
+      "repeatedFamilies": [],
+      "roundsAvoided": 0,
+      "schemaVersion": 1,
+      "siblingFindings": 0,
+      "state": "inactive"
+    },
+    "findingFamilies": [],
+    "fixPolicy": "auto",
+    "localPolicy": "optional",
+    "policyDigest": "e5c50edcc2a0aa086a2ceac093c40ad6a4a685b795ea129a890ae22d669868af",
+    "policyId": "documentation-cheapest",
+    "providers": [
+      {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      }
+    ],
+    "riskClass": "documentation",
+    "riskReasons": [
+      "documentation-only"
+    ],
+    "schemaVersion": 1,
+    "scope": "branch_delta",
+    "successor": "first"
+  },
+  "schemaVersion": 1,
+  "target": {
+    "base": "559a8f72b90e0f4a1594c96b1962c234a3fa618b",
+    "contentDigest": "bfe82f656c41ec693bdd6d84468f9611c07e45022b06dd0b0a55df13e258c9af",
+    "head": "39c9f3f3ab557abfc20d94d280b1e41abc2ce534",
+    "identity": "82f117b0312ddc6d291910eb70e339706a5d66f755a77b4a01d0ac5d6ebc6a18",
+    "paths": [
+      {
+        "digest": "44c4ae0f4eea89899d132e2ce824b7d13973665ea0b99a18079e9c1bbc63f966",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-remote-review-channel-authority/design.md"
+      },
+      {
+        "digest": "b4b84f6b92a1368c6f5a4421d885447482a608112d0d334eb3fe7278b8304c12",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-remote-review-channel-authority/prd.md"
+      }
+    ],
+    "repository": "github.com/platypeeps/sd-github-review",
+    "scope": "branch_delta"
+  }
+}

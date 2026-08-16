@@ -1,0 +1,153 @@
+{
+  "attemptId": "review-a69fbcefcc6efceaba6ed195",
+  "plan": {
+    "configurationDigest": "fd3ff633c0cb480516dc246fb53ef7cee3669e4b8350eea2a83c89e4da98536c",
+    "execution": "parallel",
+    "familyGate": {
+      "batchSize": 0,
+      "currentRound": 0,
+      "exactHead": "2170be13d7820360ee3240cb1daf58fa05778f9e",
+      "families": [],
+      "repeatedFamilies": [],
+      "roundsAvoided": 0,
+      "schemaVersion": 1,
+      "siblingFindings": 0,
+      "state": "inactive"
+    },
+    "findingFamilies": [],
+    "fixPolicy": "auto",
+    "localPolicy": "optional",
+    "policyDigest": "bc41d8c54678d1998a25217cc7fde19f73f6532e65c4a021d64d3502354be8a2",
+    "policyId": "substantive-ensemble",
+    "providers": [
+      {
+        "adapter": "gito",
+        "costTier": "medium",
+        "dataHandling": "private-network",
+        "id": "gito",
+        "qualityTier": "standard",
+        "timeoutSeconds": 600,
+        "version": "builtin-v1"
+      },
+      {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      }
+    ],
+    "riskClass": "substantive",
+    "riskReasons": [
+      "source",
+      "state-contract",
+      "tests"
+    ],
+    "schemaVersion": 1,
+    "scope": "branch_delta",
+    "successor": "first"
+  },
+  "schemaVersion": 1,
+  "target": {
+    "base": "025231def282eab883b1fdd3559f099394aa850e",
+    "contentDigest": "e83f590e2cc549380a35afd7554b27c609136282cb013fbd0311311ee45fcd8f",
+    "head": "2170be13d7820360ee3240cb1daf58fa05778f9e",
+    "identity": "a59cb73184390ff62bf71a075c749a9bc6ede357beaf56bc1984598c44df17d2",
+    "paths": [
+      {
+        "digest": "282210df072518f9cadcbe214a04894e539db717d495b72cca9d3d0b08e7c16a",
+        "kind": "file",
+        "path": ".trellis/tasks/07-25-define-local-review-attestation-contracts/prd.md"
+      },
+      {
+        "digest": "4f498022c3453a298643c58f69d660f2c7e3bb5c5853fa794c693d3d07c725f7",
+        "kind": "file",
+        "path": ".trellis/tasks/07-25-define-local-review-attestation-contracts/task.json"
+      },
+      {
+        "digest": "6626edd054d82c8a31b66fabea9ca40a9428308a20c21e1594effb9971a9a190",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/local-attestation-request.invalid.json"
+      },
+      {
+        "digest": "cdeccb4240abf423a8470125ddc79f33f477f555fff15ec87b02952950b6b2c7",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/local-attestation-request.valid.json"
+      },
+      {
+        "digest": "1cfaf2f05814a8c689bff74b8f0eb3ec7d3c8be01d3c8c3071d0fec458968e64",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/local-authorization.invalid.json"
+      },
+      {
+        "digest": "c408083d1b91b816959039eb8e8797bc03caf4aacc47242ee37663f6df3b5dbc",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/local-authorization.valid.json"
+      },
+      {
+        "digest": "1a495742eaf16615d1979aaf01261b7d50bb58d2768c054f59a7e33a1ba68b09",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/local-receipt.invalid.json"
+      },
+      {
+        "digest": "f07c900dc3b263d59d86ac5f827b7b8cd791b2b6360633a447d502e3d41c15c1",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/local-receipt.valid.json"
+      },
+      {
+        "digest": "d4798dda598afc9f8bb67f289086c13e58f942770bbc27956a5ef70cea0940de",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/local-status.invalid.json"
+      },
+      {
+        "digest": "4bcc210cf463db003b00810169c633685b36dce5fd8fddb6b8c95ac2f8baa47a",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/local-status.valid.json"
+      },
+      {
+        "digest": "c0cb1abd965191c174a8fe83ab6a385987df73748328fb8834f0c934ff517bd4",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/outcomes.invalid.json"
+      },
+      {
+        "digest": "c46140dbcc0e641c1fbb327ecf1fe7b5213807de4e9cb4830be0892eb24d8ff0",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/outcomes.valid.json"
+      },
+      {
+        "digest": "b50feae3dc8795a7944f0915846d572862373bcaa031398f69755baeffd468dd",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/self-reported-usage.invalid.json"
+      },
+      {
+        "digest": "0839036a274fb22d7e4d49d54470c6bed849c8669148869c18a16422946edd09",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/self-reported-usage.valid.json"
+      },
+      {
+        "digest": "d6620e3d505ace93a50554e09aeb0d5340056b9e43db74ee7ce525bf56d5c8d0",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/source-contracts.invalid.json"
+      },
+      {
+        "digest": "97c785790d00d0a74fa921d01eb2595c123531f95cd1361bc28d17fcb9e3f964",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/source-contracts.valid.json"
+      },
+      {
+        "digest": "e93c805b457cf81a1cb308807506df8eac174040b35d75dfc55dadf61442a1a1",
+        "kind": "file",
+        "path": "src/protocol-v2.js"
+      },
+      {
+        "digest": "5570b88209125e3e0e209e0f70f43cd13d5249e9f46ccc152d6ad0e73fa25fb9",
+        "kind": "file",
+        "path": "test/protocol-v2.test.js"
+      }
+    ],
+    "repository": "github.com/platypeeps/sd-github-review",
+    "scope": "branch_delta"
+  }
+}

@@ -1,0 +1,2937 @@
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        fixtures/protocol/v2/candidate-safe-projection.invalid.json:
+        1: [
+        2:   {
+        3:     "name": "projection exposes an unverifiable token capability",
+        4:     "error": "tokenizer must be verified",
+        5:     "value": {
+        6:       "schemaMajor": 2,
+        7:       "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        8:       "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        9:       "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        10:       "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+        11:       "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": false },
+        12:       "pricing": { "pricingRef": "price:a", "verified": true },
+        13:       "finishReason": { "supported": true, "verified": true },
+        14:       "usage": { "supported": true, "verified": true },
+        15:       "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+        16:     }
+        17:   },
+        18:   {
+        19:     "name": "projection exposes an unverifiable price capability",
+        20:     "error": "pricing must be verified",
+        21:     "value": {
+        22:       "schemaMajor": 2,
+        23:       "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        24:       "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        25:       "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        26:       "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+        27:       "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+        28:       "pricing": { "pricingRef": "price:a", "verified": false },
+        29:       "finishReason": { "supported": true, "verified": true },
+        30:       "usage": { "supported": true, "verified": true },
+        31:       "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+        32:     }
+        33:   },
+        34:   {
+        35:     "name": "projection exposes an unverifiable finish-reason capability",
+        36:     "error": "finishReason must be verified",
+        37:     "value": {
+        38:       "schemaMajor": 2,
+        39:       "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        40:       "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        41:       "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        42:       "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+        43:       "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+        44:       "pricing": { "pricingRef": "price:a", "verified": true },
+        45:       "finishReason": { "supported": true, "verified": false },
+        46:       "usage": { "supported": true, "verified": true },
+        47:       "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+        48:     }
+        49:   },
+        50:   {
+        51:     "name": "projection carries an unknown unit",
+        52:     "error": "units must be one of",
+        53:     "value": {
+        54:       "schemaMajor": 2,
+        55:       "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        56:       "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        57:       "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        58:       "units": "dollars", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+        59:       "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+        60:       "pricing": { "pricingRef": "price:a", "verified": true },
+        61:       "finishReason": { "supported": true, "verified": true },
+        62:       "usage": { "supported": true, "verified": true },
+        63:       "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+        64:     }
+        65:   },
+        66:   {
+        67:     "name": "projection leaks a credential",
+        68:     "error": "catalog privacy boundary",
+        69:     "value": {
+        70:       "schemaMajor": 2,
+        71:       "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        72:       "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        73:       "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        74:       "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+        75:       "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+        76:       "pricing": { "pricingRef": "price:a", "verified": true },
+        77:       "finishReason": { "supported": true, "verified": true },
+        78:       "usage": { "supported": true, "verified": true },
+        79:       "credential": "sk-secret",
+        80:       "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+        81:     }
+        82:   },
+        83:   {
+        84:     "name": "projection leaks a billing payload",
+        85:     "error": "catalog privacy boundary",
+        86:     "value": {
+        87:       "schemaMajor": 2,
+        88:       "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        89:       "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        90:       "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        91:       "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+        92:       "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+        93:       "pricing": { "pricingRef": "price:a", "verified": true },
+        94:       "finishReason": { "supported": true, "verified": true },
+        95:       "usage": { "supported": true, "verified": true },
+        96:       "billingPayload": { "amount": 12 },
+        97:       "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+        98:     }
+        99:   },
+        100:   {
+        101:     "name": "projection leaks a management endpoint",
+        102:     "error": "catalog privacy boundary",
+        103:     "value": {
+        104:       "schemaMajor": 2,
+        105:       "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        106:       "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        107:       "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        108:       "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+        109:       "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+        110:       "pricing": { "pricingRef": "price:a", "verified": true },
+        111:       "finishReason": { "supported": true, "verified": true },
+        112:       "usage": { "supported": true, "verified": true },
+        113:       "managementEndpoint": "https://control.example/admin",
+        114:       "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+        115:     }
+        116:   },
+        117:   {
+        118:     "name": "projection leaks a prompt body inside the profile",
+        119:     "error": "catalog privacy boundary",
+        120:     "value": {
+        121:       "schemaMajor": 2,
+        122:       "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        123:       "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        124:       "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        125:       "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+        126:       "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+        127:       "pricing": { "pricingRef": "price:a", "verified": true },
+        128:       "finishReason": { "supported": true, "verified": true },
+        129:       "usage": { "supported": true, "verified": true },
+        130:       "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"], "promptBody": "leak" }
+        131:     }
+        132:   }
+        133: ]
+        
+        --------
+        
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        fixtures/protocol/v2/candidate-safe-projection.valid.json:
+        1: [
+        2:   {
+        3:     "name": "referenced external projection with profile identity and compatibility",
+        4:     "value": {
+        5:       "schemaMajor": 2,
+        6:       "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        7:       "alias": "kimi-review",
+        8:       "kind": "external",
+        9:       "handler": "pr-agent",
+        10:       "model": "kimi/k2-review",
+        11:       "costTier": "low",
+        12:       "eligibleLanes": ["review"],
+        13:       "eligibleSlots": ["managed", "parallel"],
+        14:       "units": "tokens",
+        15:       "hardInputLimit": 120000,
+        16:       "hardOutputLimit": 8000,
+        17:       "hardRequestCostLimit": 5000,
+        18:       "safetyMargin": 500,
+        19:       "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+        20:       "pricing": { "pricingRef": "price:kimi-2026-08", "verified": true },
+        21:       "finishReason": { "supported": true, "verified": true },
+        22:       "usage": { "supported": true, "verified": true },
+        23:       "promptProfile": {
+        24:         "mode": "referenced",
+        25:         "alias": "thorough-shared",
+        26:         "version": "1.2.0",
+        27:         "digest": "2222222222222222222222222222222222222222222222222222222222222222",
+        28:         "compatibleHandlers": ["pr-agent"],
+        29:         "capabilities": ["diff-review"]
+        30:       }
+        31:     }
+        32:   },
+        33:   {
+        34:     "name": "native handler-managed projection carries no profile body",
+        35:     "value": {
+        36:       "schemaMajor": 2,
+        37:       "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        38:       "alias": "copilot-native",
+        39:       "kind": "native",
+        40:       "handler": "copilot",
+        41:       "model": "copilot/default",
+        42:       "costTier": "unknown",
+        43:       "eligibleLanes": ["review"],
+        44:       "eligibleSlots": ["parallel"],
+        45:       "units": "tokens",
+        46:       "hardInputLimit": 90000,
+        47:       "hardOutputLimit": 4000,
+        48:       "hardRequestCostLimit": 3000,
+        49:       "safetyMargin": 300,
+        50:       "tokenizer": { "tokenizerId": "native-estimate", "counting": "estimated", "verified": true },
+        51:       "pricing": { "pricingRef": "price:copilot-flat", "verified": true },
+        52:       "finishReason": { "supported": true, "verified": true },
+        53:       "usage": { "supported": false, "verified": true },
+        54:       "promptProfile": { "mode": "handler-managed" }
+        55:     }
+        56:   }
+        57: ]
+        
+        --------
+        
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        fixtures/protocol/v2/catalog-fail-closed.invalid.json:
+        1: [
+        2:   {
+        3:     "name": "policy-incomplete candidate: safety margin at or above the hard request limit",
+        4:     "error": "safetyMargin must be below hardRequestCostLimit",
+        5:     "value": {
+        6:       "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        7:       "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        8:       "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+        9:       "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+        10:       "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+        11:       "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+        12:       "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 1000, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        13:     }
+        14:   },
+        15:   {
+        16:     "name": "policy-incomplete candidate: missing pricing evidence",
+        17:     "error": "pricing must be an object",
+        18:     "value": {
+        19:       "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        20:       "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        21:       "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+        22:       "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+        23:       "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+        24:       "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+        25:       "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        26:     }
+        27:   },
+        28:   {
+        29:     "name": "unknown lane on a candidate",
+        30:     "error": "must be one of",
+        31:     "value": {
+        32:       "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        33:       "eligibleLanes": ["deploy"], "eligibleSlots": ["managed"],
+        34:       "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+        35:       "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+        36:       "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+        37:       "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+        38:       "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        39:     }
+        40:   }
+        41: ]
+        
+        --------
+        
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        fixtures/protocol/v2/catalog-privacy-fields.invalid.json:
+        1: {
+        2:   "contentFields": [
+        3:     "prompt",
+        4:     "prompts",
+        5:     "promptBody",
+        6:     "profileBody",
+        7:     "renderedPrompt",
+        8:     "configuration",
+        9:     "config",
+        10:     "configurationValues",
+        11:     "template",
+        12:     "templateBody",
+        13:     "source",
+        14:     "sourceText",
+        15:     "diff",
+        16:     "finding",
+        17:     "findings",
+        18:     "rawFinding",
+        19:     "modelOutput",
+        20:     "output",
+        21:     "transcript",
+        22:     "providerPayload",
+        23:     "providerMetadata",
+        24:     "rawPayload",
+        25:     "billingPayload",
+        26:     "rawBilling",
+        27:     "credential",
+        28:     "credentials",
+        29:     "secret",
+        30:     "token",
+        31:     "apiKey",
+        32:     "rawBalance",
+        33:     "balance",
+        34:     "privatePolicy",
+        35:     "managementEndpoint",
+        36:     "endpoint",
+        37:     "baseUrl",
+        38:     "requestContent"
+        39:   ],
+        40:   "identifyingFields": [
+        41:     "repository",
+        42:     "repositoryId",
+        43:     "pullRequestNumber",
+        44:     "prNumber",
+        45:     "headSha",
+        46:     "attempt",
+        47:     "findingId",
+        48:     "actor",
+        49:     "candidateActor",
+        50:     "providerAccount"
+        51:   ]
+        52: }
+        
+        --------
+        
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        fixtures/protocol/v2/catalog-retention.fake-clock.json:
+        1: {
+        2:   "createdAt": "2026-01-01T00:00:00Z",
+        3:   "scenarios": [
+        4:     {
+        5:       "name": "an actively referenced catalog version is not on a deletion clock",
+        6:       "subject": "catalog_version",
+        7:       "referenced": true,
+        8:       "nowIso": "2030-01-01T00:00:00Z",
+        9:       "expect": { "dataClass": "catalog_policy_version", "lifecycleState": "active", "retainedUntil": null, "finalForm": "digest_only" }
+        10:     },
+        11:     {
+        12:       "name": "an actively referenced static prompt profile is not on a deletion clock",
+        13:       "subject": "prompt_profile",
+        14:       "referenced": true,
+        15:       "nowIso": "2030-01-01T00:00:00Z",
+        16:       "expect": { "dataClass": "static_prompt_profile", "lifecycleState": "active", "retainedUntil": null, "finalForm": "digest_only" }
+        17:     },
+        18:     {
+        19:       "name": "final reference removal starts the 13-month grace tail",
+        20:       "subject": "catalog_version",
+        21:       "referenced": false,
+        22:       "lastReferencedAt": "2026-06-01T00:00:00Z",
+        23:       "nowIso": "2026-07-01T00:00:00Z",
+        24:       "expect": { "lifecycleState": "terminal", "retainedUntil": "2027-07-01T00:00:00.000Z", "finalForm": "digest_only" }
+        25:     },
+        26:     {
+        27:       "name": "one day before the tail ends the version is still retained",
+        28:       "subject": "catalog_version",
+        29:       "referenced": false,
+        30:       "lastReferencedAt": "2026-06-01T00:00:00Z",
+        31:       "nowIso": "2027-06-30T00:00:00Z",
+        32:       "expect": { "lifecycleState": "terminal", "retainedUntil": "2027-07-01T00:00:00.000Z" }
+        33:     },
+        34:     {
+        35:       "name": "after the 13-month tail only the non-reversible digest fact remains",
+        36:       "subject": "prompt_profile",
+        37:       "referenced": false,
+        38:       "lastReferencedAt": "2026-06-01T00:00:00Z",
+        39:       "nowIso": "2027-07-01T00:00:00.000Z",
+        40:       "expect": { "lifecycleState": "deleted", "nextDeletionAt": "2027-07-01T00:00:00.000Z", "finalForm": "digest_only" }
+        41:     },
+        42:     {
+        43:       "name": "a covered legal hold pauses the tail so no dangling deletion is owed",
+        44:       "subject": "prompt_profile",
+        45:       "referenced": false,
+        46:       "lastReferencedAt": "2026-06-01T00:00:00Z",
+        47:       "nowIso": "2027-07-02T00:00:00Z",
+        48:       "hold": {
+        49:         "schemaVersion": 2,
+        50:         "holdId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        51:         "tenant": "acme",
+        52:         "repository": { "owner": "octo", "name": "demo" },
+        53:         "dataClasses": ["static_prompt_profile"],
+        54:         "actor": "counsel-a",
+        55:         "reason": "litigation hold over the retired profile",
+        56:         "authorization": "legal-approval-1",
+        57:         "state": "active",
+        58:         "startAt": "2027-06-01T00:00:00Z",
+        59:         "expiresAt": "2028-01-01T00:00:00Z"
+        60:       },
+        61:       "expect": { "lifecycleState": "terminal", "holdPaused": true, "retainedUntil": null }
+        62:     }
+        63:   ]
+        64: }
+        
+        --------
+        
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        fixtures/protocol/v2/prompt-profile-registry.invalid.json:
+        1: [
+        2:   {
+        3:     "name": "duplicate profile identity",
+        4:     "error": "duplicates prompt profile",
+        5:     "value": [
+        6:       { "alias": "dup", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"] },
+        7:       { "alias": "dup", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+        8:     ]
+        9:   },
+        10:   {
+        11:     "name": "empty registry",
+        12:     "error": "must declare at least one prompt profile",
+        13:     "value": []
+        14:   },
+        15:   {
+        16:     "name": "profile carries a prompt body",
+        17:     "error": "catalog privacy boundary",
+        18:     "value": [
+        19:       { "alias": "leaky", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "promptBody": "You are a reviewer..." }
+        20:     ]
+        21:   },
+        22:   {
+        23:     "name": "profile carries a configuration value",
+        24:     "error": "catalog privacy boundary",
+        25:     "value": [
+        26:       { "alias": "leaky", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "configuration": { "temperature": 0.2 } }
+        27:     ]
+        28:   },
+        29:   {
+        30:     "name": "profile carries a PR-specific identifier",
+        31:     "error": "catalog anonymization boundary",
+        32:     "value": [
+        33:       { "alias": "leaky", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "pullRequestNumber": 42 }
+        34:     ]
+        35:   },
+        36:   {
+        37:     "name": "malformed profile digest",
+        38:     "error": "has an invalid format",
+        39:     "value": [
+        40:       { "alias": "bad", "version": "1.0.0", "digest": "not-a-digest", "compatibleHandlers": ["pr-agent"] }
+        41:     ]
+        42:   },
+        43:   {
+        44:     "name": "profile lists no compatible handler",
+        45:     "error": "must list at least one compatible handler",
+        46:     "value": [
+        47:       { "alias": "bad", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": [] }
+        48:     ]
+        49:   }
+        50: ]
+        
+        --------
+        
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        fixtures/protocol/v2/prompt-profile-registry.valid.json:
+        1: [
+        2:   {
+        3:     "name": "array of immutable profile metadata with shared and specific entries",
+        4:     "value": [
+        5:       { "alias": "thorough-shared", "version": "1.2.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent", "pr-agent-lite"], "capabilities": ["diff-review", "inline-suggest"] },
+        6:       { "alias": "gate-specific", "version": "2.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"], "capabilities": ["gate-summary"] },
+        7:       { "alias": "thorough-shared", "version": "2.0.0", "digest": "4444444444444444444444444444444444444444444444444444444444444444", "compatibleHandlers": ["pr-agent"] }
+        8:     ]
+        9:   },
+        10:   {
+        11:     "name": "object form with explicit schema major",
+        12:     "value": {
+        13:       "schemaMajor": 2,
+        14:       "profiles": [
+        15:         { "alias": "solo", "version": "1.0.0", "digest": "3333333333333333333333333333333333333333333333333333333333333333", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+        16:       ]
+        17:     }
+        18:   }
+        19: ]
+        
+        --------
+        
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        fixtures/protocol/v2/review-candidate-catalog.invalid.json:
+        1: [
+        2:   {
+        3:     "name": "external candidate references a profile absent from the registry",
+        4:     "error": "references unknown prompt profile",
+        5:     "value": {
+        6:       "schemaMajor": 2,
+        7:       "name": "cat",
+        8:       "version": "1.0.0",
+        9:       "promptProfiles": [
+        10:         { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+        11:       ],
+        12:       "candidates": [
+        13:         {
+        14:           "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        15:           "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        16:           "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+        17:           "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+        18:           "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+        19:           "promptProfile": { "mode": "referenced", "alias": "missing", "version": "9.9.9", "digest": "3333333333333333333333333333333333333333333333333333333333333333" },
+        20:           "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        21:         }
+        22:       ]
+        23:     }
+        24:   },
+        25:   {
+        26:     "name": "external candidate references a substituted profile digest",
+        27:     "error": "substituted digest",
+        28:     "value": {
+        29:       "schemaMajor": 2,
+        30:       "name": "cat",
+        31:       "version": "1.0.0",
+        32:       "promptProfiles": [
+        33:         { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+        34:       ],
+        35:       "candidates": [
+        36:         {
+        37:           "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        38:           "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        39:           "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+        40:           "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+        41:           "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+        42:           "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "9999999999999999999999999999999999999999999999999999999999999999" },
+        43:           "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        44:         }
+        45:       ]
+        46:     }
+        47:   },
+        48:   {
+        49:     "name": "candidate handler is not compatible with the referenced profile",
+        50:     "error": "not compatible with prompt profile",
+        51:     "value": {
+        52:       "schemaMajor": 2,
+        53:       "name": "cat",
+        54:       "version": "1.0.0",
+        55:       "promptProfiles": [
+        56:         { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+        57:       ],
+        58:       "candidates": [
+        59:         {
+        60:           "alias": "c1", "kind": "external", "displayName": "C1", "handler": "other-handler", "model": "kimi/k2", "costTier": "low",
+        61:           "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        62:           "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+        63:           "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+        64:           "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+        65:           "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+        66:           "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        67:         }
+        68:       ]
+        69:     }
+        70:   },
+        71:   {
+        72:     "name": "external candidate declares handler-managed instead of referencing a profile",
+        73:     "error": "must reference a prompt profile for an external candidate",
+        74:     "value": {
+        75:       "schemaMajor": 2,
+        76:       "name": "cat",
+        77:       "version": "1.0.0",
+        78:       "promptProfiles": [
+        79:         { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+        80:       ],
+        81:       "candidates": [
+        82:         {
+        83:           "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        84:           "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        85:           "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+        86:           "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+        87:           "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+        88:           "promptProfile": { "mode": "handler-managed" },
+        89:           "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        90:         }
+        91:       ]
+        92:     }
+        93:   },
+        94:   {
+        95:     "name": "native candidate references a profile instead of declaring handler-managed",
+        96:     "error": "must be handler-managed for a native candidate",
+        97:     "value": {
+        98:       "schemaMajor": 2,
+        99:       "name": "cat",
+        100:       "version": "1.0.0",
+        101:       "promptProfiles": [
+        102:         { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+        103:       ],
+        104:       "candidates": [
+        105:         {
+        106:           "alias": "c1", "kind": "native", "displayName": "C1", "handler": "copilot", "model": "copilot/default", "costTier": "unknown",
+        107:           "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        108:           "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+        109:           "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+        110:           "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+        111:           "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+        112:           "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        113:         }
+        114:       ]
+        115:     }
+        116:   },
+        117:   {
+        118:     "name": "duplicate candidate alias breaks alias stability",
+        119:     "error": "duplicates candidate alias",
+        120:     "value": {
+        121:       "schemaMajor": 2,
+        122:       "name": "cat",
+        123:       "version": "1.0.0",
+        124:       "promptProfiles": [
+        125:         { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+        126:       ],
+        127:       "candidates": [
+        128:         {
+        129:           "alias": "dup", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        130:           "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        131:           "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+        132:           "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+        133:           "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+        134:           "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+        135:           "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        136:         },
+        137:         {
+        138:           "alias": "dup", "kind": "external", "displayName": "C2", "handler": "pr-agent", "model": "qwen/q3", "costTier": "medium",
+        139:           "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        140:           "credentialRef": "cred:b", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+        141:           "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+        142:           "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+        143:           "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+        144:           "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:b", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        145:         }
+        146:       ]
+        147:     }
+        148:   },
+        149:   {
+        150:     "name": "embedded disabled flag attempts to mutate a pinned version",
+        151:     "error": "disabled is forbidden",
+        152:     "value": {
+        153:       "schemaMajor": 2,
+        154:       "name": "cat",
+        155:       "version": "1.0.0",
+        156:       "promptProfiles": [
+        157:         { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+        158:       ],
+        159:       "candidates": [
+        160:         {
+        161:           "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        162:           "disabled": true,
+        163:           "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        164:           "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+        165:           "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+        166:           "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+        167:           "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+        168:           "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        169:         }
+        170:       ]
+        171:     }
+        172:   },
+        173:   {
+        174:     "name": "cross-model failover is rejected",
+        175:     "error": "sameModelOnly must be explicitly true",
+        176:     "value": {
+        177:       "schemaMajor": 2,
+        178:       "name": "cat",
+        179:       "version": "1.0.0",
+        180:       "promptProfiles": [
+        181:         { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+        182:       ],
+        183:       "candidates": [
+        184:         {
+        185:           "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        186:           "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        187:           "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+        188:           "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+        189:           "failover": { "sameModelOnly": false, "maxAlternates": 2 },
+        190:           "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+        191:           "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        192:         }
+        193:       ]
+        194:     }
+        195:   },
+        196:   {
+        197:     "name": "duplicate prompt profile identity in the registry",
+        198:     "error": "duplicates prompt profile",
+        199:     "value": {
+        200:       "schemaMajor": 2,
+        201:       "name": "cat",
+        202:       "version": "1.0.0",
+        203:       "promptProfiles": [
+        204:         { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] },
+        205:         { "alias": "known", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+        206:       ],
+        207:       "candidates": []
+        208:     }
+        209:   },
+        210:   {
+        211:     "name": "a binding declares a forbidden fallback lever",
+        212:     "error": "is forbidden; a profile binding declares no lane default",
+        213:     "value": {
+        214:       "schemaMajor": 2,
+        215:       "name": "cat",
+        216:       "version": "1.0.0",
+        217:       "promptProfiles": [
+        218:         { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+        219:       ],
+        220:       "candidates": [
+        221:         {
+        222:           "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        223:           "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        224:           "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+        225:           "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+        226:           "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+        227:           "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "fallback": "other" },
+        228:           "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        229:         }
+        230:       ]
+        231:     }
+        232:   }
+        233: ]
+        
+        --------
+        
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        fixtures/protocol/v2/review-candidate-catalog.valid.json:
+        1: [
+        2:   {
+        3:     "name": "immutable catalog with shared and candidate-specific profiles plus a native candidate",
+        4:     "value": {
+        5:       "schemaMajor": 2,
+        6:       "name": "review-candidates",
+        7:       "version": "3.1.0",
+        8:       "promptProfiles": [
+        9:         {
+        10:           "alias": "thorough-shared",
+        11:           "version": "1.2.0",
+        12:           "digest": "1111111111111111111111111111111111111111111111111111111111111111",
+        13:           "compatibleHandlers": ["pr-agent"],
+        14:           "capabilities": ["diff-review", "inline-suggest"]
+        15:         },
+        16:         {
+        17:           "alias": "gate-specific",
+        18:           "version": "2.0.0",
+        19:           "digest": "2222222222222222222222222222222222222222222222222222222222222222",
+        20:           "compatibleHandlers": ["pr-agent"],
+        21:           "capabilities": ["gate-summary"]
+        22:         }
+        23:       ],
+        24:       "candidates": [
+        25:         {
+        26:           "alias": "kimi-review",
+        27:           "kind": "external",
+        28:           "displayName": "Kimi Review",
+        29:           "handler": "pr-agent",
+        30:           "model": "kimi/k2-review",
+        31:           "costTier": "low",
+        32:           "eligibleLanes": ["review"],
+        33:           "eligibleSlots": ["managed", "parallel"],
+        34:           "credentialRef": "cred:kimi-primary",
+        35:           "budgetRef": "budget:pool-a",
+        36:           "policyRef": "policy:standard",
+        37:           "reserve": 500,
+        38:           "capability": "diff-review",
+        39:           "rules": { "price": "rule:price-low", "data": "rule:data-eu", "promptRule": "rule:prompt-strict", "reasoning": "rule:reasoning-basic" },
+        40:           "failover": { "sameModelOnly": true, "maxAlternates": 2 },
+        41:           "promptProfile": {
+        42:             "mode": "referenced",
+        43:             "alias": "thorough-shared",
+        44:             "version": "1.2.0",
+        45:             "digest": "1111111111111111111111111111111111111111111111111111111111111111"
+        46:           },
+        47:           "policy": {
+        48:             "units": "tokens",
+        49:             "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+        50:             "pricing": { "pricingRef": "price:kimi-2026-08", "verified": true },
+        51:             "hardInputLimit": 120000,
+        52:             "hardOutputLimit": 8000,
+        53:             "hardRequestCostLimit": 5000,
+        54:             "safetyMargin": 500,
+        55:             "finishReason": { "supported": true, "verified": true },
+        56:             "usage": { "supported": true, "verified": true }
+        57:           }
+        58:         },
+        59:         {
+        60:           "alias": "qwen-review",
+        61:           "kind": "external",
+        62:           "displayName": "Qwen Review",
+        63:           "handler": "pr-agent",
+        64:           "model": "qwen/qwen3-review",
+        65:           "costTier": "medium",
+        66:           "eligibleLanes": ["review", "assurance"],
+        67:           "eligibleSlots": ["managed"],
+        68:           "credentialRef": "cred:qwen-primary",
+        69:           "budgetRef": "budget:pool-a",
+        70:           "policyRef": "policy:standard",
+        71:           "reserve": 800,
+        72:           "capability": "diff-review",
+        73:           "rules": { "price": "rule:price-medium", "data": "rule:data-eu", "promptRule": "rule:prompt-strict", "reasoning": "rule:reasoning-basic" },
+        74:           "failover": { "sameModelOnly": true, "maxAlternates": 1 },
+        75:           "promptProfile": {
+        76:             "mode": "referenced",
+        77:             "alias": "thorough-shared",
+        78:             "version": "1.2.0",
+        79:             "digest": "1111111111111111111111111111111111111111111111111111111111111111"
+        80:           },
+        81:           "policy": {
+        82:             "units": "tokens",
+        83:             "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+        84:             "pricing": { "pricingRef": "price:qwen-2026-08", "verified": true },
+        85:             "hardInputLimit": 100000,
+        86:             "hardOutputLimit": 6000,
+        87:             "hardRequestCostLimit": 7000,
+        88:             "safetyMargin": 700,
+        89:             "finishReason": { "supported": true, "verified": true },
+        90:             "usage": { "supported": true, "verified": true }
+        91:           }
+        92:         },
+        93:         {
+        94:           "alias": "gate-deep",
+        95:           "kind": "external",
+        96:           "displayName": "Deep Gate",
+        97:           "handler": "pr-agent",
+        98:           "model": "kimi/k2-review",
+        99:           "costTier": "high",
+        100:           "eligibleLanes": ["assurance", "gate"],
+        101:           "eligibleSlots": ["managed"],
+        102:           "credentialRef": "cred:kimi-primary",
+        103:           "budgetRef": "budget:pool-b",
+        104:           "policyRef": "policy:gate",
+        105:           "reserve": 1500,
+        106:           "capability": "gate-summary",
+        107:           "rules": { "price": "rule:price-high", "data": "rule:data-eu", "promptRule": "rule:prompt-gate", "reasoning": "rule:reasoning-deep" },
+        108:           "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+        109:           "promptProfile": {
+        110:             "mode": "referenced",
+        111:             "alias": "gate-specific",
+        112:             "version": "2.0.0",
+        113:             "digest": "2222222222222222222222222222222222222222222222222222222222222222"
+        114:           },
+        115:           "policy": {
+        116:             "units": "tokens",
+        117:             "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+        118:             "pricing": { "pricingRef": "price:kimi-2026-08", "verified": true },
+        119:             "hardInputLimit": 150000,
+        120:             "hardOutputLimit": 12000,
+        121:             "hardRequestCostLimit": 20000,
+        122:             "safetyMargin": 2000,
+        123:             "finishReason": { "supported": true, "verified": true },
+        124:             "usage": { "supported": true, "verified": true }
+        125:           }
+        126:         },
+        127:         {
+        128:           "alias": "copilot-native",
+        129:           "kind": "native",
+        130:           "displayName": "Copilot Native",
+        131:           "handler": "copilot",
+        132:           "model": "copilot/default",
+        133:           "costTier": "unknown",
+        134:           "eligibleLanes": ["review"],
+        135:           "eligibleSlots": ["parallel"],
+        136:           "credentialRef": "cred:copilot",
+        137:           "budgetRef": "budget:pool-a",
+        138:           "policyRef": "policy:standard",
+        139:           "reserve": 0,
+        140:           "capability": "diff-review",
+        141:           "rules": { "price": "rule:price-unknown", "data": "rule:data-eu", "promptRule": "rule:prompt-native", "reasoning": "rule:reasoning-basic" },
+        142:           "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+        143:           "promptProfile": { "mode": "handler-managed" },
+        144:           "policy": {
+        145:             "units": "tokens",
+        146:             "tokenizer": { "tokenizerId": "native-estimate", "counting": "estimated", "verified": true },
+        147:             "pricing": { "pricingRef": "price:copilot-flat", "verified": true },
+        148:             "hardInputLimit": 90000,
+        149:             "hardOutputLimit": 4000,
+        150:             "hardRequestCostLimit": 3000,
+        151:             "safetyMargin": 300,
+        152:             "finishReason": { "supported": true, "verified": true },
+        153:             "usage": { "supported": false, "verified": true }
+        154:           }
+        155:         }
+        156:       ]
+        157:     }
+        158:   }
+        159: ]
+        
+        --------
+        
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        diff --git a/package.json b/package.json
+        index a94788c..2e589bc 100644
+        --- a/package.json
+        +++ b/package.json
+        @@ -9,7 +9,7 @@
+             "node": ">=24"
+           },
+           "scripts": {
+        -    "check": "node --check src/index.js && node --check src/operations.js && node --check src/operation-contract.js && node --check src/router.js && node --check src/protocol.js && node --check src/protocol-v2.js && node --check src/retention-policy.js && node --check src/receipt.js && node --check src/risk-context.js && node --check src/reviewer-dispatch.js && node --check src/normalize.js && node --check src/path-match.js && node --check src/github.js && node --check scripts/consumer-installer.mjs && node --check scripts/consumer-installer/codecs.mjs && node --check scripts/consumer-installer/transport.mjs && node --check scripts/consumer-installer/persistence.mjs && node --check scripts/consumer-installer/plan.mjs && node --check scripts/install-consumer.mjs && node --check scripts/validate-action-metadata.mjs && node --check scripts/check-coverage.mjs && node --check scripts/validate-ci-parity.mjs",
+        +    "check": "node --check src/index.js && node --check src/operations.js && node --check src/operation-contract.js && node --check src/router.js && node --check src/protocol.js && node --check src/protocol-v2.js && node --check src/retention-policy.js && node --check src/review-candidate-catalog.js && node --check src/receipt.js && node --check src/risk-context.js && node --check src/reviewer-dispatch.js && node --check src/normalize.js && node --check src/path-match.js && node --check src/github.js && node --check scripts/consumer-installer.mjs && node --check scripts/consumer-installer/codecs.mjs && node --check scripts/consumer-installer/transport.mjs && node --check scripts/consumer-installer/persistence.mjs && node --check scripts/consumer-installer/plan.mjs && node --check scripts/install-consumer.mjs && node --check scripts/validate-action-metadata.mjs && node --check scripts/check-coverage.mjs && node --check scripts/validate-ci-parity.mjs",
+             "validate:metadata": "node scripts/validate-action-metadata.mjs",
+             "validate:release": "node scripts/validate-action-metadata.mjs --release-tag",
+             "validate:ci-parity": "node scripts/validate-ci-parity.mjs",
+        
+        --------
+        
+        ----ADDITIONAL CONTEXT: FULL FILE CONTENT AFTER APPLYING REVIEWED CHANGES----
+        1: {
+        2:   "name": "sd-github-review",
+        3:   "version": "0.2.0",
+        4:   "private": true,
+        5:   "license": "MIT",
+        6:   "description": "A dependency-free GitHub Action that routes pull requests to cost-appropriate AI reviewers.",
+        7:   "type": "module",
+        8:   "engines": {
+        9:     "node": ">=24"
+        10:   },
+        11:   "scripts": {
+        12:     "check": "node --check src/index.js && node --check src/operations.js && node --check src/operation-contract.js && node --check src/router.js && node --check src/protocol.js && node --check src/protocol-v2.js && node --check src/retention-policy.js && node --check src/review-candidate-catalog.js && node --check src/receipt.js && node --check src/risk-context.js && node --check src/reviewer-dispatch.js && node --check src/normalize.js && node --check src/path-match.js && node --check src/github.js && node --check scripts/consumer-installer.mjs && node --check scripts/consumer-installer/codecs.mjs && node --check scripts/consumer-installer/transport.mjs && node --check scripts/consumer-installer/persistence.mjs && node --check scripts/consumer-installer/plan.mjs && node --check scripts/install-consumer.mjs && node --check scripts/validate-action-metadata.mjs && node --check scripts/check-coverage.mjs && node --check scripts/validate-ci-parity.mjs",
+        13:     "validate:metadata": "node scripts/validate-action-metadata.mjs",
+        14:     "validate:release": "node scripts/validate-action-metadata.mjs --release-tag",
+        15:     "validate:ci-parity": "node scripts/validate-ci-parity.mjs",
+        16:     "test": "node --test",
+        17:     "test:coverage": "node scripts/check-coverage.mjs",
+        18:     "check:full": "npm test && npm run test:coverage && npm run check && npm run validate:metadata && npm run validate:ci-parity && SD_AI_COMMAND_PACK_FULL_CHECK_SKIP_PACKAGE_SCRIPTS=1 bash scripts/sd-ai-command-pack-full-check.sh"
+        19:   },
+        20:   "devDependencies": {
+        21:     "yaml": "^2.9.0"
+        22:   }
+        23: }
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        src/review-candidate-catalog.js:
+        1: // Review candidate catalog contract (A-011 companion, catalog scope).
+        2: //
+        3: // This module owns ONLY the immutable, content-addressed catalog identity, the
+        4: // per-candidate records that bind lane eligibility / handler+model target /
+        5: // opaque policy references / hard dispatch limits / counting+pricing evidence /
+        6: // same-model failover, the immutable prompt-profile metadata registry, the
+        7: // bounded dispatch-safe projection, the mutable quarantine overlay, catalog
+        8: // version-transition/rollback facts, and a retention CLASSIFICATION helper.
+        9: //
+        10: // It is a pure leaf: it imports no local module and never reads GitHub, the
+        11: // checkout, process state, the filesystem, the clock, environment, output
+        12: // files, or route policy, and it emits no side effect. Time is ALWAYS injected;
+        13: // this module derives no lifecycle math itself. `classifyCatalogRetention`
+        14: // returns a record shaped for `retention-policy.js#computeRecordLifecycle`, so
+        15: // a caller owns the reference-aware 13-month tail while this module stays a
+        16: // leaf (no contract->contract import edge).
+        17: //
+        18: // The private adapter registry owns the actual prompt template / PR-Agent
+        19: // configuration bodies, keyed by the SAME identity (alias/version/digest) as
+        20: // the metadata here. Bodies never enter this contract; the forbidden-field
+        21: // walker rejects them at the boundary.
+        22: 
+        23: import { createHash } from "node:crypto";
+        24: 
+        25: export const CATALOG_SCHEMA_MAJOR = 2;
+        26: 
+        27: // --- size and shape bounds -------------------------------------------------
+        28: 
+        29: const CONTRACT_MAX_BYTES = 32 * 1024;
+        30: const RESPONSE_MAX_BYTES = 16 * 1024;
+        31: const SHORT_TEXT_MAX_BYTES = 128;
+        32: const MAX_COLLECTION_ITEMS = 32;
+        33: const MAX_NESTING_DEPTH = 32;
+        34: 
+        35: // --- controlled vocabularies (mirrored, never imported) --------------------
+        36: 
+        37: // A candidate is either an EXTERNAL PR-Agent candidate (must reference exactly
+        38: // one compatible prompt profile) or a NATIVE candidate (must declare
+        39: // handler-managed prompting). Provider names (Kimi, Qwen, Copilot, ...) are
+        40: // consumer choices carried opaquely as handler/model strings, never protocol
+        41: // constants; there is deliberately no provider allow-list.
+        42: export const CANDIDATE_KINDS = Object.freeze(["external", "native"]);
+        43: const CANDIDATE_KIND_SET = new Set(CANDIDATE_KINDS);
+        44: 
+        45: // Mirror of protocol-v2's binding modes. `referenced` binds an external
+        46: // candidate to one registry profile; `handler-managed` is native prompting.
+        47: export const PROMPT_PROFILE_MODES = Object.freeze(["referenced", "handler-managed"]);
+        48: const PROMPT_PROFILE_MODE_SET = new Set(PROMPT_PROFILE_MODES);
+        49: 
+        50: export const REVIEW_LANES = Object.freeze(["review", "assurance", "gate"]);
+        51: const REVIEW_LANE_SET = new Set(REVIEW_LANES);
+        52: 
+        53: export const CANDIDATE_SLOTS = Object.freeze(["managed", "parallel"]);
+        54: const CANDIDATE_SLOT_SET = new Set(CANDIDATE_SLOTS);
+        55: 
+        56: export const COST_TIERS = Object.freeze(["free", "low", "medium", "high", "unknown"]);
+        57: const COST_TIER_SET = new Set(COST_TIERS);
+        58: 
+        59: // The only counting unit a catalog candidate may declare. It is an explicit
+        60: // vocabulary rather than an inline literal so an unknown unit fails closed.
+        61: export const COUNTING_UNITS = Object.freeze(["tokens"]);
+        62: const COUNTING_UNIT_SET = new Set(COUNTING_UNITS);
+        63: 
+        64: // How a candidate's tokenizer produces the counted input evidence.
+        65: export const COUNTING_MODES = Object.freeze(["exact", "estimated"]);
+        66: const COUNTING_MODE_SET = new Set(COUNTING_MODES);
+        67: 
+        68: // A quarantine overlay is a mutable control-plane state keyed to an immutable
+        69: // candidate alias. It never mutates a pinned catalog version.
+        70: export const QUARANTINE_STATES = Object.freeze(["quarantined", "released", "replaced"]);
+        71: const QUARANTINE_STATE_SET = new Set(QUARANTINE_STATES);
+        72: 
+        73: // Retention subjects this catalog classifies. They map onto the retention
+        74: // policy's `catalog_policy_version` / `static_prompt_profile` data classes.
+        75: export const CATALOG_RETENTION_SUBJECTS = Object.freeze(["catalog_version", "prompt_profile"]);
+        76: const CATALOG_RETENTION_SUBJECT_SET = new Set(CATALOG_RETENTION_SUBJECTS);
+        77: const SUBJECT_TO_DATA_CLASS = Object.freeze({
+        78:   catalog_version: "catalog_policy_version",
+        79:   prompt_profile: "static_prompt_profile",
+        80: });
+        81: 
+        82: // Forbidden field names, checked after case/separator normalization before any
+        83: // canonicalization. These protect prompt/profile bodies, PR-Agent
+        84: // configuration values, credentials, billing payloads, raw provider metadata,
+        85: // and management endpoints from ever entering a catalog record or a projection.
+        86: const FORBIDDEN_CONTENT_FIELDS = new Set([
+        87:   "prompt",
+        88:   "prompts",
+        89:   "promptbody",
+        90:   "promptbodies",
+        91:   "profilebody",
+        92:   "profilebodies",
+        93:   "renderedprompt",
+        94:   "renderedprompts",
+        95:   "configuration",
+        96:   "configurations",
+        97:   "config",
+        98:   "configvalues",
+        99:   "configurationvalues",
+        100:   "template",
+        101:   "templates",
+        102:   "templatebody",
+        103:   "source",
+        104:   "sourcetext",
+        105:   "diff",
+        106:   "diffs",
+        107:   "finding",
+        108:   "findings",
+        109:   "rawfinding",
+        110:   "rawfindings",
+        111:   "modeloutput",
+        112:   "output",
+        113:   "outputs",
+        114:   "transcript",
+        115:   "transcripts",
+        116:   "providerpayload",
+        117:   "providerpayloads",
+        118:   "providermetadata",
+        119:   "rawprovider",
+        120:   "rawpayload",
+        121:   "rawpayloads",
+        122:   "billingpayload",
+        123:   "billingpayloads",
+        124:   "rawbilling",
+        125:   "credential",
+        126:   "credentials",
+        127:   "secret",
+        128:   "secrets",
+        129:   "token",
+        130:   "tokens",
+        131:   "apikey",
+        132:   "apikeys",
+        133:   "rawbalance",
+        134:   "rawbalances",
+        135:   "balance",
+        136:   "balances",
+        137:   "privatepolicy",
+        138:   "managementendpoint",
+        139:   "managementendpoints",
+        140:   "endpoint",
+        141:   "endpoints",
+        142:   "baseurl",
+        143:   "content",
+        144:   "contents",
+        145:   "requestcontent",
+        146: ]);
+        147: 
+        148: // PR-specific identifiers rejected from prompt-profile metadata and from a
+        149: // retention classification of a static prompt profile (which must carry no
+        150: // PR-specific data).
+        151: const IDENTIFYING_FIELDS = new Set([
+        152:   "repository",
+        153:   "repositoryid",
+        154:   "repo",
+        155:   "owner",
+        156:   "pullrequest",
+        157:   "pullrequestnumber",
+        158:   "prnumber",
+        159:   "pr",
+        160:   "headsha",
+        161:   "attempt",
+        162:   "attemptid",
+        163:   "findingid",
+        164:   "actor",
+        165:   "candidateactor",
+        166:   "provideraccount",
+        167:   "provideraccountid",
+        168: ]);
+        169: 
+        170: // --- primitive validators (matching protocol-v2 / retention semantics) -----
+        171: 
+        172: function isPlainObject(value) {
+        173:   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+        174:   const prototype = Object.getPrototypeOf(value);
+        175:   return prototype === Object.prototype || prototype === null;
+        176: }
+        177: 
+        178: function objectValue(value, field) {
+        179:   if (!isPlainObject(value)) {
+        180:     throw new Error(`${field} must be an object`);
+        181:   }
+        182:   return value;
+        183: }
+        184: 
+        185: // Parameterized privacy boundary walker. Names the field and the boundary
+        186: // only; it never echoes the offending value.
+        187: function rejectFieldNames(value, field, forbidden, boundaryLabel) {
+        188:   const seen = new WeakSet();
+        189:   const pending = [{ value, field, depth: 0 }];
+        190:   while (pending.length > 0) {
+        191:     const current = pending.pop();
+        192:     if (current.depth > MAX_NESTING_DEPTH) {
+        193:       throw new Error(`${current.field} exceeds the ${MAX_NESTING_DEPTH}-level nesting limit`);
+        194:     }
+        195:     if (current.value === null) continue;
+        196:     if (typeof current.value !== "object") {
+        197:       if (
+        198:         !["string", "number", "boolean"].includes(typeof current.value)
+        199:         || (typeof current.value === "number" && !Number.isFinite(current.value))
+        200:       ) {
+        201:         throw new Error(`${current.field} must contain JSON values only`);
+        202:       }
+        203:       continue;
+        204:     }
+        205:     if (seen.has(current.value)) {
+        206:       throw new Error(`${current.field} must not contain repeated object references or circular data`);
+        207:     }
+        208:     seen.add(current.value);
+        209:     if (Array.isArray(current.value)) {
+        210:       for (let index = current.value.length - 1; index >= 0; index -= 1) {
+        211:         pending.push({
+        212:           value: current.value[index],
+        213:           field: `${current.field}[${index}]`,
+        214:           depth: current.depth + 1,
+        215:         });
+        216:       }
+        217:       continue;
+        218:     }
+        219:     if (!isPlainObject(current.value)) {
+        220:       throw new Error(`${current.field} must contain plain JSON objects only`);
+        221:     }
+        222:     const entries = Object.entries(current.value);
+        223:     for (let index = entries.length - 1; index >= 0; index -= 1) {
+        224:       const [key, item] = entries[index];
+        225:       const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/gu, "");
+        226:       if (forbidden.has(normalizedKey)) {
+        227:         throw new Error(`${current.field}.${key} is forbidden by the ${boundaryLabel}`);
+        228:       }
+        229:       pending.push({
+        230:         value: item,
+        231:         field: `${current.field}.${key}`,
+        232:         depth: current.depth + 1,
+        233:       });
+        234:     }
+        235:   }
+        236: }
+        237: 
+        238: // Reject any prompt/profile/config body, credential, secret, billing payload,
+        239: // raw provider metadata, or management endpoint.
+        240: function rejectForbiddenContent(value, field) {
+        241:   rejectFieldNames(value, field, FORBIDDEN_CONTENT_FIELDS, "catalog privacy boundary");
+        242: }
+        243: 
+        244: // Reject any repository/PR/attempt/finding/actor/provider identifier.
+        245: function rejectIdentifyingFields(value, field) {
+        246:   rejectFieldNames(value, field, IDENTIFYING_FIELDS, "catalog anonymization boundary");
+        247: }
+        248: 
+        249: function assertEncodedSize(value, field, maximum) {
+        250:   let encoded;
+        251:   try {
+        252:     encoded = JSON.stringify(value);
+        253:   } catch {
+        254:     throw new Error(`${field} must be JSON serializable`);
+        255:   }
+        256:   if (encoded === undefined) {
+        257:     throw new Error(`${field} must be JSON serializable`);
+        258:   }
+        259:   if (Buffer.byteLength(encoded, "utf8") > maximum) {
+        260:     throw new Error(`${field} exceeds the ${maximum}-byte limit`);
+        261:   }
+        262: }
+        263: 
+        264: function stringValue(value, field, { maximum = SHORT_TEXT_MAX_BYTES, pattern, lower = false } = {}) {
+        265:   if (typeof value !== "string") {
+        266:     throw new Error(`${field} must be a string`);
+        267:   }
+        268:   const normalized = value.trim();
+        269:   if (!normalized) {
+        270:     throw new Error(`${field} must not be empty`);
+        271:   }
+        272:   if (Buffer.byteLength(normalized, "utf8") > maximum) {
+        273:     throw new Error(`${field} exceeds the ${maximum}-byte limit`);
+        274:   }
+        275:   if (pattern && !pattern.test(normalized)) {
+        276:     throw new Error(`${field} has an invalid format`);
+        277:   }
+        278:   return lower ? normalized.toLowerCase() : normalized;
+        279: }
+        280: 
+        281: function enumValue(value, field, allowed) {
+        282:   const normalized = stringValue(value, field, { maximum: SHORT_TEXT_MAX_BYTES });
+        283:   if (!allowed.has(normalized)) {
+        284:     throw new Error(`${field} must be one of: ${[...allowed].join(", ")}`);
+        285:   }
+        286:   return normalized;
+        287: }
+        288: 
+        289: function integerValue(value, field, { minimum = 0, maximum = Number.MAX_SAFE_INTEGER } = {}) {
+        290:   if (!Number.isInteger(value) || value < minimum || value > maximum) {
+    [33m...(output was truncated)...[92m
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        diff --git a/test/dependency-boundaries.test.js b/test/dependency-boundaries.test.js
+        index d7d814b..ff11746 100644
+        --- a/test/dependency-boundaries.test.js
+        +++ b/test/dependency-boundaries.test.js
+        @@ -23,6 +23,7 @@ const ALLOWED = {
+           "protocol.js": ["normalize.js"],
+           "protocol-v2.js": ["protocol.js"],
+           "retention-policy.js": [],
+        +  "review-candidate-catalog.js": [],
+           "receipt.js": ["protocol.js", "path-match.js"],
+           "router.js": ["protocol.js", "normalize.js", "path-match.js"],
+           "risk-context.js": ["path-match.js", "normalize.js"],
+        
+        --------
+        
+        ----ADDITIONAL CONTEXT: FULL FILE CONTENT AFTER APPLYING REVIEWED CHANGES----
+        1: import assert from "node:assert/strict";
+        2: import { readdirSync, readFileSync } from "node:fs";
+        3: import test from "node:test";
+        4: import { fileURLToPath } from "node:url";
+        5: 
+        6: // AC1 for A-008: enforce the whole allowed-import matrix from design.md, not
+        7: // just the protocol/receipt edges. Each src module may import only from the
+        8: // modules listed for it; leaf modules import no local module. This freezes the
+        9: // one-way layering direction (leaf utils -> protocol -> policy owner ->
+        10: // services/entrypoints; persistence -> protocol + path-match) so a future edit
+        11: // cannot silently re-invert codec -> policy or persistence -> router.
+        12: 
+        13: const SRC_DIR = fileURLToPath(new URL("../src/", import.meta.url));
+        14: 
+        15: // Every src/*.js module maps to the local modules it MAY import. A module not
+        16: // listed here fails the completeness check, forcing this matrix to be updated
+        17: // whenever a new runtime module is added.
+        18: const ALLOWED = {
+        19:   "path-match.js": [],
+        20:   "normalize.js": [],
+        21:   "github.js": [],
+        22:   "operation-contract.js": [],
+        23:   "protocol.js": ["normalize.js"],
+        24:   "protocol-v2.js": ["protocol.js"],
+        25:   "retention-policy.js": [],
+        26:   "review-candidate-catalog.js": [],
+        27:   "receipt.js": ["protocol.js", "path-match.js"],
+        28:   "router.js": ["protocol.js", "normalize.js", "path-match.js"],
+        29:   "risk-context.js": ["path-match.js", "normalize.js"],
+        30:   "reviewer-dispatch.js": ["github.js"],
+        31:   "operations.js": [
+        32:     "protocol.js",
+        33:     "router.js",
+        34:     "receipt.js",
+        35:     "risk-context.js",
+        36:     "reviewer-dispatch.js",
+        37:     "normalize.js",
+        38:     "path-match.js",
+        39:     "operation-contract.js",
+        40:   ],
+        41:   "index.js": [
+        42:     "github.js",
+        43:     "operations.js",
+        44:     "router.js",
+        45:     "risk-context.js",
+        46:     "reviewer-dispatch.js",
+        47:     "normalize.js",
+        48:     "path-match.js",
+        49:   ],
+        50: };
+        51: 
+        52: const LEAVES = ["path-match.js", "normalize.js", "github.js", "operation-contract.js"];
+        53: 
+        54: function sourceModules() {
+        55:   return readdirSync(SRC_DIR)
+        56:     .filter((name) => name.endsWith(".js"))
+        57:     .sort();
+        58: }
+        59: 
+        60: function localImports(fileName) {
+        61:   const source = readFileSync(new URL(fileName, new URL("../src/", import.meta.url)), "utf8");
+        62:   const imports = new Set();
+        63:   // Catch both `import … from "./x.js"` / `export … from "./x.js"` and
+        64:   // side-effect-only `import "./x.js";`. A bare side-effect import still
+        65:   // creates a dependency edge, so the boundary test must not let it bypass the
+        66:   // matrix (Copilot review).
+        67:   const patterns = [
+        68:     /from\s+["']\.\/([\w-]+\.js)["']/gu,
+        69:     /import\s+["']\.\/([\w-]+\.js)["']/gu,
+        70:   ];
+        71:   for (const pattern of patterns) {
+        72:     let match;
+        73:     while ((match = pattern.exec(source)) !== null) {
+        74:       imports.add(match[1]);
+        75:     }
+        76:   }
+        77:   return [...imports];
+        78: }
+        79: 
+        80: test("every runtime module is covered by the allowed-import matrix", () => {
+        81:   const modules = sourceModules();
+        82:   for (const name of modules) {
+        83:     assert.ok(
+        84:       Object.prototype.hasOwnProperty.call(ALLOWED, name),
+        85:       `src/${name} is not covered by the allowed-import matrix; update the matrix`,
+        86:     );
+        87:   }
+        88:   for (const name of Object.keys(ALLOWED)) {
+        89:     assert.ok(modules.includes(name), `matrix lists src/${name} but the module does not exist`);
+        90:   }
+        91: });
+        92: 
+        93: test("each module imports only modules to its right in the layering", () => {
+        94:   for (const [name, allowed] of Object.entries(ALLOWED)) {
+        95:     const imports = localImports(name);
+        96:     for (const dependency of imports) {
+        97:       assert.ok(
+        98:         allowed.includes(dependency),
+        99:         `src/${name} imports src/${dependency}, which the layering forbids`,
+        100:       );
+        101:     }
+        102:   }
+        103: });
+        104: 
+        105: test("leaf utility modules import no local module", () => {
+        106:   for (const leaf of LEAVES) {
+        107:     assert.deepEqual(
+        108:       localImports(leaf),
+        109:       [],
+        110:       `src/${leaf} is a leaf and must not import any local module`,
+        111:     );
+        112:   }
+        113: });
+        114: 
+        115: test("codec and persistence layers import no route policy", () => {
+        116:   for (const name of ["protocol.js", "receipt.js"]) {
+        117:     const imports = localImports(name);
+        118:     assert.ok(
+        119:       !imports.includes("router.js"),
+        120:       `src/${name} must not import the policy owner src/router.js`,
+        121:     );
+        122:   }
+        123: });
+        124: 
+        125: test("selectProtocolRoute is defined in exactly one module, the policy owner", () => {
+        126:   const definitions = [];
+        127:   for (const name of sourceModules()) {
+        128:     const source = readFileSync(new URL(name, new URL("../src/", import.meta.url)), "utf8");
+        129:     // Match a function declaration OR a `const/let/var selectProtocolRoute =`
+        130:     // binding, so a later refactor to an arrow/expression form is still counted
+        131:     // as a definition rather than reported missing (Copilot review).
+        132:     if (/(?:function\s+selectProtocolRoute\b|(?:const|let|var)\s+selectProtocolRoute\s*=)/u.test(source)) {
+        133:       definitions.push(name);
+        134:     }
+        135:   }
+        136:   assert.deepEqual(
+        137:     definitions,
+        138:     ["router.js"],
+        139:     "selectProtocolRoute must be defined only in the policy owner src/router.js",
+        140:   );
+        141: });
+        
+        
+        ----TASK GUIDELINES----
+        - Only report issues you are **100% confident** are relevant to any context.
+        - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.
+        - Only include issues that are **significantly valuable** to the maintainers (e.g., bugs, security flaws, or clear maintainability concerns).
+        - Do **not** report vague, theoretical, or overly generic advice.
+        - Do **not** report anything with medium or lower confidence.
+        - Typographical errors have highest severity.
+        - Treat copied Trellis and sd-ai-command-pack files as tooling/generated surfaces unless the change intentionally updates their source or install contract.
+        - Prefer findings about behavior, security, data integrity, and maintainability over wording or style feedback in copied command-pack files.
+        - ⚠️ IMPORTANT: RESPOND ONLY WITH VALID JSON, YOUR RESPONSE WILL BE PARSED PROGRAMMATICALLY.
+        - Do not include any additional text or explanation outside the specified format.
+        
+        
+        Respond with a valid JSON array of issues following this schema:
+        [
+            {
+                "title": "<issue_title>",
+                "details": "<issue_description>",
+                "tags": ["<issue_tag1>", "<issue_tag2>", ...],
+                "severity": <issue_severity:int>,
+                "confidence": <confidence_score:int>,
+                "affected_lines": [ // optional;
+                    {
+                        "start_line": <int>,
+                        "end_line": <int>,
+                        "proposal": "<proposed code to replace the affected lines (optional)>"
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+        
+        - if present, `proposal` blocks must match the indentation of the original code
+          and apply cleanly to lines `start_line`..`end_line`. It is designed for programmatical substitution.
+        
+        Available issue tags:
+        - bug
+        - security
+        - performance
+        - readability
+        - maintainability
+        - overcomplexity
+        - language
+        - architecture
+        - compatibility
+        - deprecation
+        - anti-pattern
+        - naming
+        - code-style
+        
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        ----TASK----
+        Review the provided code diff carefully and identify *only* highly confident issues which are relevant to any code context.
+        
+        ----CODEBASE CHANGES TO REVIEW----
+        test/review-candidate-catalog.test.js:
+        1: import assert from "node:assert/strict";
+        2: import { readFile } from "node:fs/promises";
+        3: import test from "node:test";
+        4: import {
+        5:   CANDIDATE_KINDS,
+        6:   CATALOG_SCHEMA_MAJOR,
+        7:   classifyCatalogRetention,
+        8:   decodeCandidateCatalog,
+        9:   decodeCandidateQuarantine,
+        10:   decodeCandidateRecord,
+        11:   decodeCandidateSafeProjection,
+        12:   decodePromptProfileRegistry,
+        13:   deriveCatalogDigest,
+        14:   describeCatalogTransition,
+        15:   stableCatalogJson,
+        16: } from "../src/review-candidate-catalog.js";
+        17: import {
+        18:   STANDARD_V1,
+        19:   computeRecordLifecycle,
+        20:   decodeLegalHold,
+        21: } from "../src/retention-policy.js";
+        22: 
+        23: async function fixture(relative) {
+        24:   const url = new URL(`../fixtures/${relative}`, import.meta.url);
+        25:   return JSON.parse(await readFile(url, "utf8"));
+        26: }
+        27: 
+        28: const validCatalogs = await fixture("protocol/v2/review-candidate-catalog.valid.json");
+        29: const invalidCatalogs = await fixture("protocol/v2/review-candidate-catalog.invalid.json");
+        30: const validRegistries = await fixture("protocol/v2/prompt-profile-registry.valid.json");
+        31: const invalidRegistries = await fixture("protocol/v2/prompt-profile-registry.invalid.json");
+        32: const validProjections = await fixture("protocol/v2/candidate-safe-projection.valid.json");
+        33: const invalidProjections = await fixture("protocol/v2/candidate-safe-projection.invalid.json");
+        34: const privacyFields = await fixture("protocol/v2/catalog-privacy-fields.invalid.json");
+        35: const failClosed = await fixture("protocol/v2/catalog-fail-closed.invalid.json");
+        36: const retentionClock = await fixture("protocol/v2/catalog-retention.fake-clock.json");
+        37: 
+        38: function clone(value) {
+        39:   return structuredClone(value);
+        40: }
+        41: 
+        42: function eachInvalid(entries, decode) {
+        43:   for (const entry of entries) {
+        44:     assert.throws(() => decode(entry.value), new RegExp(entry.error, "u"), entry.name);
+        45:   }
+        46: }
+        47: 
+        48: const baseCatalog = validCatalogs[0].value;
+        49: 
+        50: // --- catalog identity, immutability, digest --------------------------------
+        51: 
+        52: test("the valid catalog decodes with a stable identity and sorted candidates", () => {
+        53:   const catalog = decodeCandidateCatalog(baseCatalog);
+        54:   assert.equal(catalog.schemaMajor, CATALOG_SCHEMA_MAJOR);
+        55:   assert.equal(catalog.name, "review-candidates");
+        56:   assert.equal(catalog.version, "3.1.0");
+        57:   assert.match(catalog.digest, /^[a-f0-9]{64}$/u);
+        58:   assert.ok(Object.isFrozen(catalog));
+        59:   assert.ok(Object.isFrozen(catalog.candidates));
+        60:   const aliases = catalog.candidates.map((c) => c.alias);
+        61:   assert.deepEqual(aliases, [...aliases].sort(), "candidate aliases are stable and sorted");
+        62:   assert.equal(new Set(aliases).size, aliases.length, "aliases are unique within the version");
+        63: });
+        64: 
+        65: test("a supplied digest that matches canonical content is accepted; a tampered one fails closed", () => {
+        66:   const catalog = decodeCandidateCatalog(baseCatalog);
+        67:   const pinned = { ...clone(baseCatalog), digest: catalog.digest };
+        68:   const repinned = decodeCandidateCatalog(pinned);
+        69:   assert.equal(repinned.digest, catalog.digest, "a correctly pinned version re-decodes identically");
+        70:   const tampered = { ...clone(baseCatalog), digest: "0".repeat(64) };
+        71:   assert.throws(() => decodeCandidateCatalog(tampered), /digest does not match its canonical content/u);
+        72: });
+        73: 
+        74: test("portable model replacement produces a new catalog digest without touching aliases", () => {
+        75:   const original = decodeCandidateCatalog(baseCatalog);
+        76:   const swapped = clone(baseCatalog);
+        77:   const target = swapped.candidates.find((c) => c.alias === "kimi-review");
+        78:   target.model = "kimi/k2-review-next";
+        79:   const replaced = decodeCandidateCatalog(swapped);
+        80:   assert.notEqual(replaced.digest, original.digest, "swapping a model changes the content-addressed digest");
+        81:   assert.deepEqual(
+        82:     replaced.candidates.map((c) => c.alias),
+        83:     original.candidates.map((c) => c.alias),
+        84:     "candidate aliases remain stable across a portable model replacement",
+        85:   );
+        86: });
+        87: 
+        88: test("providers are opaque consumer choices, never a protocol allow-list", () => {
+        89:   const custom = clone(baseCatalog);
+        90:   const native = custom.candidates.find((c) => c.alias === "copilot-native");
+        91:   native.handler = "some-vendor-handler";
+        92:   native.model = "some-vendor/model-7";
+        93:   const catalog = decodeCandidateCatalog(custom);
+        94:   const decoded = catalog.candidates.find((c) => c.model === "some-vendor/model-7");
+        95:   assert.ok(decoded, "an arbitrary provider/model string is accepted without an allow-list");
+        96: });
+        97: 
+        98: test("rejects every invalid catalog fixture", () => {
+        99:   eachInvalid(invalidCatalogs, decodeCandidateCatalog);
+        100: });
+        101: 
+        102: // --- profile reuse + candidate-specific binding + handler compatibility ----
+        103: 
+        104: test("compatible candidates share one profile while a specific candidate binds its own", () => {
+        105:   const catalog = decodeCandidateCatalog(baseCatalog);
+        106:   const kimi = catalog.candidates.find((c) => c.alias === "kimi-review");
+        107:   const qwen = catalog.candidates.find((c) => c.alias === "qwen-review");
+        108:   const gate = catalog.candidates.find((c) => c.alias === "gate-deep");
+        109:   assert.equal(kimi.promptProfile.alias, "thorough-shared");
+        110:   assert.equal(qwen.promptProfile.alias, "thorough-shared", "two compatible candidates reuse one profile");
+        111:   assert.equal(gate.promptProfile.alias, "gate-specific", "a candidate-specific profile is allowed");
+        112:   assert.deepEqual(kimi.promptProfileCompatibility.compatibleHandlers, ["pr-agent"]);
+        113: });
+        114: 
+        115: test("a native candidate declares handler-managed prompting and no profile reference", () => {
+        116:   const catalog = decodeCandidateCatalog(baseCatalog);
+        117:   const native = catalog.candidates.find((c) => c.alias === "copilot-native");
+        118:   assert.equal(native.kind, "native");
+        119:   assert.equal(native.promptProfile.mode, "handler-managed");
+        120:   assert.equal(native.promptProfile.alias, undefined);
+        121: });
+        122: 
+        123: test("the prompt-profile registry decodes reuse and rejects invalid metadata", () => {
+        124:   for (const entry of validRegistries) {
+        125:     const registry = decodePromptProfileRegistry(entry.value);
+        126:     assert.ok(registry.profiles.length >= 1, entry.name);
+        127:     assert.ok(Object.isFrozen(registry.profiles), entry.name);
+        128:     for (const profile of registry.profiles) {
+        129:       assert.equal(profile.promptBody, undefined, "no prompt body in metadata");
+        130:       assert.equal(profile.configuration, undefined, "no configuration body in metadata");
+        131:     }
+        132:   }
+        133:   eachInvalid(invalidRegistries, decodePromptProfileRegistry);
+        134: });
+        135: 
+        136: // --- candidate record binding rules ----------------------------------------
+        137: 
+        138: test("a candidate record validates its binding shape and hard-limit policy", () => {
+        139:   const record = decodeCandidateRecord(clone(baseCatalog.candidates[0]));
+        140:   assert.equal(record.kind, "external");
+        141:   assert.equal(record.failover.sameModelOnly, true);
+        142:   assert.equal(record.policy.units, "tokens");
+        143:   assert.ok(record.policy.safetyMargin < record.policy.hardRequestCostLimit);
+        144:   assert.ok(Object.isFrozen(record.policy));
+        145: });
+        146: 
+        147: test("policy-incomplete, unknown-lane, and malformed candidates fail closed", () => {
+        148:   eachInvalid(failClosed, (value) => decodeCandidateRecord(value));
+        149: });
+        150: 
+        151: test("CANDIDATE_KINDS is the external/native discriminant", () => {
+        152:   assert.deepEqual([...CANDIDATE_KINDS], ["external", "native"]);
+        153: });
+        154: 
+        155: // --- bounded safe projection ------------------------------------------------
+        156: 
+        157: test("safe projections expose profile identity and dispatch facts but no bodies", () => {
+        158:   for (const entry of validProjections) {
+        159:     const projection = decodeCandidateSafeProjection(entry.value);
+        160:     assert.ok(Object.isFrozen(projection), entry.name);
+        161:     assert.equal(projection.tokenizer.verified, true, entry.name);
+        162:     assert.equal(projection.pricing.verified, true, entry.name);
+        163:     assert.equal(projection.credentialRef, undefined, "no credential reference in a projection");
+        164:     assert.equal(projection.budgetRef, undefined, "no budget reference in a projection");
+        165:     assert.equal(projection.rules, undefined, "no rule references in a projection");
+        166:     if (projection.promptProfile.mode === "referenced") {
+        167:       assert.match(projection.promptProfile.digest, /^[a-f0-9]{64}$/u, entry.name);
+        168:       assert.ok(Array.isArray(projection.promptProfile.compatibleHandlers), entry.name);
+        169:     }
+        170:   }
+        171: });
+        172: 
+        173: test("projections reject unverifiable capabilities, secrets, endpoints, and bodies", () => {
+        174:   eachInvalid(invalidProjections, decodeCandidateSafeProjection);
+        175: });
+        176: 
+        177: // --- privacy boundary -------------------------------------------------------
+        178: 
+        179: test("catalog rejects every forbidden content field without echoing its value", () => {
+        180:   for (const field of privacyFields.contentFields) {
+        181:     const poisoned = { ...clone(baseCatalog), [field]: "leak-me-please" };
+        182:     assert.throws(
+        183:       () => decodeCandidateCatalog(poisoned),
+        184:       (error) => /catalog privacy boundary/u.test(error.message) && !error.message.includes("leak-me-please"),
+        185:       field,
+        186:     );
+        187:   }
+        188: });
+        189: 
+        190: test("prompt-profile metadata rejects every PR-specific identifier", () => {
+        191:   for (const field of privacyFields.identifyingFields) {
+        192:     const poisoned = [
+        193:       { alias: "p", version: "1.0.0", digest: "1".repeat(64), compatibleHandlers: ["pr-agent"], [field]: "x" },
+        194:     ];
+        195:     assert.throws(
+        196:       () => decodePromptProfileRegistry(poisoned),
+        197:       /catalog anonymization boundary/u,
+        198:       field,
+        199:     );
+        200:   }
+        201: });
+        202: 
+        203: // --- quarantine overlay -----------------------------------------------------
+        204: 
+        205: test("a quarantine overlay is keyed to an alias and never mutates a pinned version", () => {
+        206:   const quarantined = decodeCandidateQuarantine({
+        207:     schemaMajor: 2,
+        208:     catalogDigest: "1".repeat(64),
+        209:     alias: "kimi-review",
+        210:     state: "quarantined",
+        211:     reason: "provider incident",
+        212:     effectiveAt: "2026-08-05T00:00:00Z",
+        213:   });
+        214:   assert.equal(quarantined.state, "quarantined");
+        215:   assert.equal(quarantined.mutatesPinnedVersion, false);
+        216: 
+        217:   const replaced = decodeCandidateQuarantine({
+        218:     schemaMajor: 2,
+        219:     catalogDigest: "1".repeat(64),
+        220:     alias: "kimi-review",
+        221:     state: "replaced",
+        222:     reason: "portable model swap",
+        223:     effectiveAt: "2026-08-05T00:00:00Z",
+        224:     replacementModel: "kimi/k2-review-next",
+        225:   });
+        226:   assert.equal(replaced.replacementModel, "kimi/k2-review-next");
+        227: 
+        228:   assert.throws(
+        229:     () => decodeCandidateQuarantine({
+        230:       schemaMajor: 2,
+        231:       catalogDigest: "1".repeat(64),
+        232:       alias: "kimi-review",
+        233:       state: "quarantined",
+        234:       reason: "bad",
+        235:       effectiveAt: "2026-08-05T00:00:00Z",
+        236:       candidates: [],
+        237:     }),
+        238:     /never mutates a pinned catalog version/u,
+        239:   );
+        240:   assert.throws(
+        241:     () => decodeCandidateQuarantine({
+        242:       schemaMajor: 2,
+        243:       catalogDigest: "1".repeat(64),
+        244:       alias: "kimi-review",
+        245:       state: "quarantined",
+        246:       reason: "bad",
+        247:       effectiveAt: "2026-08-05T00:00:00Z",
+        248:       replacementModel: "kimi/k2-review-next",
+        249:     }),
+        250:     /replacementModel is valid only for a replaced overlay/u,
+        251:   );
+        252: });
+        253: 
+        254: // --- version transition / rollback -----------------------------------------
+        255: 
+        256: test("a pinned version cannot mutate in place; a change requires a new version", () => {
+        257:   const previous = decodeCandidateCatalog(baseCatalog);
+        258:   const mutated = clone(baseCatalog);
+        259:   mutated.candidates[0].model = "kimi/k2-review-next";
+        260:   const next = decodeCandidateCatalog(mutated);
+        261:   assert.notEqual(next.digest, previous.digest);
+        262:   // Same version string but different content fails closed.
+        263:   assert.throws(
+        264:     () => describeCatalogTransition(previous, { ...next, version: previous.version }),
+        265:     /must not mutate in place/u,
+        266:   );
+        267: });
+        268: 
+        269: test("a new version transition reports change and a rollback restores an earlier version", () => {
+        270:   const previous = decodeCandidateCatalog(baseCatalog);
+        271:   const forward = decodeCandidateCatalog({ ...clone(baseCatalog), version: "3.2.0" });
+        272:   const forwardTransition = describeCatalogTransition(previous, forward);
+        273:   assert.equal(forwardTransition.versionChanged, true);
+        274:   assert.equal(forwardTransition.rollback, false);
+        275: 
+        276:   const rolledBack = decodeCandidateCatalog({ ...clone(baseCatalog), version: "2.0.0" });
+        277:   const rollbackTransition = describeCatalogTransition(previous, rolledBack);
+        278:   assert.equal(rollbackTransition.rollback, true, "an earlier version is a rollback, not a mutation");
+        279: });
+        280: 
+        281: test("changing a profile digest invalidates every referencing candidate/profile tuple", () => {
+        282:   const previous = decodeCandidateCatalog(baseCatalog);
+        283:   const changed = clone(baseCatalog);
+        284:   changed.version = "3.2.0";
+        285:   const newDigest = "5555555555555555555555555555555555555555555555555555555555555555";
+        286:   changed.promptProfiles.find((p) => p.alias === "gate-specific").digest = newDigest;
+        287:   changed.candidates.find((c) => c.alias === "gate-deep").promptProfile.digest = newDigest;
+        288:   const next = decodeCandidateCatalog(changed);
+        289:   const transition = describeCatalogTransition(previous, next);
+        290:   const tuple = transition.invalidatedTuples.find((t) => t.candidateAlias === "gate-deep");
+    [33m...(output was truncated)...[92m
+        Issue severity scale:
+        - 1 — Critical
+        - 2 — Major
+        - 3 — Minor
+        - 4 — Trivial
+        - 5 — Suggestion
+        
+        Confidence scale:
+        - 1 — Highest, 100% confidence that code requires changes in any context
+        - 2 — Very High
+        - 3 — High
+        - 4 — Medium, Should not be reported
+        
+        (!) - If no issues found according to the criteria, respond with empty list: [][39m
+
+[39mLLM Response:[36m
+    [][39m
+[39mLLM Response:[36m
+    [][39m
+[39mLLM Response:[36m
+    [
+        {
+            "title": "Duplicate candidate alias breaks alias stability",
+            "details": "Duplicate aliases for candidates ('dup') exist within the same candidates array, which breaks alias uniqueness and can lead to ambiguous references.",
+            "tags": ["bug", "maintainability", "data integrity"],
+            "severity": 1,
+            "confidence": 1,
+            "affected_lines": [
+                {
+                    "start_line": 128,
+                    "end_line": 145
+                }
+            ]
+        },
+        {
+            "title": "Duplicate prompt profile identity in the registry",
+            "details": "Duplicate prompt profiles exist with identical alias and version but different digests. This violates prompt profile identity integrity, leading to ambiguity or incorrect profile resolution.",
+            "tags": ["bug", "data integrity", "maintainability"],
+            "severity": 1,
+            "confidence": 1,
+            "affected_lines": [
+                {
+                    "start_line": 204,
+                    "end_line": 206
+                }
+            ]
+        }
+    ][39m
+[39mLLM Response:[36m
+    [][39m
+[39mRequesting LLM [35mgpt-4.1[39m:
+    [User]:[92m
+        You are a subsystem of an AI-powered software platform, specifically tasked with performing expert code reviews.
+        Act as a senior, highly experienced software engineer.
+        
+        Summarize the code review in one sentence.
+        --Reviewed Changes--
+        diff --git a/fixtures/protocol/v2/candidate-safe-projection.invalid.json b/fixtures/protocol/v2/candidate-safe-projection.invalid.json
+        new file mode 100644
+        index 0000000..49aa5e5
+        --- /dev/null
+        +++ b/fixtures/protocol/v2/candidate-safe-projection.invalid.json
+        @@ -0,0 +1,133 @@
+        +[
+        +  {
+        +    "name": "projection exposes an unverifiable token capability",
+        +    "error": "tokenizer must be verified",
+        +    "value": {
+        +      "schemaMajor": 2,
+        +      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        +      "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        +      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        +      "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+        +      "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": false },
+        +      "pricing": { "pricingRef": "price:a", "verified": true },
+        +      "finishReason": { "supported": true, "verified": true },
+        +      "usage": { "supported": true, "verified": true },
+        +      "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+        +    }
+        +  },
+        +  {
+        +    "name": "projection exposes an unverifiable price capability",
+        +    "error": "pricing must be verified",
+        +    "value": {
+        +      "schemaMajor": 2,
+        +      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        +      "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        +      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        +      "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+        +      "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+        +      "pricing": { "pricingRef": "price:a", "verified": false },
+        +      "finishReason": { "supported": true, "verified": true },
+        +      "usage": { "supported": true, "verified": true },
+        +      "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+        +    }
+        +  },
+        +  {
+        +    "name": "projection exposes an unverifiable finish-reason capability",
+        +    "error": "finishReason must be verified",
+        +    "value": {
+        +      "schemaMajor": 2,
+        +      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        +      "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        +      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        +      "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+        +      "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+        +      "pricing": { "pricingRef": "price:a", "verified": true },
+        +      "finishReason": { "supported": true, "verified": false },
+        +      "usage": { "supported": true, "verified": true },
+        +      "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+        +    }
+        +  },
+        +  {
+        +    "name": "projection carries an unknown unit",
+        +    "error": "units must be one of",
+        +    "value": {
+        +      "schemaMajor": 2,
+        +      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        +      "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        +      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        +      "units": "dollars", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+        +      "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+        +      "pricing": { "pricingRef": "price:a", "verified": true },
+        +      "finishReason": { "supported": true, "verified": true },
+        +      "usage": { "supported": true, "verified": true },
+        +      "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+        +    }
+        +  },
+        +  {
+        +    "name": "projection leaks a credential",
+        +    "error": "catalog privacy boundary",
+        +    "value": {
+        +      "schemaMajor": 2,
+        +      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        +      "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        +      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        +      "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+        +      "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+        +      "pricing": { "pricingRef": "price:a", "verified": true },
+        +      "finishReason": { "supported": true, "verified": true },
+        +      "usage": { "supported": true, "verified": true },
+        +      "credential": "sk-secret",
+        +      "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+        +    }
+        +  },
+        +  {
+        +    "name": "projection leaks a billing payload",
+        +    "error": "catalog privacy boundary",
+        +    "value": {
+        +      "schemaMajor": 2,
+        +      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        +      "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        +      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        +      "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+        +      "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+        +      "pricing": { "pricingRef": "price:a", "verified": true },
+        +      "finishReason": { "supported": true, "verified": true },
+        +      "usage": { "supported": true, "verified": true },
+        +      "billingPayload": { "amount": 12 },
+        +      "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+        +    }
+        +  },
+        +  {
+        +    "name": "projection leaks a management endpoint",
+        +    "error": "catalog privacy boundary",
+        +    "value": {
+        +      "schemaMajor": 2,
+        +      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        +      "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        +      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        +      "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+        +      "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+        +      "pricing": { "pricingRef": "price:a", "verified": true },
+        +      "finishReason": { "supported": true, "verified": true },
+        +      "usage": { "supported": true, "verified": true },
+        +      "managementEndpoint": "https://control.example/admin",
+        +      "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"] }
+        +    }
+        +  },
+        +  {
+        +    "name": "projection leaks a prompt body inside the profile",
+        +    "error": "catalog privacy boundary",
+        +    "value": {
+        +      "schemaMajor": 2,
+        +      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        +      "alias": "c1", "kind": "external", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        +      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        +      "units": "tokens", "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100,
+        +      "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+        +      "pricing": { "pricingRef": "price:a", "verified": true },
+        +      "finishReason": { "supported": true, "verified": true },
+        +      "usage": { "supported": true, "verified": true },
+        +      "promptProfile": { "mode": "referenced", "alias": "p", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"], "promptBody": "leak" }
+        +    }
+        +  }
+        +]
+        
+        diff --git a/fixtures/protocol/v2/candidate-safe-projection.valid.json b/fixtures/protocol/v2/candidate-safe-projection.valid.json
+        new file mode 100644
+        index 0000000..6923114
+        --- /dev/null
+        +++ b/fixtures/protocol/v2/candidate-safe-projection.valid.json
+        @@ -0,0 +1,57 @@
+        +[
+        +  {
+        +    "name": "referenced external projection with profile identity and compatibility",
+        +    "value": {
+        +      "schemaMajor": 2,
+        +      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        +      "alias": "kimi-review",
+        +      "kind": "external",
+        +      "handler": "pr-agent",
+        +      "model": "kimi/k2-review",
+        +      "costTier": "low",
+        +      "eligibleLanes": ["review"],
+        +      "eligibleSlots": ["managed", "parallel"],
+        +      "units": "tokens",
+        +      "hardInputLimit": 120000,
+        +      "hardOutputLimit": 8000,
+        +      "hardRequestCostLimit": 5000,
+        +      "safetyMargin": 500,
+        +      "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true },
+        +      "pricing": { "pricingRef": "price:kimi-2026-08", "verified": true },
+        +      "finishReason": { "supported": true, "verified": true },
+        +      "usage": { "supported": true, "verified": true },
+        +      "promptProfile": {
+        +        "mode": "referenced",
+        +        "alias": "thorough-shared",
+        +        "version": "1.2.0",
+        +        "digest": "2222222222222222222222222222222222222222222222222222222222222222",
+        +        "compatibleHandlers": ["pr-agent"],
+        +        "capabilities": ["diff-review"]
+        +      }
+        +    }
+        +  },
+        +  {
+        +    "name": "native handler-managed projection carries no profile body",
+        +    "value": {
+        +      "schemaMajor": 2,
+        +      "catalogDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+        +      "alias": "copilot-native",
+        +      "kind": "native",
+        +      "handler": "copilot",
+        +      "model": "copilot/default",
+        +      "costTier": "unknown",
+        +      "eligibleLanes": ["review"],
+        +      "eligibleSlots": ["parallel"],
+        +      "units": "tokens",
+        +      "hardInputLimit": 90000,
+        +      "hardOutputLimit": 4000,
+        +      "hardRequestCostLimit": 3000,
+        +      "safetyMargin": 300,
+        +      "tokenizer": { "tokenizerId": "native-estimate", "counting": "estimated", "verified": true },
+        +      "pricing": { "pricingRef": "price:copilot-flat", "verified": true },
+        +      "finishReason": { "supported": true, "verified": true },
+        +      "usage": { "supported": false, "verified": true },
+        +      "promptProfile": { "mode": "handler-managed" }
+        +    }
+        +  }
+        +]
+        
+        diff --git a/fixtures/protocol/v2/catalog-fail-closed.invalid.json b/fixtures/protocol/v2/catalog-fail-closed.invalid.json
+        new file mode 100644
+        index 0000000..f96f099
+        --- /dev/null
+        +++ b/fixtures/protocol/v2/catalog-fail-closed.invalid.json
+        @@ -0,0 +1,41 @@
+        +[
+        +  {
+        +    "name": "policy-incomplete candidate: safety margin at or above the hard request limit",
+        +    "error": "safetyMargin must be below hardRequestCostLimit",
+        +    "value": {
+        +      "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        +      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        +      "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+        +      "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+        +      "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+        +      "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+        +      "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 1000, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        +    }
+        +  },
+        +  {
+        +    "name": "policy-incomplete candidate: missing pricing evidence",
+        +    "error": "pricing must be an object",
+        +    "value": {
+        +      "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        +      "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+        +      "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+        +      "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+        +      "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+        +      "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+        +      "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        +    }
+        +  },
+        +  {
+        +    "name": "unknown lane on a candidate",
+        +    "error": "must be one of",
+        +    "value": {
+        +      "alias": "c1", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+        +      "eligibleLanes": ["deploy"], "eligibleSlots": ["managed"],
+        +      "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+        +      "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+        +      "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+        +      "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+        +      "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+        +    }
+        +  }
+        +]
+        
+        diff --git a/fixtures/protocol/v2/catalog-privacy-fields.invalid.json b/fixtures/protocol/v2/catalog-privacy-fields.invalid.json
+        new file mode 100644
+        index 0000000..6612846
+        --- /dev/null
+        +++ b/fixtures/protocol/v2/catalog-privacy-fields.invalid.json
+        @@ -0,0 +1,52 @@
+        +{
+        +  "contentFields": [
+        +    "prompt",
+        +    "prompts",
+        +    "promptBody",
+        +    "profileBody",
+        +    "renderedPrompt",
+        +    "configuration",
+        +    "config",
+        +    "configurationValues",
+        +    "template",
+        +    "templateBody",
+        +    "source",
+        +    "sourceText",
+        +    "diff",
+        +    "finding",
+        +    "findings",
+        +    "rawFinding",
+        +    "modelOutput",
+        +    "output",
+        +    "transcript",
+        +    "providerPayload",
+        +    "providerMetadata",
+        +    "rawPayload",
+        +    "billingPayload",
+        +    "rawBilling",
+        +    "credential",
+        +    "credentials",
+        +    "secret",
+        +    "token",
+        +    "apiKey",
+        +    "rawBalance",
+        +    "balance",
+        +    "privatePolicy",
+        +    "managementEndpoint",
+    [33m...(output was truncated)...[92m
+        
+        **Presentation example:**
+        ```
+        🎵 PATTERN COMPOSER 🎵
+        "Your symphony of patterns sounds magnificent! Factory method opens the first movement,
+        decorators add depth and texture, and observer masterfully completes the composition.
+        The Gang of Four gives a standing ovation from the stalls."
+        ```
+        
+        ---
+        - Your response will be parsed programmatically, so do not include any additional text.
+        - Do not include the issues by itself to the summary, they are already provided in the context.
+        - Use Markdown formatting in your response.
+        [39m
+
+[39mLLM Response:[36m
+    Adds a robust, thoroughly validated, and dependency-free implementation for review candidate catalog contracts—featuring pure functions, rigorous privacy boundaries, canonicalization and digesting, quarantine overlays, immutable versioning, and complete fixture/test coverage—thereby establishing a solid, extensible foundation for catalog identity and candidate selection in the protocol V2 system.[39m
+
+[44m  +  +  +  ---==<<[ CODE REVIEW[22m ]>>==---  +  +  +  [0m
+[1m[41m ⚠️ 2 issues [49m found across [44m 13 [49m files[0m
+
+[1m✨  SUMMARY [0m
+Adds a robust, thoroughly validated, and dependency-free implementation for review candidate catalog contracts—featuring pure functions, rigorous privacy boundaries, canonicalization and digesting, quarantine overlays, immutable versioning, and complete fixture/test coverage—thereby establishing a solid, extensible foundation for catalog identity and candidate selection in the protocol V2 system.
+
+[1m[41m[ 1 ][49m  Duplicate candidate alias breaks alias stability[0m
+file:////Users/sven/repos/platypeeps/sd-github-review/fixtures/protocol/v2/review-candidate-catalog.invalid.json:128 [90mLines [39m128[90m–[39m145
+
+Duplicate aliases for candidates ('dup') exist within the same candidates array, which breaks alias uniqueness and can lead to ambiguous references.
+[43m[30m bug [0m [43m[30m maintainability [0m [43m[30m data integrity [0m 
+
+[31m ╭─────[ 💥 Affected Code   ]──── ─── ── ─
+[31m │  128:         {
+[31m │  129:           "alias": "dup", "kind": "external", "displayName": "C1", "handler": "pr-agent", "model": "kimi/k2", "costTier": "low",
+[31m │  130:           "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+[31m │  131:           "credentialRef": "cred:a", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+[31m │  132:           "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+[31m │  133:           "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+[31m │  134:           "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+[31m │  135:           "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:a", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+[31m │  136:         },
+[31m │  137:         {
+[31m │  138:           "alias": "dup", "kind": "external", "displayName": "C2", "handler": "pr-agent", "model": "qwen/q3", "costTier": "medium",
+[31m │  139:           "eligibleLanes": ["review"], "eligibleSlots": ["managed"],
+[31m │  140:           "credentialRef": "cred:b", "budgetRef": "budget:a", "policyRef": "policy:a", "reserve": 0, "capability": "diff-review",
+[31m │  141:           "rules": { "price": "r:p", "data": "r:d", "promptRule": "r:pr", "reasoning": "r:re" },
+[31m │  142:           "failover": { "sameModelOnly": true, "maxAlternates": 0 },
+[31m │  143:           "promptProfile": { "mode": "referenced", "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111" },
+[31m │  144:           "policy": { "units": "tokens", "tokenizer": { "tokenizerId": "cl100k", "counting": "exact", "verified": true }, "pricing": { "pricingRef": "price:b", "verified": true }, "hardInputLimit": 1000, "hardOutputLimit": 1000, "hardRequestCostLimit": 1000, "safetyMargin": 100, "finishReason": { "supported": true, "verified": true }, "usage": { "supported": true, "verified": true } }
+[31m │  145:         }
+ ╰───[0m
+
+[1m[41m[ 2 ][49m  Duplicate prompt profile identity in the registry[0m
+file:////Users/sven/repos/platypeeps/sd-github-review/fixtures/protocol/v2/review-candidate-catalog.invalid.json:204 [90mLines [39m204[90m–[39m206
+
+Duplicate prompt profiles exist with identical alias and version but different digests. This violates prompt profile identity integrity, leading to ambiguity or incorrect profile resolution.
+[43m[30m bug [0m [43m[30m data integrity [0m [43m[30m maintainability [0m 
+
+[31m ╭─────[ 💥 Affected Code   ]──── ─── ── ─
+[31m │  204:         { "alias": "known", "version": "1.0.0", "digest": "1111111111111111111111111111111111111111111111111111111111111111", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] },
+[31m │  205:         { "alias": "known", "version": "1.0.0", "digest": "2222222222222222222222222222222222222222222222222222222222222222", "compatibleHandlers": ["pr-agent"], "capabilities": ["diff-review"] }
+[31m │  206:       ],
+ ╰───[0m
+

@@ -1,0 +1,263 @@
+{
+  "tool": "prism",
+  "version": "1.0",
+  "runId": "55922a7f50cd022d04297aac624fb3eb",
+  "repo": {
+    "root": "/Users/sven/repos/platypeeps/sd-github-review",
+    "head": "ffe3917cc37d32af82ce62c775352f0a22707609",
+    "branch": "feat/08-08-installer-durable-lane"
+  },
+  "inputs": {
+    "mode": "range",
+    "range": "c3ec5f648f604d0f936b86a79425cc79ffc7fd7b..ffe3917cc37d32af82ce62c775352f0a22707609"
+  },
+  "summary": {
+    "counts": {
+      "low": 1,
+      "medium": 4,
+      "high": 4
+    },
+    "highestSeverity": "high"
+  },
+  "findings": [
+    {
+      "id": "6c2c9e083d6be6a8",
+      "severity": "high",
+      "category": "correctness",
+      "title": "'isConverged' extends correctness beyond hash comparison",
+      "message": "Idempotency is now defined as convergence on the manifest and plan, not just equality of file hashes. Future updates to configuration, manifest shape, or non-file state must be reflected here or idempotency will be broken, possibly leaving installs in an inconsistent state.",
+      "suggestion": "Ensure that isConverged is always updated together with any new fields or structural changes to the manifest or planned actions.",
+      "confidence": 0.95,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer.mjs",
+          "lines": {
+            "start": 153,
+            "end": 176
+          }
+        }
+      ],
+      "tags": [
+        "idempotency",
+        "manifest",
+        "install"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "eebf7a8c45071e9f",
+      "severity": "high",
+      "category": "correctness",
+      "title": "Guard checks for unmanaged durable resources on update/install/adopt",
+      "message": "The code introduces assertDurableResourcesCanBeManaged to guard against overwriting pre-existing, unmanaged files on install, update, and adopt, particularly during schema migration. This is a necessary guard for correctness, but future changes to durable resources must be sure to update DURABLE_RESOURCES everywhere it is referenced.",
+      "suggestion": "Document and enforce (e.g., via test or code comment) that any additions to managed durable resources update DURABLE_RESOURCES in plan.mjs, codecs.mjs, and any callers.",
+      "confidence": 1,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer/plan.mjs",
+          "lines": {
+            "start": 58,
+            "end": 105
+          }
+        }
+      ],
+      "tags": [
+        "guard",
+        "collision",
+        "migration"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "80c6dbefb6b41b1e",
+      "severity": "high",
+      "category": "correctness",
+      "title": "Incorrect release provenance check: installer now checks all source artifacts, not just main workflow",
+      "message": "The code correctly broadens the release provenance check to cover all managed source artifacts, but any regression to only check the event-driven template could silently ship dirty files under a provenance claim. There are explicit tests for this, but the reviewer must verify that all managed files stay in sync and are not missed.",
+      "suggestion": "Ensure `COPIED_SOURCE_PATHS` in transport.mjs lists every file the installer is responsible for, and that changes to managed resources update this array accordingly.",
+      "confidence": 1,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer/transport.mjs",
+          "lines": {
+            "start": 12,
+            "end": 43
+          }
+        }
+      ],
+      "tags": [
+        "provenance",
+        "release",
+        "installer",
+        "security"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "20a5c48b2679f678",
+      "severity": "high",
+      "category": "correctness",
+      "title": "Tests: check for converged run verifies mtime and plan, not just file contents",
+      "message": "The idempotency test in test/consumer-installer.test.js checks both content and mtime to ensure no unnecessary writes, but future resource addition or changes could break this guarantee unless all managed resources are covered.",
+      "suggestion": "Keep the managedFileState function up to date with the full set of managed resources, and guarantee new resources are covered in tests.",
+      "confidence": 1,
+      "locations": [
+        {
+          "path": "test/consumer-installer.test.js",
+          "lines": {
+            "start": 166,
+            "end": 320
+          }
+        }
+      ],
+      "tags": [
+        "test",
+        "idempotency",
+        "mtime"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "5b9ffe950b7841b3",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "Uninstall only removes files tracked in manifest (by version/resource)",
+      "message": "Uninstall now only removes the files actually recorded by the manifest for that schema version. If the uninstall logic is not updated to match any new managed resources, uninstall could leave files behind and violate the contract.",
+      "suggestion": "Ensure when new managed resources are added, uninstall is updated to remove them conditioned on the manifest schema.",
+      "confidence": 0.98,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer.mjs",
+          "lines": {
+            "start": 483,
+            "end": 574
+          }
+        }
+      ],
+      "tags": [
+        "uninstall",
+        "manifest",
+        "migration"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "d8484634cb1ff0b9",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "Version-gated validation is now explicit for manifest schema migration",
+      "message": "Schema validation is properly version-gated via SUPPORTED_MANIFEST_SCHEMA_VERSIONS and validates each prior schema as described in the matrix. Any future schema bump must ensure all version gates and their invariants are updated correctly.",
+      "suggestion": "Update SUPPORTED_MANIFEST_SCHEMA_VERSIONS, PROVENANCE_MIN_SCHEMA_VERSION, DURABLE_MIN_SCHEMA_VERSION, and all versioned checks whenever schemas are bumped.",
+      "confidence": 1,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer/codecs.mjs",
+          "lines": {
+            "start": 98,
+            "end": 252
+          }
+        }
+      ],
+      "tags": [
+        "schema",
+        "migration",
+        "manifest",
+        "validation"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "7011ba37b32a7281",
+      "severity": "medium",
+      "category": "performance",
+      "title": "Avoid unnecessary file writes for managed resources",
+      "message": "Installer introduces atomicWriteIfChanged, ensuring files are only written if their content would actually change, but any future write operation for a managed file should use this helper. Unconditional writes could mask subtle bugs and degrade performance.",
+      "suggestion": "Reference atomicWriteIfChanged for all paths that manage file writes, and cover all future managed resources.",
+      "confidence": 0.9,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer/persistence.mjs",
+          "lines": {
+            "start": 164,
+            "end": 179
+          }
+        }
+      ],
+      "tags": [
+        "atomic",
+        "write",
+        "idempotency"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "efc3db274ad3d0f6",
+      "severity": "medium",
+      "category": "testing",
+      "title": "Tests parameterize durable resource checks, preventing drift",
+      "message": "The new test harnesses are parameterized for all managed durable resources, but future resource additions must update DURABLE_CASES and all relevant tests, or coverage will go partial.",
+      "suggestion": "Any future managed durable resource should be added to DURABLE_CASES and corresponding tests to avoid regressions.",
+      "confidence": 0.95,
+      "locations": [
+        {
+          "path": "test/consumer-installer.test.js",
+          "lines": {
+            "start": 31,
+            "end": 1657
+          }
+        }
+      ],
+      "tags": [
+        "test coverage",
+        "parameterization",
+        "durable resources"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "8dde872c180563a7",
+      "severity": "low",
+      "category": "docs",
+      "title": "Documentation synced precisely with new behavior and resource set",
+      "message": "Most user- and developer-facing markdown files are updated for the new durable resource semantics and schema version bump. Any drift here could confuse operators.",
+      "suggestion": "If new durable resources are added or the schema is bumped, all relevant sections in .trellis/spec, DESIGN.md, README.md, and SETUP-PR-AGENT.md should be updated accordingly.",
+      "confidence": 0.98,
+      "locations": [
+        {
+          "path": "README.md",
+          "lines": {
+            "start": 41,
+            "end": 51
+          }
+        }
+      ],
+      "tags": [
+        "documentation",
+        "schema",
+        "release notes"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ],
+  "timing": {
+    "gitMs": 0,
+    "llmMs": 13585,
+    "totalMs": 13617
+  },
+  "_provenance": [
+    {
+      "ai_generated": true,
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ]
+}

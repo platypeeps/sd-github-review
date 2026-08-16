@@ -1,0 +1,246 @@
+{
+  "tool": "prism",
+  "version": "1.0",
+  "runId": "9532b9561a4ae40c4ae8d97e4239f25c",
+  "repo": {
+    "root": "/Users/sven/repos/platypeeps/sd-github-review",
+    "head": "006cebd254015b073b73cf91d1f5a18a8526db57",
+    "branch": "feat/07-25-define-review-candidate-catalog"
+  },
+  "inputs": {
+    "mode": "range",
+    "range": "608c91c7081820cb35360fdb3eaf47df8619484e..006cebd254015b073b73cf91d1f5a18a8526db57"
+  },
+  "summary": {
+    "counts": {
+      "low": 2,
+      "medium": 6,
+      "high": 1
+    },
+    "highestSeverity": "high"
+  },
+  "findings": [
+    {
+      "id": "2f5cd76146ee6147",
+      "severity": "high",
+      "category": "security",
+      "title": "Forbidden Content and Identifying Field Names Might Miss Edge Cases",
+      "message": "The forbidden field and identifying field lists are matched with a simple normalization. This could miss fields with alternate character encodings (e.g., Unicode homoglyphs) or creative separators, potentially letting secrets or PR-specific information leak.",
+      "suggestion": "Apply stronger normalization and consider expanding the normalization logic to, e.g., remove diacritics, convert fullwidth to ASCII, and reject keys if they contain any non-ASCII chars where applicable. Consider rejecting any property name matching after Unicode normalization and using a strict allow-list instead.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": "src/review-candidate-catalog.js",
+          "lines": {
+            "start": 127,
+            "end": 220
+          }
+        }
+      ],
+      "tags": [
+        "privacy",
+        "data-leak"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "3aa7ca60539e7a5c",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "Nesting Depth Limit in rejectFieldNames May False Negative on Recursive Structures",
+      "message": "The check for MAX_NESTING_DEPTH (32) may still allow deeply nested objects that could cause performance issues or stack exceeded errors elsewhere, especially for maliciously crafted input.",
+      "suggestion": "Lower the default MAX_NESTING_DEPTH or consider making it a tunable parameter for different use cases. Add logging or hard rejection if this threshold is hit to avoid hard-to-debug behavior.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": "src/review-candidate-catalog.js",
+          "lines": {
+            "start": 122,
+            "end": 157
+          }
+        }
+      ],
+      "tags": [
+        "validation"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "e0b0011255c3d518",
+      "severity": "medium",
+      "category": "security",
+      "title": "Potential Ineffective Circular Reference Check in rejectFieldNames",
+      "message": "The use of WeakSet to detect repeated/circular object references relies on object reference equality, but crafted input designed to evade this could raise later errors or be used as a DoS vector in certain runtime engines.",
+      "suggestion": "Combine this check with stricter encoded size limits and consider catching stack overflows during traversal. Log and hard-reject on suspiciously complex objects.",
+      "confidence": 0.6,
+      "locations": [
+        {
+          "path": "src/review-candidate-catalog.js",
+          "lines": {
+            "start": 127,
+            "end": 157
+          }
+        }
+      ],
+      "tags": [
+        "validation",
+        "DoS"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "f734beb1964a836e",
+      "severity": "medium",
+      "category": "performance",
+      "title": "Possible Excessive Sorting in Array Canonicalization",
+      "message": "Sorting is performed on keys for objects (good for canonicalization) but also on candidate/profile arrays by alias/identity after initial map. For very large catalogs, repeated sorting could consume CPU.",
+      "suggestion": "Consider canonicalizing input arrays up-front and document the array sort guarantee clearly, or optimize the decode logic to handle large arrays efficiently if growth is anticipated.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": "src/review-candidate-catalog.js",
+          "lines": {
+            "start": 456,
+            "end": 511
+          }
+        }
+      ],
+      "tags": [
+        "optimization"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "fe2a0cfe6bc6819b",
+      "severity": "medium",
+      "category": "bug",
+      "title": "describeCatalogTransition allows multiple references per profile alias",
+      "message": "describeCatalogTransition builds nextProfilesByIdentity keyed only by alias@version, so if two catalog entries differ only in digest, this logic will only store one in the Map and may report incorrect invalidation for multi-variant profiles.",
+      "suggestion": "Key nextProfilesByIdentity with both alias@version and alias@version@digest, as in indexRegistry(), or ensure that only distinct alias@version@digest triples are allowed in registries.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": "src/review-candidate-catalog.js",
+          "lines": {
+            "start": 814,
+            "end": 870
+          }
+        }
+      ],
+      "tags": [
+        "consistency"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "a57f94faf4983165",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "Optional lastReferencedAt default behavior differs by referenced state",
+      "message": "In classifyCatalogRetention, referenced:false will set lastReferencedAt to createdAt if not explicitly present, which could cause record tails to start at creation instead of last reference.",
+      "suggestion": "Require lastReferencedAt explicitly for unreferenced records (or check consumer contract for preference).",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": "src/review-candidate-catalog.js",
+          "lines": {
+            "start": 889,
+            "end": 917
+          }
+        }
+      ],
+      "tags": [
+        "retention"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "d68b1d2773925ba1",
+      "severity": "medium",
+      "category": "performance",
+      "title": "Deep Cloning via structuredClone May Be Inefficient For Large Catalogs",
+      "message": "In large test fixtures, using structuredClone for every test could significantly impact test performance.",
+      "suggestion": "Cache fixture initial clones, or consider a lightweight deep clone implementation focused on JSON-compatible objects for test speedup.",
+      "confidence": 0.5,
+      "locations": [
+        {
+          "path": "test/review-candidate-catalog.test.js",
+          "lines": {
+            "start": 21,
+            "end": 388
+          }
+        }
+      ],
+      "tags": [
+        "testing"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "66ee7e06dfdc5ebb",
+      "severity": "low",
+      "category": "style",
+      "title": "Extensive Inline Documentation May Obscure Actual Code",
+      "message": "Many multi-line comments are present in the source file, potentially leading to large code blocks that are hard to navigate.",
+      "suggestion": "Consider moving implementation rationale and documentation into adjacent README or module-level docs rather than inline above every function.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": "src/review-candidate-catalog.js",
+          "lines": {
+            "start": 1,
+            "end": 1020
+          }
+        }
+      ],
+      "tags": [
+        "docs",
+        "navigation"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "24aa66f0e49389b3",
+      "severity": "low",
+      "category": "maintainability",
+      "title": "Repeated Magic Numbers for Field Size and Limits",
+      "message": "The use of repeated magic numbers (like 64, 128, 32, 100_000_000) throughout makes changes harder and risks inconsistency.",
+      "suggestion": "Lift all such numbers to named constants at the top for easier tuning and reference.",
+      "confidence": 0.9,
+      "locations": [
+        {
+          "path": "src/review-candidate-catalog.js",
+          "lines": {
+            "start": 11,
+            "end": 53
+          }
+        }
+      ],
+      "tags": [
+        "constants"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ],
+  "timing": {
+    "gitMs": 0,
+    "llmMs": 17793,
+    "totalMs": 17838
+  },
+  "_provenance": [
+    {
+      "ai_generated": true,
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "artifact": "runs/review-3581bf20160be83d01d06ab6/prism",
+  "diagnostic": "{ \"tool\": \"prism\", \"version\": \"1.0\", \"runId\": \"44a5223ffe8c8ed38f390d062f3304ee\", \"repo\": { \"root\": \"/Users/sven/repos/platypeeps/sd-github-review\", \"head\": \"5cd39e5c1b148a6b4a63815b5742bd77ea540cf0\", \"branch\": \"chore/followup-tasks-from-pr-81\" }, \"inputs\": { \"mode\": \"range\", \"range\": \"0370f12347e24ddc8a76695fdedf38c012e16388..5cd39e5c1b148a6b4a63815b5742bd77ea540cf0\" }, \"summary\": { \"counts\": { \"low\": 0, \"medium\": 0, \"high\": 0 }, \"highestSeverity\": \"\" }, \"findings\": [], \"timing\": { \"gitMs\": 0, \"llmMs\": 956, \"totalMs\": 963 } }",
+  "durationMs": 1037,
+  "exitCode": 0,
+  "findings": [],
+  "provider": {
+    "adapter": "prism",
+    "costTier": "low",
+    "dataHandling": "private-network",
+    "id": "prism",
+    "qualityTier": "standard",
+    "timeoutSeconds": 300,
+    "version": "builtin-v1"
+  },
+  "startedAt": 1786807266.9831948,
+  "status": "clean"
+}

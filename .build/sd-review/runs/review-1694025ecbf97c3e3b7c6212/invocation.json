@@ -1,0 +1,132 @@
+{
+  "attemptId": "review-1694025ecbf97c3e3b7c6212",
+  "plan": {
+    "configurationDigest": "fd3ff633c0cb480516dc246fb53ef7cee3669e4b8350eea2a83c89e4da98536c",
+    "execution": "parallel",
+    "familyGate": {
+      "batchSize": 0,
+      "currentRound": 0,
+      "exactHead": "ddeb58e7c9334a3c2f676191749d2a2db0a9c991",
+      "families": [],
+      "repeatedFamilies": [],
+      "roundsAvoided": 0,
+      "schemaVersion": 1,
+      "siblingFindings": 0,
+      "state": "inactive"
+    },
+    "findingFamilies": [],
+    "fixPolicy": "auto",
+    "localPolicy": "optional",
+    "policyDigest": "b7210ba7e29862380ed26666c2f0ce3864b1738e26905cc07ae62a07c17bcbed",
+    "policyId": "substantive-ensemble",
+    "providers": [
+      {
+        "adapter": "gito",
+        "costTier": "medium",
+        "dataHandling": "private-network",
+        "id": "gito",
+        "qualityTier": "standard",
+        "timeoutSeconds": 600,
+        "version": "builtin-v1"
+      },
+      {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      }
+    ],
+    "riskClass": "substantive",
+    "riskReasons": [
+      "source",
+      "tests"
+    ],
+    "schemaVersion": 1,
+    "scope": "branch_delta",
+    "successor": "first"
+  },
+  "schemaVersion": 1,
+  "target": {
+    "base": "e4d99ef891d52132a0c6b0c04b332df4ca782869",
+    "contentDigest": "3da4bb6fc8b252f5728198024c41e335f5086c6a1959fb2e89859e3eed9a9808",
+    "head": "ddeb58e7c9334a3c2f676191749d2a2db0a9c991",
+    "identity": "179183c007dc5bceeaccb15ff94e20aac214064b3dda29493e63a7a0c26be974",
+    "paths": [
+      {
+        "digest": "d8824732da4c4b154308db0ce9187d7b78f37bbcb6648c47ac6e031277cbbde4",
+        "kind": "file",
+        "path": ".trellis/spec/backend/directory-structure.md"
+      },
+      {
+        "digest": "11a6fccf55807ed9b9977ffc850a011a7f9058ded1e3a0956acf2e5b2996b4ab",
+        "kind": "file",
+        "path": ".trellis/tasks/07-25-define-review-data-retention-policy/task.json"
+      },
+      {
+        "digest": "e608a77462cb57e1e6f75b73beae1bc352df78cfac8686856da6572848fa2e2c",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/retention-legal-hold.invalid.json"
+      },
+      {
+        "digest": "a40d9e87a2825702c8416bfdb7bcf428a5529009c4041711a13f36ed5206f8c2",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/retention-legal-hold.valid.json"
+      },
+      {
+        "digest": "b608ca1c9c57a234d2d383cda1900989cfc0c87ef3449c5a77cb9469d36a40a1",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/retention-privacy-fields.invalid.json"
+      },
+      {
+        "digest": "ad0e9dd2353622b62448c08bbc9011c1c586765d6d052e560b3d5f7af950b807",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/retention-purge.invalid.json"
+      },
+      {
+        "digest": "cc5a770ea282e265b5f2a995676e4c9e03cf50b2c503d9387ff2bafe539698d4",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/retention-purge.valid.json"
+      },
+      {
+        "digest": "d9e001a954bc93dd77fd6eff110ca78e22a144c3db508387626423ae957d8163",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/retention-standard-v1.json"
+      },
+      {
+        "digest": "82caa487671da59b65ad877419b4222dc6fef23693c9f27d13fa08c112419f1a",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/retention-status.invalid.json"
+      },
+      {
+        "digest": "6c55a8cf5de089688f3fbfd6f2a8dda4437e412e0cd342b79a2b5e8e7d7be43a",
+        "kind": "file",
+        "path": "fixtures/protocol/v2/retention-status.valid.json"
+      },
+      {
+        "digest": "1fe4c5e9e0b1ebb9b548c055e93139c3700be2c9bec733e3bdb57888d027af51",
+        "kind": "file",
+        "path": "package.json"
+      },
+      {
+        "digest": "7660eefca1248b5a1ba64d10c3d6af07e9fcc579cf413afb932fadb459fc52b0",
+        "kind": "file",
+        "path": "src/retention-policy.js"
+      },
+      {
+        "digest": "a8f0477f976ddef242e41eb7dc64b7df834092adf591e43b4b93484c6acbce81",
+        "kind": "file",
+        "path": "test/dependency-boundaries.test.js"
+      },
+      {
+        "digest": "9021da78579663ac35ce59feaed473c637008d2595ce6c549123a2e938dd20ac",
+        "kind": "file",
+        "path": "test/retention-policy.test.js"
+      }
+    ],
+    "repository": "github.com/platypeeps/sd-github-review",
+    "scope": "branch_delta"
+  }
+}

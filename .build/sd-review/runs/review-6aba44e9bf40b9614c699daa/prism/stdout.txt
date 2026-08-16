@@ -1,0 +1,132 @@
+{
+  "tool": "prism",
+  "version": "1.0",
+  "runId": "15489d0c98475d791242b296f5ab7daf",
+  "repo": {
+    "root": "/Users/sven/repos/platypeeps/sd-github-review",
+    "head": "8b0056b3762dafdff51278b9c6edf4c52d13ca3b",
+    "branch": "feat/install-routed-review-consumer"
+  },
+  "inputs": {
+    "mode": "range",
+    "range": "1b94b128b8a96eb476d140d7164bb4c61e9d7090..8b0056b3762dafdff51278b9c6edf4c52d13ca3b"
+  },
+  "summary": {
+    "counts": {
+      "low": 3,
+      "medium": 1,
+      "high": 0
+    },
+    "highestSeverity": "medium"
+  },
+  "findings": [
+    {
+      "id": "eef7c1cf25db6f96",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "Incorrect workflow and example count assertions could hide new files",
+      "message": "The test previously hardcoded workflow and example counts, which would silently break or, worse, incorrectly pass if new workflows/examples were added or removed, making test logic diverge from actual content.",
+      "suggestion": "Keep new directory-based assertion strategy that enumerates detected workflow/example files, ensuring counts adapt automatically to content changes. No action required unless you intend to revert; this change improves test correctness.",
+      "confidence": 1,
+      "locations": [
+        {
+          "path": "test/metadata.test.js",
+          "lines": {
+            "start": 9,
+            "end": 23
+          }
+        }
+      ],
+      "tags": [
+        "robustness",
+        "test-coverage"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "021fa84c12b5144d",
+      "severity": "low",
+      "category": "maintainability",
+      "title": "Code duplication in workflow variable validation",
+      "message": "Very similar shell validation code for REVIEW_ROUTE_MODE is present in both ai-review-router.yml and pr-agent-router.yml, making future maintenance and policy updates error-prone.",
+      "suggestion": "Factor shared review mode validation logic into a single script file or reusable workflow step to ensure all entry points always enforce the same policy.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": ".github/workflows/ai-review-router.yml",
+          "lines": {
+            "start": 21,
+            "end": 42
+          }
+        }
+      ],
+      "tags": [
+        "drY",
+        "workflow"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "0ad7399994ab0ef8",
+      "severity": "low",
+      "category": "docs",
+      "title": "STILL requires manual setup for REVIEW_ROUTE_MODE",
+      "message": "Multiple places document that REVIEW_ROUTE_MODE must be set manually and is not installer-managed, which creates foot-guns. PRD and planning documents indicate this is a priority for future work but isn't true yet.",
+      "suggestion": "After implementing installer-management for REVIEW_ROUTE_MODE, ensure all doc sections (README, .trellis/spec/backend/consumer-installer.md, etc.) consistently explain the new behavior. Until then, ensure the current state is clear to avoid operator confusion.",
+      "confidence": 0.9,
+      "locations": [
+        {
+          "path": ".trellis/spec/backend/consumer-installer.md",
+          "lines": {
+            "start": 130,
+            "end": 139
+          }
+        }
+      ],
+      "tags": [
+        "operator-error",
+        "installer-behavior"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "48be8b40b0f6ba28",
+      "severity": "low",
+      "category": "docs",
+      "title": "Missing documentation for new installer-managed variable transition",
+      "message": "README calls out that REVIEW_ROUTE_MODE is NOT installer-managed, but new planning documents and PRD indicate it should be. Inconsistency between README and future planned state may confuse users. Also, once the variable becomes managed, the install/check/uninstall docs will need updating.",
+      "suggestion": "Update the README after implementing the planned installer-management for REVIEW_ROUTE_MODE. For now, add a forward-looking note that installer management is planned (see .trellis/tasks/08-15-installer-managed-route-mode).",
+      "confidence": 0.9,
+      "locations": [
+        {
+          "path": "README.md",
+          "lines": {
+            "start": 56,
+            "end": 68
+          }
+        }
+      ],
+      "tags": [
+        "documentation",
+        "consistency"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ],
+  "timing": {
+    "gitMs": 0,
+    "llmMs": 5957,
+    "totalMs": 5978
+  },
+  "_provenance": [
+    {
+      "ai_generated": true,
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ]
+}

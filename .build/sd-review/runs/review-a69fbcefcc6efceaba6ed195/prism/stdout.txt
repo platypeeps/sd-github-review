@@ -1,0 +1,28 @@
+{
+  "tool": "prism",
+  "version": "1.0",
+  "runId": "0a059274a4c12bff3b63fae879ae5502",
+  "repo": {
+    "root": "/Users/sven/repos/platypeeps/sd-github-review",
+    "head": "2170be13d7820360ee3240cb1daf58fa05778f9e",
+    "branch": "feat/define-local-review-attestation-contracts"
+  },
+  "inputs": {
+    "mode": "range",
+    "range": "025231def282eab883b1fdd3559f099394aa850e..2170be13d7820360ee3240cb1daf58fa05778f9e"
+  },
+  "summary": {
+    "counts": {
+      "low": 0,
+      "medium": 0,
+      "high": 0
+    },
+    "highestSeverity": ""
+  },
+  "findings": [],
+  "timing": {
+    "gitMs": 0,
+    "llmMs": 1455,
+    "totalMs": 1477
+  }
+}

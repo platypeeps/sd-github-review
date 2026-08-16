@@ -1,0 +1,246 @@
+{
+  "tool": "prism",
+  "version": "1.0",
+  "runId": "c1ccf83ceb5562b04103ce43d975a052",
+  "repo": {
+    "root": "/Users/sven/repos/platypeeps/sd-github-review",
+    "head": "026b9e1495c175bebc8d39c6ea9492d2ce3e08d8",
+    "branch": "feat/trellis-seeded-task-start-gate"
+  },
+  "inputs": {
+    "mode": "range",
+    "range": "ab4d2e1f8bb2d50db32f62fd86d62a7bed0217d1..026b9e1495c175bebc8d39c6ea9492d2ce3e08d8"
+  },
+  "summary": {
+    "counts": {
+      "low": 4,
+      "medium": 5,
+      "high": 0
+    },
+    "highestSeverity": "medium"
+  },
+  "findings": [
+    {
+      "id": "d76dd5c5756334c9",
+      "severity": "medium",
+      "category": "performance",
+      "title": "Hardcoded preflight timeout could block user experience",
+      "message": "In scripts/trellis-task-start-gate.py, the PREFLIGHT_TIMEOUT_SECONDS constant is hardcoded to 60 seconds. If the preflight process hangs or is excessively slow, this will delay every task start by 60 seconds, which can meaningfully impact UX.",
+      "suggestion": "Consider reducing the timeout (e.g., 10 seconds) or making it configurable via environment variable. Monitor preflight run times to determine a reasonable default.",
+      "confidence": 0.9,
+      "locations": [
+        {
+          "path": "scripts/trellis-task-start-gate.py",
+          "lines": {
+            "start": 17,
+            "end": 17
+          }
+        }
+      ],
+      "tags": [
+        "timeout",
+        "usability"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "fb185151e44efeec",
+      "severity": "medium",
+      "category": "security",
+      "title": "Path traversal possible if user-controlled input is not validated",
+      "message": "In scripts/trellis-task-start-gate.py, the task directory argument is simply resolved and used to spawn a subprocess. Without validation, an attacker (or user error) could specify traversal paths or outside directories, potentially leaking information or causing unintended behavior.",
+      "suggestion": "Sanitize and validate task_dir to ensure it points only within an expected allowed subdirectory, e.g., .trellis/tasks/, before passing to preflight.",
+      "confidence": 0.75,
+      "locations": [
+        {
+          "path": "scripts/trellis-task-start-gate.py",
+          "lines": {
+            "start": 37,
+            "end": 42
+          }
+        }
+      ],
+      "tags": [
+        "input-validation",
+        "filesystem"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "e099bd2a50aad838",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "Broad except block may hide underlying errors",
+      "message": "In scripts/trellis-task-start-gate.py, the main() function contains a broad except OSError as exc handler for the subprocess.run() call. However, OSError could originate from multiple root causes (including permission denied, file not found, or even memory errors). Swallowing all these under a single error path could make debugging more difficult.",
+      "suggestion": "Log the full exception details, or further specialize handling for known OSError error codes (e.g., errno.ENOENT for missing files vs. errno.EACCES for permissions), so failures can be diagnosed more precisely.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": "scripts/trellis-task-start-gate.py",
+          "lines": {
+            "start": 60,
+            "end": 68
+          }
+        }
+      ],
+      "tags": [
+        "error-handling"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "5085f3f69b3c9d57",
+      "severity": "medium",
+      "category": "bug",
+      "title": "Incorrect handling of subprocess non-zero exit code during preflight invocation",
+      "message": "When the preflight script returns a non-zero exit code, the Python script determines failure only by whether JSON can be decoded from stdout. However, the preflight could potentially succeed but output no JSON, or output other errors. This can cause the main gate script to miss certain failure modes.",
+      "suggestion": "Check proc.returncode in addition to JSON decoding to make a more robust determination of tool failure versus invocation issues. Be explicit about successful vs. failed process completion.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": "scripts/trellis-task-start-gate.py",
+          "lines": {
+            "start": 70,
+            "end": 96
+          }
+        }
+      ],
+      "tags": [
+        "process-management"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "306a18382c5e65c3",
+      "severity": "medium",
+      "category": "testing",
+      "title": "Tests do not check for non-ASCII or platform-specific path handling",
+      "message": "In test/trellis-task-start-gate.test.js, tests do not cover edge cases such as directory names with non-ASCII characters, spaces, or Windows-style backslashes, which could cause issues on certain platforms or locales.",
+      "suggestion": "Add tests with unusual task directory names (Unicode, spaces, special characters) to ensure robust handling.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": "test/trellis-task-start-gate.test.js",
+          "lines": {
+            "start": 1,
+            "end": 179
+          }
+        }
+      ],
+      "tags": [
+        "cross-platform",
+        "edge-case"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "cf12223c5b64a085",
+      "severity": "low",
+      "category": "maintainability",
+      "title": "Hardcoded path separator in script path creation",
+      "message": "In .trellis/scripts/task.py, PRE_START_GATE is defined as a string rather than using pathlib.Path. This could lead to cross-platform inconsistencies—for example, on Windows vs. Unix.",
+      "suggestion": "Prefer pathlib.Path('scripts') / 'trellis-task-start-gate.py' for better cross-platform compatibility.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": ".trellis/scripts/task.py",
+          "lines": {
+            "start": 73,
+            "end": 73
+          }
+        }
+      ],
+      "tags": [
+        "cross-platform"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "2ca739375c034bae",
+      "severity": "low",
+      "category": "style",
+      "title": "Unused imports in scripts/trellis-task-start-gate.py",
+      "message": "The import statement 'from __future__ import annotations' is included, but Python 3.7+ generally does not require this for the code as written. If not targeting earlier versions, this line is unnecessary.",
+      "suggestion": "Remove the future import if not needed for compatibility.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": "scripts/trellis-task-start-gate.py",
+          "lines": {
+            "start": 27,
+            "end": 27
+          }
+        }
+      ],
+      "tags": [
+        "cleanup"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "ff2be342b74d31f1",
+      "severity": "low",
+      "category": "performance",
+      "title": "Test suite makes filesystem copies for each test sandbox",
+      "message": "The test harness in test/trellis-task-start-gate.test.js copies the preflight and gate script to a temp directory on each test, potentially slowing down test runs if there are many test cases.",
+      "suggestion": "Consider optimizing by reusing a single sandbox or using in-memory approaches if possible.",
+      "confidence": 0.6,
+      "locations": [
+        {
+          "path": "test/trellis-task-start-gate.test.js",
+          "lines": {
+            "start": 16,
+            "end": 74
+          }
+        }
+      ],
+      "tags": [
+        "test-performance"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "b8086ec95d8b9ce2",
+      "severity": "low",
+      "category": "testing",
+      "title": "Test does not cover timeout behavior of preflight",
+      "message": "No test case exists to explicitly exercise handling of a slow or hanging review-preflight.mjs (timeout). This could conceal regressions that cause the gate to hang or take too long.",
+      "suggestion": "Add a test case which stubs the preflight script to sleep longer than PRESFLIGHT_TIMEOUT_SECONDS and asserts the gate fails with the expected error.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": "test/trellis-task-start-gate.test.js",
+          "lines": {
+            "start": 100,
+            "end": 179
+          }
+        }
+      ],
+      "tags": [
+        "timeout"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ],
+  "timing": {
+    "gitMs": 0,
+    "llmMs": 11307,
+    "totalMs": 11316
+  },
+  "_provenance": [
+    {
+      "ai_generated": true,
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ]
+}

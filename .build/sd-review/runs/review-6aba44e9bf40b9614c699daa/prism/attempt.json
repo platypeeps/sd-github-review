@@ -1,0 +1,51 @@
+{
+  "artifact": "runs/review-6aba44e9bf40b9614c699daa/prism",
+  "diagnostic": "{ \"tool\": \"prism\", \"version\": \"1.0\", \"runId\": \"15489d0c98475d791242b296f5ab7daf\", \"repo\": { \"root\": \"/Users/sven/repos/platypeeps/sd-github-review\", \"head\": \"8b0056b3762dafdff51278b9c6edf4c52d13ca3b\", \"branch\": \"feat/install-routed-review-consumer\" }, \"inputs\": { \"mode\": \"range\", \"range\": \"1b94b128b8a96eb476d140d7164bb4c61e9d7090..8b0056b3762dafdff51278b9c6edf4c52d13ca3b\" }, \"summary\": { \"counts\": { \"low\": 3, \"medium\": 1, \"high\": 0 }, \"highestSeverity\": \"medium\" }, \"findings\": [ { \"id\": \"eef7c1cf25db6f96\", \"severity\": \"medium\", \"category\": \"correctness\", \"title\": \"Incorrect workflow and example count assertions could hide new files\", \"message\": \"The test previously hardcoded workflow and example counts, which would silently break or, worse, incorrectly pass if new workflows/examples were added or removed, making test logic diverge from actual content.\", \"suggestion\": \"Keep new directory-based assertion strategy that enumerates detected workflow/example files, ensuring counts adapt automatically to content changes. No action required unless you intend to revert; this change improves test correctness.\", \"confidence\": 1, \"locations\": [ { \"path\": \"test/metadata.test.js\", \"lines\": { ...",
+  "durationMs": 6027,
+  "exitCode": 0,
+  "findings": [
+    {
+      "disposition": "outstanding",
+      "family": "correctness",
+      "line": 9,
+      "path": "test/metadata.test.js",
+      "severity": "medium",
+      "summary": "Incorrect workflow and example count assertions could hide new files"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "maintainability",
+      "line": 21,
+      "path": ".github/workflows/ai-review-router.yml",
+      "severity": "low",
+      "summary": "Code duplication in workflow variable validation"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "docs",
+      "line": 130,
+      "path": ".trellis/spec/backend/consumer-installer.md",
+      "severity": "low",
+      "summary": "STILL requires manual setup for REVIEW_ROUTE_MODE"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "docs",
+      "line": 56,
+      "path": "README.md",
+      "severity": "low",
+      "summary": "Missing documentation for new installer-managed variable transition"
+    }
+  ],
+  "provider": {
+    "adapter": "prism",
+    "costTier": "low",
+    "dataHandling": "private-network",
+    "id": "prism",
+    "qualityTier": "standard",
+    "timeoutSeconds": 300,
+    "version": "builtin-v1"
+  },
+  "startedAt": 1786829582.083199,
+  "status": "findings"
+}

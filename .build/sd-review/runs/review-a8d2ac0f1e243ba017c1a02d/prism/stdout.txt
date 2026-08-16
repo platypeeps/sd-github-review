@@ -1,0 +1,276 @@
+{
+  "tool": "prism",
+  "version": "1.0",
+  "runId": "7e3727fcb393ea95f5b60c967eb6028c",
+  "repo": {
+    "root": "/Users/sven/repos/platypeeps/sd-github-review",
+    "head": "2dd02f895f3deed2ba1dc916ed2ea5d2d7f4022b",
+    "branch": "feat/08-08-installer-durable-lane"
+  },
+  "inputs": {
+    "mode": "range",
+    "range": "c3ec5f648f604d0f936b86a79425cc79ffc7fd7b..2dd02f895f3deed2ba1dc916ed2ea5d2d7f4022b"
+  },
+  "summary": {
+    "counts": {
+      "low": 2,
+      "medium": 7,
+      "high": 1
+    },
+    "highestSeverity": "high"
+  },
+  "findings": [
+    {
+      "id": "866ded4bda3f3949",
+      "severity": "high",
+      "category": "security",
+      "title": "Possible Time-of-check-Time-of-use (TOCTOU) race in atomicWriteIfChanged",
+      "message": "atomicWriteIfChanged reads the file, checks content, and then writes if needed. Between the check and the write, another process may alter the file, causing unanticipated overwrites or data races.",
+      "suggestion": "Ensure the atomic write checks file content immediately before overwriting, potentially using a filesystem lock or migrate to using fs.writeFile with the { flag: 'wx' } option, or check mtime before and after, and retry if changed between read and write.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer/persistence.mjs",
+          "lines": {
+            "start": 164,
+            "end": 176
+          }
+        }
+      ],
+      "tags": [
+        "security",
+        "filesystem",
+        "atomicity"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "5b6d52efaf0f9f1a",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "Potential false negative in hash comparison for managed files",
+      "message": "The isConverged function compares hash of content in local[field] to the manifest field's sha256. If, for any reason, local[field] is not up-to-date (e.g. stale file read or an incomplete loadLocalState), convergence could be incorrectly determined.",
+      "suggestion": "Ensure that all file reads for managed files are guaranteed fresh, and consider re-checking file content immediately prior to the convergence check if filesystem state could have changed since state loading.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer.mjs",
+          "lines": {
+            "start": 38,
+            "end": 55
+          }
+        }
+      ],
+      "tags": [
+        "correctness",
+        "convergence",
+        "filesystem"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "fe1a0e8087af4e2e",
+      "severity": "medium",
+      "category": "performance",
+      "title": "readManagedSources reads all files regardless of usage",
+      "message": "readManagedSources loads every managed resource even when only one may be necessary (e.g., in single-file check scenarios). This is inefficient for large test cases or potential future scaling.",
+      "suggestion": "Allow the function to accept an optional subset of resources to read, or refactor its use in callers where only a subset will be needed.",
+      "confidence": 0.6,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer.mjs",
+          "lines": {
+            "start": 100,
+            "end": 112
+          }
+        }
+      ],
+      "tags": [
+        "performance"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "1c7e2d67e7009c10",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "Adopt or update can drop additional fields from non-schema fields",
+      "message": "When updating or adopting manifests, a new manifest is constructed using the new createManifest result, potentially dropping any non-schema fields or future extensions present in the old manifest, which could cause subtle data loss or upgrade problems.",
+      "suggestion": "Explicitly preserve/merge unknown fields, or, at minimum, document that unknown fields (beyond the schema) will be dropped on update and test for forward-compatibility constraints.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer.mjs",
+          "lines": {
+            "start": 208,
+            "end": 259
+          }
+        }
+      ],
+      "tags": [
+        "correctness",
+        "compatibility"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "d3cf737343a28e8f",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "No dry-run write in uninstall can mask permission/collision problems",
+      "message": "In uninstall, when running in dry-run mode, file collisions or permission errors that would block removal are not checked, possibly resulting in dry runs that succeed but live runs that fail.",
+      "suggestion": "Log or simulate permission checks and file presence in dry-run mode, and make it clear that the dry-run result does not guarantee a successful live run.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer.mjs",
+          "lines": {
+            "start": 490,
+            "end": 574
+          }
+        }
+      ],
+      "tags": [
+        "correctness",
+        "dry-run"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "5d48698db256cf31",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "Uninstall will not remove files for legacy manifests present on disk",
+      "message": "In scripts/consumer-installer.mjs, uninstall only removes descriptor and durableWorkflow files if the manifest records them. If a consumer has these files left over from a failed or manually repaired migration, they won't be deleted, potentially leaving orphaned managed files.",
+      "suggestion": "Add an explicit check or warning if managed files are present but not declared in the manifest, or delete such files after operator confirmation.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer.mjs",
+          "lines": {
+            "start": 515,
+            "end": 574
+          }
+        }
+      ],
+      "tags": [
+        "correctness",
+        "cleanup"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "09ec2821c88525cd",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "Hardcoded mapping in createManifest breaks extensibility",
+      "message": "createManifest in scripts/consumer-installer/plan.mjs hardcodes the sha256 assignments for descriptor and durableWorkflow via a one-off mapping, meaning adding a resource to DURABLE_MANAGED_RESOURCES will require edits in multiple places, risking inconsistency.",
+      "suggestion": "Refactor the sha256 assignments for manifest D3+ blocks to use a per-resource value passed in or derived from a well-structured resource/sha map in the caller(s), so a resource addition propagates naturally.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer/plan.mjs",
+          "lines": {
+            "start": 180,
+            "end": 194
+          }
+        }
+      ],
+      "tags": [
+        "maintainability"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "db42f3a1ff969106",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "Missing field validation in manifestBody test utility",
+      "message": "The manifestBody function in test/installer-modules.test.js does not ensure that all fields unique to each schema version (such as descriptor and durableWorkflow at v3) are truly absent when building v1/v2 manifests. This could lead to tests passing when too many fields are included, hiding actual schema drift.",
+      "suggestion": "Explicitly delete or guard against including descriptor and durableWorkflow fields in v1/v2 manifest objects, and add assertions for their absence after manifestBody is called for a schema version \u003c 3.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": "test/installer-modules.test.js",
+          "lines": {
+            "start": 58,
+            "end": 96
+          }
+        }
+      ],
+      "tags": [
+        "testing",
+        "schema",
+        "manifest"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "43dfabbbba298743",
+      "severity": "low",
+      "category": "performance",
+      "title": "Double stringification in isConverged manifest comparison",
+      "message": "The function isConverged in scripts/consumer-installer.mjs calls JSON.stringify twice on the same inputs for manifest comparison. This is wasteful on larger manifests.",
+      "suggestion": "Store the result of JSON.stringify(activeManifest) and JSON.stringify(local.manifest) in temporary variables before comparing, to avoid recomputation.",
+      "confidence": 0.9,
+      "locations": [
+        {
+          "path": "scripts/consumer-installer.mjs",
+          "lines": {
+            "start": 38,
+            "end": 55
+          }
+        }
+      ],
+      "tags": [
+        "performance"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "82df723d73dfe05d",
+      "severity": "low",
+      "category": "maintainability",
+      "title": "Extensive repeat of file lists in managedFileState and similar functions",
+      "message": "Paths like [MANIFEST_PATH, WORKFLOW_PATH, DESCRIPTOR_PATH, DURABLE_WORKFLOW_PATH] are repeated manually in several test utilities, risking accidental omission/addition drift from MANAGED_RESOURCES.",
+      "suggestion": "Refactor to always derive the list of managed file paths from MANAGED_RESOURCES (including manifest if needed) in helpers.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": "test/consumer-installer.test.js",
+          "lines": {
+            "start": 172,
+            "end": 183
+          }
+        }
+      ],
+      "tags": [
+        "maintainability",
+        "DRY"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ],
+  "timing": {
+    "gitMs": 0,
+    "llmMs": 13129,
+    "totalMs": 13162
+  },
+  "_provenance": [
+    {
+      "ai_generated": true,
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ]
+}

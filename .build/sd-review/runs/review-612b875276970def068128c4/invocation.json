@@ -1,0 +1,92 @@
+{
+  "attemptId": "review-612b875276970def068128c4",
+  "plan": {
+    "configurationDigest": "fd3ff633c0cb480516dc246fb53ef7cee3669e4b8350eea2a83c89e4da98536c",
+    "execution": "serial",
+    "familyGate": {
+      "batchSize": 0,
+      "currentRound": 0,
+      "exactHead": "28fd6a5ecbfeaaec46af8e4ec4e8573b33f78a6e",
+      "families": [],
+      "repeatedFamilies": [],
+      "roundsAvoided": 0,
+      "schemaVersion": 1,
+      "siblingFindings": 0,
+      "state": "inactive"
+    },
+    "findingFamilies": [],
+    "fixPolicy": "auto",
+    "localPolicy": "optional",
+    "policyDigest": "3a997864d8c8e49dfb89515a056167019dd9fde875b4726bea0788f530248810",
+    "policyId": "metadata-cheapest",
+    "providers": [
+      {
+        "adapter": "prism",
+        "costTier": "low",
+        "dataHandling": "private-network",
+        "id": "prism",
+        "qualityTier": "standard",
+        "timeoutSeconds": 300,
+        "version": "builtin-v1"
+      }
+    ],
+    "riskClass": "metadata",
+    "riskReasons": [
+      "metadata-only"
+    ],
+    "schemaVersion": 1,
+    "scope": "branch_delta",
+    "successor": "first"
+  },
+  "schemaVersion": 1,
+  "target": {
+    "base": "0370f12347e24ddc8a76695fdedf38c012e16388",
+    "contentDigest": "ffcb7577d1fa125a2088627153094ab1e5b03f75f4bfc641a69642e65226c8c8",
+    "head": "28fd6a5ecbfeaaec46af8e4ec4e8573b33f78a6e",
+    "identity": "68cf0ee0b2b14a7cff49e2b436339c1705ceb093f41281e7944f0581928e589a",
+    "paths": [
+      {
+        "digest": "40dabff4b3e0949c79f6dbbbec55ba4d8eb31ab989ba5c77786bf2c951c88b92",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-remote-review-channel-authority/check.jsonl"
+      },
+      {
+        "digest": "40dabff4b3e0949c79f6dbbbec55ba4d8eb31ab989ba5c77786bf2c951c88b92",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-remote-review-channel-authority/implement.jsonl"
+      },
+      {
+        "digest": "7b02222b48ae02cbd663432d55a08306aca3ce7b393b3b7c2bceec47d02ddc77",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-remote-review-channel-authority/prd.md"
+      },
+      {
+        "digest": "d83a9835e844b17a9fa89ec33ea234e9d8c78c51c89e333c8347d0f7e67745c2",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-remote-review-channel-authority/task.json"
+      },
+      {
+        "digest": "40dabff4b3e0949c79f6dbbbec55ba4d8eb31ab989ba5c77786bf2c951c88b92",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-task-manifest-ready-gate/check.jsonl"
+      },
+      {
+        "digest": "40dabff4b3e0949c79f6dbbbec55ba4d8eb31ab989ba5c77786bf2c951c88b92",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-task-manifest-ready-gate/implement.jsonl"
+      },
+      {
+        "digest": "47e60e060707e58e331bb776219ca2bfa0005a91bdeda51d2beebb1ee68b75fe",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-task-manifest-ready-gate/prd.md"
+      },
+      {
+        "digest": "c13518388e4c8bd8e2c15e4898725f83af73eb065575618277539439dbc51b86",
+        "kind": "file",
+        "path": ".trellis/tasks/08-15-task-manifest-ready-gate/task.json"
+      }
+    ],
+    "repository": "github.com/platypeeps/sd-github-review",
+    "scope": "branch_delta"
+  }
+}

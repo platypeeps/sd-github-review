@@ -1,0 +1,91 @@
+{
+  "artifact": "runs/review-0b87adb5c2eff23fb26f4551/prism",
+  "diagnostic": "{ \"tool\": \"prism\", \"version\": \"1.0\", \"runId\": \"55922a7f50cd022d04297aac624fb3eb\", \"repo\": { \"root\": \"/Users/sven/repos/platypeeps/sd-github-review\", \"head\": \"ffe3917cc37d32af82ce62c775352f0a22707609\", \"branch\": \"feat/08-08-installer-durable-lane\" }, \"inputs\": { \"mode\": \"range\", \"range\": \"c3ec5f648f604d0f936b86a79425cc79ffc7fd7b..ffe3917cc37d32af82ce62c775352f0a22707609\" }, \"summary\": { \"counts\": { \"low\": 1, \"medium\": 4, \"high\": 4 }, \"highestSeverity\": \"high\" }, \"findings\": [ { \"id\": \"6c2c9e083d6be6a8\", \"severity\": \"high\", \"category\": \"correctness\", \"title\": \"'isConverged' extends correctness beyond hash comparison\", \"message\": \"Idempotency is now defined as convergence on the manifest and plan, not just equality of file hashes. Future updates to configuration, manifest shape, or non-file state must be reflected here or idempotency will be broken, possibly leaving installs in an inconsistent state.\", \"suggestion\": \"Ensure that isConverged is always updated together with any new fields or structural changes to the manifest or planned actions.\", \"confidence\": 0.95, \"locations\": [ { \"path\": \"scripts/consumer-installer.mjs\", \"lines\": { \"start\": 153, \"end\": 176 } } ], \"tags\": [ \"idemp...",
+  "durationMs": 13699,
+  "exitCode": 0,
+  "findings": [
+    {
+      "disposition": "outstanding",
+      "family": "correctness",
+      "line": 153,
+      "path": "scripts/consumer-installer.mjs",
+      "severity": "high",
+      "summary": "'isConverged' extends correctness beyond hash comparison"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "correctness",
+      "line": 58,
+      "path": "scripts/consumer-installer/plan.mjs",
+      "severity": "high",
+      "summary": "Guard checks for unmanaged durable resources on update/install/adopt"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "correctness",
+      "line": 12,
+      "path": "scripts/consumer-installer/transport.mjs",
+      "severity": "high",
+      "summary": "Incorrect release provenance check: installer now checks all source artifacts, not just main workflow"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "correctness",
+      "line": 166,
+      "path": "test/consumer-installer.test.js",
+      "severity": "high",
+      "summary": "Tests: check for converged run verifies mtime and plan, not just file contents"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "correctness",
+      "line": 483,
+      "path": "scripts/consumer-installer.mjs",
+      "severity": "medium",
+      "summary": "Uninstall only removes files tracked in manifest (by version/resource)"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "correctness",
+      "line": 98,
+      "path": "scripts/consumer-installer/codecs.mjs",
+      "severity": "medium",
+      "summary": "Version-gated validation is now explicit for manifest schema migration"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "performance",
+      "line": 164,
+      "path": "scripts/consumer-installer/persistence.mjs",
+      "severity": "medium",
+      "summary": "Avoid unnecessary file writes for managed resources"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "testing",
+      "line": 31,
+      "path": "test/consumer-installer.test.js",
+      "severity": "medium",
+      "summary": "Tests parameterize durable resource checks, preventing drift"
+    },
+    {
+      "disposition": "outstanding",
+      "family": "docs",
+      "line": 41,
+      "path": "README.md",
+      "severity": "low",
+      "summary": "Documentation synced precisely with new behavior and resource set"
+    }
+  ],
+  "provider": {
+    "adapter": "prism",
+    "costTier": "low",
+    "dataHandling": "private-network",
+    "id": "prism",
+    "qualityTier": "standard",
+    "timeoutSeconds": 300,
+    "version": "builtin-v1"
+  },
+  "startedAt": 1786305637.7739289,
+  "status": "findings"
+}

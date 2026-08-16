@@ -1,0 +1,27 @@
+{
+  "artifact": "runs/review-c61e1ab08a8136945731dd31/prism",
+  "diagnostic": "{ \"tool\": \"prism\", \"version\": \"1.0\", \"runId\": \"d7c209d6e7e2b418a78cf0fbc6ff1a5a\", \"repo\": { \"root\": \"/Users/sven/repos/platypeeps/sd-github-review\", \"head\": \"e25d0d200e03e0fc90e7498af78cf1400efec44e\", \"branch\": \"feat/08-09-descriptor-contract-path\" }, \"inputs\": { \"mode\": \"range\", \"range\": \"053f156c626d1c3901193d3dc76d487eb4dcc2ed..e25d0d200e03e0fc90e7498af78cf1400efec44e\" }, \"summary\": { \"counts\": { \"low\": 0, \"medium\": 1, \"high\": 0 }, \"highestSeverity\": \"medium\" }, \"findings\": [ { \"id\": \"fe9f0e9877d0a056\", \"severity\": \"medium\", \"category\": \"docs\", \"title\": \"Outdated references to descriptor install path\", \"message\": \"In user guide files (README.md, SETUP-COPILOT.md, SETUP-PR-AGENT.md), link text and instructions now clearly distinguish between the published descriptor (contract/) and the installed path (config/), aligning with the contract. However, if any consumer erroneously copies only from the new contract/ link text without following the prose, the installed path may be incorrect, resulting in workflow probe failures.\", \"suggestion\": \"Further emphasize in the prose that ONLY config/routed-review-setup-v1.json is valid as an install target, maybe with warning callouts to pre...",
+  "durationMs": 2928,
+  "exitCode": 0,
+  "findings": [
+    {
+      "disposition": "outstanding",
+      "family": "docs",
+      "line": 132,
+      "path": "README.md",
+      "severity": "medium",
+      "summary": "Outdated references to descriptor install path"
+    }
+  ],
+  "provider": {
+    "adapter": "prism",
+    "costTier": "low",
+    "dataHandling": "private-network",
+    "id": "prism",
+    "qualityTier": "standard",
+    "timeoutSeconds": 300,
+    "version": "builtin-v1"
+  },
+  "startedAt": 1786302847.358984,
+  "status": "findings"
+}

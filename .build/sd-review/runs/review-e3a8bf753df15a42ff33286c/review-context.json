@@ -1,0 +1,12 @@
+{
+  "confidenceCredit": {
+    "granted": false
+  },
+  "findingFamilies": [],
+  "riskClass": "metadata",
+  "riskReasons": [
+    "metadata-only"
+  ],
+  "schemaVersion": 1,
+  "targetIdentity": "ac76839fb19597bc8da36fb2d8e42df9f8f2331c86b6e82b18c6a2599d23456e"
+}

@@ -1,0 +1,226 @@
+{
+  "tool": "prism",
+  "version": "1.0",
+  "runId": "98ee45da1e69ebe3d787c90b0c66bda3",
+  "repo": {
+    "root": "/Users/sven/repos/platypeeps/sd-github-review",
+    "head": "e5366431844e10e8cf66cdbbe7d873246c4ccbfc",
+    "branch": "feat/trellis-seeded-task-start-gate"
+  },
+  "inputs": {
+    "mode": "range",
+    "range": "ab4d2e1f8bb2d50db32f62fd86d62a7bed0217d1..e5366431844e10e8cf66cdbbe7d873246c4ccbfc"
+  },
+  "summary": {
+    "counts": {
+      "low": 2,
+      "medium": 5,
+      "high": 1
+    },
+    "highestSeverity": "high"
+  },
+  "findings": [
+    {
+      "id": "5ce1dc6b6f0c40bc",
+      "severity": "high",
+      "category": "bug",
+      "title": "Missing error handling for subprocess.run failure in trellis-task-start-gate.py",
+      "message": "If subprocess.run in trellis-task-start-gate.py (line 53) fails due to a missing or broken Node.js runtime, only OSError is caught, but KeyboardInterrupt or unexpected exceptions will crash the script and potentially leave the task in a partial state.",
+      "suggestion": "Wrap the subprocess.run call in a broader try/except to catch all exceptions and return a clean error message and appropriate exit code.",
+      "confidence": 0.9,
+      "locations": [
+        {
+          "path": "scripts/trellis-task-start-gate.py",
+          "lines": {
+            "start": 53,
+            "end": 67
+          }
+        }
+      ],
+      "tags": [
+        "robustness",
+        "exception-handling"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "d11c6bb7450888de",
+      "severity": "medium",
+      "category": "security",
+      "title": "Possible path traversal with \u003ctask-dir\u003e argument",
+      "message": "scripts/trellis-task-start-gate.py does not sanitize or strictly validate the \u003ctask-dir\u003e argument, allowing unexpected or malicious input. An attacker could attempt to traverse directories or provide arbitrary paths if the exposed surface expands.",
+      "suggestion": "Restrict \u003ctask-dir\u003e to subdirectories under the task tree and consider validating the canonical resolved path before use.",
+      "confidence": 0.85,
+      "locations": [
+        {
+          "path": "scripts/trellis-task-start-gate.py",
+          "lines": {
+            "start": 27,
+            "end": 44
+          }
+        }
+      ],
+      "tags": [
+        "input-validation",
+        "path-traversal"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "b1047e78f985003c",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "Potential inconsistency with task directory path in trellis-task-start-gate.py",
+      "message": "trellis-task-start-gate.py accepts \u003ctask-dir\u003e and calculates a relative path from REPO_ROOT, but if the script is moved or symlinked inconsistently, it may resolve REPO_ROOT incorrectly. If called with an absolute path outside REPO_ROOT, this could result in a misleading path passed to the preflight.",
+      "suggestion": "Consider validating that the supplied \u003ctask-dir\u003e resides within REPO_ROOT, or handle all paths absolutely with clear error messaging if not.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": "scripts/trellis-task-start-gate.py",
+          "lines": {
+            "start": 28,
+            "end": 44
+          }
+        }
+      ],
+      "tags": [
+        "path-handling",
+        "edge-case"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "9f697b6b6cdd4f5f",
+      "severity": "medium",
+      "category": "performance",
+      "title": "Potentially slow subprocess call for seeded-task preflight",
+      "message": "The preflight subprocess in trellis-task-start-gate.py may impact UX if it takes near the timeout (60s). This could delay task start when underlying issues with Node or the pack occur, causing confusion.",
+      "suggestion": "Consider detecting issues earlier (e.g., with a quick pre-execution check for Node version and preflight pack presence) to fail fast and improve user feedback.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": "scripts/trellis-task-start-gate.py",
+          "lines": {
+            "start": 53,
+            "end": 67
+          }
+        }
+      ],
+      "tags": [
+        "feedback",
+        "latency"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "fdcda3432f9955d5",
+      "severity": "medium",
+      "category": "correctness",
+      "title": "Ambiguous error reporting when seeded-task produces no findings",
+      "message": "If the underlying command pack fails with no stdout, the script emits a generic error message. However, if the command preflight returns an error code but does provide structured output, meaningful findings may be lost if not exposed in stderr.",
+      "suggestion": "Always include preflight stderr in the error output if present, and consider logging the full stdout/stderr on errors for troubleshooting.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": "scripts/trellis-task-start-gate.py",
+          "lines": {
+            "start": 69,
+            "end": 76
+          }
+        }
+      ],
+      "tags": [
+        "error-handling",
+        "debugging"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "5202c13a10abbdc0",
+      "severity": "medium",
+      "category": "testing",
+      "title": "Test cases in trellis-task-start-gate.test.js do not validate side effects",
+      "message": "The test suite for the gate only checks exit codes and messages but does not verify that no state is written on refusal, as claimed by the acceptance criteria.",
+      "suggestion": "Add assertions confirming that relevant files (e.g., active task pointers or task.json) remain unchanged after a refused start.",
+      "confidence": 0.75,
+      "locations": [
+        {
+          "path": "test/trellis-task-start-gate.test.js",
+          "lines": {
+            "start": 1,
+            "end": 179
+          }
+        }
+      ],
+      "tags": [
+        "integration-test",
+        "side-effect"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "e0ab4815f52b7331",
+      "severity": "low",
+      "category": "maintainability",
+      "title": "Duplicated logic for skipping gate in absence of Node or preflight pack",
+      "message": "Both the Node lookup and the preflight pack existence check emit separate skip messages in trellis-task-start-gate.py, but this could be unified and better structured.",
+      "suggestion": "Combine the skip condition logic and provide a single clear message listing missing dependencies.",
+      "confidence": 0.7,
+      "locations": [
+        {
+          "path": "scripts/trellis-task-start-gate.py",
+          "lines": {
+            "start": 34,
+            "end": 42
+          }
+        }
+      ],
+      "tags": [
+        "code-duplication"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    },
+    {
+      "id": "21497d43a24d7e9e",
+      "severity": "low",
+      "category": "style",
+      "title": "Overly long lines in trellis-task-start-gate.py",
+      "message": "Some lines, especially in print statements, exceed typical line length limits, potentially impacting readability for reviewers.",
+      "suggestion": "Break up long print statements for better readability and maintainability.",
+      "confidence": 0.8,
+      "locations": [
+        {
+          "path": "scripts/trellis-task-start-gate.py",
+          "lines": {
+            "start": 78,
+            "end": 83
+          }
+        }
+      ],
+      "tags": [
+        "readability"
+      ],
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ],
+  "timing": {
+    "gitMs": 0,
+    "llmMs": 10602,
+    "totalMs": 10612
+  },
+  "_provenance": [
+    {
+      "ai_generated": true,
+      "provider": "openai",
+      "model": "gpt-4.1"
+    }
+  ]
+}

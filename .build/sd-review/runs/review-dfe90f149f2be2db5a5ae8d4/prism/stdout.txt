@@ -1,0 +1,28 @@
+{
+  "tool": "prism",
+  "version": "1.0",
+  "runId": "0a2c0d24fff123446480234b3c1f4976",
+  "repo": {
+    "root": "/Users/sven/repos/platypeeps/sd-github-review",
+    "head": "39c9f3f3ab557abfc20d94d280b1e41abc2ce534",
+    "branch": "docs/remote-review-channel-authority-findings"
+  },
+  "inputs": {
+    "mode": "range",
+    "range": "559a8f72b90e0f4a1594c96b1962c234a3fa618b..39c9f3f3ab557abfc20d94d280b1e41abc2ce534"
+  },
+  "summary": {
+    "counts": {
+      "low": 0,
+      "medium": 0,
+      "high": 0
+    },
+    "highestSeverity": ""
+  },
+  "findings": [],
+  "timing": {
+    "gitMs": 0,
+    "llmMs": 1866,
+    "totalMs": 1877
+  }
+}
