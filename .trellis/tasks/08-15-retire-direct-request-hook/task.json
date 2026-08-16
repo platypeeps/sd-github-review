@@ -3,7 +3,7 @@
   "name": "retire-direct-request-hook",
   "title": "Retire the direct-request hook now that a receipt exists",
   "description": "Scope the PostToolUse Copilot hook out of repositories carrying config/routed-review-setup-v1.json, then ship a PR that reports a remote-review state matching what actually reviewed it.",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,

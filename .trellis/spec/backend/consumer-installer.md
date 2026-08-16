@@ -464,9 +464,19 @@ install, `~/.agents/bin` — so the fix belongs upstream either way: treat a
 cached non-terminal receipt like a missing one and re-query it inside the
 existing poll loop.
 
-Until that ships, a routed review in this repository ends at
-`remote-reconciliation-required`. Record that limitation; do not read it as the
-lane failing, and do not let it justify a direct reviewer request.
+**That fix has since shipped**, at sd-ai-command-pack 0.71.22, in the shape the
+paragraph above predicted: `_receipt_in_flight` re-queries a cached non-terminal
+receipt inside the existing poll loop rather than only a missing one
+(`~/.agents/bin/sd-ai-command-pack-review.py:2157-2190`). A receipt that is
+still non-terminal when the poll budget runs out reports
+`remote-reconciliation-required` as before, so the diagnostic survived and only
+the permanent wedge was removed. The line numbers cited above describe the
+pre-fix code and no longer resolve to it; they are kept because they are what
+the diagnosis was written against.
+
+A routed review in this repository can therefore reach a terminal state again.
+`remote-reconciliation-required` is now a real signal rather than a certainty —
+and it still never justifies a direct reviewer request.
 
 ### Three channels can request Copilot, not two
 
@@ -483,6 +493,63 @@ recorded and left in place deliberately — the Action's route stays the durable
 receipt of what *should* review the change, while the ruleset is what summons
 the reviewer. A repository that wants the lane to be the only requester turns
 the ruleset rule off; this one does not.
+
+### The hook is now scoped out of durable-lane repositories
+
+Two channels remain here. The `PostToolUse` hook in `~/.claude/settings.json`
+gained a fourth guard, after the three that detect a real push and before the
+line that emits its instruction:
+
+```bash
+dir=${CLAUDE_PROJECT_DIR:-$(printf '%s' "$payload" | jq -r '.cwd // ""')}
+[ -n "$dir" ] || dir=$PWD
+root=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null || true)
+if [ -n "$root" ] && [ -f "$root/config/routed-review-setup-v1.json" ]; then
+  exit 0
+fi
+```
+
+**The marker means more than "installed".** `config/routed-review-setup-v1.json`
+is the pack's `DEFAULT_DESCRIPTOR_PATH` (`sd-ai-command-pack-review.py:31`) and
+the installer's `DESCRIPTOR_PATH` (`scripts/consumer-installer/codecs.mjs:23`),
+so every consumer the installer sets up carries it at that path — but only a
+*durable* install writes it. `sd-github-review-pilot` is the case that proves
+the distinction: an active consumer whose `.github/sd-github-review.json` is
+`schemaVersion: 1` and carries no `descriptor` or `durableWorkflow` key at all —
+both are absent from the object, not present and null — where this repository is
+`schemaVersion: 3` with both. Descriptor presence therefore
+means "a receipt-producing lane is installed here", which is exactly the
+condition that makes the hook's direct request redundant. An event-lane-only
+consumer keeps the hook, correctly, because it has no receipt competing with it.
+
+The scoping self-maintains: a repository that later takes a durable install
+drops the hook with no further settings edit. Of the repositories with recent
+commits, sixteen carry no descriptor and keep the hook.
+
+**The guard fails open.** An unresolvable git root is treated as "not a
+descriptor repository" and the hook fires. A spurious fire costs a redundant
+reviewer request; a spurious skip costs a pull request no remote review at all
+in a repository with no lane behind it. The asymmetry decides the direction.
+
+**Verified against the payload, not the source.** `CLAUDE_PROJECT_DIR`, payload
+`.cwd`, and `$PWD` all resolve to the project root in a real `PostToolUse`
+payload — measured with a temporary probe hook rather than assumed. That probe
+also established that **hook edits take effect immediately, without restarting
+the session.**
+
+**What the receipt still cannot prove.** Removing the hook narrows the field
+from three requesters to two; it does not make attribution honest. The copilot
+receipt declares `reviewAuthors: ["copilot-pull-request-reviewer[bot]"]`
+(`src/operations.js:110-123`) and the coordinator harvests review findings by
+author and head commit alone (`sd-ai-command-pack-review.py:1604-1616`), with no
+branch on `dispatch.status: "already-present"` and none of the temporal guard
+conversation comments carry at `:1589-1603`. Since the retained ruleset requests
+Copilot seconds after a pull request opens, every routed `copilot` review here
+still reports full remote confidence for a review its own dispatch did not
+cause. Do not read a clean copilot receipt as proof of *who* reviewed the
+change. That is `08-16-bind-copilot-review-evidence`, and the fix is small: the
+Action already records the discriminator at `src/receipt.js:694`, and the
+coordinator validates the enum at `:1230` before branching only on `failed`.
 
 ### Self-installation reports permanent provenance drift
 

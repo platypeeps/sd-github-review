@@ -25,8 +25,9 @@ the marker is unique on the whole machine, only across the tree the hook will
 realistically fire in. The nearest miss is
 instructive: `platypeeps/sd-github-review-pilot` is an active installed consumer
 (`.github/sd-github-review.json`, `state: active`) but `schemaVersion: 1` with
-`descriptor: None` and `durableWorkflow: None`, where this repository is
-`schemaVersion: 3` with both. So:
+no `descriptor` or `durableWorkflow` key at all — both absent from the object,
+not present and null — where this repository is `schemaVersion: 3` with both.
+So:
 
 > descriptor present == a durable, receipt-producing lane is installed here
 
