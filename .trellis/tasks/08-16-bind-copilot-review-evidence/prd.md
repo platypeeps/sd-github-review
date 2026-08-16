@@ -87,18 +87,43 @@ finding.
 
 ## Acceptance criteria
 
-- [ ] A routed `copilot` review whose receipt carries
+- [x] A routed `copilot` review whose receipt carries
       `dispatch.status: "already-present"` reports its remote findings together
       with an explicit limitation naming the evidence as not dispatch-caused.
-- [ ] The same review with `dispatch.status: "requested"` reports no such
+      — `remote-evidence-not-dispatch-caused`, attached to all four terminal
+      reports after remote observation. Unit-proven by
+      `test_already_present_dispatch_qualifies_remote_confidence`
+      (sd-ai-command-pack PR #481). Live end-to-end proof pending the pack
+      refresh; see the verification note below.
+- [x] The same review with `dispatch.status: "requested"` reports no such
       limitation and is otherwise unchanged from today.
-- [ ] Findings counted under `already-present` are identical in content to what
+      — `test_requested_dispatch_claims_remote_confidence` asserts
+      `limitations == []`; `qualifiers` is empty on that path so no existing
+      report changes.
+- [x] Findings counted under `already-present` are identical in content to what
       is reported today; only the confidence framing differs.
-- [ ] Regression coverage upstream drives both statuses through the real
+      — `test_dispatch_status_does_not_change_harvested_findings` runs
+      `_collect_observation` twice against receipts differing only in
+      `dispatch.status` and asserts the observations are equal.
+- [x] Regression coverage upstream drives both statuses through the real
       two-write receipt shape the lane produces, not a synthesized terminal
       write.
-- [ ] `.trellis/spec/backend/consumer-installer.md` records what a copilot
+      — all three tests use `phases = iter([None, "started", "observed"])` via
+      `run_routed_review_with_dispatch_status`.
+- [x] `.trellis/spec/backend/consumer-installer.md` records what a copilot
       receipt does and does not prove about who requested the review.
+      — "What a copilot receipt does and does not prove", with the
+      proves / does-not-prove / closes-the-gap split and a receipt-to-reading
+      table.
+
+**Verification note.** Criteria 1 through 4 are proven by upstream unit tests at
+sd-ai-command-pack `0.71.23`; the local gate there ran 2,619 tests with 0
+failures and 0 skips. What is *not* yet proven is the live path: a real routed
+`sd-review scope=pr` in this repository printing
+`Limitations: remote-evidence-not-dispatch-caused` beside real Copilot findings.
+That requires the pack release and a consumer refresh off `0.71.22`. Do not
+treat this task as fully closed, or the parent's cross-child criterion as met,
+until that run is recorded.
 
 ## Notes
 

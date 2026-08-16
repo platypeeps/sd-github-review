@@ -1,1 +1,3 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/backend/consumer-installer.md", "reason": "Owns the 'Three channels can request Copilot, not two' record this task must update; states why the ruleset is retained and what the receipt is meant to prove."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Repository quality bar for the change and its regression coverage."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Fail-closed conventions the qualifier must not weaken; the change is advisory metadata, not a gate change."}
