@@ -54,17 +54,31 @@ accordingly.
 
 ## Acceptance criteria
 
-- [ ] **Inherited:** the losing contract no longer fires in this repository, by
-      configuration rather than by convention.
-- [ ] The hook's scoping is by descriptor presence, and a repository without
-      `config/routed-review-setup-v1.json` still gets the hook.
-- [ ] A pull request shipped after the change completes its review loop with no
+- [x] **Inherited:** the losing contract no longer fires in this repository, by
+      configuration rather than by convention. Guard 4 in the `PostToolUse`
+      command; two real pushes on `feat/retire-direct-request-hook` produced no
+      hook output, where an identical push earlier in the same session, before
+      the edit, emitted the direct-request instruction.
+- [x] The hook's scoping is by descriptor presence, and a repository without
+      `config/routed-review-setup-v1.json` still gets the hook. Six synthetic
+      cases against the live extracted command string, plus the
+      `CLAUDE_PROJECT_DIR` branch repeated with `.cwd` absent.
+- [x] A pull request shipped after the change completes its review loop with no
       direct `requested_reviewers` call made by the agent, and the only
       reviewer requests visible on it come from the routed Action or the
-      retained ruleset.
-- [ ] The hook change is verified against the actual hook contract — a real
+      retained ruleset. PR #92: one `review_requested` timeline event, actor
+      `sdelmas` requesting Copilot — the ruleset. Copilot reviewed, raised one
+      finding, it was fixed and the thread resolved.
+- [x] The hook change is verified against the actual hook contract — a real
       `PostToolUse` payload shape, run in both a descriptor-carrying and a
       descriptor-free repository — not by reading the edited command string.
+      A probe hook captured the real payload first (`CLAUDE_PROJECT_DIR`,
+      `.cwd`, and `$PWD` all resolve to the project root), and the live command
+      string was extracted from settings and run against payloads for both
+      repository kinds. **Limitation:** the descriptor-free side was exercised
+      synthetically. No real push was made from a descriptor-free repository, so
+      "the hook still fires elsewhere" rests on cases 2–4 rather than a live
+      observation.
 
 ## Notes
 
