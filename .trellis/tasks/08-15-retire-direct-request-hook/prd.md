@@ -23,11 +23,23 @@ hook therefore does not make the Action the sole requester. That overlap was
 reviewed and deliberately kept (`consumer-installer.md`, "Three channels can
 request Copilot, not two"); this task removes the hook, not the ruleset.
 
-**The routed lane cannot currently report `ready`.** A client-side receipt-cache
-defect wedges every routed review at `remote-reconciliation-required`
-(`08-15-review-receipt-cache-race`). That limits what the second criterion below
-can mean today: an explicit, recorded limitation is an acceptable match, a
-silent one is not.
+**The routed lane can report `ready` again.** The client-side receipt-cache
+defect that wedged every routed review at `remote-reconciliation-required` is
+fixed and shipped: `_receipt_in_flight` re-queries a non-terminal cached receipt
+inside the existing poll loop
+(`~/.agents/bin/sd-ai-command-pack-review.py:2157-2190`), pinned here at
+sd-ai-command-pack 0.71.22. `08-15-review-receipt-cache-race` is archived
+completed. Verification of this task can therefore expect a genuine terminal
+result rather than a recorded limitation.
+
+**Retiring the hook does not make the reported state trustworthy on its own.**
+The coordinator attributes Copilot review findings by author and head commit
+alone (`sd-ai-command-pack-review.py:1604-1616`), with no branch on
+`dispatch.status: "already-present"`, so the retained ruleset's review is still
+counted as the routed lane's own evidence. That is the sibling task
+`08-16-bind-copilot-review-evidence`. This task closes the contract collision;
+it does not close the attribution collision, and the criteria below are scoped
+accordingly.
 
 ## Requirements
 
@@ -44,15 +56,20 @@ silent one is not.
 
 - [ ] **Inherited:** the losing contract no longer fires in this repository, by
       configuration rather than by convention.
-- [ ] **Inherited:** a PR shipped after the change reports a remote-review state
-      that matches what reviewed it — either a router receipt with real remote
-      confidence, or an explicit, recorded local-only limitation with no
-      side-channel review happening behind it.
 - [ ] The hook's scoping is by descriptor presence, and a repository without
       `config/routed-review-setup-v1.json` still gets the hook.
+- [ ] A pull request shipped after the change completes its review loop with no
+      direct `requested_reviewers` call made by the agent, and the only
+      reviewer requests visible on it come from the routed Action or the
+      retained ruleset.
+- [ ] The hook change is verified against the actual hook contract — a real
+      `PostToolUse` payload shape, run in both a descriptor-carrying and a
+      descriptor-free repository — not by reading the edited command string.
 
 ## Notes
 
-If `08-15-review-receipt-cache-race` lands first, the second criterion can be
-met by a genuine `ready` result rather than a recorded limitation. That ordering
-is preferable but not required.
+The inherited criterion "a PR reports a remote-review state that matches what
+reviewed it" moved up to the parent `08-16-remote-review-attribution`. Retiring
+the hook is necessary for it and not sufficient: the retained ruleset can still
+supply the review the receipt claims as its own, which is the sibling task
+`08-16-bind-copilot-review-evidence`.
