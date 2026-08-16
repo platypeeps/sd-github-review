@@ -458,9 +458,11 @@ There is no supported escape. A fresh `--artifact-root` does find the receipt by
 `logicalDispatchId` — the id is stable across controller state — but then fails
 `durable receipt does not contain the current correlation id`, because the
 correlation id exists only in the state a fresh root discards. That is correct
-fail-closed behaviour and it is also a dead end. `scripts/sd-ai-command-pack-*`
-is vendored, so the fix belongs upstream: treat a cached non-terminal receipt
-like a missing one and re-query it inside the existing poll loop.
+fail-closed behaviour and it is also a dead end. Since the thin conversion the
+pack's executables are not in this tree at all — they live in the machine
+install, `~/.agents/bin` — so the fix belongs upstream either way: treat a
+cached non-terminal receipt like a missing one and re-query it inside the
+existing poll loop.
 
 Until that ships, a routed review in this repository ends at
 `remote-reconciliation-required`. Record that limitation; do not read it as the
