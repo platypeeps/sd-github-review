@@ -110,9 +110,9 @@ finding.
       write.
       — all three tests use `phases = iter([None, "started", "observed"])` via
       `run_routed_review_with_dispatch_status`.
-- [x] `.trellis/spec/backend/consumer-installer.md` records what a copilot
+- [x] `.trellis/spec/backend/consumer-installer.md` records what a Copilot
       receipt does and does not prove about who requested the review.
-      — "What a copilot receipt does and does not prove", with the
+      — "What a Copilot receipt does and does not prove", with the
       proves / does-not-prove / closes-the-gap split and a receipt-to-reading
       table.
 

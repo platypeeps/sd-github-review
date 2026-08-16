@@ -125,7 +125,7 @@ repository, and step 2 depends on step 1 being released.
     absorb it.
 
 12. **Update `.trellis/spec/backend/consumer-installer.md`**, in the "Three
-    channels can request Copilot, not two" section: record what a copilot receipt
+    channels can request Copilot, not two" section: record what a Copilot receipt
     does and does not prove about who requested the review, and that
     `remote-evidence-not-dispatch-caused` is the expected steady state in this
     repository for as long as the `main` ruleset's `copilot_code_review` rule is

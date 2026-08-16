@@ -117,7 +117,7 @@ that must drive both statuses through the real two-write receipt shape.
 
 | File | Change |
 |------|--------|
-| `.trellis/spec/backend/consumer-installer.md` | Record what a copilot receipt does and does not prove about who requested the review |
+| `.trellis/spec/backend/consumer-installer.md` | Record what a Copilot receipt does and does not prove about who requested the review |
 | `.trellis/tasks/08-16-bind-copilot-review-evidence/*` | Planning artifacts, verification evidence |
 
 `scripts/` in this repository no longer carries the pack executables — since the

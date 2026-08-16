@@ -537,7 +537,7 @@ payload — measured with a temporary probe hook rather than assumed. That probe
 also established that **hook edits take effect immediately, without restarting
 the session.**
 
-### What a copilot receipt does and does not prove
+### What a Copilot receipt does and does not prove
 
 Removing the hook narrows the field from three requesters to two. It does not by
 itself make attribution honest, because the retained ruleset still requests
