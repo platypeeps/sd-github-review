@@ -2,7 +2,7 @@
 
 ## BLOCKED — the fix belongs upstream
 
-**2026-08-09.** `_remote_gate` lives in `scripts/sd-ai-command-pack-review-local.py`, which is
+**2026-08-09.** `_remote_gate` lives in `~/.agents/bin/sd-ai-command-pack-review-local.py`, which is
 vendored from `sd-ai-command-pack` — its entire history here is `chore: refresh
 sd-ai-command-pack to 0.54.0`. The deterministic `pack.install-audit` gate blocks any local edit
 to a pack path, and its allowlist covers only `.sd-ai-command-pack/*.json`. Same boundary, same
@@ -19,7 +19,7 @@ rather than defects, without weakening the gate for real findings.
 
 ## Problem
 
-`_remote_gate` in `scripts/sd-ai-command-pack-review-local.py:1857` blocks on **any** finding:
+`_remote_gate` in `~/.agents/bin/sd-ai-command-pack-review-local.py:1857` blocks on **any** finding:
 
 ```python
 if outstanding or outcome == "findings":

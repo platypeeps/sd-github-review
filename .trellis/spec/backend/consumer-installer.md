@@ -446,7 +446,7 @@ heads:
 The coordinator still cannot reach `ready`, for a reason that is entirely
 client-side and reproduces every time. The lane publishes its receipt at
 `dispatch.phase: "started"` when the route step begins and rewrites it to
-`"observed"` about three seconds later. `scripts/sd-ai-command-pack-review.py`
+`"observed"` about three seconds later. `~/.agents/bin/sd-ai-command-pack-review.py`
 polls inside that window, caches the started receipt, and never re-reads it:
 `:2133` queries the receipt only `if state.get("remoteReceipt") is None`, and
 `:2159-2166` turns a cached `phase == "started"` into `indeterminate` with

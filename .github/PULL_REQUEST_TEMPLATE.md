@@ -4,7 +4,7 @@
 <!-- If the diff touches copied pack/Trellis tooling, broad automation, or
 CI/review files, add the matching explicit scope section on its own line —
 "Tooling/generated scope:", "Automation scope:", or "CI/review scope:" — as
-described in docs/SD_AI_COMMAND_PACK.md. -->
+described in ~/.agents/docs. -->
 
 ## Test plan
 
@@ -12,7 +12,7 @@ described in docs/SD_AI_COMMAND_PACK.md. -->
 
 - [ ] Focused local checks:
 - [ ] CI-parity package gates: `npm run check:full`
-- [ ] Local gate: `bash scripts/sd-ai-command-pack-full-check.sh`
+- [ ] Local gate: `bash ~/.agents/bin/sd-ai-command-pack-full-check.sh`
 
 ## Pre-PR checklist
 
