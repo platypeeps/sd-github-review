@@ -24,7 +24,7 @@ repository, and step 2 depends on step 1 being released.
    - `test_requested_dispatch_claims_remote_confidence` — same sequence with the
      default `status="requested"`; assert `report["limitations"] == []`. This is
      the regression guard for acceptance criterion 2.
-   - `test_already_present_findings_are_reported_unchanged` — patch
+   - `test_dispatch_status_does_not_change_harvested_findings` — patch
      `_collect_observation` with a `status: "findings"` observation carrying one
      `CHANGES_REQUESTED` review; run once per dispatch status and assert the
      `remote` finding payloads are equal between the two runs while only
