@@ -1,6 +1,6 @@
 {
   "pack": "sd-ai-command-pack",
-  "version": "0.71.22",
+  "version": "0.71.26",
   "mode": "thin",
   "platforms": [
     "claude",

@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 71
+- **Total Sessions**: 72
 - **Last Active**: 2026-08-16
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~926 | Active |
+| `journal-2.md` | ~969 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 72 | 2026-08-16 | Bind copilot-route review evidence to the dispatch that caused it | `6338e7e`, `9c99547`, `7925f16`, `a8392a1`, `0ad3516`, `b33176b`, `3d858cd` | `task/bind-copilot-review-evidence` |
 | 71 | 2026-08-16 | Retire the direct-request hook, and find the collision underneath it | `0bedea2`, `4eba83d`, `88e9a11` | `main` |
 | 70 | 2026-08-15 | Prove the routed review lane, and find what it collides with | `bae0962`, `25ad4a1`, `942a4b6` | `feat/prove-routed-lane` |
 | 69 | 2026-08-15 | Record the routed-review decision and split the unprovable criteria | `3cb4742`, `e456cdd` | `feat/install-routed-review-consumer` |

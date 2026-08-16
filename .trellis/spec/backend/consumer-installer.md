@@ -537,19 +537,54 @@ payload — measured with a temporary probe hook rather than assumed. That probe
 also established that **hook edits take effect immediately, without restarting
 the session.**
 
-**What the receipt still cannot prove.** Removing the hook narrows the field
-from three requesters to two; it does not make attribution honest. The copilot
-receipt declares `reviewAuthors: ["copilot-pull-request-reviewer[bot]"]`
-(`src/operations.js:110-123`) and the coordinator harvests review findings by
-author and head commit alone (`sd-ai-command-pack-review.py:1604-1616`), with no
-branch on `dispatch.status: "already-present"` and none of the temporal guard
-conversation comments carry at `:1589-1603`. Since the retained ruleset requests
-Copilot seconds after a pull request opens, every routed `copilot` review here
-still reports full remote confidence for a review its own dispatch did not
-cause. Do not read a clean copilot receipt as proof of *who* reviewed the
-change. That is `08-16-bind-copilot-review-evidence`, and the fix is small: the
-Action already records the discriminator at `src/receipt.js:694`, and the
-coordinator validates the enum at `:1230` before branching only on `failed`.
+### What a copilot receipt does and does not prove
+
+Removing the hook narrows the field from three requesters to two. It does not by
+itself make attribution honest, because the retained ruleset still requests
+Copilot seconds after a pull request opens — so in *this* repository the routed
+dispatch essentially never causes the review it reads.
+
+**What the receipt proves.** That a receipt-producing lane ran on this exact
+head, which route policy selected, which backend and finding channels were
+declared, and that the findings reported were published by the declared
+`reviewAuthors` (`src/operations.js:110-123`) on that head.
+
+**What it does not prove on its own.** *Who requested the reviewer.* The
+coordinator harvests review findings by author and head commit
+(`sd-ai-command-pack-review.py:1604-1616`) and does not apply the temporal guard
+that conversation comments carry at `:1589-1603` — deliberately, because a
+timestamp cannot discriminate here anyway: the ruleset requests early and Copilot
+submits late, so `submitted_at >= dispatch.startedAt` admits the ruleset's review
+regardless.
+
+**What closes the gap.** `dispatch.status` is the field that already knows. The
+Action probes for the reviewer before requesting and records the answer at
+`src/receipt.js:694` — `requested` when it summoned the reviewer,
+`already-present` when something else had. From pack **0.71.24** onward, the
+coordinator acts on it: every terminal report produced after remote observation
+carries the `remote-evidence-not-dispatch-caused` limitation when the receipt
+says `already-present`. Read the version this repository actually runs from
+`.sd-ai-command-pack/manifest.json` rather than from this paragraph; `0.71.24`
+is the floor, not the pin.
+
+So, reading a routed review here:
+
+| Receipt | Report | Read it as |
+|---------|--------|------------|
+| `dispatch.status: "requested"` | no attribution limitation | the lane caused this review |
+| `dispatch.status: "already-present"` | `remote-evidence-not-dispatch-caused` | the findings are real and complete; another channel summoned the reviewer |
+
+The limitation withdraws the causal claim, not the evidence. Findings are
+reported unchanged and no exit code moves — verified upstream by a test that runs
+the harvest twice against receipts differing only in `dispatch.status` and
+asserts the two observations are equal. It is also not a license to request a
+reviewer outside the lane.
+
+**Expect the limitation to be the steady state here** for as long as the `main`
+ruleset's `copilot_code_review` rule is retained. A run of this repository's own
+lane that reports *no* attribution limitation is the surprising case, and means
+the ruleset lost the race. A repository that wants unqualified remote confidence
+turns the ruleset rule off; this one does not.
 
 ### Self-installation reports permanent provenance drift
 
