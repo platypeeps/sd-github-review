@@ -560,10 +560,12 @@ regardless.
 **What closes the gap.** `dispatch.status` is the field that already knows. The
 Action probes for the reviewer before requesting and records the answer at
 `src/receipt.js:694` — `requested` when it summoned the reviewer,
-`already-present` when something else had. Pack **0.71.24** makes the coordinator
-act on it: every terminal report produced after remote observation carries the
-`remote-evidence-not-dispatch-caused` limitation when the receipt says
-`already-present`.
+`already-present` when something else had. Pack **0.71.24 and later** makes the
+coordinator act on it: every terminal report produced after remote observation
+carries the `remote-evidence-not-dispatch-caused` limitation when the receipt
+says `already-present`. Read the version this repository actually runs from
+`.sd-ai-command-pack/manifest.json` rather than from this paragraph; `0.71.24`
+is the floor, not the pin.
 
 So, reading a routed review here:
 
