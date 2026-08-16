@@ -117,7 +117,7 @@ finding.
       table.
 
 **Verification note.** Criteria 1 through 4 are proven by upstream unit tests at
-sd-ai-command-pack `0.71.23`; the local gate there ran 2,619 tests with 0
+sd-ai-command-pack `0.71.24`; the local gate there ran 2,619 tests with 0
 failures and 0 skips. What is *not* yet proven is the live path: a real routed
 `sd-review scope=pr` in this repository printing
 `Limitations: remote-evidence-not-dispatch-caused` beside real Copilot findings.

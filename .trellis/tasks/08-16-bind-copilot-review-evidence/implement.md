@@ -78,10 +78,20 @@ repository, and step 2 depends on step 1 being released.
    dispatch did not cause them. Mirror into `templates/docs/SD_AI_COMMAND_PACK.md`.
 
 6. **Release bookkeeping.** Patch bump per `CONTRIBUTING.md:162-171`
-   (compatible bug fix): `manifest.json` `version` `0.71.22` → `0.71.23`, plus a
-   matching top `CHANGELOG.md` heading — CI's `Release payload gate` blocks a
-   payload change whose version and top heading do not agree. The sibling
-   receipt-cache-race fix shipped this way as PR #468 / v0.71.15.
+   (compatible bug fix): `manifest.json` `version` plus a matching top
+   `CHANGELOG.md` heading — CI's `Release payload gate` blocks a payload change
+   whose version and top heading do not agree. The sibling receipt-cache-race
+   fix shipped this way as PR #468 / v0.71.15.
+
+   **The version is a claim on a shared counter, not a local edit.** This PR
+   opened as `0.71.23` and had to be re-cut as `0.71.24` because PR #480 merged
+   to `main` during review and took `0.71.23` first. A version chosen at branch
+   time is only provisional. Before merging, re-read `origin/main`'s
+   `manifest.json` and top `CHANGELOG.md` heading, and if the number has been
+   taken: rebase, renumber both, regenerate, and sweep every consumer artifact
+   that cites the version — here that is
+   `.trellis/spec/backend/consumer-installer.md` and this task's `prd.md`, not
+   only the file where the number was first typed.
 
 7. **Regenerate, in this order.** `make generate` fails the first time by
    design; each failure names its own preparation command:
