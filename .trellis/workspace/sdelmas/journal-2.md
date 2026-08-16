@@ -924,3 +924,51 @@ Scoped the global PostToolUse hook out of durable-lane repositories by descripto
 ### Next Steps
 
 - None - task complete
+
+
+## Session 72: Bind copilot-route review evidence to the dispatch that caused it
+
+**Date**: 2026-08-16
+**Task**: Bind copilot-route review evidence to the dispatch that caused it
+**Branch**: `task/bind-copilot-review-evidence`
+
+### Summary
+
+Closed the last acceptance criterion of 08-16-bind-copilot-review-evidence by proving the attribution behaviour live on PR #93, and unblocked the run by shipping the thin-install sd-check fix upstream first.
+
+### Main Changes
+
+- Recorded in .trellis/spec/backend/consumer-installer.md what a copilot receipt does and does not prove about who requested a review, with the proves / does-not-prove / closes-the-gap split and a receipt-to-reading table.
+- Refreshed the pack pin 0.71.22 -> 0.71.24 -> 0.71.26. 0.71.26 was required, not preferred: it is the first release in which sd-check passes under this repository's thin install (sd-ai-command-pack#482).
+- Corrected version prose against the pinned release: consumer-installer.md now states 0.71.24 as the floor rather than the pin, and points readers at .sd-ai-command-pack/manifest.json.
+- Reconciled implement.md to the test that actually shipped upstream (test_dispatch_status_does_not_change_harvested_findings), after sweeping every test name cited in this task's artifacts against tests/ upstream.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6338e7e` | docs(spec): record what a copilot receipt does and does not prove |
+| `9c99547` | chore: refresh sd-ai-command-pack to 0.71.24 |
+| `7925f16` | chore: refresh sd-ai-command-pack to 0.71.26 |
+| `a8392a1` | docs: correct version prose against the pinned pack release |
+| `0ad3516` | docs(task): name the test that shipped, not the one that was planned |
+| `b33176b` | docs(spec): fix subject-verb agreement in the pack-version sentence |
+| `3d858cd` | docs(spec): use the repo's license spelling |
+
+### Testing
+
+- [OK] npm run check:full exit 0 on every head: 640 tests, 0 fail
+- [OK] sd-check aggregate passed, exit 0, zero unavailable rows (was unavailable, exit 3, five rows before the 0.71.26 refresh)
+- [OK] Routed sd-review scope=pr terminal at exact head across five rounds; limitations tracked dispatch.status exactly: already-present -> [remote-evidence-not-dispatch-caused], requested -> []
+- [OK] CI green on PR #93: route, sd-github-review/receipt, test
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Close parent 08-16-remote-review-attribution now that both children are done
+- Put the parked 08-16-restore-thin-install-sd-check record on its own branch off main
+- File follow-ups upstream as tasks only: --bookkeeping-evidence error message does not say it wants JSON, and the copilot/Copilot capitalization sweep
