@@ -577,7 +577,7 @@ So, reading a routed review here:
 The limitation withdraws the causal claim, not the evidence. Findings are
 reported unchanged and no exit code moves — verified upstream by a test that runs
 the harvest twice against receipts differing only in `dispatch.status` and
-asserts the two observations are equal. It is also not a licence to request a
+asserts the two observations are equal. It is also not a license to request a
 reviewer outside the lane.
 
 **Expect the limitation to be the steady state here** for as long as the `main`
