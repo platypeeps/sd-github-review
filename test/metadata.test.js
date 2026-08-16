@@ -501,7 +501,10 @@ test("rejects local and session metadata paths while preserving shared project k
     ".trellis/workspace/sdelmas/index.md",
     ".trellis/workspace/sdelmas/journal-1.md",
     ".trellis\\workspace\\sdelmas\\journal-1.md",
-    ".agents/skills/sd-status/SKILL.md",
+    // Pairs with the prohibited `.agents/skills/example/cache/state.json`
+    // above. A generic skill name rather than an installed one: under a thin
+    // install the pack's own skills are not in this tree.
+    ".agents/skills/example/SKILL.md",
     ".codex/config.toml",
     ".github/copilot/hooks/session-start.py",
     ".opencode/lib/session-utils.js",
