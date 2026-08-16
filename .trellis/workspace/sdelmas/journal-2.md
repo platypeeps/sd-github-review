@@ -889,3 +889,38 @@ PR #86 was the first pull request opened after the self-install, and it exercise
 ### Next Steps
 
 - None - task complete
+
+
+## Session 71: Retire the direct-request hook, and find the collision underneath it
+
+**Date**: 2026-08-16
+**Task**: Retire the direct-request hook, and find the collision underneath it
+**Branch**: `main`
+
+### Summary
+
+Scoped the global PostToolUse hook out of durable-lane repositories by descriptor presence, and split the remaining attribution defect into a parent with two children. The hook edit closes the contract collision; the receipt still cannot prove which of the two remaining channels reviewed a change.
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0bedea2` | (see git log) |
+| `4eba83d` | (see git log) |
+| `88e9a11` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
