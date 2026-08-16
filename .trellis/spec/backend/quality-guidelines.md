@@ -634,7 +634,7 @@ npm test
 npm run test:coverage
 npm run check
 npm run validate:metadata
-python3 scripts/sd-ai-command-pack-install-audit.py
+python3 ~/.agents/bin/sd-ai-command-pack-install-audit.py
 git diff --check
 ```
 

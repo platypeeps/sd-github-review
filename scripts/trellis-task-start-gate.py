@@ -29,7 +29,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-PREFLIGHT = Path("scripts/sd-ai-command-pack-review-preflight.mjs")
+PREFLIGHT = Path("~/.agents/bin/sd-ai-command-pack-review-preflight.mjs")
 PREFLIGHT_TIMEOUT_SECONDS = 60
 
 

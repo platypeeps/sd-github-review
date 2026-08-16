@@ -153,21 +153,25 @@ single queryable source for priority, ownership, dependencies, and status.
   `test/shared-service-parity.test.js`.
 - Put repository-only validation in `scripts/`; it must not become part of the
   shipped Action runtime.
-- Treat every `scripts/sd-ai-command-pack-*` path as **vendored, not repo-owned**.
-  Those files are installed copies from the `sd-ai-command-pack` source
-  repository. The deterministic `pack.install-audit` check fails any local edit
-  to one, reporting `installed target drifted from pack <version> content:
-  <path>`, and the next pack refresh would overwrite the edit regardless. Change
-  pack behavior upstream and consume it through a refresh; change pack
-  *configuration* through the repo-owned JSON files under `.sd-ai-command-pack/`.
+- Treat every `sd-ai-command-pack-*` script as **pack-owned, not repo-owned**.
+  This repository runs a thin install: the payload is not vendored here at all,
+  it lives in the machine install under `~/.agents/bin/`, and the only pack
+  files left in the tree are the repo-native surfaces plus the resolver at
+  `.sd-ai-command-pack/bin/sd-ai-command-pack-review-layout.py`. The
+  deterministic `pack.install-audit` check fails any local edit to a file the
+  receipt still owns, reporting `installed target drifted from pack <version>
+  content: <path>`, and the next pack refresh would overwrite the edit
+  regardless. Change pack behavior upstream and consume it through a refresh;
+  change pack *configuration* through the repo-owned JSON files under
+  `.sd-ai-command-pack/`.
 
   ```text
-  # Wrong: task planning names a vendored path as the change site
-  relatedFiles: ["scripts/sd-ai-command-pack-review.py"]
+  # Wrong: task planning names a pack-owned path as the change site
+  relatedFiles: ["~/.agents/bin/sd-ai-command-pack-review.py"]
 
-  # Correct: establish ownership from the repository, not from memory
-  git log --oneline -- scripts/sd-ai-command-pack-review.py  # only "chore: refresh ..." -> vendored
-  node scripts/sd-ai-command-pack-review-preflight.mjs       # the gate that refuses the edit
+  # Correct: establish ownership from the machine install, not from memory
+  ls ~/.agents/bin/sd-ai-command-pack-review.py   # present there, absent here -> pack-owned
+  node ~/.agents/bin/sd-ai-command-pack-review-preflight.mjs  # the gate that refuses the edit
   ```
 
   Derive the editable set from the audit rather than from a list here: a list in
@@ -183,14 +187,16 @@ single queryable source for priority, ownership, dependencies, and status.
   cleared by the refresh happening. Nothing re-reads that sentence: the
   `PARKED:` title prefix and the `blocked`/`blockedOn` fields are what the
   backlog ranker machine-reads, so the task stays invisible until someone
-  clears them by hand. Re-verify such a park against the vendored file itself,
-  not against the pack version number — a refresh that bumps the version
-  without touching the file proves nothing in either direction.
+  clears them by hand. Re-verify such a park against the pack file itself, not
+  against the pack version number — a refresh that bumps the version without
+  touching the file proves nothing in either direction. Under the thin install
+  the file is on the machine, so read it there rather than from this
+  repository's history, which stops at the conversion commit.
 
   ```bash
-  # Which refresh last touched the file, and is the installed copy pristine?
-  git log --oneline -2 -- scripts/sd-ai-command-pack-review.py
-  python3 scripts/sd-ai-command-pack-install-audit.py   # prints payload provenance
+  # Does the machine copy carry the fix, and is the install pristine?
+  grep -n "<the behavior you parked on>" ~/.agents/bin/sd-ai-command-pack-review.py
+  python3 ~/.agents/bin/sd-ai-command-pack-install-audit.py   # prints payload provenance
   ```
 
   Observed 2026-08-15: `review.py` last changed at 0.71.1 while the repository
@@ -200,7 +206,7 @@ single queryable source for priority, ownership, dependencies, and status.
 
   Park a task with its resume condition in `blockedOn`, not with the `PARKED:`
   prefix alone. The prefix marks *that* a task is parked and nothing more:
-  `candidate_block_status` in `scripts/sd-ai-command-pack-work-loop.py` returns
+  `candidate_block_status` in `~/.agents/bin/sd-ai-command-pack-work-loop.py` returns
   `reason_text or "parked"`, so a prefix-only park ranks as the literal string
   `parked` and a backlog report cannot tell a deliberate scope decision from a
   dependency block. Write what would unpark it and how to falsify it — the

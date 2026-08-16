@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // CI/local parity gate (A-017). The prescribed local full-check for this
 // repository runs through the `check:full` package script (see
-// scripts/sd-ai-command-pack-review-full-check.sh, which prefers a
+// ~/.agents/bin/sd-ai-command-pack-review-full-check.sh, which prefers a
 // repository-owned `check:full` over the generic pack fallback). This validator
 // keeps that local gate honest: every npm package gate the CI workflow runs
 // must also run in `check:full`, so a green local gate means the same gates CI

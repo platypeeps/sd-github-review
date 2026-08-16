@@ -5,7 +5,7 @@ import test from "node:test";
 test("installed housekeeping refuses merge without finish-work handoff", () => {
   const result = spawnSync(
     "bash",
-    ["scripts/sd-ai-command-pack-housekeeping.sh", "--self-test"],
+    ["~/.agents/bin/sd-ai-command-pack-housekeeping.sh", "--self-test"],
     { encoding: "utf8" },
   );
 
@@ -17,7 +17,7 @@ test("installed housekeeping refuses merge without finish-work handoff", () => {
 test("receipt-based housekeeping rejects the retired head-only option", (t) => {
   const selfTest = spawnSync(
     "bash",
-    ["scripts/sd-ai-command-pack-housekeeping.sh", "--self-test"],
+    ["~/.agents/bin/sd-ai-command-pack-housekeeping.sh", "--self-test"],
     { encoding: "utf8" },
   );
 
@@ -30,7 +30,7 @@ test("receipt-based housekeeping rejects the retired head-only option", (t) => {
   const result = spawnSync(
     "bash",
     [
-      "scripts/sd-ai-command-pack-housekeeping.sh",
+      "~/.agents/bin/sd-ai-command-pack-housekeeping.sh",
       "--finish-work-head",
       "not-a-commit",
       "--self-test",

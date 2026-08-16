@@ -9,7 +9,7 @@ and the maintainer explicitly approves the proposed release.
 - [ ] Freeze the candidate from current `main`.
 - [ ] Run `npm ci`, `npm test`, `npm run check`, and
   `npm run validate:metadata`.
-- [ ] Run `python3 scripts/sd-ai-command-pack-install-audit.py` and
+- [ ] Run `python3 ~/.agents/bin/sd-ai-command-pack-install-audit.py` and
   `git diff --check`.
 - [ ] Validate the v1 setup descriptor and no-checkout on-demand workflow;
   confirm only the durable example grants `checks: write`.

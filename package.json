@@ -15,7 +15,7 @@
     "validate:ci-parity": "node scripts/validate-ci-parity.mjs",
     "test": "node --test",
     "test:coverage": "node scripts/check-coverage.mjs",
-    "check:full": "npm test && npm run test:coverage && npm run check && npm run validate:metadata && npm run validate:ci-parity && SD_AI_COMMAND_PACK_FULL_CHECK_SKIP_PACKAGE_SCRIPTS=1 bash scripts/sd-ai-command-pack-full-check.sh"
+    "check:full": "npm test && npm run test:coverage && npm run check && npm run validate:metadata && npm run validate:ci-parity && SD_AI_COMMAND_PACK_FULL_CHECK_SKIP_PACKAGE_SCRIPTS=1 bash ~/.agents/bin/sd-ai-command-pack-full-check.sh"
   },
   "devDependencies": {
     "yaml": "^2.9.0"

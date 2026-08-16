@@ -122,7 +122,7 @@ npm run test:coverage        # global floors: lines 88 / branches 77 / funcs 88
 npm run check                # node --check all src (no new file entry needed)
 npm run validate:metadata
 npm run validate:ci-parity
-node scripts/sd-ai-command-pack-review-preflight.mjs   # 0 failures
+node ~/.agents/bin/sd-ai-command-pack-review-preflight.mjs   # 0 failures
 ```
 
 ## Review gates
