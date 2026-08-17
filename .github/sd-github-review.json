@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "tool": "sd-github-review",
   "state": "active",
   "repository": "platypeeps/sd-github-review",
@@ -10,7 +10,7 @@
   "source": {
     "template": "examples/pr-agent-router.yml",
     "sha256": "eba0bb9e767b2302ea13c3dc999d977470721eee6ace71b9585a7da7305a28f7",
-    "commit": "c4d4314f0cc169714a596e79a877439f3eb13e06",
+    "commit": "59dcb11fcd9aa21849cefb2878577ae1ab715827",
     "tag": null,
     "released": false
   },
@@ -27,7 +27,8 @@
   "configuration": {
     "provider": "openrouter",
     "cheapModel": "openrouter/qwen/qwen3-coder-30b-a3b-instruct",
-    "deepModel": "openrouter/moonshotai/kimi-k2.6"
+    "deepModel": "openrouter/moonshotai/kimi-k2.6",
+    "routeMode": "copilot"
   },
   "resources": {
     "variables": {
@@ -42,6 +43,10 @@
       "DEEP_REVIEW_MODEL": {
         "value": "openrouter/moonshotai/kimi-k2.6",
         "owned": true
+      },
+      "REVIEW_ROUTE_MODE": {
+        "value": "copilot",
+        "owned": false
       }
     },
     "secret": {
