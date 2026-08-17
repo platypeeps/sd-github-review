@@ -9,6 +9,7 @@ import {
   DEFAULT_CONFIG,
   DESCRIPTOR_PATH,
   DESCRIPTOR_SOURCE_PATH,
+  DURABLE_MIN_SCHEMA_VERSION,
   DURABLE_TEMPLATE_PATH,
   DURABLE_WORKFLOW_PATH,
   HELP,
@@ -16,6 +17,9 @@ import {
   MANAGED_RESOURCES,
   MANIFEST_PATH,
   MANIFEST_SCHEMA_VERSION,
+  PROVENANCE_MIN_SCHEMA_VERSION,
+  ROUTE_MODES,
+  ROUTE_MODE_MIN_SCHEMA_VERSION,
   ROUTING_LABELS,
   SECRET_NAME,
   SUPPORTED_PROVIDERS,
@@ -29,6 +33,8 @@ import {
   parseGitHubRemote,
   recognizeTemplate,
   resolveConfiguration,
+  resolveRouteMode,
+  sameConfiguration,
   sameRepository,
   sha256,
   validateConfiguration,
@@ -77,6 +83,7 @@ export {
   MANAGED_RESOURCES,
   MANIFEST_PATH,
   MANIFEST_SCHEMA_VERSION,
+  ROUTE_MODES,
   ROUTING_LABELS,
   SECRET_NAME,
   SUPPORTED_PROVIDERS,
@@ -190,6 +197,25 @@ function isConverged(local, activeManifest, actions) {
   return true;
 }
 
+// Route mode for a mutating run. The chain lives in codecs; this holds the
+// snapshot the third step needs and turns "nothing resolved" into the refusal
+// install owes the operator. The lane will not guess a route because `auto` can
+// bill the provider key, and neither will the installer.
+function routeModeForRun(command, options, manifest, snapshot) {
+  const resolved = resolveRouteMode({
+    optionValue: options.routeMode,
+    manifestValue: manifest?.configuration.routeMode,
+    observedValue: snapshot.variables.get("REVIEW_ROUTE_MODE"),
+  });
+  if (resolved === undefined) {
+    throw new Error(
+      `${command} requires --route-mode (one of ${ROUTE_MODES.join(", ")}); ` +
+        "the review lane will not guess a route, because auto can select cheap or deep and bill the configured PR-Agent provider key",
+    );
+  }
+  return resolved;
+}
+
 async function installOrUpdate(command, options, dependencies) {
   const sourceRoot = dependencies.sourceRoot ?? path.resolve(import.meta.dirname, "..");
   const sources = await readManagedSources(sourceRoot);
@@ -209,7 +235,8 @@ async function installOrUpdate(command, options, dependencies) {
   assertManifestRepository(local.manifest, target.repository);
   assertWorkflowCanBeManaged(command, local, templateSource);
   assertDurableResourcesCanBeManaged(local, sources);
-  const configuration = resolveConfiguration(options, local.manifest);
+  const routeMode = routeModeForRun(command, options, local.manifest, target.snapshot);
+  const configuration = resolveConfiguration({ ...options, routeMode }, local.manifest);
   const setSecretRequested = options.secretMode === "interactive" || options.secretMode === "stdin";
   const { actions, resources } = planResources(
     configuration,
@@ -308,7 +335,11 @@ async function adoptInstallation(options, dependencies) {
   // mutation rather than silently overwritten.
   assertDurableResourcesCanBeManaged(local, sources);
   const refreshWorkflow = recognized.label !== "current source";
-  const configuration = resolveConfiguration(options, null);
+  // adopt passes a null manifest by design — an adopted install has no recorded
+  // configuration to retain — so its route mode comes from the flag or from the
+  // variable the manual installer already set.
+  const routeMode = routeModeForRun("adopt", options, null, target.snapshot);
+  const configuration = resolveConfiguration({ ...options, routeMode }, null);
   const setSecretRequested = options.secretMode === "interactive" || options.secretMode === "stdin";
   const { actions, resources } = planResources(
     configuration,
@@ -431,14 +462,22 @@ async function checkInstallation(options, dependencies) {
     }
   }
   if (local.manifest) {
-    if (local.manifest.schemaVersion < 2) {
+    // One branch per schema tier, each naming the migration it actually means.
+    // A final `< MANIFEST_SCHEMA_VERSION` catch-all would be wrong: bumping the
+    // constant would silently retarget the previous tier's message at manifests
+    // that already satisfy it.
+    if (local.manifest.schemaVersion < PROVENANCE_MIN_SCHEMA_VERSION) {
       issues.push("manifest predates provenance tracking; run update to record provenance");
-    } else if (local.manifest.schemaVersion < MANIFEST_SCHEMA_VERSION) {
+    } else if (local.manifest.schemaVersion < DURABLE_MIN_SCHEMA_VERSION) {
       issues.push(
         "manifest predates the durable review lane; run update to install the descriptor and sd-review.yml",
       );
+    } else if (local.manifest.schemaVersion < ROUTE_MODE_MIN_SCHEMA_VERSION) {
+      issues.push(
+        "manifest predates route-mode management; run update to record REVIEW_ROUTE_MODE",
+      );
     }
-    if (release && local.manifest.schemaVersion >= 2) {
+    if (release && local.manifest.schemaVersion >= PROVENANCE_MIN_SCHEMA_VERSION) {
       if (local.manifest.source.commit !== release.commit) {
         issues.push("a newer source commit is available; run update");
       } else if (
@@ -450,11 +489,19 @@ async function checkInstallation(options, dependencies) {
     }
   }
 
-  const configuration = resolveConfiguration(options, local.manifest);
-  if (
-    local.manifest &&
-    JSON.stringify(local.manifest.configuration) !== JSON.stringify(configuration)
-  ) {
+  // `check` is deliberately weaker at both ends. It never refuses for want of a
+  // route mode, since checking an un-migrated or uninstalled consumer is a
+  // legitimate read; and it folds one in only when the manifest already records
+  // it or the operator asked for it. Adopting the repository's value here
+  // instead would make every pre-schema-4 consumer report a configuration
+  // mismatch on top of the migration issue it already reports.
+  const checkRouteMode =
+    options.routeMode ??
+    (local.manifest?.schemaVersion >= ROUTE_MODE_MIN_SCHEMA_VERSION
+      ? local.manifest.configuration.routeMode
+      : undefined);
+  const configuration = resolveConfiguration({ ...options, routeMode: checkRouteMode }, local.manifest);
+  if (local.manifest && !sameConfiguration(local.manifest.configuration, configuration)) {
     issues.push("manifest configuration does not match the requested configuration");
   }
   for (const [name, desiredValue] of Object.entries(variableValues(configuration))) {

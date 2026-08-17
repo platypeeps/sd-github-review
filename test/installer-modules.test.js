@@ -26,7 +26,9 @@ import {
   parseGitHubRemote,
   recognizeTemplate,
   resolveConfiguration,
+  ROUTE_MODE_MIN_SCHEMA_VERSION,
   resolveOverride,
+  sameConfiguration,
   sameRepository,
   sha256,
   validateConfiguration,
@@ -67,6 +69,10 @@ const MANAGED_SOURCE_BODIES = Object.fromEntries(
 // by the constructor changing in the same direction.
 function manifestBody(schemaVersion, overrides = {}) {
   const configuration = { ...DEFAULT_CONFIG };
+  // Route mode joined the managed set at schema 4, so it belongs in the
+  // configuration only from that tier up; below it the manifest must record
+  // three variables and still decode.
+  if (schemaVersion >= ROUTE_MODE_MIN_SCHEMA_VERSION) configuration.routeMode = "copilot";
   const body = {
     schemaVersion,
     tool: "sd-github-review",
@@ -106,17 +112,22 @@ function manifestBody(schemaVersion, overrides = {}) {
   return { ...body, ...overrides };
 }
 
-test("codecs: schema 1, 2, and 3 manifests all decode at the current schema version", () => {
+test("codecs: every supported schema decodes at the current schema version", () => {
   // The fleet-breaking direction. Bumping MANIFEST_SCHEMA_VERSION must not stop
-  // a live schema-1 or schema-2 manifest from decoding.
-  assert.equal(MANIFEST_SCHEMA_VERSION, 3);
-  for (const version of [1, 2, 3]) {
+  // a live manifest at any earlier schema from decoding.
+  //
+  // Enumerated from the constant rather than from a literal list, so the next
+  // bump extends this test's coverage instead of leaving it asserting the
+  // previous schema's world. `manifestBody` still needs its own tier for the
+  // new version's required fields — that part cannot be derived — but the
+  // decode sweep and the above-range rejection both follow the constant.
+  for (let version = 1; version <= MANIFEST_SCHEMA_VERSION; version += 1) {
     const decoded = decodeManifest(JSON.stringify(manifestBody(version)));
     assert.equal(decoded.schemaVersion, version, `schema ${version} must decode as itself`);
     assert.equal(decoded.repository, "acme/consumer");
   }
   assert.throws(
-    () => decodeManifest(JSON.stringify(manifestBody(4))),
+    () => decodeManifest(JSON.stringify(manifestBody(MANIFEST_SCHEMA_VERSION + 1))),
     /unsupported or malformed manifest header/u,
   );
 });
@@ -284,7 +295,7 @@ test("codecs: recognizeTemplate matches the current template and allow-listed hi
 });
 
 test("codecs: decodeManifest round-trips a schema-3 manifest and rejects a foreign label", () => {
-  const configuration = { ...DEFAULT_CONFIG };
+  const configuration = { ...DEFAULT_CONFIG, routeMode: "copilot" };
   const manifest = createManifest({
     state: "active",
     repository: "acme/consumer",
@@ -551,7 +562,7 @@ test("persistence: the guard rejects a path escaping the canonical root", async 
 test("persistence: loadLocalState decodes an existing managed manifest", async () => {
   const root = await makeTarget();
   const guard = makePathGuard(root);
-  const configuration = { ...DEFAULT_CONFIG };
+  const configuration = { ...DEFAULT_CONFIG, routeMode: "copilot" };
   const manifest = createManifest({
     state: "active",
     repository: "acme/consumer",
@@ -572,4 +583,23 @@ test("persistence: loadLocalState decodes an existing managed manifest", async (
   const state = await loadLocalState(guard, root);
   assert.equal(state.manifest.repository, "acme/consumer");
   assert.equal(state.workflow, MANAGED_SOURCE_BODIES.workflow);
+});
+
+test("codecs: sameConfiguration compares managed fields, not key order", () => {
+  // The failure this guards: check compares the recorded configuration against
+  // the resolved one, and comparing serialized objects would report every
+  // install as drifted against itself the moment a field is built in a
+  // different position on the two sides.
+  const recorded = { provider: "openrouter", cheapModel: "a", deepModel: "b", routeMode: "copilot" };
+  const resolved = { routeMode: "copilot", deepModel: "b", provider: "openrouter", cheapModel: "a" };
+  assert.equal(sameConfiguration(recorded, resolved), true);
+  assert.notEqual(JSON.stringify(recorded), JSON.stringify(resolved), "the orders really do differ");
+  assert.equal(sameConfiguration(recorded, { ...recorded, routeMode: "none" }), false);
+  // A pre-schema-4 configuration carries no route mode, and must not compare
+  // equal to a migrated one that does.
+  const { routeMode, ...preMigration } = recorded;
+  assert.equal(sameConfiguration(recorded, preMigration), false);
+  assert.equal(sameConfiguration(preMigration, { ...preMigration }), true);
+  // Unmanaged keys are outside the comparison by construction, not by accident.
+  assert.equal(sameConfiguration(recorded, { ...recorded, unmanaged: "ignored" }), true);
 });

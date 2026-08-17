@@ -55,16 +55,29 @@ Preview and install the default OpenRouter configuration, which uses
 Qwen3-Coder 30B A3B for `cheap` reviews and Kimi K2.6 for `deep` reviews:
 
 ```sh
-node scripts/install-consumer.mjs install --target /path/to/consumer --set-secret --dry-run
-node scripts/install-consumer.mjs install --target /path/to/consumer --set-secret
+node scripts/install-consumer.mjs install --target /path/to/consumer --route-mode copilot --set-secret --dry-run
+node scripts/install-consumer.mjs install --target /path/to/consumer --route-mode copilot --set-secret
 ```
+
+`--route-mode` is required on a fresh install and has no default. It sets the
+managed `REVIEW_ROUTE_MODE` repository variable that the event-driven lane
+routes on, and its accepted values are `auto`, `cheap`, `deep`, `copilot`, and
+`none`. The installer will not choose for you, because choosing means `auto`,
+and `auto` can select `cheap` or `deep` and bill your provider key on a route
+you did not pick. Use `copilot` or `none` for an independent review with no
+PR-Agent spend.
+
+An `update` keeps whatever the manifest already records, so the flag is only
+needed again to change the route. If the variable was already set by hand before
+installing, the installer adopts that value and marks it unowned, so `uninstall`
+preserves it.
 
 `--set-secret` delegates the hidden provider-key prompt to `gh secret set`.
 For non-interactive automation, pass the key only through standard input:
 
 ```sh
 printf '%s' "$PR_AGENT_KEY" | node scripts/install-consumer.mjs install \
-  --target /path/to/consumer --secret-stdin
+  --target /path/to/consumer --route-mode copilot --secret-stdin
 ```
 
 Do not place the key directly on the command line. The installer never stores
@@ -76,6 +89,7 @@ provider-prefixed form enforced by the workflow:
 
 ```sh
 node scripts/install-consumer.mjs install --target /path/to/consumer \
+  --route-mode auto \
   --provider gemini \
   --cheap-model gemini/replace-with-cheap-model-id \
   --deep-model gemini/replace-with-deep-model-id \
@@ -124,6 +138,7 @@ cannot verify archive bytes against a commit offline:
 
 ```sh
 node scripts/install-consumer.mjs install --target /path/to/consumer \
+  --route-mode copilot \
   --source-tag v0.3.0 --source-commit 744a9f138bba7c60272c7f9e3f8412e435e11b89 \
   --set-secret
 ```
