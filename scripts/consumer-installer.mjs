@@ -34,6 +34,7 @@ import {
   recognizeTemplate,
   resolveConfiguration,
   resolveRouteMode,
+  sameConfiguration,
   sameRepository,
   sha256,
   validateConfiguration,
@@ -500,10 +501,7 @@ async function checkInstallation(options, dependencies) {
       ? local.manifest.configuration.routeMode
       : undefined);
   const configuration = resolveConfiguration({ ...options, routeMode: checkRouteMode }, local.manifest);
-  if (
-    local.manifest &&
-    JSON.stringify(local.manifest.configuration) !== JSON.stringify(configuration)
-  ) {
+  if (local.manifest && !sameConfiguration(local.manifest.configuration, configuration)) {
     issues.push("manifest configuration does not match the requested configuration");
   }
   for (const [name, desiredValue] of Object.entries(variableValues(configuration))) {

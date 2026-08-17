@@ -262,10 +262,6 @@ export function validateConfiguration(configuration, { requireRouteMode = false 
   if (!ROUTE_MODE_SET.has(routeMode)) {
     throw new Error(`route mode must be one of: ${ROUTE_MODES.join(", ")}`);
   }
-  // routeMode is appended last on purpose. `check` compares the recorded and
-  // the resolved configuration with JSON.stringify, so both sides must build
-  // their keys in the same order or every schema-4 install reports a
-  // configuration mismatch against itself.
   return {
     provider,
     cheapModel: configuration.cheapModel,
@@ -426,6 +422,24 @@ export function decodeManifest(source, filePath = MANIFEST_PATH) {
     throw new Error(`${filePath}: label ownership must contain only managed labels`);
   }
   return value;
+}
+
+// Configuration equality. `check` compares what the manifest recorded against
+// what this run resolves, and comparing them with a literal JSON.stringify made
+// the result depend on two return statements building their keys in the same
+// sequence — so adding a field in the wrong position would have reported every
+// install as drifted against itself.
+//
+// Compare the managed fields by name instead. The field list is CONFIG_VARIABLES'
+// own values, so it cannot fall out of step with what is actually managed, and
+// every managed field is a scalar — which makes key order, nesting, and value
+// type non-questions rather than documented assumptions. A field absent on one
+// side and present on the other still differs, which is what distinguishes a
+// pre-schema-4 configuration from a migrated one.
+const CONFIGURATION_FIELDS = Object.freeze(Object.values(CONFIG_VARIABLES));
+
+export function sameConfiguration(left, right) {
+  return CONFIGURATION_FIELDS.every((field) => (left?.[field] ?? null) === (right?.[field] ?? null));
 }
 
 export function manifestJson(manifest) {

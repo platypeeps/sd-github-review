@@ -27,6 +27,7 @@ import {
   recognizeTemplate,
   resolveConfiguration,
   resolveOverride,
+  sameConfiguration,
   sameRepository,
   sha256,
   validateConfiguration,
@@ -576,4 +577,23 @@ test("persistence: loadLocalState decodes an existing managed manifest", async (
   const state = await loadLocalState(guard, root);
   assert.equal(state.manifest.repository, "acme/consumer");
   assert.equal(state.workflow, MANAGED_SOURCE_BODIES.workflow);
+});
+
+test("codecs: sameConfiguration compares managed fields, not key order", () => {
+  // The failure this guards: check compares the recorded configuration against
+  // the resolved one, and comparing serialized objects would report every
+  // install as drifted against itself the moment a field is built in a
+  // different position on the two sides.
+  const recorded = { provider: "openrouter", cheapModel: "a", deepModel: "b", routeMode: "copilot" };
+  const resolved = { routeMode: "copilot", deepModel: "b", provider: "openrouter", cheapModel: "a" };
+  assert.equal(sameConfiguration(recorded, resolved), true);
+  assert.notEqual(JSON.stringify(recorded), JSON.stringify(resolved), "the orders really do differ");
+  assert.equal(sameConfiguration(recorded, { ...recorded, routeMode: "none" }), false);
+  // A pre-schema-4 configuration carries no route mode, and must not compare
+  // equal to a migrated one that does.
+  const { routeMode, ...preMigration } = recorded;
+  assert.equal(sameConfiguration(recorded, preMigration), false);
+  assert.equal(sameConfiguration(preMigration, { ...preMigration }), true);
+  // Unmanaged keys are outside the comparison by construction, not by accident.
+  assert.equal(sameConfiguration(recorded, { ...recorded, unmanaged: "ignored" }), true);
 });
