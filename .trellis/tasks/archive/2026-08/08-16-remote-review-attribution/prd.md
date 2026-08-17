@@ -80,18 +80,45 @@ child blocks the other.
 
 ## Acceptance criteria
 
-- [ ] A pull request shipped after both children reports a remote-review state
+- [x] A pull request shipped after both children reports a remote-review state
       that matches what actually reviewed it: either a receipt whose remote
       evidence is provably caused by its own dispatch, or an explicit recorded
       limitation with no side-channel review happening behind it.
-- [ ] No channel outside the routed Action and the retained ruleset requests a
+
+      PR #93 exercised both halves of the disjunction across five live routed
+      rounds. Round 2 (head `a8392a1`) reported `dispatch.status: "requested"`
+      with `limitations: []` — the lane caused that review. Rounds 1, 3, 4 and 5
+      reported `already-present` with
+      `limitations: ["remote-evidence-not-dispatch-caused"]`, and the only other
+      requester behind them was the retained `main` ruleset.
+
+- [x] No channel outside the routed Action and the retained ruleset requests a
       reviewer in this repository.
-- [ ] A Copilot review that the routed dispatch did not cause is not counted as
+
+      The `PostToolUse` hook's fourth guard fires here:
+      `config/routed-review-setup-v1.json` is present at the repository root, so
+      the hook exits before emitting its request instruction. Verified by
+      evaluating the guard's own condition against this checkout.
+
+- [x] A Copilot review that the routed dispatch did not cause is not counted as
       that dispatch's remote evidence.
-- [ ] The three-channel picture in
+
+      Shipped upstream as `platypeeps/sd-ai-command-pack#481` (0.71.24) and
+      pinned here at 0.71.26. The claim is withdrawn by the limitation rather
+      than the findings being dropped; upstream
+      `test_dispatch_status_does_not_change_harvested_findings` runs the harvest
+      twice against receipts differing only in `dispatch.status` and asserts the
+      two observations are equal.
+
+- [x] The three-channel picture in
       `.trellis/spec/backend/consumer-installer.md` is updated to state which
       channels remain, and what the receipt does and does not prove about who
       reviewed the change.
+
+      Three sections carry it: "Three channels can request Copilot, not two"
+      (:481), "The hook is now scoped out of durable-lane repositories" (:499,
+      "Two channels remain here"), and the receipt-reading table (:573-575)
+      mapping each `dispatch.status` to what it does and does not prove.
 
 ## Notes
 

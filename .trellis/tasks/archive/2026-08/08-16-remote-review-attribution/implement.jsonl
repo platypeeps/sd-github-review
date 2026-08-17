@@ -1,0 +1,1 @@
+{"file": ".trellis/spec/backend/consumer-installer.md", "reason": "The only spec surface either child changes; the parent's cross-child criteria are verified against its channel and receipt sections."}
