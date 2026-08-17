@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 74
+- **Total Sessions**: 75
 - **Last Active**: 2026-08-16
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1049 | Active |
+| `journal-2.md` | ~1088 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 75 | 2026-08-16 | Archive the thin-install sd-check record as delivered upstream | `c7cc11c`, `4246942` | `task/archive-thin-install-sd-check` |
 | 74 | 2026-08-16 | Close the remote-review-attribution parent task | `b10c6c9`, `e35e6dd` | `task/archive-remote-review-attribution` |
 | 73 | 2026-08-16 | Capitalize Copilot in the receipt-proof heading and record the spelling rule | `254f426` | `docs/copilot-spelling-convention` |
 | 72 | 2026-08-16 | Bind copilot-route review evidence to the dispatch that caused it | `6338e7e`, `9c99547`, `7925f16`, `a8392a1`, `0ad3516`, `b33176b`, `3d858cd` | `task/bind-copilot-review-evidence` |

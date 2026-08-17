@@ -1049,3 +1049,42 @@ Both children were archived, so the parent's four cross-child acceptance criteri
 ### Next Steps
 
 - None - task complete
+
+
+## Session 75: Archive the thin-install sd-check record as delivered upstream
+
+**Date**: 2026-08-16
+**Task**: Archive the thin-install sd-check record as delivered upstream
+**Branch**: `task/archive-thin-install-sd-check`
+
+### Summary
+
+Brought the parked 08-16-restore-thin-install-sd-check record into the repository, recorded that its blocker shipped upstream in pack 0.71.26, and archived it rather than reopening it as planned work.
+
+### Main Changes
+
+- Recorded the task that was parked outside the repository during the PR #93 run, when five sd-check shipped-helper rows reported unavailable under this repository's thin install and blocked the whole ship chain. It was parked because the preflight allows one task directory per branch and #93 already had one.
+- Checked all five acceptance criteria against evidence. The decisive one: sd-check --json from this root reports aggregate passed, exit 0, 7 rows and 0 unavailable at pack 0.71.26, against aggregate unavailable, exit 3 and five unavailable rows at 0.71.24.
+- Archived rather than reopened as planned work. The blocker shipped upstream as platypeeps/sd-ai-command-pack#482 while the record was parked, and nothing was restored under scripts/, so no consumer-side work remains in it. Leaving it open would have put a phantom in the backlog.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c7cc11c` | docs(task): record 08-16-restore-thin-install-sd-check and its upstream delivery |
+| `4246942` | chore(task): archive 08-16-restore-thin-install-sd-check |
+
+### Testing
+
+- [OK] pre-archive gate: status valid, reasonCodes [pre_archive_valid]
+- [OK] review preflight: 0 failures, 0 warnings
+- [OK] npm run check:full: exit 0, 640 tests, 640 pass, 0 fail
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
