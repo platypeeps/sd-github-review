@@ -1009,3 +1009,43 @@ Cleared the first of the two suppressed comments from PR #93 round 5, and wrote 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 74: Close the remote-review-attribution parent task
+
+**Date**: 2026-08-16
+**Task**: Close the remote-review-attribution parent task
+**Branch**: `task/archive-remote-review-attribution`
+
+### Summary
+
+Both children were archived, so the parent's four cross-child acceptance criteria were verified against evidence and the task was archived through the sanctioned lifecycle.
+
+### Main Changes
+
+- Checked all four cross-child acceptance criteria with the evidence that satisfies each: PR #93 round 2 reported dispatch.status requested with empty limitations while rounds 1/3/4/5 reported already-present with remote-evidence-not-dispatch-caused, covering both halves of the first criterion's disjunction.
+- Verified the no-side-channel criterion by evaluating the PostToolUse hook's own guard condition against this checkout rather than reading the hook and assuming: config/routed-review-setup-v1.json is present, so the hook exits before emitting its request instruction.
+- Filled the task's check.jsonl and implement.jsonl context seeds, which had only the generated _example scaffold row. The pre-start gate refuses a task whose seeds are unfilled, so the placeholders were a real blocker rather than the harmless convention an earlier pass took them for.
+- Archived through task.py start then task.py archive, so the record moved with status in_progress and became completed inside the archive. Setting completed in place first is what the pre-archive gate rejects as task_metadata_invalid.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b10c6c9` | docs(task): record the evidence closing 08-16-remote-review-attribution |
+| `e35e6dd` | chore(task): archive 08-16-remote-review-attribution |
+
+### Testing
+
+- [OK] pre-archive gate: schemaVersion 1, status valid, reasonCodes [pre_archive_valid]
+- [OK] review preflight: 0 failures, 1 warning (2 task directories, inherent to an archive move)
+- [OK] npm run check:full: exit 0, 640 tests, 640 pass, 0 fail
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

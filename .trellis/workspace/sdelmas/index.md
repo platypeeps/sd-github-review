@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 73
+- **Total Sessions**: 74
 - **Last Active**: 2026-08-16
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1010 | Active |
+| `journal-2.md` | ~1049 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 74 | 2026-08-16 | Close the remote-review-attribution parent task | `b10c6c9`, `e35e6dd` | `task/archive-remote-review-attribution` |
 | 73 | 2026-08-16 | Capitalize Copilot in the receipt-proof heading and record the spelling rule | `254f426` | `docs/copilot-spelling-convention` |
 | 72 | 2026-08-16 | Bind copilot-route review evidence to the dispatch that caused it | `6338e7e`, `9c99547`, `7925f16`, `a8392a1`, `0ad3516`, `b33176b`, `3d858cd` | `task/bind-copilot-review-evidence` |
 | 71 | 2026-08-16 | Retire the direct-request hook, and find the collision underneath it | `0bedea2`, `4eba83d`, `88e9a11` | `main` |
