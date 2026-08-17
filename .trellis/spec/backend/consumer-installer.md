@@ -159,6 +159,13 @@ node scripts/install-consumer.mjs uninstall [options]
   then an existing repository variable (adopted **unowned**, so `uninstall`
   preserves it), then a refusal naming the flag. An existing variable holding an
   unsupported value is a refusal, not a silent overwrite.
+- The installer's CLI surface is documented in three places, and a change to it
+  sweeps all three: `HELP` in `codecs.mjs`, the README install call-out, and the
+  runnable invocations in `SETUP-PR-AGENT.md`. The setup guide is the one that
+  gets missed, because it is the only one whose commands are meant to be copied
+  and run — a required flag added without updating it ships five documented
+  commands that fail. Enumerate with a repository-wide search for
+  `install-consumer.mjs install`, not from this list.
 - The lane's fail-closed gate stays regardless. Installer management is a second
   line of defence — a consumer can always delete the variable after installing —
   so removing the gate because the installer now writes the value would trade a
