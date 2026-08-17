@@ -82,9 +82,17 @@ the next pull request opens, and cleanup on uninstall.
       with the README install call-out.
 - [x] `npm test`, `validate-action-metadata.mjs`, and `validate-ci-parity.mjs`
       all pass.
-      — `npm run check:full` exits 0: 650 tests / 650 pass / 0 fail; coverage
-      94.27% lines; metadata validated against 1074 tracked public paths;
-      ci-parity OK across all 5 CI package gates.
+      — At the final head `59bd1aa`, all five deterministic gates pass: 652
+      tests / 652 pass / 0 fail; coverage 94.28% lines / 85.36% branches /
+      95.27% funcs; the `node --check` syntax gate; `validate:metadata`; and
+      `validate:ci-parity` OK across all 5 CI package gates.
+      — The composite `npm run check:full` exits 1 on this branch, and the
+      exit is not a gate result: the sixth step applies Prism's advisory
+      severity threshold, which trips on this diff independent of code state
+      (confirmed by stashing the working changes and re-running at `f582ff7`,
+      which also exited nonzero). The findings it replays were each checked
+      against the cited path and line and rebutted in the routed review. This
+      is the condition already recorded as `08-09-review-gate-advisory-convergence`.
 
 **Verification note.** The drift test in criterion 4 was proven load-bearing
 before it was trusted: dropping `none` from `ROUTE_MODES` fails it with
@@ -108,6 +116,20 @@ it. The second is pre-existing drift recorded in
 then plans five file writes and **no** `set variable REVIEW_ROUTE_MODE` action,
 which is the live form of criterion 3's preservation half: the hand-set value is
 adopted, not rewritten.
+
+**Routed review evidence.** At head `59bd1aa`, `sd-review scope=pr` reached
+`status: ready`, `phase: ready`, exit 0, `limitations: []`, route `copilot`,
+observation materialized and clean, 0 unresolved threads. Copilot reviewed 12 of
+12 changed files and generated no new comments.
+
+Five local rounds ran. Rounds 1-4 produced real fixes: the `SETUP-PR-AGENT.md`
+invocations that would have shipped failing, the configuration comparison that
+depended on key order, the schema sweep that listed versions instead of deriving
+them, and the documentation sweep that was a habit rather than a test. Round 5's
+ten findings were all rebutted after checking each cited path and line — seven
+describe the change as correct rather than reporting a defect, one describes the
+`JSON.stringify` comparison this diff removed, and two cite lines where the
+described code is not present.
 
 ## Notes
 
