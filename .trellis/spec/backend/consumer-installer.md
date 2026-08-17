@@ -83,7 +83,7 @@ node scripts/install-consumer.mjs uninstall [options]
   confirmation (interactive `confirm` seam or `--yes`), honors `--dry-run`, and
   writes `pending` then `active` so a partial GitHub failure is resumable
   through the normal lifecycle.
-- The manifest schema is version `3` (`MANIFEST_SCHEMA_VERSION`), tool
+- The manifest schema is version `4` (`MANIFEST_SCHEMA_VERSION`), tool
   `sd-github-review`, and state `pending`, `active`, or `uninstalling`. It
   records repository, workflow and source SHA-256, source provenance
   (`source.commit`, `source.tag`, `source.released`), the `descriptor` and
@@ -94,17 +94,32 @@ node scripts/install-consumer.mjs uninstall [options]
 - The decoder admits schema 1, 2, and 3, and validates by version rather than
   by equality with the current constant:
 
-  | Version | `workflow` + `source` | provenance (`commit`, `tag`, `released`) | `descriptor` + `durableWorkflow` |
-  | --- | --- | --- | --- |
-  | 1 | required | not present | not present |
-  | 2 | required | **required** | not present |
-  | 3 | required | required | required |
+  | Version | `workflow` + `source` | provenance (`commit`, `tag`, `released`) | `descriptor` + `durableWorkflow` | `REVIEW_ROUTE_MODE` |
+  | --- | --- | --- | --- | --- |
+  | 1 | required | not present | not present | not present |
+  | 2 | required | **required** | not present | not present |
+  | 3 | required | required | required | not present |
+  | 4 | required | required | required | **required** |
 
   Gating provenance validation on `schemaVersion === MANIFEST_SCHEMA_VERSION`
   is forbidden: it silently stops validating `source.commit`/`tag`/`released`
   on every schema-2 manifest in the fleet. A legacy schema-`1` manifest decodes
   as a pre-provenance install and a schema-`2` one as a pre-durable install;
-  each is read-only at its own version and `update` rewrites it to schema 3.
+  a schema-`3` one as pre-route-mode; each is read-only at its own version and
+  `update` rewrites it to the current schema.
+
+  The managed *variable set* is version-scoped for the same reason the field
+  requirements are. `decodeManifest` checks variable names by exact set
+  equality, so reading a pre-schema-4 manifest against the current four-name set
+  would not report drift — it would throw, taking `check` out on every installed
+  consumer before it could report the migration it needs. Resolve the expected
+  set from the manifest's own `schemaVersion`.
+
+  `check`'s migration messages are one branch per tier, never a final
+  `< MANIFEST_SCHEMA_VERSION` catch-all. A catch-all silently retargets the
+  previous tier's message at manifests that already satisfy it: after the 3 → 4
+  bump it would tell a schema-3 consumer it predates the durable review lane,
+  which it does not.
 - Source provenance is resolved from the installer's own source root, not the
   consumer. `source.commit` is always a 40-hex commit. The `(released, tag)`
   pair encodes the source unambiguously: `(true, v<semver>)` is the single
@@ -128,15 +143,26 @@ node scripts/install-consumer.mjs uninstall [options]
 - GitHub resources are `PR_AGENT_MODEL_PROVIDER`, `CHEAP_REVIEW_MODEL`,
   `DEEP_REVIEW_MODEL`, `PR_AGENT_MODEL_API_KEY`, and the router's five review
   labels. Matching pre-existing resources are unowned and preserved.
-- `REVIEW_ROUTE_MODE` is required by the installed event-driven lane but is
-  **not** an installer-managed resource: the operator sets it, `uninstall` does
-  not remove it, and `check` does not verify it. The lane fails closed instead —
-  its first step rejects an unset or invalid value rather than defaulting to
-  `auto`, because `auto` can select `cheap` or `deep` and bill
-  `PR_AGENT_MODEL_API_KEY` on a route nobody chose.
-  `08-15-installer-managed-route-mode` would bring it under management; if that
-  lands, this entry, the README install call-out, and the install/check/uninstall
-  descriptions above all describe the old behaviour and must change with it.
+- `REVIEW_ROUTE_MODE` is installer-managed from schema 4, alongside the three
+  configuration variables: `install` writes it, the manifest records its
+  ownership, `check` reports it missing or drifted, and `uninstall` removes it
+  when the installer owns it. Its accepted values are `ROUTE_MODES` — `auto`,
+  `cheap`, `deep`, `copilot`, `none` — which is the same set the installed
+  lane's own gate enforces. The two are bound by a test that extracts the lane's
+  `case` pattern rather than restating the list, so neither side can drift alone.
+- A fresh install **requires** `--route-mode`; there is no default. The lane
+  refuses to guess a route because `auto` can select `cheap` or `deep` and bill
+  `PR_AGENT_MODEL_API_KEY` on a route nobody chose, and an installer that
+  guesses on the operator's behalf reintroduces exactly that, one layer earlier
+  and more quietly — the lane at least fails in the open. Route mode resolves in
+  order: the `--route-mode` flag, then the active manifest's recorded value,
+  then an existing repository variable (adopted **unowned**, so `uninstall`
+  preserves it), then a refusal naming the flag. An existing variable holding an
+  unsupported value is a refusal, not a silent overwrite.
+- The lane's fail-closed gate stays regardless. Installer management is a second
+  line of defence — a consumer can always delete the variable after installing —
+  so removing the gate because the installer now writes the value would trade a
+  detected failure for an undetected one.
 - Provider secret values enter only through the inherited `gh secret set`
   prompt or standard input. They never enter CLI arguments, reports,
   manifests, diagnostics, or JSON output.
@@ -278,9 +304,10 @@ node scripts/install-consumer.mjs uninstall [options]
 - Assert schema-2 provenance capture (git-verified `released:true`, a dirty
   copy of *any* copied source artifact or a mismatched tag falling back to
   `released:false`, and the `.git`-less override recording `(false, v-tag)`); a
-  schema-1 manifest decodes as pre-provenance and a schema-2 one as pre-durable,
-  and `update` rewrites each to schema 3 with a recorded commit.
-- Assert schema 1, 2, and 3 manifests all decode, that a malformed schema-2
+  schema-1 manifest decodes as pre-provenance, a schema-2 one as pre-durable,
+  and a schema-3 one as pre-route-mode, and `update` rewrites each to the
+  current schema with a recorded commit.
+- Assert schema 1 through 4 manifests all decode, that a malformed schema-2
   manifest is still rejected on each provenance invariant, and that the
   schema-3 `descriptor`/`durableWorkflow` blocks are validated by exact
   equality on `path` and `source` plus `SHA256_PATTERN` on `sha256`.
@@ -516,8 +543,9 @@ so every consumer the installer sets up carries it at that path — but only a
 *durable* install writes it. `sd-github-review-pilot` is the case that proves
 the distinction: an active consumer whose `.github/sd-github-review.json` is
 `schemaVersion: 1` and carries no `descriptor` or `durableWorkflow` key at all —
-both are absent from the object, not present and null — where this repository is
-`schemaVersion: 3` with both. Descriptor presence therefore
+both are absent from the object, not present and null — where this repository
+records both. The distinction is block presence, not the schema number: a
+durable consumer keeps both blocks through every later schema bump. Descriptor presence therefore
 means "a receipt-producing lane is installed here", which is exactly the
 condition that makes the hook's direct request redundant. An event-lane-only
 consumer keeps the hook, correctly, because it has no receipt competing with it.

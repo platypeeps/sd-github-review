@@ -1977,3 +1977,188 @@ test("the lane's invalid-route message names every accepted mode", () => {
     );
   }
 });
+
+// --- REVIEW_ROUTE_MODE ownership -------------------------------------------
+// One test per acceptance criterion of 08-15-installer-managed-route-mode. The
+// drift binding between ROUTE_MODES and the lane's own gate lives above.
+
+test("install creates REVIEW_ROUTE_MODE and records it owned in the manifest", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+
+  await runConsumerInstaller(
+    { command: "install", target, routeMode: "deep" },
+    { sourceRoot, github },
+  );
+
+  assert.equal(github.variables.get("REVIEW_ROUTE_MODE"), "deep");
+  const manifest = await readManifest(target);
+  assert.equal(manifest.schemaVersion, MANIFEST_SCHEMA_VERSION);
+  assert.equal(manifest.configuration.routeMode, "deep");
+  assert.deepEqual(manifest.resources.variables.REVIEW_ROUTE_MODE, {
+    value: "deep",
+    owned: true,
+  });
+});
+
+test("install refuses without a route mode rather than choosing one", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+
+  await assert.rejects(
+    runConsumerInstaller({ command: "install", target }, { sourceRoot, github }),
+    /install requires --route-mode/u,
+  );
+  // The refusal precedes every mutation: `auto` can select cheap or deep and
+  // bill the provider key, so a half-installed consumer is not an acceptable
+  // intermediate state to leave behind.
+  assert.deepEqual(github.calls, []);
+  assert.equal(existsSync(path.join(target, MANIFEST_PATH)), false);
+});
+
+test("check names REVIEW_ROUTE_MODE when it is deleted after a successful install", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  await runConsumerInstaller(
+    { command: "install", target, routeMode: "copilot" },
+    { sourceRoot, github },
+  );
+  assert.equal(
+    (await runConsumerInstaller({ command: "check", target }, { sourceRoot, github })).ok,
+    true,
+  );
+
+  github.variables.delete("REVIEW_ROUTE_MODE");
+
+  const checked = await runConsumerInstaller({ command: "check", target }, { sourceRoot, github });
+  assert.equal(checked.ok, false);
+  assert.ok(
+    checked.issues.includes("GitHub variable REVIEW_ROUTE_MODE is missing"),
+    checked.issues.join("\n"),
+  );
+});
+
+test("uninstall removes an installer-created route variable", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  await runConsumerInstaller(
+    { command: "install", target, routeMode: "cheap" },
+    { sourceRoot, github },
+  );
+
+  await runConsumerInstaller({ command: "uninstall", target, yes: true }, { sourceRoot, github });
+
+  assert.equal(github.variables.has("REVIEW_ROUTE_MODE"), false);
+});
+
+test("install adopts a pre-existing route variable unowned and uninstall preserves it", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({
+    secrets: [SECRET_NAME],
+    variables: { REVIEW_ROUTE_MODE: "none" },
+  });
+
+  // No --route-mode: the value the repository already carries resolves the run,
+  // which is the manual-install path this installer is converging.
+  await runConsumerInstaller({ command: "install", target }, { sourceRoot, github });
+
+  const manifest = await readManifest(target);
+  assert.deepEqual(manifest.resources.variables.REVIEW_ROUTE_MODE, {
+    value: "none",
+    owned: false,
+  });
+  assert.equal(
+    github.calls.some((call) => call.name === "REVIEW_ROUTE_MODE"),
+    false,
+    "a matching pre-existing variable is claimed, not rewritten",
+  );
+
+  await runConsumerInstaller({ command: "uninstall", target, yes: true }, { sourceRoot, github });
+  assert.equal(github.variables.get("REVIEW_ROUTE_MODE"), "none");
+});
+
+test("install refuses a pre-existing route variable holding an unsupported value", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({
+    secrets: [SECRET_NAME],
+    variables: { REVIEW_ROUTE_MODE: "sometimes" },
+  });
+
+  await assert.rejects(
+    runConsumerInstaller({ command: "install", target }, { sourceRoot, github }),
+    /REVIEW_ROUTE_MODE holds an unsupported value/u,
+  );
+  assert.deepEqual(github.calls, []);
+});
+
+test("a schema-3 manifest decodes, reports only the route-mode migration, and update migrates it", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  await runConsumerInstaller(
+    { command: "install", target, routeMode: "copilot" },
+    { sourceRoot, github },
+  );
+
+  // Present the installed consumer as the schema-3 shape the fleet is running:
+  // three managed variables, no recorded route mode, the variable itself still
+  // set by hand on the repository.
+  const manifest = await readManifest(target);
+  delete manifest.configuration.routeMode;
+  delete manifest.resources.variables.REVIEW_ROUTE_MODE;
+  manifest.schemaVersion = 3;
+  await writeFile(
+    path.join(target, MANIFEST_PATH),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+    "utf8",
+  );
+
+  const checked = await runConsumerInstaller({ command: "check", target }, { sourceRoot, github });
+  assert.equal(checked.ok, false);
+  assert.deepEqual(
+    checked.issues,
+    ["manifest predates route-mode management; run update to record REVIEW_ROUTE_MODE"],
+    "an un-migrated manifest reports the migration and nothing else",
+  );
+  assert.equal(
+    checked.issues.some((issue) => issue.includes("durable review lane")),
+    false,
+    "schema 3 already has the durable lane; the ladder must not misname its tier",
+  );
+
+  await runConsumerInstaller({ command: "update", target }, { sourceRoot, github });
+
+  const migrated = await readManifest(target);
+  assert.equal(migrated.schemaVersion, MANIFEST_SCHEMA_VERSION);
+  assert.deepEqual(migrated.resources.variables.REVIEW_ROUTE_MODE, {
+    value: "copilot",
+    owned: false,
+  });
+  assert.equal(
+    (await runConsumerInstaller({ command: "check", target }, { sourceRoot, github })).ok,
+    true,
+  );
+});
+
+test("uninstall rejects a route option the way it rejects provider and model options", () => {
+  assert.throws(
+    () => parseArguments(["uninstall", "--route-mode", "deep"]),
+    /uninstall does not accept provider, model, or route options/u,
+  );
+  assert.deepEqual(parseArguments(["install", "--route-mode", "deep"]), {
+    command: "install",
+    routeMode: "deep",
+  });
+  // The grammar accepts any string; the value set is enforced when the
+  // configuration is validated, so an unsupported mode still cannot install.
+  assert.throws(
+    () => installerModule.validateConfiguration({ ...DEFAULT_CONFIG, routeMode: "sometimes" }),
+    /route mode must be one of/u,
+  );
+});

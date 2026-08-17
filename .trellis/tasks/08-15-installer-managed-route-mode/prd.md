@@ -49,18 +49,65 @@ the next pull request opens, and cleanup on uninstall.
 
 ## Acceptance criteria
 
-- [ ] `install-consumer.mjs install` on a fresh consumer creates
+- [x] `install-consumer.mjs install` on a fresh consumer creates
       `REVIEW_ROUTE_MODE` and records it in the manifest.
-- [ ] `check` fails, with a message naming the variable, when it is deleted
+      — `install creates REVIEW_ROUTE_MODE and records it owned in the
+      manifest` asserts the written variable, the schema-4 manifest, and
+      `{value: "deep", owned: true}` in the recorded ownership block.
+- [x] `check` fails, with a message naming the variable, when it is deleted
       after a successful install.
-- [ ] `uninstall` removes an installer-created variable and preserves a
+      — `check names REVIEW_ROUTE_MODE when it is deleted after a successful
+      install` asserts `ok: true` first, then the exact issue
+      `GitHub variable REVIEW_ROUTE_MODE is missing` after deletion.
+- [x] `uninstall` removes an installer-created variable and preserves a
       pre-existing one.
-- [ ] A test asserts the installer's accepted value set and the workflow gate's
+      — two tests, one per half: `uninstall removes an installer-created route
+      variable`, and `install adopts a pre-existing route variable unowned and
+      uninstall preserves it`, which also asserts no `set-variable` call was
+      made for it. The pre-existing adopt path is additionally covered live —
+      see the verification note.
+- [x] A test asserts the installer's accepted value set and the workflow gate's
       accepted value set are the same set, so the two cannot drift.
-- [ ] `.trellis/spec/backend/consumer-installer.md` no longer describes
+      — `installer route modes stay identical to the lane's accepted set`
+      extracts the `case "$REVIEW_ROUTE_MODE" in` pattern from
+      `examples/pr-agent-router.yml` rather than restating the list, and a
+      second test asserts the lane's invalid-value message names every mode, so
+      each side catches the other drifting alone.
+- [x] `.trellis/spec/backend/consumer-installer.md` no longer describes
       `REVIEW_ROUTE_MODE` as unmanaged.
-- [ ] `npm test`, `validate-action-metadata.mjs`, and `validate-ci-parity.mjs`
+      — the entry now records it as installer-managed from schema 4, with the
+      resolution order, the no-default rule and why, and that the lane's
+      fail-closed gate stays. The schema matrix, the migration-tier rules, and
+      the two stale "rewrites to schema 3" references were swept with it, along
+      with the README install call-out.
+- [x] `npm test`, `validate-action-metadata.mjs`, and `validate-ci-parity.mjs`
       all pass.
+      — `npm run check:full` exits 0: 650 tests / 650 pass / 0 fail; coverage
+      94.27% lines; metadata validated against 1074 tracked public paths;
+      ci-parity OK across all 5 CI package gates.
+
+**Verification note.** The drift test in criterion 4 was proven load-bearing
+before it was trusted: dropping `none` from `ROUTE_MODES` fails it with
+`examples/pr-agent-router.yml and ROUTE_MODES accept different route sets`. A
+drift test that has never failed has not been shown to detect drift.
+
+The migration path was checked against this repository, which is itself a
+consumer with a hand-set `REVIEW_ROUTE_MODE`:
+
+```
+$ node scripts/install-consumer.mjs check --target .
+Installation drift detected for platypeeps/sd-github-review:
+- manifest predates route-mode management; run update to record REVIEW_ROUTE_MODE
+- a newer source commit is available; run update
+```
+
+The first issue is this task's migration reported correctly on a real schema-3
+manifest — and reported *alone*, with no spurious configuration mismatch beside
+it. The second is pre-existing drift recorded in
+`08-15-remote-review-channel-authority`, not absorbed here. `update --dry-run`
+then plans five file writes and **no** `set variable REVIEW_ROUTE_MODE` action,
+which is the live form of criterion 3's preservation half: the hand-set value is
+adopted, not rewritten.
 
 ## Notes
 

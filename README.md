@@ -37,14 +37,15 @@ for deep reviews—then install it and enter the provider key through GitHub
 CLI's secret prompt:
 
 ```sh
-node scripts/install-consumer.mjs install --target /path/to/consumer --set-secret --dry-run
-node scripts/install-consumer.mjs install --target /path/to/consumer --set-secret
+node scripts/install-consumer.mjs install --target /path/to/consumer --route-mode copilot --set-secret --dry-run
+node scripts/install-consumer.mjs install --target /path/to/consumer --route-mode copilot --set-secret
 ```
 
 The command copies three reviewed files — the event-driven router workflow, the
 durable `sd-review.yml` lane, and the setup discovery descriptor it declares —
-creates the routing variables and missing labels, and records ownership of all
-three in a consumer-side sd-github-review.json manifest under the repository's
+creates the routing variables (including `REVIEW_ROUTE_MODE`) and missing
+labels, and records ownership of all three in a consumer-side
+sd-github-review.json manifest under the repository's
 GitHub metadata directory. The manifest also
 records source provenance (the release commit and, for a clean tagged checkout,
 the release tag); run the installer from a checkout of the release tag, or pass
@@ -56,14 +57,18 @@ preserving the consumer's existing provider and cheap/deep model values.
 It never puts the provider key in an argument, manifest, or log. It also
 supports `update`, read-only `check`, and guarded `uninstall`:
 
-> **Set `REVIEW_ROUTE_MODE` after installing.** The event-driven router lane
-> reads this repository variable to decide its route, and the installer does not
-> create it — so `check` will not tell you it is missing and `uninstall` will not
-> remove it. The lane refuses to run without it rather than guessing, because
-> guessing means `auto`, and `auto` can select `cheap` or `deep` and bill your
-> provider key on a route you did not choose. Set it to `copilot` or `none` for
-> an independent review with no PR-Agent spend, or to `auto`, `cheap`, or `deep`
-> to opt into paid review:
+> **`--route-mode` is required, and there is no default.** The event-driven
+> router lane reads the `REVIEW_ROUTE_MODE` repository variable to decide its
+> route. The installer creates and manages it — `check` reports it missing,
+> `uninstall` removes it — but it will not choose a value for you, because
+> choosing means `auto`, and `auto` can select `cheap` or `deep` and bill your
+> provider key on a route you did not pick. Pass `copilot` or `none` for an
+> independent review with no PR-Agent spend, or `auto`, `cheap`, or `deep` to
+> opt into paid review.
+>
+> An `update` keeps whatever the manifest already records. If you set the
+> variable by hand before installing, the installer adopts that value and marks
+> it unowned, so `uninstall` leaves it alone:
 >
 > ```sh
 > gh variable set REVIEW_ROUTE_MODE --body copilot --repo <owner>/<repo>
