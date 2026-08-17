@@ -1049,3 +1049,43 @@ Both children were archived, so the parent's four cross-child acceptance criteri
 ### Next Steps
 
 - None - task complete
+
+
+## Session 75: Archive the thin-install sd-check record as delivered upstream
+
+**Date**: 2026-08-16
+**Task**: Archive the thin-install sd-check record as delivered upstream
+**Branch**: `task/archive-thin-install-record`
+
+### Summary
+
+Brought the parked 08-16-restore-thin-install-sd-check record into the repository, recorded that its blocker shipped upstream in pack 0.71.26, and archived it rather than reopening it as planned work.
+
+### Main Changes
+
+- Recorded the task parked outside the repository during the PR #93 run, when five sd-check shipped-helper rows reported unavailable under this thin install and blocked every pull request rather than one task.
+- Checked all five acceptance criteria, each with its own evidence item. The decisive one: sd-check --json reports aggregate passed, exit 0, 7 rows, 0 unavailable at pack 0.71.26, against aggregate unavailable, exit 3 and five unavailable rows at 0.71.24.
+- Archived rather than reopened as planned work: the blocker shipped upstream as platypeeps/sd-ai-command-pack#482 while the record was parked, nothing was restored under scripts/, and no consumer-side work remains.
+- Re-cut from PR #97 after review caught the evidence list running 1, 2, '3. and 4.', 4 against five criteria. The fix could not ride on top of that branch: a post-archive successor commit may not change the archived task record (completion_successor_scope_invalid), and folding it into the work commit would have needed a force-push.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c7a241e` | docs(task): record 08-16-restore-thin-install-sd-check and its upstream delivery |
+| `e3425e4` | chore(task): archive 08-16-restore-thin-install-sd-check |
+
+### Testing
+
+- [OK] pre-archive gate: status valid, reasonCodes [pre_archive_valid]
+- [OK] review preflight: 0 failures, 0 warnings
+- [OK] npm run check:full: exit 0, 640 tests, 640 pass, 0 fail
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
