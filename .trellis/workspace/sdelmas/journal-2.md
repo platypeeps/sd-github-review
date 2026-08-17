@@ -972,3 +972,40 @@ Closed the last acceptance criterion of 08-16-bind-copilot-review-evidence by pr
 - Close parent 08-16-remote-review-attribution now that both children are done
 - Put the parked 08-16-restore-thin-install-sd-check record on its own branch off main
 - File follow-ups upstream as tasks only: --bookkeeping-evidence error message does not say it wants JSON, and the copilot/Copilot capitalization sweep
+
+
+## Session 73: Capitalize Copilot in the receipt-proof heading and record the spelling rule
+
+**Date**: 2026-08-16
+**Task**: Capitalize Copilot in the receipt-proof heading and record the spelling rule
+**Branch**: `docs/copilot-spelling-convention`
+
+### Summary
+
+Cleared the first of the two suppressed comments from PR #93 round 5, and wrote down the Copilot-versus-copilot distinction in the section where the two spellings collide so the nit stops recurring.
+
+### Main Changes
+
+- Capitalized the consumer-installer.md heading 'What a Copilot receipt does and does not prove' to match every other heading in the file.
+- Recorded the rule alongside it: Copilot is the product for prose and headings; lowercase copilot is an identifier only, covering the route name in route: "copilot", the deep|copilot and auto|cheap|deep|copilot|none configuration values, the reason string 'review floor required copilot', and branch names.
+- Declined round 5's second suggestion, which asked for the same word inside an archived task's PRD. No finish-work bundle mode permits editing an already-archived task record: completion mode rejects changes outside the detected archive move set, planning mode rejects cited commits that mutate the task archive. Archived planning documents are history and the tooling is right to keep them that way.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `254f426` | docs(spec): capitalize Copilot in the receipt-proof heading and record the rule |
+
+### Testing
+
+- [OK] review preflight: 0 failures, 0 warnings
+- [OK] npm run check:full: exit 0, 640 tests, 640 pass, 0 fail
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

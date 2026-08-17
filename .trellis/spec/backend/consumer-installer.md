@@ -537,7 +537,15 @@ payload — measured with a temporary probe hook rather than assumed. That probe
 also established that **hook edits take effect immediately, without restarting
 the session.**
 
-### What a copilot receipt does and does not prove
+### What a Copilot receipt does and does not prove
+
+A note on the two spellings, since this section is where they collide.
+**Copilot** capitalized is the product — use it in prose and headings.
+Lowercase `copilot` is an identifier and appears only as one: the route name in
+`route: "copilot"`, the `deep|copilot` and `auto|cheap|deep|copilot|none`
+configuration values, the reason string `review floor required copilot`, and
+branch names. A routed review can therefore take the `copilot` route to a
+Copilot review, and both spellings are correct in that sentence.
 
 Removing the hook narrows the field from three requesters to two. It does not by
 itself make attribution honest, because the retained ruleset still requests
