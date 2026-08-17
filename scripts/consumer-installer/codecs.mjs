@@ -113,6 +113,14 @@ export const SUPPORTED_PROVIDERS = Object.freeze([
   "codestral",
 ]);
 const SUPPORTED_PROVIDER_SET = new Set(SUPPORTED_PROVIDERS);
+// The accepted values of REVIEW_ROUTE_MODE. This set is not independent: the
+// installed event-driven lane gates on exactly the same values in its own
+// `case` statement (examples/pr-agent-router.yml), and a variable this
+// installer writes but that lane rejects is worse than an unmanaged one. A test
+// extracts the lane's pattern and asserts set equality, so the two cannot drift
+// apart in one direction only.
+export const ROUTE_MODES = Object.freeze(["auto", "cheap", "deep", "copilot", "none"]);
+const ROUTE_MODE_SET = new Set(ROUTE_MODES);
 const CONFIG_VARIABLES = Object.freeze({
   PR_AGENT_MODEL_PROVIDER: "provider",
   CHEAP_REVIEW_MODEL: "cheapModel",

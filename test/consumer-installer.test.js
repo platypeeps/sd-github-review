@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import {
   lstat as realLstat,
   mkdtemp,
@@ -14,6 +14,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   DESCRIPTOR_PATH,
   DESCRIPTOR_SOURCE_PATH,
@@ -26,8 +27,10 @@ import {
   MANAGED_RESOURCES,
   MANIFEST_PATH,
   MANIFEST_SCHEMA_VERSION,
+  ROUTE_MODES,
   ROUTING_LABELS,
   SECRET_NAME,
+  TEMPLATE_PATH,
   WORKFLOW_PATH,
   makeSourceGit,
   parseArguments,
@@ -39,6 +42,7 @@ import { reviewLabelNames } from "../src/normalize.js";
 import * as installerModule from "../scripts/consumer-installer.mjs";
 
 const REPOSITORY = "acme/consumer";
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const sha256Hex = (value) => createHash("sha256").update(value).digest("hex");
 
@@ -1915,3 +1919,39 @@ for (const { destination } of DURABLE_CASES) {
     assert.equal(schema2Manifest.schemaVersion, 2);
   });
 }
+
+// The installer's accepted route-mode values and the installed lane's own gate
+// are two literals in two files. A variable this installer writes but the lane
+// rejects fails the pull request it was supposed to route, so the two sets are
+// bound here by extraction rather than by restating the list a third time.
+function laneRouteModeGate() {
+  const source = readFileSync(path.join(REPO_ROOT, TEMPLATE_PATH), "utf8");
+  const lines = source.split("\n");
+  const caseIndex = lines.findIndex((line) => line.includes('case "$REVIEW_ROUTE_MODE" in'));
+  assert.notEqual(caseIndex, -1, "the lane must gate on REVIEW_ROUTE_MODE with a case statement");
+  const pattern = lines.slice(caseIndex + 1).find((line) => line.trim().length > 0);
+  const match = pattern.trim().match(/^([A-Za-z|]+)\)$/u);
+  assert.ok(match, `expected an accepted-value pattern, got ${pattern.trim()}`);
+  const invalidMessage = lines.find((line) => line.includes("must be one of"));
+  assert.ok(invalidMessage, "the lane must reject an invalid value with a message naming the set");
+  return { accepted: match[1].split("|"), invalidMessage };
+}
+
+test("installer route modes stay identical to the lane's accepted set", () => {
+  const { accepted } = laneRouteModeGate();
+  assert.deepEqual(
+    [...accepted].sort(),
+    [...ROUTE_MODES].sort(),
+    "examples/pr-agent-router.yml and ROUTE_MODES accept different route sets",
+  );
+});
+
+test("the lane's invalid-route message names every accepted mode", () => {
+  const { invalidMessage } = laneRouteModeGate();
+  for (const mode of ROUTE_MODES) {
+    assert.ok(
+      new RegExp(`\\b${mode}\\b`, "u").test(invalidMessage),
+      `the invalid-route error omits ${mode}`,
+    );
+  }
+});
