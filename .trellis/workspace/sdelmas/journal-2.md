@@ -1089,3 +1089,43 @@ Brought the parked 08-16-restore-thin-install-sd-check record into the repositor
 ### Next Steps
 
 - None - task complete
+
+
+## Session 76: Bring REVIEW_ROUTE_MODE under installer management as a schema-4 variable
+
+**Date**: 2026-08-16
+**Task**: Bring REVIEW_ROUTE_MODE under installer management as a schema-4 variable
+**Branch**: `task/installer-managed-route-mode`
+
+### Summary
+
+Added REVIEW_ROUTE_MODE to CONFIG_VARIABLES and bumped the manifest schema 3 -> 4. The one-line table entry was not safe alone: decodeManifest enforces exact set equality on managed variable names, so a fourth key would have made every schema-3 manifest in the fleet throw on read rather than report drift, taking out check on every installed consumer. Version-scoped the expected set with configVariablesForSchema(), split check's migration ladder into one branch per tier, and made variableValues omit absent fields so a schema-3 manifest does not report the variable missing on a repo where it is set. install/update/adopt now require a route mode with no default, resolved from --route-mode, then the manifest, then an existing repository variable adopted unowned; the lane refuses to guess a route because auto can bill the provider key, and the installer refuses on the same grounds. ROUTE_MODES is bound to the lane's own case pattern by extraction rather than restatement, and the documented install invocations are now enforced by a test rather than by a grep habit -- review round 1 caught five runnable SETUP-PR-AGENT.md commands that would have shipped failing. Both drift tests were proven load-bearing by making them fail before trusting them. Verified live against this repository's own schema-3 manifest: check reported the route-mode migration alone, and update --dry-run planned no set-variable action for the hand-set value.
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7979580` | (see git log) |
+| `a67e11b` | (see git log) |
+| `2eeb629` | (see git log) |
+| `f582ff7` | (see git log) |
+| `3f33473` | (see git log) |
+| `952bfae` | (see git log) |
+| `59bd1aa` | (see git log) |
+| `c3790cc` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

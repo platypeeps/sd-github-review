@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 75
+- **Total Sessions**: 76
 - **Last Active**: 2026-08-16
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1089 | Active |
+| `journal-2.md` | ~1131 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 76 | 2026-08-16 | Bring REVIEW_ROUTE_MODE under installer management as a schema-4 variable | `7979580`, `a67e11b`, `2eeb629`, `f582ff7`, `3f33473`, `952bfae`, `59bd1aa`, `c3790cc` | `task/installer-managed-route-mode` |
 | 75 | 2026-08-16 | Archive the thin-install sd-check record as delivered upstream | `c7a241e`, `e3425e4` | `task/archive-thin-install-record` |
 | 74 | 2026-08-16 | Close the remote-review-attribution parent task | `b10c6c9`, `e35e6dd` | `task/archive-remote-review-attribution` |
 | 73 | 2026-08-16 | Capitalize Copilot in the receipt-proof heading and record the spelling rule | `254f426` | `docs/copilot-spelling-convention` |
