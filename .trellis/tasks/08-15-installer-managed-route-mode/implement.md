@@ -134,6 +134,14 @@ Branch from clean `main`: `task/installer-managed-route-mode`.
     hand after installing. It becomes the `--route-mode` flag, with the manual
     `gh variable set` retained only as the pre-existing/adopt path.
 
+13b. **Make the documented half of the sweep a test, not a habit.** Steps 12–13
+    are a manual pass, and a manual pass over prose is the part of this stage
+    that silently stops happening. Add a test that enumerates tracked Markdown
+    outside `.trellis/` from `git ls-files`, rejoins shell line continuations,
+    and fails any `install-consumer.mjs install` invocation without a valid
+    `--route-mode`. Prove it load-bearing by stripping the flag from one README
+    invocation before trusting it.
+
 14. **Ship** through `sd-ship until=merge`.
 
 ## Validation Plan

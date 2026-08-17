@@ -43,6 +43,12 @@ import * as installerModule from "../scripts/consumer-installer.mjs";
 
 const REPOSITORY = "acme/consumer";
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+// install and adopt require an explicit route mode, so every lifecycle test
+// that is not itself about route resolution has to pass one. Naming the value
+// once keeps those call sites from becoming 60 independent claims about which
+// route a test repository runs; the tests below the REVIEW_ROUTE_MODE ownership
+// banner keep their literals, because there the value is the thing under test.
+const TEST_ROUTE_MODE = "copilot";
 
 const sha256Hex = (value) => createHash("sha256").update(value).digest("hex");
 
@@ -260,7 +266,7 @@ test("reports actionable recovery when a target checkout has no origin", async (
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
 
   await assert.rejects(
-    runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github }),
+    runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github }),
     /no readable GitHub origin; configure origin or pass --github OWNER\/REPO/u,
   );
   assert.deepEqual(github.calls, []);
@@ -300,7 +306,7 @@ test("installs, checks, and repeats without leaking secret input", async () => {
   const secret = "never-print-this-value";
 
   const first = await runConsumerInstaller(
-    { command: "install", target, routeMode: "copilot", secretMode: "stdin", secretInput: secret },
+    { command: "install", target, routeMode: TEST_ROUTE_MODE, secretMode: "stdin", secretInput: secret },
     { sourceRoot, github },
   );
   const manifest = await readManifest(target);
@@ -310,7 +316,7 @@ test("installs, checks, and repeats without leaking secret input", async () => {
     provider: "openrouter",
     cheapModel: "openrouter/qwen/qwen3-coder-30b-a3b-instruct",
     deepModel: "openrouter/moonshotai/kimi-k2.6",
-    routeMode: "copilot",
+    routeMode: TEST_ROUTE_MODE,
   });
   assert.equal(github.variables.get("PR_AGENT_MODEL_PROVIDER"), "openrouter");
   assert.equal(
@@ -337,7 +343,7 @@ test("installs, checks, and repeats without leaking secret input", async () => {
   // no filesystem write, asserted through both bytes and mtime.
   const managedBefore = await managedFileState(target);
   const second = await runConsumerInstaller(
-    { command: "install", target, routeMode: "copilot" },
+    { command: "install", target, routeMode: TEST_ROUTE_MODE },
     { sourceRoot, github },
   );
   assert.equal(second.ok, true);
@@ -362,7 +368,7 @@ test("check detects a source update and update refreshes the workflow", async ()
   const sourceRoot = await makeSource("name: version one\n");
   const target = await makeTarget();
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
 
   await writeFile(
     path.join(sourceRoot, "examples", "pr-agent-router.yml"),
@@ -400,7 +406,7 @@ test("update can deliberately change an installer-owned provider and models", as
   const sourceRoot = await makeSource();
   const target = await makeTarget();
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
 
   await runConsumerInstaller(
     {
@@ -417,7 +423,7 @@ test("update can deliberately change an installer-owned provider and models", as
     provider: "gemini",
     cheapModel: "gemini/cheap-model",
     deepModel: "gemini/deep-model",
-    routeMode: "copilot",
+    routeMode: TEST_ROUTE_MODE,
   });
   assert.equal(github.variables.get("PR_AGENT_MODEL_PROVIDER"), "gemini");
   assert.equal(github.variables.get("CHEAP_REVIEW_MODEL"), "gemini/cheap-model");
@@ -432,11 +438,11 @@ test("update without model flags preserves an existing non-default configuration
     provider: "openrouter",
     cheapModel: "openrouter/moonshotai/kimi-k2.6",
     deepModel: "openrouter/moonshotai/kimi-k2.6",
-    routeMode: "copilot",
+    routeMode: TEST_ROUTE_MODE,
   };
 
   await runConsumerInstaller(
-    { command: "install", target, routeMode: "copilot", ...existingConfiguration },
+    { command: "install", target, routeMode: TEST_ROUTE_MODE, ...existingConfiguration },
     { sourceRoot, github },
   );
   const managedWorkflow = await readFile(
@@ -474,7 +480,7 @@ test("refuses unmanaged workflow collisions and unowned variable conflicts", asy
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
   await assert.rejects(
     runConsumerInstaller(
-      { command: "install", target: targetWithWorkflow, routeMode: "copilot" },
+      { command: "install", target: targetWithWorkflow, routeMode: TEST_ROUTE_MODE },
       { sourceRoot, github },
     ),
     /exists and is not managed/u,
@@ -487,14 +493,14 @@ test("refuses unmanaged workflow collisions and unowned variable conflicts", asy
   });
   await assert.rejects(
     runConsumerInstaller(
-      { command: "install", target: targetWithVariable, routeMode: "copilot" },
+      { command: "install", target: targetWithVariable, routeMode: TEST_ROUTE_MODE },
       { sourceRoot, github: conflictingGitHub },
     ),
     /different unowned value/u,
   );
   await assert.rejects(
     runConsumerInstaller(
-      { command: "install", target: targetWithVariable, routeMode: "copilot", repository: "acme/other" },
+      { command: "install", target: targetWithVariable, routeMode: TEST_ROUTE_MODE, repository: "acme/other" },
       { sourceRoot, github: conflictingGitHub },
     ),
     /does not match origin/u,
@@ -510,7 +516,7 @@ test("validates provider/model pairing before writing managed files", async () =
       {
         command: "install",
         target,
-        routeMode: "copilot",
+        routeMode: TEST_ROUTE_MODE,
         provider: "gemini",
         cheapModel: "openrouter/moonshotai/kimi-k2.6",
         deepModel: "gemini/model",
@@ -529,7 +535,7 @@ test("retains pending ownership after a partial GitHub failure and resumes safel
   github.failKind = "create-label";
 
   await assert.rejects(
-    runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github }),
+    runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github }),
     /simulated create-label failure/u,
   );
   const pending = await readManifest(target);
@@ -537,7 +543,7 @@ test("retains pending ownership after a partial GitHub failure and resumes safel
   assert.equal(pending.resources.variables.PR_AGENT_MODEL_PROVIDER.owned, true);
 
   github.failKind = null;
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
   assert.equal((await readManifest(target)).state, "active");
   assert.equal(github.variables.get("PR_AGENT_MODEL_PROVIDER"), "openrouter");
   assert.ok(ROUTING_LABELS.every(({ name }) => github.labels.has(name)));
@@ -550,7 +556,7 @@ test("resumes an update interrupted before the workflow was replaced (A-013)", a
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
 
   // Establish an active v1 installation.
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot: sourceV1, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot: sourceV1, github });
 
   // Simulate an update to v2 interrupted AFTER the pending manifest was written
   // (recording the v2 hash) but BEFORE the workflow file was replaced: the
@@ -582,7 +588,7 @@ test("active install still rejects an operator-modified workflow (A-013 lock)", 
   const target = await makeTarget();
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
 
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
   // Operator edits the workflow of a completed (active) install.
   await writeFile(path.join(target, WORKFLOW_PATH), "name: operator edit\n", "utf8");
 
@@ -597,7 +603,7 @@ test("dry-run plans secret setup without reading or mutating secret state", asyn
   const target = await makeTarget();
   const github = new FakeGitHub();
   const report = await runConsumerInstaller(
-    { command: "install", target, routeMode: "copilot", dryRun: true, secretMode: "stdin" },
+    { command: "install", target, routeMode: TEST_ROUTE_MODE, dryRun: true, secretMode: "stdin" },
     { sourceRoot, github },
   );
   assert.equal(report.dryRun, true);
@@ -613,7 +619,7 @@ test("uninstall removes owned resources while preserving shared labels and secre
     secrets: [SECRET_NAME],
     labels: ["review:auto"],
   });
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
   const manifest = await readManifest(target);
   assert.equal(
     manifest.resources.labels.find(({ name }) => name === "review:auto").owned,
@@ -636,7 +642,7 @@ test("uninstall preserves all labels and the secret by default", async () => {
   const sourceRoot = await makeSource();
   const target = await makeTarget();
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
 
   await runConsumerInstaller(
     { command: "uninstall", target, yes: true },
@@ -650,7 +656,7 @@ test("uninstall refuses to remove a modified managed workflow", async () => {
   const sourceRoot = await makeSource();
   const target = await makeTarget();
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
   await writeFile(path.join(target, WORKFLOW_PATH), "name: operator edit\n", "utf8");
 
   await assert.rejects(
@@ -667,7 +673,7 @@ test("manifest decoding cannot expand uninstall ownership beyond managed resourc
   const sourceRoot = await makeSource();
   const target = await makeTarget();
   const github = new FakeGitHub({ secrets: [SECRET_NAME], labels: ["do-not-delete"] });
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
   const manifest = await readManifest(target);
   manifest.resources.labels.push({ name: "do-not-delete", owned: true });
   await writeFile(
@@ -757,7 +763,7 @@ test("install records git-verified released provenance from a clean tagged check
   const sourceRoot = await makeSource("name: released\n", { tag: "v0.9.9", version: "0.9.9" });
   const target = await makeTarget();
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
 
   const manifest = await readManifest(target);
   assert.equal(manifest.schemaVersion, MANIFEST_SCHEMA_VERSION);
@@ -779,7 +785,7 @@ test("a dirty template at a release tag records released:false", async () => {
   );
   const target = await makeTarget();
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
 
   const manifest = await readManifest(target);
   assert.equal(manifest.source.released, false);
@@ -792,7 +798,7 @@ test("the .git-less override records a declared (false, v-tag) provenance", asyn
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
   const declaredCommit = "c".repeat(40);
   await runConsumerInstaller(
-    { command: "install", target, routeMode: "copilot", sourceTag: "v0.1.0", sourceCommit: declaredCommit },
+    { command: "install", target, routeMode: TEST_ROUTE_MODE, sourceTag: "v0.1.0", sourceCommit: declaredCommit },
     { sourceRoot, github },
   );
 
@@ -808,7 +814,7 @@ test("an explicitly-empty SD_SOURCE_TAG env rejects rather than silently skippin
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
   await assert.rejects(
     runConsumerInstaller(
-      { command: "install", target, routeMode: "copilot" },
+      { command: "install", target, routeMode: TEST_ROUTE_MODE },
       { sourceRoot, github, env: { SD_SOURCE_TAG: "" } },
     ),
     /SD_SOURCE_TAG is set but empty/u,
@@ -819,7 +825,7 @@ test("a schema-1 manifest decodes as pre-provenance; check flags it and update m
   const sourceRoot = await makeSource();
   const target = await makeTarget();
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
 
   // Downgrade the freshly written manifest to a legacy schema-1 shape.
   const manifest = await readManifest(target);
@@ -850,7 +856,7 @@ test("check reports a newer source commit as provenance drift", async () => {
   const sourceRoot = await makeSource();
   const target = await makeTarget();
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
 
   // A new source commit that leaves the template bytes unchanged isolates the
   // commit-drift signal from the byte-hash "newer source workflow" signal.
@@ -875,7 +881,7 @@ test("check reports release-tag drift when a released manifest's tag no longer m
   const sourceRoot = await makeSource("name: released\n", { tag: "v0.9.9", version: "0.9.9" });
   const target = await makeTarget();
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
 
   // Same commit, but the recorded tag drifts from the source's resolved tag.
   const manifest = await readManifest(target);
@@ -894,7 +900,7 @@ test("check ignores ambient SD_SOURCE_* env and stays deterministic", async () =
   const sourceRoot = await makeSource();
   const target = await makeTarget();
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
 
   // Ambient overrides must not perturb read-only check's resolved provenance.
   const env = { SD_SOURCE_TAG: "v9.9.9", SD_SOURCE_COMMIT: "d".repeat(40) };
@@ -942,7 +948,7 @@ test("install rejects a symlinked .github/workflows ancestor before writing outs
   await symlink(external, path.join(target, ".github", "workflows"), "dir");
 
   await assert.rejects(
-    runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github }),
+    runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github }),
     (error) => {
       assert.match(error.message, CONTAINMENT_PATTERN);
       assert.equal(error.message.includes(external), false, "must not leak the symlink target");
@@ -962,7 +968,7 @@ test("install rejects a symlinked .github manifest ancestor before writing outsi
   await symlink(external, path.join(target, ".github"), "dir");
 
   await assert.rejects(
-    runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github }),
+    runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github }),
     (error) => {
       assert.match(error.message, CONTAINMENT_PATTERN);
       assert.equal(error.message.includes(external), false, "must not leak the symlink target");
@@ -987,7 +993,7 @@ test("install through a symlinked .github ancestor creates nothing outside the t
   await symlink(external, path.join(target, ".github"), "dir");
 
   await assert.rejects(
-    runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github }),
+    runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github }),
     CONTAINMENT_PATTERN,
   );
   // No directory was created through the symlink into the external target.
@@ -1002,7 +1008,7 @@ test("install succeeds when .github already exists as a regular directory", asyn
   await mkdir(path.join(target, ".github"), { recursive: true });
 
   const report = await runConsumerInstaller(
-    { command: "install", target, routeMode: "copilot" },
+    { command: "install", target, routeMode: TEST_ROUTE_MODE },
     { sourceRoot, github },
   );
   assert.equal(report.ok, true);
@@ -1041,7 +1047,7 @@ test("a replacement between plan and write fails safely without touching the ext
   };
 
   await assert.rejects(
-    runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github, lstat }),
+    runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github, lstat }),
     CONTAINMENT_PATTERN,
   );
   // The workflow was never renamed into place and no temp file leaked.
@@ -1081,7 +1087,7 @@ test("a replacement between mkdir and temp write fails before writing through th
   };
 
   await assert.rejects(
-    runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github, lstat }),
+    runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github, lstat }),
     CONTAINMENT_PATTERN,
   );
   // No workflow file and no leaked temp: the write never happened through the swap.
@@ -1120,7 +1126,7 @@ test("dry-run install reports a bounded containment error and mutates nothing", 
   await symlink(external, path.join(target, ".github", "workflows"), "dir");
 
   await assert.rejects(
-    runConsumerInstaller({ command: "install", target, routeMode: "copilot", dryRun: true }, { sourceRoot, github }),
+    runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE, dryRun: true }, { sourceRoot, github }),
     (error) => {
       assert.match(error.message, CONTAINMENT_PATTERN);
       assert.equal(error.message.includes(external), false, "must not leak the symlink target");
@@ -1178,7 +1184,7 @@ test("adopt brings a current manual workflow under management and preserves unow
   const github = fullyProvisionedGitHub();
 
   const report = await runConsumerInstaller(
-    { command: "adopt", target, routeMode: "copilot", yes: true },
+    { command: "adopt", target, routeMode: TEST_ROUTE_MODE, yes: true },
     { sourceRoot, github },
   );
   assert.equal(report.ok, true);
@@ -1221,7 +1227,7 @@ test("adopt recognizes an allow-listed historical workflow and converges it to t
   const github = fullyProvisionedGitHub();
 
   const report = await runConsumerInstaller(
-    { command: "adopt", target, routeMode: "copilot", yes: true },
+    { command: "adopt", target, routeMode: TEST_ROUTE_MODE, yes: true },
     {
       sourceRoot,
       github,
@@ -1252,7 +1258,7 @@ test("adopt refuses an unrecognized workflow before any mutation", async () => {
   const github = fullyProvisionedGitHub();
 
   await assert.rejects(
-    runConsumerInstaller({ command: "adopt", target, routeMode: "copilot", yes: true }, { sourceRoot, github }),
+    runConsumerInstaller({ command: "adopt", target, routeMode: TEST_ROUTE_MODE, yes: true }, { sourceRoot, github }),
     /is not a recognized sd-github-review template/u,
   );
   assert.deepEqual(github.calls, []);
@@ -1263,10 +1269,10 @@ test("adopt refuses a repository already managed by sd-github-review", async () 
   const sourceRoot = await makeSource("name: current source\n");
   const target = await makeTarget();
   const github = fullyProvisionedGitHub();
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
 
   await assert.rejects(
-    runConsumerInstaller({ command: "adopt", target, routeMode: "copilot", yes: true }, { sourceRoot, github }),
+    runConsumerInstaller({ command: "adopt", target, routeMode: TEST_ROUTE_MODE, yes: true }, { sourceRoot, github }),
     /already manages this installation; use update/u,
   );
 });
@@ -1277,7 +1283,7 @@ test("adopt refuses when no workflow exists to adopt", async () => {
   const github = fullyProvisionedGitHub();
 
   await assert.rejects(
-    runConsumerInstaller({ command: "adopt", target, routeMode: "copilot", yes: true }, { sourceRoot, github }),
+    runConsumerInstaller({ command: "adopt", target, routeMode: TEST_ROUTE_MODE, yes: true }, { sourceRoot, github }),
     /nothing to adopt/u,
   );
   assert.deepEqual(github.calls, []);
@@ -1291,7 +1297,7 @@ test("adopt requires confirmation and mutates nothing when it is declined", asyn
 
   // No --yes and no confirm seam: adoption is cancelled before any mutation.
   await assert.rejects(
-    runConsumerInstaller({ command: "adopt", target, routeMode: "copilot" }, { sourceRoot, github }),
+    runConsumerInstaller({ command: "adopt", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github }),
     /adopt cancelled; pass --yes/u,
   );
   assert.deepEqual(github.calls, []);
@@ -1299,7 +1305,7 @@ test("adopt requires confirmation and mutates nothing when it is declined", asyn
 
   // A confirm seam that approves proceeds to an active adoption.
   await runConsumerInstaller(
-    { command: "adopt", target, routeMode: "copilot" },
+    { command: "adopt", target, routeMode: TEST_ROUTE_MODE },
     { sourceRoot, github, confirm: async () => true },
   );
   assert.equal((await readManifest(target)).state, "active");
@@ -1312,7 +1318,7 @@ test("adopt dry-run plans without confirmation or mutation", async () => {
   const github = fullyProvisionedGitHub();
 
   const report = await runConsumerInstaller(
-    { command: "adopt", target, routeMode: "copilot", dryRun: true },
+    { command: "adopt", target, routeMode: TEST_ROUTE_MODE, dryRun: true },
     { sourceRoot, github },
   );
   assert.equal(report.dryRun, true);
@@ -1332,7 +1338,7 @@ test("adopt fails on a provider-conflicting unowned variable before mutation", a
   });
 
   await assert.rejects(
-    runConsumerInstaller({ command: "adopt", target, routeMode: "copilot", yes: true }, { sourceRoot, github }),
+    runConsumerInstaller({ command: "adopt", target, routeMode: TEST_ROUTE_MODE, yes: true }, { sourceRoot, github }),
     /different unowned value/u,
   );
   assert.deepEqual(github.calls, []);
@@ -1356,7 +1362,7 @@ test("adopt retains pending ownership after a partial GitHub failure and resumes
   github.failKind = "create-label";
 
   await assert.rejects(
-    runConsumerInstaller({ command: "adopt", target, routeMode: "copilot", yes: true }, { sourceRoot, github }),
+    runConsumerInstaller({ command: "adopt", target, routeMode: TEST_ROUTE_MODE, yes: true }, { sourceRoot, github }),
     /simulated create-label failure/u,
   );
   const pending = await readManifest(target);
@@ -1365,7 +1371,7 @@ test("adopt retains pending ownership after a partial GitHub failure and resumes
   // Once adoption has written the pending manifest and converged the workflow,
   // the installation is managed; the normal lifecycle resumes it to active.
   github.failKind = null;
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
   assert.equal((await readManifest(target)).state, "active");
   assert.ok(github.labels.has("review:auto"));
 });
@@ -1379,7 +1385,7 @@ test("adopt rejects a symlinked workflow ancestor before reading outside the tar
   await symlink(external, path.join(target, ".github", "workflows"), "dir");
 
   await assert.rejects(
-    runConsumerInstaller({ command: "adopt", target, routeMode: "copilot", yes: true }, { sourceRoot, github }),
+    runConsumerInstaller({ command: "adopt", target, routeMode: TEST_ROUTE_MODE, yes: true }, { sourceRoot, github }),
     (error) => {
       assert.match(error.message, CONTAINMENT_PATTERN);
       assert.equal(error.message.includes(external), false, "must not leak the symlink target");
@@ -1646,7 +1652,7 @@ test("a fresh install writes the descriptor and the durable workflow beside the 
   const sourceRoot = await makeSource();
   const target = await makeTarget();
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
 
   assert.equal(
     await readFile(path.join(target, DESCRIPTOR_PATH), "utf8"),
@@ -1678,7 +1684,7 @@ test("the installed durable workflow sits at the path the installed descriptor d
   const sourceRoot = await makeSource();
   const target = await makeTarget();
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
 
   const installed = JSON.parse(await readFile(path.join(target, DESCRIPTOR_PATH), "utf8"));
   assert.equal(DURABLE_WORKFLOW_PATH, installed.workflow.path);
@@ -1693,7 +1699,7 @@ for (const { field, destination, sourceOption, freshBytes } of DURABLE_CASES) {
     await writeManagedFile(target, destination, "operator content\n");
 
     await assert.rejects(
-      runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github }),
+      runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github }),
       new RegExp(`${destination.replace(/[./]/gu, "\\$&")} exists and is not managed`, "u"),
     );
     assert.equal(await readFile(path.join(target, destination), "utf8"), "operator content\n");
@@ -1705,7 +1711,7 @@ for (const { field, destination, sourceOption, freshBytes } of DURABLE_CASES) {
     const sourceRoot = await makeSource();
     const target = await makeTarget();
     const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-    await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+    await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
     await writeManagedFile(target, destination, "operator edit\n");
 
     const checked = await runConsumerInstaller({ command: "check", target }, { sourceRoot, github });
@@ -1722,7 +1728,7 @@ for (const { field, destination, sourceOption, freshBytes } of DURABLE_CASES) {
     const sourceRoot = await makeSource();
     const target = await makeTarget();
     const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-    await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+    await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
     await writeManagedFile(target, destination, "operator edit\n");
 
     await assert.rejects(
@@ -1740,7 +1746,7 @@ for (const { field, destination, sourceOption, freshBytes } of DURABLE_CASES) {
     const sourceRoot = await makeSource();
     const target = await makeTarget();
     const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-    await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+    await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
     await writeManagedFile(target, destination, "operator edit\n");
 
     await assert.rejects(
@@ -1757,7 +1763,7 @@ for (const { field, destination, sourceOption, freshBytes } of DURABLE_CASES) {
     const sourceRoot = await makeSource();
     const target = await makeTarget();
     const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-    await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+    await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
 
     const manifest = await readManifest(target);
     await writeFile(path.join(sourceRoot, manifest[field].source), freshBytes, "utf8");
@@ -1784,7 +1790,7 @@ for (const { field, destination, sourceOption, freshBytes } of DURABLE_CASES) {
     await writeFile(path.join(sourceRoot, manifestSourcePath), freshBytes, "utf8");
     const target = await makeTarget();
     const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-    await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+    await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
 
     const manifest = await readManifest(target);
     assert.equal(manifest.source.released, false);
@@ -1796,7 +1802,7 @@ test("uninstall removes the manifest and every managed file", async () => {
   const sourceRoot = await makeSource();
   const target = await makeTarget();
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
   await runConsumerInstaller({ command: "uninstall", target, yes: true }, { sourceRoot, github });
 
   for (const relativePath of MANAGED_PATHS) {
@@ -1813,7 +1819,7 @@ test("adopt installs the durable resources and finishes with no check issues", a
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
   await placeManualWorkflow(target, await readFile(path.join(sourceRoot, "examples", "pr-agent-router.yml"), "utf8"));
 
-  await runConsumerInstaller({ command: "adopt", target, routeMode: "copilot", yes: true }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "adopt", target, routeMode: TEST_ROUTE_MODE, yes: true }, { sourceRoot, github });
 
   assert.equal(existsSync(path.join(target, DESCRIPTOR_PATH)), true);
   assert.equal(existsSync(path.join(target, DURABLE_WORKFLOW_PATH)), true);
@@ -1829,7 +1835,7 @@ test("adopt refuses a pre-existing unmanaged durable workflow before any mutatio
   await writeManagedFile(target, DURABLE_WORKFLOW_PATH, "hand-placed\n");
 
   await assert.rejects(
-    runConsumerInstaller({ command: "adopt", target, routeMode: "copilot", yes: true }, { sourceRoot, github }),
+    runConsumerInstaller({ command: "adopt", target, routeMode: TEST_ROUTE_MODE, yes: true }, { sourceRoot, github }),
     /exists and is not managed by sd-github-review/u,
   );
   assert.equal(await readFile(path.join(target, DURABLE_WORKFLOW_PATH), "utf8"), "hand-placed\n");
@@ -1865,7 +1871,7 @@ test("check reports a schema-2 installation as needing the durable lane, and upd
   const sourceRoot = await makeSource();
   const target = await makeTarget();
   const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-  await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+  await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
   await downgradeToSchema2(target);
 
   const checked = await runConsumerInstaller({ command: "check", target }, { sourceRoot, github });
@@ -1899,7 +1905,7 @@ for (const { destination } of DURABLE_CASES) {
     const sourceRoot = await makeSource();
     const target = await makeTarget();
     const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-    await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+    await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
     await downgradeToSchema2(target);
     await writeManagedFile(target, destination, "hand placed by an operator\n");
 
@@ -1921,7 +1927,7 @@ for (const { destination } of DURABLE_CASES) {
     const sourceRoot = await makeSource();
     const target = await makeTarget();
     const github = new FakeGitHub({ secrets: [SECRET_NAME] });
-    await runConsumerInstaller({ command: "install", target, routeMode: "copilot" }, { sourceRoot, github });
+    await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
     const schema2Manifest = await downgradeToSchema2(target);
     const sourcePath = destination === DESCRIPTOR_PATH ? DESCRIPTOR_SOURCE_PATH : DURABLE_TEMPLATE_PATH;
     const sourceBytes = await readFile(path.join(sourceRoot, sourcePath), "utf8");
@@ -1974,6 +1980,40 @@ test("the lane's invalid-route message names every accepted mode", () => {
     assert.ok(
       new RegExp(`\\b${mode}\\b`, "u").test(invalidMessage),
       `the invalid-route error omits ${mode}`,
+    );
+  }
+});
+
+// The operator-facing docs carry runnable install invocations, and a required
+// flag added to the CLI does not fail anything when a document forgets it. The
+// file list is enumerated from the tracked tree rather than restated, so a new
+// operator document is covered the day it is added. Records under `.trellis/`
+// are excluded deliberately: archived task artifacts quote historical commands
+// and the spec quotes a `[options]` placeholder, neither of which is runnable.
+function documentedInstallInvocations() {
+  const files = execFileSync("git", ["ls-files", "*.md"], { cwd: REPO_ROOT, encoding: "utf8" })
+    .split("\n")
+    .filter((file) => file.length > 0 && !file.startsWith(".trellis/"));
+  const invocations = [];
+  for (const file of files) {
+    // Rejoin shell line continuations so a multi-line invocation reads as one.
+    const source = readFileSync(path.join(REPO_ROOT, file), "utf8").replace(/\\\n\s*/gu, " ");
+    for (const line of source.split("\n")) {
+      if (line.includes("install-consumer.mjs install")) invocations.push({ file, line });
+    }
+  }
+  return invocations;
+}
+
+test("every documented install invocation passes the required --route-mode", () => {
+  const invocations = documentedInstallInvocations();
+  assert.ok(invocations.length > 0, "no documented install invocation found to check");
+  for (const { file, line } of invocations) {
+    const match = line.match(/--route-mode\s+(\S+)/u);
+    assert.ok(match, `${file} documents an install without --route-mode: ${line.trim()}`);
+    assert.ok(
+      ROUTE_MODES.includes(match[1]),
+      `${file} documents --route-mode ${match[1]}, which the installer rejects`,
     );
   }
 });
