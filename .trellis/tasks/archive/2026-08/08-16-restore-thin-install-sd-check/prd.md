@@ -119,11 +119,13 @@ Evidence per criterion:
    `pack.review-preflight`, `pack.install-audit`, `knowledge.obsidian-kb`,
    `pack.review-scope`, `pack.pr-body-scope`. A `passed` row is one that ran,
    and `unavailable` is what "skipped" looks like here, so none were assumed.
-3. and 4. Covered by upstream tests in #482, which extended the sibling
-   resolution suite to the thin layout — including the case that review caught
-   as missing, `knowledge.obsidian-kb` present in the machine install, beside
-   the pre-existing absent-from-both case that must stay `unavailable`.
-4. Proven the strong way rather than the stated one: `sd-review scope=pr` did
+3. Covered by upstream tests in #482, which extended the sibling resolution
+   suite to the thin layout, including the case that review caught as missing:
+   `knowledge.obsidian-kb` present in the machine install.
+4. Covered by the same suite's pre-existing absent-from-both case, which must
+   stay `unavailable` — the fix widens where the check looks, never what counts
+   as present.
+5. Proven the strong way rather than the stated one: `sd-review scope=pr` did
    not merely pass the capability phase, it completed five live routed rounds
    against PR #93 and reached a terminal `status: ready` report with remote
    observation materialized.
