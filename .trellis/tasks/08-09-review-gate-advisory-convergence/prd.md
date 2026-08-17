@@ -131,3 +131,57 @@ A pack release carrying both the rebuttal channel and a category-aware gate,
 refreshed into this repository. `.prism/rules.json` is repo-owned and could be
 narrowed here unilaterally, but that would suppress signal rather than fix a gate
 that blocks on any finding regardless of rule configuration.
+
+## Second observation, PR #99, 2026-08-16 — the proposed remedy is incomplete
+
+Six rounds across three heads on `task/installer-managed-route-mode`, all six
+finding sets mutually disjoint. That reproduces and extends the PR #70 result:
+non-convergence is not a two-round artifact, and it does not decay with rounds.
+
+What is new is **why** most of them were not defects. Sorted by what the citation
+actually pointed at, rather than by severity:
+
+- **Not a defect at all.** Several findings were compliments on the diff —
+  "improving accuracy of required update messages", "preventing hard-to-debug
+  decode failures", "This is positive". The gate cannot distinguish praise from
+  a defect, because both arrive as findings.
+- **Describes code the diff removed.** One round objected to a `JSON.stringify`
+  configuration comparison. That comparison is what this diff deleted.
+- **Cites the wrong line.** A `laneRouteModeGate()` finding landed on a schema-2
+  migration test; a "routeMode must be last key" finding landed on a
+  model-format error string; a "do not use `JSON.stringify` for configuration
+  comparison" finding landed on a closing brace.
+
+The last category is the one that matters for this task's design, because
+**severity and category discrimination does not fix a wrong-line citation.** The
+requirement above — "Severity or category must be usable in the gate decision,
+so an observation-only category cannot indefinitely block a merge while a `high
+correctness` finding still does" — assumes a finding's severity predicts whether
+it is real. Round 6 produced a `high` finding that was false: it claimed
+`CONFIG_VARIABLES` was read against a manifest without version gating, and
+tracing every use disproved it (only one site reads a manifest, and it calls
+`configVariablesForSchema`; the other two operate on the run's resolved
+configuration). A category-aware gate would have let that one block, and would
+have let the three miscited findings block, while correctly releasing the
+compliments.
+
+So the remedy as currently written closes the observation-noise half and leaves
+the miscitation half open. Anyone implementing this against the requirements as
+they stand will ship a gate that still cannot terminate. What is additionally
+needed is a disposition whose ground is *the cited location does not contain the
+described code* — checkable against the checkout, and not inferrable from the
+provider's own output, which satisfies the existing "do not weaken the gate"
+constraint.
+
+Working practice on PR #99, absent any of this: every finding was checked
+against its cited path and line in the checkout before disposition, and rebutted
+only where the claim was untrue there. Six rounds of that is the cost this task
+is meant to remove.
+
+### Additional acceptance criterion
+
+- [ ] A finding whose cited path and line do not contain the described code can
+      be dispositioned on that ground specifically, distinctly from a finding
+      that is real but low-severity — asserted by a test that supplies a `high`
+      severity finding with a bad citation and shows it does not block, while a
+      `high` finding with a good citation still does.
