@@ -26,6 +26,7 @@ import {
   parseGitHubRemote,
   recognizeTemplate,
   resolveConfiguration,
+  ROUTE_MODE_MIN_SCHEMA_VERSION,
   resolveOverride,
   sameConfiguration,
   sameRepository,
@@ -71,7 +72,7 @@ function manifestBody(schemaVersion, overrides = {}) {
   // Route mode joined the managed set at schema 4, so it belongs in the
   // configuration only from that tier up; below it the manifest must record
   // three variables and still decode.
-  if (schemaVersion >= 4) configuration.routeMode = "copilot";
+  if (schemaVersion >= ROUTE_MODE_MIN_SCHEMA_VERSION) configuration.routeMode = "copilot";
   const body = {
     schemaVersion,
     tool: "sd-github-review",
@@ -111,17 +112,22 @@ function manifestBody(schemaVersion, overrides = {}) {
   return { ...body, ...overrides };
 }
 
-test("codecs: schema 1 through 4 manifests all decode at the current schema version", () => {
+test("codecs: every supported schema decodes at the current schema version", () => {
   // The fleet-breaking direction. Bumping MANIFEST_SCHEMA_VERSION must not stop
   // a live manifest at any earlier schema from decoding.
-  assert.equal(MANIFEST_SCHEMA_VERSION, 4);
-  for (const version of [1, 2, 3, 4]) {
+  //
+  // Enumerated from the constant rather than from a literal list, so the next
+  // bump extends this test's coverage instead of leaving it asserting the
+  // previous schema's world. `manifestBody` still needs its own tier for the
+  // new version's required fields — that part cannot be derived — but the
+  // decode sweep and the above-range rejection both follow the constant.
+  for (let version = 1; version <= MANIFEST_SCHEMA_VERSION; version += 1) {
     const decoded = decodeManifest(JSON.stringify(manifestBody(version)));
     assert.equal(decoded.schemaVersion, version, `schema ${version} must decode as itself`);
     assert.equal(decoded.repository, "acme/consumer");
   }
   assert.throws(
-    () => decodeManifest(JSON.stringify(manifestBody(5))),
+    () => decodeManifest(JSON.stringify(manifestBody(MANIFEST_SCHEMA_VERSION + 1))),
     /unsupported or malformed manifest header/u,
   );
 });
