@@ -477,7 +477,7 @@ async function checkInstallation(options, dependencies) {
         "manifest predates route-mode management; run update to record REVIEW_ROUTE_MODE",
       );
     }
-    if (release && local.manifest.schemaVersion >= 2) {
+    if (release && local.manifest.schemaVersion >= PROVENANCE_MIN_SCHEMA_VERSION) {
       if (local.manifest.source.commit !== release.commit) {
         issues.push("a newer source commit is available; run update");
       } else if (

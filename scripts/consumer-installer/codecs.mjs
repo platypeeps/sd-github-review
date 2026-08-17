@@ -371,9 +371,10 @@ export function decodeManifest(source, filePath = MANIFEST_PATH) {
       }
     }
   }
-  // A schema-1 manifest decodes as a pre-provenance install and a schema-2 one
-  // as a pre-durable install (value.schemaVersion is left as read); check
-  // surfaces the migration and update rewrites it to the current schema.
+  // Each pre-current schema decodes as the tier it was written at, with
+  // value.schemaVersion left as read: schema 1 as a pre-provenance install,
+  // schema 2 as a pre-durable one, and schema 3 as a pre-route-mode one. `check`
+  // surfaces the migration and `update` rewrites it to the current schema.
   value.configuration = validateConfiguration(value.configuration ?? {}, {
     requireRouteMode: value.schemaVersion >= ROUTE_MODE_MIN_SCHEMA_VERSION,
   });
