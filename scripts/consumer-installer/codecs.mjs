@@ -121,10 +121,21 @@ const SUPPORTED_PROVIDER_SET = new Set(SUPPORTED_PROVIDERS);
 // apart in one direction only.
 export const ROUTE_MODES = Object.freeze(["auto", "cheap", "deep", "copilot", "none"]);
 const ROUTE_MODE_SET = new Set(ROUTE_MODES);
-const CONFIG_VARIABLES = Object.freeze({
+// The managed repository variables, keyed by variable name and valued by the
+// configuration field each carries. Every downstream behaviour derives from this
+// table: `variableValues` feeds the install/update plan and the `check` drift
+// loop, and the manifest's recorded variable block drives `uninstall`.
+//
+// REVIEW_ROUTE_MODE joined at schema 4, so the set is version-scoped: a manifest
+// written before then records three variables and must keep decoding.
+const LEGACY_CONFIG_VARIABLES = Object.freeze({
   PR_AGENT_MODEL_PROVIDER: "provider",
   CHEAP_REVIEW_MODEL: "cheapModel",
   DEEP_REVIEW_MODEL: "deepModel",
+});
+const CONFIG_VARIABLES = Object.freeze({
+  ...LEGACY_CONFIG_VARIABLES,
+  REVIEW_ROUTE_MODE: "routeMode",
 });
 export const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const REPOSITORY_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u;
@@ -134,23 +145,39 @@ const MAX_MODEL_LENGTH = 256;
 // Consumer-manifest schema version. Bumped 1 -> 2 to record source provenance
 // (commit, tag, released) on the source template, then 2 -> 3 to record the two
 // resources the durable lane adds: the setup discovery descriptor and the
-// durable workflow. Distinct from the action contract descriptor's own
-// schemaVersion in config/routed-review-setup-v1.json.
+// durable workflow, then 3 -> 4 to bring REVIEW_ROUTE_MODE under management.
+// Distinct from the action contract descriptor's own schemaVersion in
+// config/routed-review-setup-v1.json.
 //
 // Required fields per version, so the decoder can be read against the matrix:
 //
-//   | version | workflow + source | provenance | descriptor + durableWorkflow |
-//   | 1       | required          | absent     | absent                       |
-//   | 2       | required          | required   | absent                       |
-//   | 3       | required          | required   | required                     |
-export const MANIFEST_SCHEMA_VERSION = 3;
-const SUPPORTED_MANIFEST_SCHEMA_VERSIONS = new Set([1, 2, 3]);
+//   | version | workflow + source | provenance | descriptor + durableWorkflow | REVIEW_ROUTE_MODE |
+//   | 1       | required          | absent     | absent                       | absent            |
+//   | 2       | required          | required   | absent                       | absent            |
+//   | 3       | required          | required   | required                     | absent            |
+//   | 4       | required          | required   | required                     | required          |
+export const MANIFEST_SCHEMA_VERSION = 4;
+const SUPPORTED_MANIFEST_SCHEMA_VERSIONS = new Set([1, 2, 3, 4]);
 // Provenance became mandatory at schema 2 and stays mandatory afterwards.
 // Gating it on `=== MANIFEST_SCHEMA_VERSION` would silently stop validating
 // source.commit/tag/released on every schema-2 manifest the fleet is running.
-const PROVENANCE_MIN_SCHEMA_VERSION = 2;
+export const PROVENANCE_MIN_SCHEMA_VERSION = 2;
 // The durable lane's two managed resources became mandatory at schema 3.
-const DURABLE_MIN_SCHEMA_VERSION = 3;
+export const DURABLE_MIN_SCHEMA_VERSION = 3;
+// Route-mode ownership became mandatory at schema 4. Same rule as the two tiers
+// above: gate on the version the requirement was introduced at, never on
+// equality with MANIFEST_SCHEMA_VERSION, or bumping the constant narrows an
+// existing tier instead of adding one.
+export const ROUTE_MODE_MIN_SCHEMA_VERSION = 4;
+
+// The managed variable set a manifest at the given schema version is expected to
+// record. Callers reading a manifest must use this rather than CONFIG_VARIABLES
+// directly, or every pre-schema-4 manifest in the fleet fails to decode.
+function configVariablesForSchema(schemaVersion) {
+  return schemaVersion >= ROUTE_MODE_MIN_SCHEMA_VERSION
+    ? CONFIG_VARIABLES
+    : LEGACY_CONFIG_VARIABLES;
+}
 export const COMMIT_PATTERN = /^[0-9a-f]{40}$/u;
 export const RELEASE_TAG_PATTERN =
   /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
@@ -195,7 +222,10 @@ export function sameRepository(left, right) {
   return left.toLowerCase() === right.toLowerCase();
 }
 
-export function validateConfiguration(configuration) {
+// `requireRouteMode` is the schema-4 tier expressed as an argument. A manifest
+// below that tier carries no route mode and must still validate; a manifest at
+// or above it, and every install/update/adopt run, must carry one.
+export function validateConfiguration(configuration, { requireRouteMode = false } = {}) {
   const provider = configuration.provider;
   if (!SUPPORTED_PROVIDER_SET.has(provider)) {
     throw new Error(
@@ -216,11 +246,58 @@ export function validateConfiguration(configuration) {
       throw new Error(`${field} must use the ${provider}/<model-id> form`);
     }
   }
+  const routeMode = configuration.routeMode;
+  if (routeMode === undefined) {
+    if (requireRouteMode) {
+      throw new Error(
+        `route mode is required; pass --route-mode with one of: ${ROUTE_MODES.join(", ")}`,
+      );
+    }
+    return {
+      provider,
+      cheapModel: configuration.cheapModel,
+      deepModel: configuration.deepModel,
+    };
+  }
+  if (!ROUTE_MODE_SET.has(routeMode)) {
+    throw new Error(`route mode must be one of: ${ROUTE_MODES.join(", ")}`);
+  }
+  // routeMode is appended last on purpose. `check` compares the recorded and
+  // the resolved configuration with JSON.stringify, so both sides must build
+  // their keys in the same order or every schema-4 install reports a
+  // configuration mismatch against itself.
   return {
     provider,
     cheapModel: configuration.cheapModel,
     deepModel: configuration.deepModel,
+    routeMode,
   };
+}
+
+// Where a route mode comes from, in precedence order: the operator's explicit
+// flag, then what the manifest already records, then a value the repository
+// already carries. The last case is the manual-install and adopt path, and
+// `planResources` records such a variable unowned, so `uninstall` leaves it.
+//
+// Returns undefined when nothing resolves. That is fatal for install/update/
+// adopt and merely absent for `check`, so the decision belongs to the caller.
+export function resolveRouteMode({ optionValue, manifestValue, observedValue }) {
+  if (optionValue !== undefined) {
+    if (!ROUTE_MODE_SET.has(optionValue)) {
+      throw new Error(`--route-mode must be one of: ${ROUTE_MODES.join(", ")}`);
+    }
+    return optionValue;
+  }
+  if (manifestValue !== undefined) return manifestValue;
+  if (observedValue !== undefined) {
+    if (!ROUTE_MODE_SET.has(observedValue)) {
+      throw new Error(
+        `GitHub variable REVIEW_ROUTE_MODE holds an unsupported value; set it to one of ${ROUTE_MODES.join(", ")} or pass --route-mode`,
+      );
+    }
+    return observedValue;
+  }
+  return undefined;
 }
 
 function assertOwnedResource(value, field) {
@@ -301,19 +378,22 @@ export function decodeManifest(source, filePath = MANIFEST_PATH) {
   // A schema-1 manifest decodes as a pre-provenance install and a schema-2 one
   // as a pre-durable install (value.schemaVersion is left as read); check
   // surfaces the migration and update rewrites it to the current schema.
-  value.configuration = validateConfiguration(value.configuration ?? {});
+  value.configuration = validateConfiguration(value.configuration ?? {}, {
+    requireRouteMode: value.schemaVersion >= ROUTE_MODE_MIN_SCHEMA_VERSION,
+  });
   if (!isObject(value.resources) || !isObject(value.resources.variables)) {
     throw new Error(`${filePath}: resource ownership is malformed`);
   }
+  const managedVariables = configVariablesForSchema(value.schemaVersion);
   const variableNames = Object.keys(value.resources.variables).sort();
-  const expectedVariableNames = Object.keys(CONFIG_VARIABLES).sort();
+  const expectedVariableNames = Object.keys(managedVariables).sort();
   if (JSON.stringify(variableNames) !== JSON.stringify(expectedVariableNames)) {
     throw new Error(`${filePath}: variable ownership must contain only managed variables`);
   }
-  for (const name of Object.keys(CONFIG_VARIABLES)) {
+  for (const name of Object.keys(managedVariables)) {
     const entry = value.resources.variables[name];
     assertOwnedResource(entry, `${filePath}: variable ${name}`);
-    if (entry.value !== value.configuration[CONFIG_VARIABLES[name]]) {
+    if (entry.value !== value.configuration[managedVariables[name]]) {
       throw new Error(`${filePath}: variable ${name} must match the recorded configuration`);
     }
   }
@@ -352,9 +432,14 @@ export function manifestJson(manifest) {
   return `${JSON.stringify(manifest, null, 2)}\n`;
 }
 
+// Omitting fields the configuration does not carry is what lets a pre-schema-4
+// manifest manage three variables instead of reporting REVIEW_ROUTE_MODE as
+// missing on a repository where it is set by hand.
 export function variableValues(configuration) {
   return Object.fromEntries(
-    Object.entries(CONFIG_VARIABLES).map(([name, field]) => [name, configuration[field]]),
+    Object.entries(CONFIG_VARIABLES)
+      .filter(([, field]) => configuration[field] !== undefined)
+      .map(([name, field]) => [name, configuration[field]]),
   );
 }
 
@@ -364,6 +449,7 @@ export function resolveConfiguration(options, existingManifest) {
     provider: options.provider ?? existing.provider,
     cheapModel: options.cheapModel ?? existing.cheapModel,
     deepModel: options.deepModel ?? existing.deepModel,
+    routeMode: options.routeMode ?? existing.routeMode,
   });
 }
 
@@ -442,6 +528,12 @@ Install/update/check configuration:
   --provider NAME        Single-key PR-Agent provider
   --cheap-model ID       Model for the cheap route
   --deep-model ID        Model for the deep route
+  --route-mode MODE      auto, cheap, deep, copilot, or none. Required on a
+                         fresh install: the lane refuses to guess a route
+                         because auto can bill the provider key, and this
+                         installer will not guess one on its behalf. An update
+                         keeps the recorded mode, and an existing repository
+                         variable is adopted unowned.
 
 Install/update/adopt secret input:
   --set-secret           Prompt through gh secret set
@@ -473,6 +565,7 @@ export function parseArguments(argv) {
     ["--provider", "provider"],
     ["--cheap-model", "cheapModel"],
     ["--deep-model", "deepModel"],
+    ["--route-mode", "routeMode"],
     ["--source-tag", "sourceTag"],
     ["--source-commit", "sourceCommit"],
   ]);
@@ -502,8 +595,11 @@ export function parseArguments(argv) {
       throw new Error(`unknown option ${argument}`);
     }
   }
-  if (command === "uninstall" && (options.provider || options.cheapModel || options.deepModel)) {
-    throw new Error("uninstall does not accept provider or model options");
+  if (
+    command === "uninstall" &&
+    (options.provider || options.cheapModel || options.deepModel || options.routeMode)
+  ) {
+    throw new Error("uninstall does not accept provider, model, or route options");
   }
   if (!["install", "update", "adopt"].includes(command) && options.secretMode) {
     throw new Error(`${command} does not accept secret input`);

@@ -28,10 +28,17 @@ const MANAGED_SECRET = "PR_AGENT_MODEL_API_KEY";
 async function freshInstall(ghOptions = {}) {
   const target = await makeGitTarget();
   const fakeGh = await makeFakeGh({ secrets: [MANAGED_SECRET], ...ghOptions });
-  const result = runEntrypoint(INSTALLER, ["install", "--target", target, "--json"], {
-    env: installerEnv(fakeGh),
-    extraPath: [fakeGh.binDir],
-  });
+  // --route-mode is required on a fresh install: the lane refuses to guess a
+  // route because `auto` can bill the provider key, and the installer refuses
+  // on the same grounds.
+  const result = runEntrypoint(
+    INSTALLER,
+    ["install", "--target", target, "--route-mode", "copilot", "--json"],
+    {
+      env: installerEnv(fakeGh),
+      extraPath: [fakeGh.binDir],
+    },
+  );
   assert.equal(result.status, 0, result.stderr);
   const report = JSON.parse(result.stdout);
   assert.equal(report.ok, true);
@@ -58,10 +65,11 @@ test("installer install writes the manifest and drives gh, emitting JSON", async
 test("installer install emits a human report without --json", async () => {
   const target = await makeGitTarget();
   const fakeGh = await makeFakeGh({ secrets: [MANAGED_SECRET] });
-  const { status, stdout, stderr } = runEntrypoint(INSTALLER, ["install", "--target", target], {
-    env: installerEnv(fakeGh),
-    extraPath: [fakeGh.binDir],
-  });
+  const { status, stdout, stderr } = runEntrypoint(
+    INSTALLER,
+    ["install", "--target", target, "--route-mode", "copilot"],
+    { env: installerEnv(fakeGh), extraPath: [fakeGh.binDir] },
+  );
   assert.equal(status, 0, stderr);
   assert.match(stdout, /install complete for acme\/consumer:/u);
   assert.doesNotMatch(stdout, /^\{/u, "human output must not be JSON");
@@ -139,7 +147,7 @@ test("installer redacts the secret when a gh secret command fails", async () => 
   const fakeGh = await makeFakeGh({ failOn: ["secret", "set"] });
   const { status, stdout, stderr } = runEntrypoint(
     INSTALLER,
-    ["install", "--target", target, "--secret-stdin", "--json"],
+    ["install", "--target", target, "--route-mode", "copilot", "--secret-stdin", "--json"],
     { env: installerEnv(fakeGh), extraPath: [fakeGh.binDir], input: `${secret}\n` },
   );
   const combined = `${stdout}${stderr}`;

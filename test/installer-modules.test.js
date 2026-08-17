@@ -67,6 +67,10 @@ const MANAGED_SOURCE_BODIES = Object.fromEntries(
 // by the constructor changing in the same direction.
 function manifestBody(schemaVersion, overrides = {}) {
   const configuration = { ...DEFAULT_CONFIG };
+  // Route mode joined the managed set at schema 4, so it belongs in the
+  // configuration only from that tier up; below it the manifest must record
+  // three variables and still decode.
+  if (schemaVersion >= 4) configuration.routeMode = "copilot";
   const body = {
     schemaVersion,
     tool: "sd-github-review",
@@ -106,17 +110,17 @@ function manifestBody(schemaVersion, overrides = {}) {
   return { ...body, ...overrides };
 }
 
-test("codecs: schema 1, 2, and 3 manifests all decode at the current schema version", () => {
+test("codecs: schema 1 through 4 manifests all decode at the current schema version", () => {
   // The fleet-breaking direction. Bumping MANIFEST_SCHEMA_VERSION must not stop
-  // a live schema-1 or schema-2 manifest from decoding.
-  assert.equal(MANIFEST_SCHEMA_VERSION, 3);
-  for (const version of [1, 2, 3]) {
+  // a live manifest at any earlier schema from decoding.
+  assert.equal(MANIFEST_SCHEMA_VERSION, 4);
+  for (const version of [1, 2, 3, 4]) {
     const decoded = decodeManifest(JSON.stringify(manifestBody(version)));
     assert.equal(decoded.schemaVersion, version, `schema ${version} must decode as itself`);
     assert.equal(decoded.repository, "acme/consumer");
   }
   assert.throws(
-    () => decodeManifest(JSON.stringify(manifestBody(4))),
+    () => decodeManifest(JSON.stringify(manifestBody(5))),
     /unsupported or malformed manifest header/u,
   );
 });
@@ -284,7 +288,7 @@ test("codecs: recognizeTemplate matches the current template and allow-listed hi
 });
 
 test("codecs: decodeManifest round-trips a schema-3 manifest and rejects a foreign label", () => {
-  const configuration = { ...DEFAULT_CONFIG };
+  const configuration = { ...DEFAULT_CONFIG, routeMode: "copilot" };
   const manifest = createManifest({
     state: "active",
     repository: "acme/consumer",
@@ -551,7 +555,7 @@ test("persistence: the guard rejects a path escaping the canonical root", async 
 test("persistence: loadLocalState decodes an existing managed manifest", async () => {
   const root = await makeTarget();
   const guard = makePathGuard(root);
-  const configuration = { ...DEFAULT_CONFIG };
+  const configuration = { ...DEFAULT_CONFIG, routeMode: "copilot" };
   const manifest = createManifest({
     state: "active",
     repository: "acme/consumer",
