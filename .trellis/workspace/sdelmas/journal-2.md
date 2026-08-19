@@ -1129,3 +1129,40 @@ Added REVIEW_ROUTE_MODE to CONFIG_VARIABLES and bumped the manifest schema 3 -> 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 77: Refresh sd-ai-command-pack to 0.71.33
+
+**Date**: 2026-08-19
+**Task**: Refresh sd-ai-command-pack to 0.71.33
+**Branch**: `chore/pack-refresh-0.71.33`
+
+### Summary
+
+Fleet refresh of the installed sd-ai-command-pack payload from 0.71.26 to 0.71.33 for this thin consumer, limited to installer-managed platform files and pack receipts.
+
+### Main Changes
+
+- Installed sd-ai-command-pack v0.71.33 (tag v0.71.33 @ 6c6d05a6) for the pinned claude, gemini, github, and opencode platform set; no --platform flag, since a thin consumer's platform set is owned by its pin.
+- Diff limited to two installer-managed .github/prompts files plus the pack manifest and provenance receipts. No product code changed, and the 18 pre-existing planning tasks are untouched.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b3cd54d4769b6dcbc7ae9b0cc8b70dcd43549dca` | chore(pack): refresh sd-ai-command-pack to 0.71.33 |
+
+### Testing
+
+- [OK] pack install audit, run from the sd-ai-command-pack source checkout against this repo: 31 targets checked, installed payload provenance 0.71.33, vouched file hashes match
+- [OK] manifest-ordered commands: npm ci, then npm test, npm run check, and npm run validate:metadata, each exiting zero
+- [OK] declared full local gate: every check passed, Obsidian knowledge-base check skipped (no knowledge base in this repo)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
