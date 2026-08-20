@@ -10,6 +10,17 @@ keeps it. This script is the wiring between the two, and lives here rather
 than under `.trellis/scripts/` so the Trellis runtime keeps a generic "honor a
 repo gate" hook instead of a hard-coded pack path.
 
+Policy (this repository's, not Trellis's -- the checks themselves live in the
+pack's `seeded-task` preflight command, which this gate invokes):
+
+- Both `implement.jsonl` and `check.jsonl` must hold at least one real
+  `{"file": ..., "reason": ...}` entry. A generated `_example` scaffold row
+  alone is not ready.
+- Entries may reference only `.trellis/spec/**` or another task's `research/**`.
+  A code path is rejected as a reference outside the allowed roots.
+- `task.py create` is deliberately outside the gate: a new task's manifests are
+  always seed-only, so gating creation would refuse every new task.
+
 Usage:
     python3 scripts/trellis-task-start-gate.py <task-dir>
 
