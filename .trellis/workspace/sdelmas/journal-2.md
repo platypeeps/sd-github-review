@@ -1166,3 +1166,42 @@ Fleet refresh of the installed sd-ai-command-pack payload from 0.71.26 to 0.71.3
 ### Next Steps
 
 - None - task complete
+
+
+## Session 78: Refresh sd-ai-command-pack to 0.71.38
+<!-- trellis-session: v=2 fp=fc0c7f2cb2fd6c29 -->
+
+**Date**: 2026-08-20
+**Task**: Refresh sd-ai-command-pack to 0.71.38
+**Branch**: `chore/pack-refresh-0.71.38`
+
+### Summary
+
+Fleet refresh to 0.71.38; repairs the vendored review-layout helper's executable bit and rewrites nine cross-repo citations the new locator rule catches.
+
+### Main Changes
+
+- Installed sd-ai-command-pack 0.71.38 (tag v0.71.38 @ 6881aaa3) for claude, gemini, github, opencode.
+- Repaired .sd-ai-command-pack/bin/sd-ai-command-pack-review-layout.py from mode 100644 to 100755; contents unchanged.
+- Rewrote nine colon-locator citations of the pack's review.py / review-local.py / sd-ai-command-pack-review.py in consumer-installer.md and one research doc.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `70eda9333f8b879cd63f0019c6c2a841e635c758` | chore: refresh sd-ai-command-pack to 0.71.38 |
+
+### Testing
+
+- [OK] install-audit: passed, 31 targets, provenance 0.71.38.
+- [OK] npm ci, npm test (647 pass, 0 fail), npm run check, npm run validate:metadata: all exit 0.
+- [OK] npm run check:full: 11 review-preflight failures, byte-identical to the set the 0.71.33 checker reports on the clean base; severity gate returned continue-with-follow-ups, 0 blockers.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

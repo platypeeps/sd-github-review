@@ -549,7 +549,7 @@ fi
 ```
 
 **The marker means more than "installed".** `config/routed-review-setup-v1.json`
-is the pack's `DEFAULT_DESCRIPTOR_PATH` (`sd-ai-command-pack-review.py:31`) and
+is the pack's `DEFAULT_DESCRIPTOR_PATH` (the pack's `sd-ai-command-pack-review.py`, line 31) and
 the installer's `DESCRIPTOR_PATH` (`scripts/consumer-installer/codecs.mjs:23`),
 so every consumer the installer sets up carries it at that path — but only a
 *durable* install writes it. `sd-github-review-pilot` is the case that proves
@@ -599,8 +599,8 @@ declared, and that the findings reported were published by the declared
 
 **What it does not prove on its own.** *Who requested the reviewer.* The
 coordinator harvests review findings by author and head commit
-(`sd-ai-command-pack-review.py:1604-1616`) and does not apply the temporal guard
-that conversation comments carry at `:1589-1603` — deliberately, because a
+(the pack's `sd-ai-command-pack-review.py`, lines 1604-1616) and does not apply the temporal guard
+that conversation comments carry in that same file at lines 1589-1603 — deliberately, because a
 timestamp cannot discriminate here anyway: the ruleset requests early and Copilot
 submits late, so `submitted_at >= dispatch.startedAt` admits the ruleset's review
 regardless.
