@@ -600,7 +600,7 @@ declared, and that the findings reported were published by the declared
 **What it does not prove on its own.** *Who requested the reviewer.* The
 coordinator harvests review findings by author and head commit
 (the pack's `sd-ai-command-pack-review.py`, lines 1604-1616) and does not apply the temporal guard
-that conversation comments carry at `:1589-1603` — deliberately, because a
+that conversation comments carry in that same file at lines 1589-1603 — deliberately, because a
 timestamp cannot discriminate here anyway: the ruleset requests early and Copilot
 submits late, so `submitted_at >= dispatch.startedAt` admits the ruleset's review
 regardless.
