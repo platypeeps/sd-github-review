@@ -66,7 +66,7 @@ implementer to files that do not exist.
 **Validation for Phase 0** — these must hold after the edits:
 
 ```bash
-cd /Users/sven/repos/platypeeps/sd-github-review
+cd "$(git rev-parse --show-toplevel)"
 
 # Every relatedFiles entry must exist. Expect: no output.
 python3 -c "
@@ -239,7 +239,7 @@ Blocks on a released version from 1.16.
 - [ ] **2.2** Confirm the refresh landed:
 
 ```bash
-cd /Users/sven/repos/platypeeps/sd-github-review
+cd "$(git rev-parse --show-toplevel)"
 python3 -c "import json;print(json.load(open('.sd-ai-command-pack/provenance.json'))['version'])"
 # expect the release from 1.16, not 0.71.33
 
