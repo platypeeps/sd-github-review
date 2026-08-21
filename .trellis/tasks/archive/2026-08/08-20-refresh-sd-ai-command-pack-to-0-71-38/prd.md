@@ -15,11 +15,11 @@ Fleet refresh: install sd-ai-command-pack v0.71.38 (tag v0.71.38 @ 6881aaa3f34fb
 
 ## Acceptance Criteria
 
-- [ ] The sd-ai-command-pack install audit passes for all four expected platforms and reports installed payload provenance 0.71.38. It runs from the sd-ai-command-pack source checkout, not from this repository: `python3 scripts/sd-ai-command-pack-install-audit.py --repo <this repository> --expected-platform ...`.
-- [ ] `git ls-files -s .sd-ai-command-pack/bin/sd-ai-command-pack-review-layout.py` reports mode `100755`, not `100644`. A refresh that leaves it `100644` has not delivered this release and must not merge.
-- [ ] `npm test`, `npm run check`, and `npm run validate:metadata` pass.
-- [ ] The repository's documented deterministic gate passes, or its only findings are dispositioned through the fleet finding severity gate with zero blockers.
-- [ ] The refresh is published as one PR whose head carries the work commit plus this task's archive and journal bookkeeping.
+- [x] The sd-ai-command-pack install audit passes for all four expected platforms and reports installed payload provenance 0.71.38. It runs from the sd-ai-command-pack source checkout, not from this repository: `python3 scripts/sd-ai-command-pack-install-audit.py --repo <this repository> --expected-platform ...`.
+- [x] `git ls-files -s .sd-ai-command-pack/bin/sd-ai-command-pack-review-layout.py` reports mode `100755`, not `100644`. A refresh that leaves it `100644` has not delivered this release and must not merge.
+- [x] `npm test`, `npm run check`, and `npm run validate:metadata` pass.
+- [x] The repository's documented deterministic gate passes, or its only findings are dispositioned through the fleet finding severity gate with zero blockers.
+- [x] The refresh is published as one PR whose head carries the work commit plus this task's archive and journal bookkeeping.
 
 ## Post-archive handoff
 
