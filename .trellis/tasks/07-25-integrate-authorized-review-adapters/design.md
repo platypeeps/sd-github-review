@@ -20,6 +20,29 @@ use separate credentials and completion observers. Adapters execute policy;
 they do not select candidates, reserve budgets, or persist durable routing
 state.
 
+## Existing v1 Seam (extend, do not rebuild)
+
+A narrower version of this boundary already ships and is reachable from the
+Action entrypoint. `route` emits a bounded canonical adapter request
+(`src/operations.js:141-160`, output at `:204`), a credential-scoped job runs
+the reviewer (`examples/sd-review.yml:69-159`), and `acknowledge`/`finalize`
+close the loop (`src/operations.js:242-259`, `:455-485`) against decoders in
+`src/protocol.js:661` and `:728`. Credential isolation
+(`examples/sd-review.yml:75-77`), the empty internal fallback list
+(`examples/sd-review.yml:135`, asserted at `test/metadata.test.js:294`), and
+single-target execution are already delivered here. Single-target execution is
+two steps, not one: a preflight shell gate rejects a wrong backend id, a missing
+model, or a provider-prefix mismatch (`examples/sd-review.yml:79-115`), and the
+reviewer step then runs one container against one `--pr_url`
+(`examples/sd-review.yml:116-159`).
+
+The v2 contracts this design depends on exist as decoders with no producer and
+no reachable caller (`src/protocol-v2.js`, `src/review-plan-authorization.js`,
+`src/review-candidate-catalog.js`). The allowed-import matrix at
+`test/dependency-boundaries.test.js:18-55` grants neither `operations.js` nor
+`index.js` an edge into any of them, so the parent's first structural decision
+is where the adapter seam sits and which single edge that matrix gains.
+
 External preflight prepares the complete request and returns bounded token,
 cost, unit, and capability facts without invoking the reviewer or exposing
 request content to the private control plane. Authorization binds those facts

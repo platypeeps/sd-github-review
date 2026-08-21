@@ -1,7 +1,7 @@
 {
   "id": "integrate-authorized-review-adapters",
   "name": "integrate-authorized-review-adapters",
-  "title": "PARKED: Integrate authorized review adapters",
+  "title": "Integrate authorized review adapters",
   "description": "Execute immutable authorized candidates through secret-isolated Copilot and external reviewer workflow adapters.",
   "status": "planning",
   "dev_type": null,
@@ -24,7 +24,7 @@
   ],
   "parent": "07-25-budget-aware-review-degradation",
   "relatedFiles": [],
-  "notes": "2026-08-15: Park re-verified against both of its premises and left in place; the resume condition e2872da recorded only in its commit message now lives in blockedOn, which is the field the work-loop inventory reads. Recorded by .trellis/tasks/08-15-parked-task-resume-conditions.",
+  "notes": "2026-08-15: Park re-verified against both of its premises and left in place; the resume condition e2872da recorded only in its commit message now lives in blockedOn, which is the field the work-loop inventory reads. Recorded by .trellis/tasks/08-15-parked-task-resume-conditions.\n2026-08-20: Unparked by owner directive (unpark-all); park rationale preserved here. Previous blockedOn: Deliberate v2-governance scope park from e2872da (PR #60, 2026-08-08), not a dependency block. That consolidation measured 9,390 of 13,136 lines under src/ (71%) as specified by this wave but unreachable from the Action entrypoint src/index.js, with the shipped v1 core green, and concluded the real blocker is distribution rather than any missing v2 work. Resumes only when v1 is actually distributed to fleet consumers AND the v2-governance scope is deliberately revalidated as still wanted; a distribution fix alone does not unpark it. Falsify the park before resuming: re-derive reachability by walking import edges from src/index.js, and probe fleet consumers for config/routed-review-setup-v1.json. Re-verified 2026-08-15 -- reachability unchanged at 9,390/13,136, and rwbp-coordinator, loadsmith, hoa-manager and anomaly-metric-creator all 404 for that config, so zero consumers are deployed and both premises still hold.",
   "meta": {},
-  "blockedOn": "Deliberate v2-governance scope park from e2872da (PR #60, 2026-08-08), not a dependency block. That consolidation measured 9,390 of 13,136 lines under src/ (71%) as specified by this wave but unreachable from the Action entrypoint src/index.js, with the shipped v1 core green, and concluded the real blocker is distribution rather than any missing v2 work. Resumes only when v1 is actually distributed to fleet consumers AND the v2-governance scope is deliberately revalidated as still wanted; a distribution fix alone does not unpark it. Falsify the park before resuming: re-derive reachability by walking import edges from src/index.js, and probe fleet consumers for config/routed-review-setup-v1.json. Re-verified 2026-08-15 -- reachability unchanged at 9,390/13,136, and rwbp-coordinator, loadsmith, hoa-manager and anomaly-metric-creator all 404 for that config, so zero consumers are deployed and both premises still hold."
+  "blockedOn": null
 }

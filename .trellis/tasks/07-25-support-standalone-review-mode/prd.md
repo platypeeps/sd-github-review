@@ -1,4 +1,4 @@
-# PARKED: Support standalone review mode
+# Support standalone review mode
 
 ## Goal
 
@@ -51,9 +51,11 @@ Version 2 therefore has two explicit modes, never an inferred `auto` mode:
   acknowledged; local usage remains explicitly self-reported.
 - Preserve `sd-review / assurance` and `sd-review / gate` names for branch-
   protection continuity. Derive both from the direct fixed review or a valid
-  repository-trusted exact-head local attestation. Standalone never emits
-  `deferred_budget`, budget-based merge allowance, pending recovery, or a claim
-  of managed budget/gate authority. Missing local evidence blocks.
+  repository-trusted exact-head local attestation. Standalone never emits the
+  budget-deferral encoding (`reasonCode=budget_exhausted_deferred` on either the
+  review or assurance axis — there is no `deferred_budget` state in
+  `REVIEW_OUTCOME_STATES`), budget-based merge allowance, pending recovery, or a
+  claim of managed budget/gate authority. Missing local evidence blocks.
 - Keep `/review options` side-effect free. In standalone mode it may list lanes
   and fixed handler profiles but must not advertise candidate, budget, pending,
   recovery, quarantine, adjudication, or parallel-plan operations.

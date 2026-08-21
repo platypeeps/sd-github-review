@@ -6,12 +6,18 @@ This parent is the integration roadmap. Component work is owned by:
 
 1. `07-25-compile-and-execute-budget-aware-review-plans` for schemas, compiler,
    provider-neutral runtime, receipts, checks, and published contracts;
-2. `07-25-define-consumer-review-control-plane` for the private catalog/ledger
-   contract, conformance fake, and external implementation handoff;
-3. `07-25-deliver-routed-review-configuration` for consumer source, migration,
+2. `07-25-deliver-routed-review-configuration` for consumer source, migration,
    managed promotion, drift, and uninstall;
-4. `07-25-integrate-authorized-review-adapters` for Copilot and external
+3. `07-25-integrate-authorized-review-adapters` for Copilot and external
    reviewer execution.
+
+The private catalog/ledger contract, conformance fake, and external
+implementation handoff were assigned to `07-25-define-consumer-review-control-plane`,
+which does not exist: `task.json` lists the three children above and there is no
+such directory under `.trellis/tasks/`. That scope is currently unowned. Recreate
+the task or fold it into
+`07-25-compile-and-execute-budget-aware-review-plans` before the adapter child
+starts, since the adapter's bounded acknowledgment is defined against it.
 
 Portable operator UX is owned externally by
 `platypeeps/sd-ai-command-pack:07-25-add-routed-review-operator-ux`; it
@@ -22,9 +28,22 @@ The execution order below is the parent integration sequence, not unowned work.
 ## Preconditions
 
 - Review and approve `prd.md` and `design.md`.
-- Use `07-25-define-consumer-review-control-plane` for the local contract and
-  handoff; identify its private implementation repository and accountable owner
-  before activating external implementation.
+- Re-own the private control-plane contract and handoff (see the missing-task
+  note above); identify its private implementation repository and accountable
+  owner before activating external implementation.
+- Settle five decisions before starting any child, because all of them
+  determine the compiled output every child reads. Two are contract-shape
+  (implementation-state note in `design.md`): (a) whether the compiled
+  manifest or the pinned catalog carries the ordered chain, and (b) whether the
+  compiled lane keys are `cheap`/`deep` or the code's current
+  `review`/`assurance`/`gate`. Three are artifact decisions (UNRESOLVED note
+  above `design.md`'s Human Source Configuration, and in
+  `07-25-deliver-routed-review-configuration/design.md`): (c) the consumer source
+  path, which as proposed collides with the installer-overwritten
+  `.github/workflows/sd-review.yml`; (d) the source format, since no YAML parser
+  exists on the shipped path; and (e) whether the compiled contract joins the
+  installer ownership manifest `.github/sd-github-review.json` or gets its own
+  pending/active pair.
 - Keep configuration, setup-discovery, status, pending, explanation, and
   recovery contracts aligned with command-pack task
   `07-25-add-routed-review-operator-ux`. The command pack consumes these
@@ -34,6 +53,19 @@ The execution order below is the parent integration sequence, not unowned work.
 
 ## Execution Order
 
+Step 0 is new and blocking. Much of steps 1-7 is already implemented but
+unreachable from `src/index.js` (71.5% of `src/`), and the compiler cannot
+express an ordered chain at all — it emits one candidate per lane and forbids
+`chain`/`chains` keys, while `prepareManagedPlan` requires a chain array with no
+producer. Treat the existing modules as material to reuse, not as completed
+steps, and verify each step against the code before assuming it is outstanding.
+
+0. Close the compiler-to-planner chain seam. Give the compiled contract (or the
+   pinned catalog, per the decision above) an ordered chain per lane, derive
+   `prepareManagedPlan`'s `chain` argument from it, and prove one end-to-end walk
+   of Copilot -> Kimi -> a third candidate with no test-only glue. Until this
+   exists, every later step's budget, receipt, and check behavior is untestable
+   in situ.
 1. Add version-2 human-source, pinned-catalog, prompt-profile registry,
    compiled-manifest, budget request/response, authorization, receipt,
    deferral, and recovery fixtures with forbidden-field and size boundaries.
@@ -111,6 +143,13 @@ The execution order below is the parent integration sequence, not unowned work.
 - `npm run validate:metadata`
 - consumer installer `check --json` and conflict-aware `--dry-run` fixtures.
 - repository review preflight and secret/public-metadata scans.
+- An import-graph walk from `src/index.js` showing the budget modules reachable.
+  This is the parent's clearest done-signal: the baseline on 2026-08-20 was
+  9,390 of 13,136 lines (71.5%) unreachable across 8 modules, with 11 modules
+  and 3,746 lines reachable, and `npm test` green at 647 passing. That baseline
+  is unchanged from the 2026-08-15 park re-verification — the same eight modules
+  the repository independently names in `scripts/check-coverage.mjs:38-47` and
+  sizes at "roughly 9,390 of the 13,136 lines" (`:31-32`).
 
 Exact focused test filenames should be finalized after the implementation split
 is approved; do not invent a second test harness.

@@ -1,4 +1,4 @@
-# PARKED: Ingest and authorize local review attestations
+# Ingest and authorize local review attestations
 
 ## Goal
 
@@ -24,8 +24,9 @@ Accept authorized local-review evidence idempotently, validate trust and exact-h
 
 ## Acceptance Criteria
 
-- [ ] Authorized clean, findings, failed, and cancelled fixtures create one
-      immutable bounded receipt with the expected outcome.
+- [ ] Authorized clean, findings, and error fixtures (the shipped three-valued
+      `LOCAL_REVIEW_RESULTS`, in which a cancelled run reports `error`) each
+      create one immutable bounded receipt with the expected outcome class.
 - [ ] Unauthorized association/actor, disallowed PR author, expired evidence,
       wrong head, changed head, and malformed input fail before acceptance.
 - [ ] Matching retries reuse the receipt; conflicting evidence cannot mutate it

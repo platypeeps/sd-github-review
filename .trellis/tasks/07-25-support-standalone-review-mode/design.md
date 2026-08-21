@@ -1,5 +1,23 @@
 # Standalone Review Mode Design
 
+## Naming
+
+"Standalone" and "mode" are both already taken by unrelated v1 concepts in the
+shipped Action, and this document never means either of them:
+
+- `operation=standalone` (`src/index.js:147`, `src/operations.js:235`) is the v1
+  *default operation* — event-driven routing as opposed to the durable
+  operations. It is also emitted verbatim as an output value
+  (`src/index.js:117`).
+- The `mode` action input (`src/index.js:161`, validated at
+  `src/normalize.js:17`) is the v1 *route* mode: `cheap|deep|copilot|auto`.
+
+The v2 source mode below is a third, separate thing
+(`src/protocol-v2.js:29`). It therefore cannot claim the `mode` input name, and
+a `mode=standalone` receipt must not be conflated with the existing
+`operation=standalone` output. Pick and record the v2 input name before any
+installer or `action.yml` change.
+
 ## Boundary
 
 Mode is explicit configuration, not runtime health detection:

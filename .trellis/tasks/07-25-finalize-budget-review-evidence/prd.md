@@ -1,4 +1,4 @@
-# PARKED: Finalize budget review evidence
+# Finalize budget review evidence
 
 ## Goal
 
@@ -25,8 +25,12 @@ merge-gate Checks, status, recovery, and discovery evidence.
   reports satisfied, deferred, or failed assurance, while `sd-review / gate`
   reports only whether explicit policy permits merge and is the sole Check
   intended for branch protection.
-- For proven pre-dispatch budget exhaustion, record
-  `reviewOutcome=deferred_budget`, `assuranceOutcome=deferred`, and
+- For proven pre-dispatch budget exhaustion, record the shipped encoding
+  `reviewOutcome={state: "skipped", reasonCode: "budget_exhausted_deferred"}`
+  (there is no `deferred_budget` state in `REVIEW_OUTCOME_STATES`,
+  `src/protocol-v2.js:109-116`), `assuranceOutcome=deferred` with the same
+  reason code — the only reason `decodeReviewOutcomes` admits for a deferred
+  assurance (`src/protocol-v2.js:829-833`) — and
   `gateOutcome=pass|block` from the lane's explicit
   `budgetExhaustion.merge=allow|block`. Never apply merge allowance to policy
   violations, ambiguity, incomplete output, authentication errors, framework
@@ -46,8 +50,11 @@ merge-gate Checks, status, recovery, and discovery evidence.
 - For standalone local-attested routes, consume only verified immutable
   repository-attested evidence. Map clean evidence to `completed_local` plus
   satisfied assurance/pass gate; map findings/failure/cancellation to block;
-  and map missing/new-head evidence to deferred assurance plus block. Never
-  apply budget merge allowance or claim independent review.
+  and map missing/new-head evidence to deferred assurance plus block. **The
+  `deferred` mapping here is unresolved** and contradicts the shipped decoder
+  and fixture (`fail` + an `action_required` Check conclusion); it is owned by
+  `07-25-project-local-review-assurance` `implement.md` step 0, not by this
+  task. Never apply budget merge allowance or claim independent review.
 - Attach bounded `standard-v1` retention policy/class/lifecycle/retained-until,
   legal-hold, deletion, and coverage metadata. Publish low-level
   `retention_status` and `purge_repository_data` contracts while clearly

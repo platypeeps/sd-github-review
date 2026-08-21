@@ -19,10 +19,22 @@ fallback after dispatch. Receipts expose bounded limit/usage/variance/pool state
 but no partial reviewer output or request content.
 
 Merge authorization is a third independent axis. Proven pre-dispatch budget
-exhaustion records `reviewOutcome=deferred_budget` and
-`assuranceOutcome=deferred`; the lane's explicit
+exhaustion records `reviewOutcome={state: "skipped", reasonCode:
+"budget_exhausted_deferred"}` — the shipped encoding; `REVIEW_OUTCOME_STATES`
+has no `deferred_budget` member — and `assuranceOutcome=deferred` carrying that
+same reason code, the only one `decodeReviewOutcomes` permits for a deferred
+assurance. The lane's explicit
 `budgetExhaustion.merge=allow|block` alone determines
 `gateOutcome=pass|block`. Every other non-assurance outcome blocks.
+
+Two gate vocabularies coexist in the tree and finalization sits on the seam:
+`GATE_OUTCOME_STATES = ["pass","block"]` (`src/protocol-v2.js:127`) versus the
+past-tense `RECOVERY_GATE_OUTCOMES = ["blocked","passed"]`
+(`src/review-deferred-recovery.js:78`, produced by `gateOutcome()` at `:513-516`).
+This design uses the `pass|block` spelling; the finalization layer owns an
+explicit translation at the recovery boundary. The lane merge policy is spelled
+`["block","allow"]` in both modules (`src/protocol-v2.js:74`,
+`src/review-deferred-recovery.js:74`) and needs no translation.
 
 `sd-review / assurance` is the truthful signal: `success` for satisfied,
 `action_required` for deferred, and a failure conclusion for terminal

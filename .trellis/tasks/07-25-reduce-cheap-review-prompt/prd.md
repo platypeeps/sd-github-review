@@ -1,4 +1,4 @@
-# PARKED: Reduce the cheap review prompt
+# Reduce the cheap review prompt
 
 ## Goal
 

@@ -55,7 +55,7 @@ export function decodeDurableAuthorization(value): frozen {   // AUTHORITY-forbi
   schemaVersion, ...identityTuple, alias, candidateDigest, promptProfile:{...},
   authorizedAt, authorizationFingerprint }
 
-export function decodeAdapterAcknowledgment(value): frozen {
+export function decodeAdapterAcknowledgment(value): frozen {   // NAME UNDECIDED — see below
   schemaVersion, ...identityTuple, adapter, authorizationFingerprint,
   acknowledgedAt, acknowledgmentFingerprint }
 
@@ -78,6 +78,16 @@ their own catalog/compiled/source digests plus per-candidate prompt profiles.
 **decodeMutableBinding consumption (AC target).** `mutableBinding` IS the export
 (`:1801`), so calling the internal `mutableBinding` inside `decodeAttemptReceipt`
 consumes the exact function the `decodeMutableBinding` export names.
+
+**Name collision on the adapter-ack export (B-4, unresolved).** `src/protocol.js:728`
+already exports `decodeAdapterAcknowledgment` (the v1 contract: `logicalDispatchId` /
+`backendId` / `status` / `acknowledgedAt` / `findingChannels`) — verified exact. Different
+module, so no export conflict, but any dual-import site must alias, and `protocol-v2.js:14`
+(`import { decodeReceipt as decodeV1Receipt }`) is the repo's established convention for
+exactly this. `implement.md` step 4 requires the choice — `decodeAdapterAcknowledgmentV2`
+or alias at every dual-import site — to be made **before the test file is written**. The
+signature block above deliberately keeps the bare name pending that decision; do not read
+it as the decision having been made.
 
 ## 3. Contracts
 
@@ -129,6 +139,22 @@ whose `candidates[]` carry `promptProfile`, whereas the shipped
 eligibleLanes}` (`:1532`) and carries NO per-candidate prompt profile anywhere
 (`promptProfile` occurs only at `:494`, `:557`, `:562`, `:587-589`, `:714`).
 
+**Scope of that "nowhere" (verified 2026-08-20).** The statement above is exact
+but scoped to `protocol-v2.js`. Elsewhere in `src/` a safe catalog projection
+carrying per-candidate prompt profiles ALREADY SHIPS:
+`decodeCandidateSafeProjection` (`review-candidate-catalog.js:862`, per-candidate,
+`{catalogDigest, alias, promptProfile{mode,alias,version,digest,compatibleHandlers,
+capabilities}, eligibleLanes, eligibleSlots, …}`) and its array form
+`decodeCatalogProjection` (`routed-review-compiler.js:274`, digest-bound,
+duplicate-rejecting) — with fixtures at
+`fixtures/protocol/v2/candidate-safe-projection.{valid,invalid}.json` and
+`routed-review-catalog-projection.valid.json`. It is NOT a drop-in substitute: it
+keys on `schemaMajor` not `schemaVersion`, exposes no `candidateDigest` field (the
+B2 join key), and carries `compatibleHandlers`/`capabilities` that §6 says the
+projections must not carry. Recorded so this section is not read as "nothing like
+this exists"; whether to build fresh or bind to the shipped projection is an open
+owner decision (see `research/2026-08-20-research.md` B-2).
+
 So nothing here asserts the projection was faithfully derived from a real
 reviewer catalog — the AC2 tests compare a projection against compiled/receipt/
 authorization records, all fixture-authored. Deriving the projection from
@@ -179,6 +205,20 @@ three frozen arrays into `protocol-v2.js` and build protocol-local `new Set(...)
 for `enumValue`. No edit to `retention-policy.js`; single source of truth for the
 vocabulary; no drift; no mutable-state exposure. No import cycle —
 `retention-policy.js` imports only `node:crypto` (`:16`).
+
+**But the import is currently FORBIDDEN by a shipped layering test (verified
+2026-08-20).** `test/dependency-boundaries.test.js:24` pins
+`"protocol-v2.js": ["protocol.js"]`, and the test at `:98` asserts every
+`from "./x.js"` edge is in that matrix. Adding the retention import fails with
+`src/protocol-v2.js imports src/retention-policy.js, which the layering forbids`.
+`retention-policy.js` is a declared leaf (`:25` → `[]`), so the edge is legal in
+direction; the matrix simply has not authorized it. Landing C-6 as written
+therefore requires widening line 24 to
+`["protocol.js", "retention-policy.js"]` — an edit to an existing test file, which
+the Compatibility section below now accounts for. The alternative (protocol-local
+vocabularies plus a drift test asserting equality with the `retention-policy.js`
+exports) keeps the footprint at zero existing files but duplicates the vocabulary.
+Owner decision; see `research/2026-08-20-research.md` B-1.
 
 **Field naming (intentional).** The receipt uses receipt-specific names
 `retentionPolicyId` / `retentionPolicyVersion` / `retentionPolicyDigest`, NOT the
@@ -290,6 +330,18 @@ assert `Object.isFrozen` + domain checks; invalid loops via `eachInvalid`.
      `decodeAdapterAcknowledgment.authorizationFingerprint` equals the
      `decodeDurableAuthorization.authorizationFingerprint` of the authorization it
      acknowledges; a mismatched pair is proven distinct.
+
+  **Scope bound on "cross-contract" (B-8, recorded 2026-08-20).** This matrix is
+  `protocol-v2.js`-internal. A **third** identity builder ships one module over —
+  `decodeReviewIdentity` (`review-deferred-recovery.js:425`, verified exact) — and it
+  disagrees with `mutableBinding` on field names (`pullRequest` vs `pullRequestNumber`,
+  `head` vs `headSha`), adds `tenant`, drops `sourceDigest`/`catalogDigest`/
+  `candidatePlanFingerprint`, and already carries `candidate` (an `aliasValue`) — half of
+  the exact `(alias, candidateDigest)` join key B2 introduces above. A reader of prd AC1
+  ("every schema and cross-contract identity relationship") could reasonably expect it to
+  participate. It does not, under this plan. Either narrow AC1 to name the protocol-v2
+  contracts explicitly, or widen the matrix to include it. **Owner decision, unresolved**
+  (`research/2026-08-20-research.md` B-8, Open Question 6).
 - **decodeMutableBinding consumed.** Import the `decodeMutableBinding` export;
   assert `decodeAttemptReceipt(v)` identity fields deep-equal
   `decodeMutableBinding(v, "attemptReceipt")`; assert a bad `headSha`/`attempt`
@@ -342,6 +394,20 @@ assert `Object.isFrozen` + domain checks; invalid loops via `eachInvalid`.
   at `research/v2-receipt-identity-surface.md:118`, which described incompatibility
   via `compatibleHandlers`; that resolution layer is out of scope for these
   contracts.)
+
+  **Two facts found 2026-08-20 that bear on this narrowing — unresolved.** (a) The
+  catalog↔compiled half of the taxonomy already ships:
+  `compileManaged` (`routed-review-compiler.js:367`) rejects a candidate absent from
+  the catalog projection (`:385`, the **unknown** case) and rejects a compiled lane
+  whose `promptProfile` is not binding-equal to the catalog candidate's (`:405`, the
+  **digest-mismatched** / **incompatible** cases), with tests in
+  `test/routed-review-compiler.test.js`. What is genuinely uncovered anywhere is the
+  same taxonomy on the RECEIPT and AUTHORIZATION edges — which is this task's real
+  delta and the whole point of the B2 join key. (b) `compatibleHandlers` matching is
+  NOT purely compiler/runtime: `decodeCandidateSafeProjection` enforces it inside the
+  contract boundary at `review-candidate-catalog.js:950-951`. Whether the narrowing
+  above survives is an owner scope decision, not a citation fix; see
+  `research/2026-08-20-research.md` B-3.
 - **Cross-contract digest consistency.** A receipt, its catalog projection, and
   its compiled projection built from the same digests share `catalogDigest` /
   `compiledDigest`; a mismatched pair is proven distinct.
@@ -374,8 +440,24 @@ return Object.freeze({ ...body, receiptFingerprint: deriveV2Fingerprint(body) })
 
 ## Compatibility / Rollback
 
-Purely additive: new decoders + new fixture files + new test blocks + one import
+Additive in `src/`: new decoders + new fixture files + new test blocks + one import
 line in `protocol-v2.js` (of already-exported frozen arrays). No existing decoder,
-fixture, signature, or `retention-policy.js` line changes. New `src/` symbols stay
-in `protocol-v2.js`, so the `node --check` chain needs no new file entry. Rollback
-= drop the new decoders, import, fixtures, and test blocks.
+fixture, signature, or `retention-policy.js` line changes — **but `test/` is not additive;
+see the next paragraph before treating this as a purely-additive change.**
+
+**One existing test file must change (empirically confirmed 2026-08-20).** If the C-6
+retention import lands, `test/dependency-boundaries.test.js:24` must widen to
+`["protocol.js", "retention-policy.js"]` or the layering test fails. This was executed, not
+inferred: with the import added and the matrix untouched the suite fails with
+`src/protocol-v2.js imports src/retention-policy.js, which the layering forbids`; widening
+line 24 clears it with no other failure. Both edits were reverted. That is the single
+exception to "purely additive"; it is a one-line matrix entry and reverts with the rest.
+
+**On the `node --check` chain.** New `src/` symbols stay in `protocol-v2.js`, so no
+new file entry is needed — but the reason is that `package.json:12` does not list
+`src/protocol-v2.js` (or `retention-policy.js`, or any `review-*.js`) at all, not
+that it is already covered. A syntax error in the new decoders is caught by
+`npm test` (which imports the module), not by `npm run check`.
+
+Rollback = drop the new decoders, import, fixtures, test blocks, and the
+dependency-boundaries matrix entry.

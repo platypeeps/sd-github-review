@@ -1,4 +1,4 @@
-# PARKED: Support local-attested reviews
+# Support local-attested reviews
 
 ## Goal
 
@@ -41,8 +41,12 @@ dispatch while retaining exact-head receipts and merge-gate enforcement.
   prove who published which bounded result, not that GitHub independently ran
   or verified the local model. Never label self-published evidence independent
   unless a future independent-issuer contract proves that property.
-- Accept only terminal `clean`, `findings`, `failed`, or `cancelled` local
-  outcomes. `clean` may satisfy assurance. Findings, failure, cancellation,
+- Accept only terminal clean, findings, failure, and cancellation local
+  outcomes. The shipped publisher vocabulary is three-valued —
+  `LOCAL_REVIEW_RESULTS = clean | findings | error` (`src/protocol-v2.js:86`) —
+  and a cancelled local run reports `error`; there is no separate `cancelled`
+  result, and `awaiting` is derived by the ingestion boundary rather than
+  reported. `clean` may satisfy assurance. Findings, failure, cancellation,
   missing evidence, stale evidence, malformed evidence, or unauthorized
   publication do not satisfy assurance and block the gate.
 - Keep `review:none` as an intentional skip with no assurance claim.

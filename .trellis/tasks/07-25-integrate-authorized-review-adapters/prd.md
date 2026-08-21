@@ -1,4 +1,4 @@
-# PARKED: Integrate authorized review adapters
+# Integrate authorized review adapters
 
 ## Goal
 
@@ -80,7 +80,15 @@ integration and isolation gates.
 - `07-25-compile-and-execute-budget-aware-review-plans` for immutable plans and
   acknowledgment validation.
 - `07-25-define-consumer-review-control-plane` for authorization and
-  reconciliation references.
+  reconciliation references. **STALE (2026-08-20): this task does not exist** in
+  the active or archived tree. Its authorization and reconciliation content
+  appears to have shipped under the archived
+  `07-25-authorize-budget-aware-review-plans` and
+  `07-25-define-review-usage-reconciliation`
+  (`src/review-plan-authorization.js`, `src/review-usage-reconciliation.js`).
+  Repoint this dependency at those, or recreate the contract task — the parent's
+  `implement.md` requires that ownership to be re-established before this child
+  starts, because the bounded acknowledgment is defined against it.
 - Cheap candidate policy tasks for provider, prompt, token, and reasoning
   qualification.
 

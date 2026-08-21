@@ -57,6 +57,52 @@ The control-plane implementation may be repository-specific or shared across
 an organization. Its deployment technology is intentionally outside this
 repository. Conformance is defined by the versioned exchange below.
 
+Two task references in the table above do not resolve, and both are ownership
+statements rather than live tasks:
+
+- `07-25-define-consumer-review-control-plane` does not exist (`task.json` lists
+  three children; there is no such directory under `.trellis/tasks/` or in
+  either archive month). The ownership split in its row is still the intent, but
+  the contract has no owning task and one must be recreated or the scope folded
+  into `07-25-compile-and-execute-budget-aware-review-plans` before the adapter
+  child starts.
+- `platypeeps/sd-ai-command-pack:07-25-add-routed-review-operator-ux` does not
+  exist in the command-pack task tree either; it is named only as a planned
+  umbrella in that repository's `07-22-integrate-routed-review-backends`
+  planning docs. `implement.md` Follow-Ups already gates its creation on
+  explicit owner authorization.
+
+### Implementation state as of 2026-08-20
+
+Much of this design is already built but is unreachable from `src/index.js`:
+9,390 of 13,136 lines under `src/` (71.5%), covering `protocol-v2.js`,
+`routed-review-compiler.js`, `review-candidate-catalog.js`,
+`review-budget-ledger.js`, `review-plan-authorization.js`,
+`review-usage-reconciliation.js`, `review-deferred-recovery.js`, and
+`retention-policy.js`. Only tests call `compileRoutedReviewConfiguration` and
+`prepareManagedPlan`. The suite is green (647 passing).
+
+Two divergences make the built pieces unable to deliver ordered chains end to
+end. They are gaps to close, not revisions to this design:
+
+1. **No compiled chain representation.** `prepareManagedPlan`
+   (`src/review-plan-authorization.js:713`) correctly walks an ordered `chain`
+   and refuses to fall through past an explicit override — but it receives that
+   chain as a caller-supplied array with no producer. The compiler emits exactly
+   one `candidate` per lane (`src/routed-review-compiler.js:407-418` — the sole
+   `lanes[lane] = …` assignment in the file) and *forbids* the keys
+   `chain`/`chains` at any depth
+   (`src/routed-review-compiler.js:68-69`, thrown at `:129`). A third, separate model
+   exists in `reviewerCatalog.chains` (`src/protocol-v2.js:1536-1561`). One of
+   these must become authoritative; the `candidateChains` block below is the
+   target shape unless the pinned catalog is chosen instead.
+2. **Lane and slot vocabulary.** This design and the PRD use the logical
+   `cheap`/`deep` lanes, but the code defines
+   `REVIEW_LANES = ["review","assurance","gate"]` (`src/protocol-v2.js:61`) and
+   `CANDIDATE_SLOTS = ["managed","parallel"]` (`src/protocol-v2.js:64`). The
+   explicit `primary-review` slot this design specifies does not exist in code.
+   Settle this before any child starts — it determines the compiled shape.
+
 ## Architecture And Data Flow
 
 ```text
@@ -99,6 +145,38 @@ configuration fingerprint so it cannot be reused for a different PR, head,
 lane, attempt, or candidate set.
 
 ## Human Source Configuration
+
+> **UNRESOLVED — source path, source format, and compiled-manifest home.** The
+> three concrete artifact decisions this section and the compiled-contract
+> section below state as settled are all contested by
+> `07-25-deliver-routed-review-configuration/design.md`, and the parent must
+> carry them because every child reads the answers:
+>
+> 1. **Path.** `.github/sd-review.yml` differs by exactly one path segment from
+>    the *installer-owned* `DURABLE_WORKFLOW_PATH = ".github/workflows/sd-review.yml"`
+>    (`scripts/consumer-installer/codecs.mjs:16`), whose bytes are overwritten
+>    from `examples/sd-review.yml` (`:17`) on every `update`. Both files exist in
+>    this repository today. One consumer-owned and one silently overwritten,
+>    distinguished only by `workflows/`, is a foot-gun in every drift, uninstall,
+>    and support conversation. Pick a non-colliding name.
+> 2. **Format.** Nothing on the shipped path parses YAML. Both
+>    `compileRoutedReviewConfiguration` (`src/routed-review-compiler.js:442`) and
+>    `decodeSourceContract` (`src/protocol-v2.js:595`) take an already-decoded
+>    JavaScript object. The only YAML parser in the tree is
+>    `import { parseDocument } from "yaml"` in
+>    `scripts/validate-action-metadata.mjs:6`, and `yaml` is a **devDependency**
+>    of a package whose own description is "A dependency-free GitHub Action".
+>    Either the source is JSON, or a parser is vendored, or the dependency-free
+>    claim narrows.
+> 3. **Compiled-manifest home.** `.github/sd-github-review.json` is the installer
+>    *ownership* manifest (`scripts/consumer-installer/codecs.mjs:8`) carrying
+>    schema version, managed file hashes, source provenance, and the managed
+>    variable block — a different owner, cadence, and blast radius from compiled
+>    review policy. A separate compiled artifact with its own pending/active pair
+>    may be the better answer.
+>
+> Settle all three alongside the two contract-shape decisions in
+> `implement.md`'s Preconditions.
 
 The consumer edits only `.github/sd-review.yml`. Managed mode contains a pinned catalog
 reference plus review intent: named chains, slots, completion policy, and
@@ -197,6 +275,20 @@ There are no imports, inheritance, runtime presets, or inferred slots. An
 installer preset is allowed only as scaffolding that writes this complete
 explicit file.
 
+Since this design was written, the installer gained a managed route mode that
+overlaps this surface. `REVIEW_ROUTE_MODE` is an installer-managed GitHub
+variable holding `auto|cheap|deep|copilot|none`
+(`scripts/consumer-installer/codecs.mjs:138`), required on install
+(`codecs.mjs:249-269`) and gated on manifest schema 4
+(`ROUTE_MODE_MIN_SCHEMA_VERSION`, `codecs.mjs:171`); manifests below 4 report
+"manifest predates route-mode management"
+(`scripts/consumer-installer.mjs:477`). So a per-repository coarse lane policy
+already persists outside `.github/sd-review.yml`. The configuration child must
+resolve precedence between the two — the source file either supersedes route
+mode or refines within it — rather than letting them drift. Note also that
+"mode" now names two unrelated axes: the source `mode: managed|standalone` above
+and the installer's `--route-mode`.
+
 ## Candidate Override And Discovery UX
 
 Candidate selection uses trusted, exact issue-comment commands only. Broad
@@ -239,6 +331,14 @@ The deterministic compiler resolves the exact catalog version into safe
 candidate records and writes canonical JSON plus its digest into the existing
 managed `.github/sd-github-review.json` installer manifest. The runtime consumes
 only this compiled representation.
+
+Two independent versions meet here; do not conflate them. The `schemaVersion: 2`
+below is the *compiled review contract* major (`COMPILER_SCHEMA_MAJOR` in
+`src/routed-review-compiler.js:30`, tracking `PROTOCOL_V2_SCHEMA_MAJOR` in
+`src/protocol-v2.js:16`). The enclosing *installer manifest* is at schema 4
+(`MANIFEST_SCHEMA_VERSION` in `scripts/consumer-installer/codecs.mjs:159`, with
+`SUPPORTED_MANIFEST_SCHEMA_VERSIONS = {1,2,3,4}`). Embedding the compiled
+contract must not regress the manifest's own `schemaVersion`.
 
 ```json
 {
@@ -599,6 +699,14 @@ it does not dual-read or dual-write new requests. Historical version-1 receipts
 remain decodable through a read-only audit path; they cannot authorize a new
 dispatch. Setup discovery advertises the single active contract major and
 budget-control-plane capabilities before a command dispatches.
+
+Setup discovery has not been updated for any of this. `config/routed-review-setup-v1.json`
+and its identical copy `contract/routed-review-setup-v1.json` still declare
+`"contractMajor": 1`, `"supportedContractMajors": [1]`, and
+`"durableReceipt.checkName": "sd-github-review/receipt"` — not the
+`sd-review / assurance` + `sd-review / gate` pair, which exists in code only as
+`ASSURANCE_CHECK_NAME`/`GATE_CHECK_NAME` (`src/protocol-v2.js:153-154`). Both
+copies must be refreshed together.
 
 ## Deferred Reviews And Recovery
 

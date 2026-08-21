@@ -1,4 +1,4 @@
-# PARKED: Deliver routed review configuration lifecycle
+# Deliver routed review configuration lifecycle
 
 ## Goal
 
@@ -56,6 +56,13 @@ scaffolding, one-time migration, and compiled promotion are separate children.
 
 ## Child Deliverables
 
+> **STALE (2026-08-20): none of the three tasks below exist.** `task.json`
+> records `"children": []` and `"subtasks": []`, and none appear in
+> `.trellis/tasks/` or either archive month. The work-loop inventory reads
+> `children`, so this decomposition is invisible to it. Create the three tasks
+> or fold their boundaries into this parent, and record which. Same note in
+> `design.md` and `implement.md`.
+
 - `07-25-scaffold-routed-review-source` owns fresh explicit-mode source
   generation and collision-safe dry runs.
 - `07-25-migrate-routed-review-configuration-v2` owns the one-time legacy
@@ -100,7 +107,11 @@ scaffolding, one-time migration, and compiled promotion are separate children.
 - `07-25-compile-and-execute-budget-aware-review-plans` for schemas, compiler,
   manifest semantics, and setup-discovery capabilities.
 - `07-25-define-consumer-review-control-plane` for managed-mode exact catalog
-  resolution.
+  resolution. **STALE (2026-08-20): this task does not exist** in the active or
+  archived tree. Until it is created or its scope is folded into
+  `07-25-compile-and-execute-budget-aware-review-plans`, managed mode is
+  unbuildable and this wave should be scoped to standalone, which needs neither
+  a catalog nor a control plane. See `design.md` and `implement.md`.
 - `07-25-support-standalone-review-mode` for no-control-plane lifecycle rules.
 
 ## Out of Scope

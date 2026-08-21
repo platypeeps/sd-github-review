@@ -1,4 +1,4 @@
-# PARKED: Implement ordered budget-aware review chains
+# Implement ordered budget-aware review chains
 
 ## Goal
 
@@ -50,9 +50,14 @@ service rather than inferred from local counters alone.
   security/policy enforcement remain required, and reports cannot mutate
   active policy automatically.
 - `sd-ai-command-pack` owns the user-facing `sd-review config` and
-  `sd-review budget` operations over the contracts published here through
-  task `07-25-add-routed-review-operator-ux`. This repository remains the
-  low-level contract owner and does not duplicate portable command UX.
+  `sd-review budget` operations over the contracts published here. This
+  repository remains the low-level contract owner and does not duplicate
+  portable command UX. *(2026-08-20: the intended owning task
+  `07-25-add-routed-review-operator-ux` does **not** exist in the command-pack
+  tree — it is only named as a planned umbrella in that repository's
+  `07-22-integrate-routed-review-backends` planning docs. `implement.md`
+  Follow-Ups already gates its creation on explicit owner authorization; treat
+  the ownership statement as intent, not as a live task reference.)*
 - The selected named candidate chain is the sole cross-model fallback authority.
   PR-Agent/LiteLLM internal cross-model fallback remains disabled. A candidate
   may use same-model provider endpoint failover only inside its declared price,
@@ -96,7 +101,14 @@ service rather than inferred from local counters alone.
   receipts, budget logic, and tests must not branch on a hard-coded chain,
   provider, or model name.
 - Compile the human source plus mode-specific supplied inputs into canonical,
-  fully expanded JSON stored in the existing managed installer manifest.
+  fully expanded JSON stored in a managed, digest-bound compiled artifact
+  promoted through the installer's pending/active lifecycle. *(2026-08-20: this
+  requirement previously named "the existing managed installer manifest".
+  Whether that artifact is `.github/sd-github-review.json` itself or a separate
+  file with its own pending/active pair is UNRESOLVED — see `design.md`'s
+  Human Source Configuration note and
+  `07-25-deliver-routed-review-configuration/design.md`. The requirement is the
+  lifecycle and the digest binding; the file is an open decision.)*
   Managed compilation requires the exact catalog version/digest; standalone
   requires fixed profile discovery and/or complete local-attestation policy
   only. The runtime consumes only the compiled contract and never infers mode
@@ -282,6 +294,12 @@ service rather than inferred from local counters alone.
   compilation, authorization exchange, receipts, and Checks.
 - `07-25-define-consumer-review-control-plane` owns the provider-neutral
   private-service contract and conformance boundary.
+  **STALE (2026-08-20): this task does not exist.** `task.json` lists three
+  children and there is no such directory under `.trellis/tasks/` or in either
+  archive month. Recreate it or fold the scope into
+  `07-25-compile-and-execute-budget-aware-review-plans` before the adapter child
+  starts — the adapter's bounded acknowledgment is defined against this
+  contract. Tracked in `design.md` and `implement.md`.
 - `07-25-integrate-authorized-review-adapters` owns secret-isolated execution
   of immutable authorized candidates.
 
@@ -409,8 +427,14 @@ service rather than inferred from local counters alone.
   lifecycle, purge, backup, legal-hold, transfer, and coverage contract.
 - Versioned receipt and acknowledgment changes that can represent a logical
   deep lane executing through either native Copilot or an external adapter.
-- Candidate qualification and same-model provider-failover evidence from
-  `07-25-govern-cheap-review-fallbacks` for every cheap-chain entry.
+- Candidate qualification and same-model provider-failover evidence for every
+  cheap-chain entry. **STALE (2026-08-20): the named owner
+  `07-25-govern-cheap-review-fallbacks` does not exist** in any active or
+  archived tree; the sibling parent `07-25-cheap-review-cost-controls` already
+  records it as a never-created child
+  (`07-25-cheap-review-cost-controls/research/2026-08-20-research.md:289`).
+  Repoint this dependency at whichever cost-controls child actually owns
+  qualification, or drop it.
 
 ## Out of Scope
 
