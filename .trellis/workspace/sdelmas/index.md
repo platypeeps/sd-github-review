@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 77
-- **Last Active**: 2026-08-19
+- **Total Sessions**: 78
+- **Last Active**: 2026-08-20
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1166 | Active |
+| `journal-2.md` | ~1197 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 78 | 2026-08-20 | Refresh sd-ai-command-pack to 0.71.38 | `70eda9333f8b879cd63f0019c6c2a841e635c758` | `chore/pack-refresh-0.71.38` |
 | 77 | 2026-08-19 | Refresh sd-ai-command-pack to 0.71.33 | `b3cd54d4769b6dcbc7ae9b0cc8b70dcd43549dca` | `chore/pack-refresh-0.71.33` |
 | 76 | 2026-08-16 | Bring REVIEW_ROUTE_MODE under installer management as a schema-4 variable | `7979580`, `a67e11b`, `2eeb629`, `f582ff7`, `3f33473`, `952bfae`, `59bd1aa`, `c3790cc` | `task/installer-managed-route-mode` |
 | 75 | 2026-08-16 | Archive the thin-install sd-check record as delivered upstream | `c7a241e`, `e3425e4` | `task/archive-thin-install-record` |
