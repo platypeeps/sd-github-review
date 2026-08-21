@@ -37,7 +37,7 @@ integrated acceptance** while two of its five acceptance surfaces have no owner.
 task named in either has a directory. Check:
 
 ```bash
-cd /Users/sven/repos/platypeeps/sd-github-review
+cd "$(git rev-parse --show-toplevel)"
 grep -oE '07-25-[a-z-]+' .trellis/tasks/07-25-cheap-review-cost-controls/prd.md \
   | sort -u | while read t; do
       [ -d ".trellis/tasks/$t" ] || echo "MISSING: $t"; done
