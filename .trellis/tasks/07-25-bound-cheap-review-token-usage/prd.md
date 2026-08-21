@@ -1,4 +1,4 @@
-# PARKED: Bound cheap review token usage
+# Bound cheap review token usage
 
 ## Goal
 

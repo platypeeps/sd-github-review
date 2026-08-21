@@ -1,4 +1,4 @@
-# PARKED: Project local review assurance and gate
+# Project local review assurance and gate
 
 ## Goal
 
@@ -12,7 +12,10 @@ Project valid local-review attestations into truthful assurance and merge-gate C
   revisioned latest-authorized-attempt compare-and-swap rules.
 - Map authorized `clean` to satisfied assurance/pass gate; findings, failure,
   cancellation, invalid evidence, and system errors to failed assurance/block;
-  and missing/new-head evidence to deferred assurance/block.
+  and missing/new-head evidence to deferred assurance/block. **Unresolved:** the
+  `deferred` half contradicts the shipped decoder and fixture, which use
+  `fail` + an `action_required` Check conclusion. See `implement.md` step 0; do
+  not implement this bullet until the owner settles it.
 - Use operator wording that says repository-trusted local review was attested;
   never claim GitHub ran the reviewer or that the evidence is independent.
 - On a changed head, retain old receipts, prevent late writes, and publish a

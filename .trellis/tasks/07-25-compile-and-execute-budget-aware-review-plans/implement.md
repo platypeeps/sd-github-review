@@ -7,6 +7,7 @@
 3. `07-25-authorize-budget-aware-review-plans`
 4. `07-25-finalize-budget-review-evidence`
 5. `07-25-support-standalone-review-mode`
+6. `07-25-support-local-attested-reviews`
 
 The sequence below is the parent integration gate after those independently
 reviewable children land.
@@ -43,6 +44,11 @@ reviewable children land.
 - Status/recovery/setup-discovery and branch-protection readiness fixtures.
 - No-control-plane standalone and managed-service-outage fail-closed fixtures.
 - `npm test`, `npm run check`, and `npm run validate:metadata`.
+- Each step that wires a v2 module into the entrypoint must, in the same change,
+  remove it from the coverage quarantine in `scripts/check-coverage.mjs` and add
+  it to the `check` script in `package.json`. Both gates currently cover only the
+  v1 modules reachable from `src/index.js`, so neither observes any module this
+  task delivers until it is un-quarantined.
 
 ## Rollback Gate
 

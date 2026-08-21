@@ -1,4 +1,4 @@
-# PARKED: Compile and execute budget-aware review plans
+# Compile and execute budget-aware review plans
 
 ## Goal
 
@@ -104,8 +104,14 @@ Delivery is split across
 
 ## Dependencies
 
-- `07-25-define-consumer-review-control-plane` for catalog projections and
-  authoritative authorization responses in managed mode.
+- ~~`07-25-define-consumer-review-control-plane` for catalog projections and
+  authoritative authorization responses in managed mode.~~ **Dropped as rejected
+  2026-08-08** — `.trellis/tasks/archive/2026-08/08-08-backlog-consolidation/prd.md:78`
+  (cluster "control-plane stores"), removed with `git rm -r` and the parent edge
+  unlinked (`:148`). Managed mode therefore has no chartered counterparty. Resolving
+  what `managed` means now is an open owner decision recorded as gap 8 in
+  `research/2026-08-20-research.md`; the requirements below still assume the
+  counterparty exists and have **not** been rewritten.
 - `07-25-support-standalone-review-mode` for the control-plane-optional public
   routing contract.
 - `07-25-integrate-authorized-review-adapters` for reviewer execution and
@@ -119,7 +125,8 @@ Delivery is split across
 
 ## Intended start order (2026-07-25 reconciliation)
 
-- The mutual references among this task, `07-25-define-consumer-review-control-plane`,
+- The mutual references among this task, `07-25-define-consumer-review-control-plane`
+  (since dropped — see Dependencies),
   and `07-25-integrate-authorized-review-adapters` are co-evolving contracts, not a
   startable cycle. The ring breaks at `07-25-define-budget-review-v2-contracts`
   (no dependencies): contracts first → control-plane definition children → this

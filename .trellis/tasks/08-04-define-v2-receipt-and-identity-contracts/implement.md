@@ -19,6 +19,25 @@ optional `lastDeletion` (`:1072`), which the receipt does not carry (design §3)
    `Set` export is mutable — C-6). No import cycle: retention-policy imports only
    `node:crypto`.
 
+   **The import also needs a layering-matrix entry — empirically confirmed 2026-08-20, not
+   merely read.** The adversarial-review pass added the exact import to a scratch copy of
+   `src/protocol-v2.js` and ran the suite. With
+   `test/dependency-boundaries.test.js:24` left at `"protocol-v2.js": ["protocol.js"]`, the
+   test at `:98` fails with precisely the predicted message:
+
+   ```
+   AssertionError [ERR_ASSERTION]: src/protocol-v2.js imports src/retention-policy.js,
+   which the layering forbids
+   ```
+
+   Widening line 24 to `["protocol.js", "retention-policy.js"]` and re-running clears it
+   with no other failure. (Both edits were reverted; `src/` and `test/` are unmodified.)
+   So the documented remedy is verified to work, not assumed. Make the matrix edit in the
+   same commit as the import, and run `node --test test/dependency-boundaries.test.js`
+   immediately after this step rather than discovering it at the final gate. If the owner
+   instead chooses protocol-local vocabularies (research B-1), skip the import and add a
+   drift test asserting the local arrays deep-equal the `retention-policy.js` exports.
+
 2. **`decodeAttemptReceipt`** (new export). Prologue: `rejectForbiddenFields` →
    `assertEncodedSize` → `objectValue` + `schemaVersion`. Then:
    - `const binding = mutableBinding(receipt, "attemptReceipt")` — this internal
@@ -53,7 +72,14 @@ optional `lastDeletion` (`:1072`), which the receipt does not carry (design §3)
    (`timestampValue`). `body` = all of that; return frozen
    `{...body, authorizationFingerprint: deriveV2Fingerprint(body)}` (full-body).
 
-4. **`decodeAdapterAcknowledgment`** (new export). Do NOT add `alias` /
+4. **`decodeAdapterAcknowledgment`** (new export). **Name collision (verified
+   2026-08-20):** `src/protocol.js:728` already exports `decodeAdapterAcknowledgment`
+   (v1: `logicalDispatchId`/`backendId`/`status`/`acknowledgedAt`/`findingChannels`).
+   Different module, so no export conflict, but any test or consumer importing both
+   must alias — the repo's own convention for this is `protocol-v2.js:14`
+   (`import { decodeReceipt as decodeV1Receipt }`). Either name the new export
+   `decodeAdapterAcknowledgmentV2` or alias at every dual-import site; decide before
+   writing the test file. Do NOT add `alias` /
    `candidateDigest` here — the ack reaches candidate identity transitively via the
    `authorizationFingerprint` it references (design §3 "Candidate identity (B2)");
    duplicating them would create a divergence surface. Prologue; `mutableBinding`
@@ -117,13 +143,33 @@ optional `lastDeletion` (`:1072`), which the receipt does not carry (design §3)
 ## Validation commands (gate — prd AC)
 
 ```bash
-npm test                     # expect prior 595 + new tests pass, 0 fail
+node --test test/dependency-boundaries.test.js   # run FIRST, right after step 1
+npm test                     # baseline 647 (measured 2026-08-20 @ 40df292) + new, 0 fail
 npm run test:coverage        # global floors: lines 88 / branches 77 / funcs 88
-npm run check                # node --check all src (no new file entry needed)
+npm run check                # node --check chain (see caveat below)
 npm run validate:metadata
 npm run validate:ci-parity
 node ~/.agents/bin/sd-ai-command-pack-review-preflight.mjs   # 0 failures
 ```
+
+**Two gate caveats, verified 2026-08-20 — do not cite these as evidence the new
+code is covered.**
+
+- `npm run test:coverage` does NOT measure `src/protocol-v2.js`.
+  `scripts/check-coverage.mjs:38-47` lists it (with 7 sibling v2 modules) in
+  `QUARANTINED`, passed as `--test-coverage-exclude` at `:68` (corrected 2026-08-20 from
+  `:70`), because those modules
+  are unreachable from both Action entrypoints (~9,390 of 13,136 lines under `src/`,
+  per the comment at `:28-37`). The command will go green while measuring none of
+  this task's code. prd AC5's "coverage gate green" is therefore vacuous here; either
+  scope a task-local coverage run that includes the file, or restate the AC honestly.
+  Do not delete the `QUARANTINED` entry — this task does not make the module
+  reachable from `src/index.js`.
+- `npm run check` does NOT syntax-check `src/protocol-v2.js`. `package.json:12`
+  enumerates its `node --check` targets and lists neither `protocol-v2.js`,
+  `retention-policy.js`, nor any `review-*.js`. No new entry is needed, but the
+  safety net for the new decoders is `npm test` importing the module, not this
+  command.
 
 ## Review gates
 
@@ -133,6 +179,9 @@ node ~/.agents/bin/sd-ai-command-pack-review-preflight.mjs   # 0 failures
 
 ## Rollback
 
-Purely additive: new decoders + new fixture files + new test blocks + one import
-line in `protocol-v2.js`. Revert = drop those. No existing decoder, fixture,
-signature, or `retention-policy.js` line is mutated.
+Additive in `src/`: new decoders + new fixture files + new test blocks + one import
+line in `protocol-v2.js`. One existing test file changes — the
+`test/dependency-boundaries.test.js:24` matrix entry that authorizes the retention
+import (step 1). Revert = drop the new decoders, import, fixtures, test blocks, and
+that matrix entry. No existing decoder, fixture, signature, or `retention-policy.js`
+line is mutated.

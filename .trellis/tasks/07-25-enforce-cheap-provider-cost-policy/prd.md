@@ -1,4 +1,4 @@
-# PARKED: Enforce cheap provider cost policy
+# Enforce cheap provider cost policy
 
 ## Goal
 

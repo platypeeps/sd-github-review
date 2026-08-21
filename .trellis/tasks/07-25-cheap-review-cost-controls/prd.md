@@ -1,4 +1,4 @@
-# PARKED: Harden cheap review cost controls
+# Harden cheap review cost controls
 
 ## Goal
 

@@ -1,4 +1,4 @@
-# PARKED: Define v2 receipt and cross-contract identity contracts
+# Define v2 receipt and cross-contract identity contracts
 
 ## Goal
 
@@ -38,6 +38,14 @@ Builds on the v2 contract core shipped in `07-25-define-budget-review-v2-contrac
 - [ ] Residual prompt-profile fixtures cover shared/candidate-specific,
       missing/unknown/incompatible, and digest-mismatched profiles (parent AC2).
 - [ ] npm test, syntax check, metadata + ci-parity validation, coverage gate green.
+      **Caveat recorded 2026-08-20 (research B-5/B-6):** two of those three gates do not
+      observe this task's code. `src/protocol-v2.js` is coverage-quarantined
+      (`scripts/check-coverage.mjs:38-47`, excluded at `:68`) and is absent from the
+      `npm run check` syntax chain (`package.json:12`), so "coverage gate green" is
+      **vacuous** for this module and green there is not evidence the new decoders are
+      covered or even parse. `npm test` — which imports the module — is the real safety net.
+      Either scope a task-local coverage run that includes the file or restate this AC;
+      **owner decision, unresolved.** Do not cite a green coverage gate as coverage.
 
 ## Dependencies
 
