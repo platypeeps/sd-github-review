@@ -159,6 +159,23 @@ function checkRunPayload(receipt, { update = false } = {}) {
 // `stranded-receipt-minutes` input is for.
 export const DEFAULT_STRANDED_RECEIPT_MINUTES = 360;
 
+// Every value the `durable-state` output can carry. This is not a recitation:
+// resultOutputs() validates result.state against it on the way out, so a state
+// introduced without being added here fails the moment any test routes, and a
+// test binds action.yml's documented list to this set. Adding a state means
+// touching one place and being told about the other two.
+export const DURABLE_STATES = Object.freeze(new Set([
+  "started",
+  "in-flight",
+  "acknowledged",
+  "observed",
+  "skipped",
+  "failed",
+  "existing",
+  "not-found",
+  "reconciliation-required",
+]));
+
 // Whether a receipt sitting at phase "started" has outlived any job that could
 // still advance it.
 function startedReceiptIsStranded(receipt, now, strandedAfterMinutes) {

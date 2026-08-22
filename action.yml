@@ -201,7 +201,12 @@ outputs:
   request-fingerprint:
     description: Canonical request intent fingerprint.
   durable-state:
-    description: Durable operation result state, including not-found or reconciliation-required.
+    description: >-
+      Durable operation result state: started, in-flight, acknowledged, observed,
+      skipped, failed, existing, not-found, or reconciliation-required. in-flight
+      means a dispatch could still be running; reconciliation-required means it
+      needs a human, and route fails on it unless fail-on-reconciliation is
+      false.
   dispatch-status:
     description: Durable receipt dispatch status.
   dispatch-phase:

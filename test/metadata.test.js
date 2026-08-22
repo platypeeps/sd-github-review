@@ -45,7 +45,7 @@ function contractActionYaml() {
   ].join("\n");
 }
 import { SUPPORTED_PROVIDERS } from "../scripts/consumer-installer.mjs";
-import { DEFAULT_STRANDED_RECEIPT_MINUTES } from "../src/receipt.js";
+import { DEFAULT_STRANDED_RECEIPT_MINUTES, DURABLE_STATES } from "../src/receipt.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -1095,4 +1095,16 @@ test("action.yml defaults agree with the runtime defaults they mirror", async ()
   // The gate defaults on: a consumer that sets nothing must still be told when
   // a receipt needs a human.
   assert.equal(action.inputs["fail-on-reconciliation"].default, "true");
+
+  // The durable-state description enumerates the states a consumer may switch
+  // on. A hand-maintained prose list drifts -- this one already omitted
+  // "observed" -- so it is checked against the set the runtime enforces rather
+  // than read and trusted.
+  const described = action.outputs["durable-state"].description;
+  const missing = [...DURABLE_STATES].filter((state) => !described.includes(state));
+  assert.deepEqual(
+    missing,
+    [],
+    "these states can appear on durable-state but the output description never names them",
+  );
 });

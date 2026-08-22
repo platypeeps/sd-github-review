@@ -6,7 +6,7 @@ import {
   decodeReviewRequest,
   stableProtocolJson,
 } from "./protocol.js";
-import { DEFAULT_STRANDED_RECEIPT_MINUTES, ReceiptStore } from "./receipt.js";
+import { DEFAULT_STRANDED_RECEIPT_MINUTES, DURABLE_STATES, ReceiptStore } from "./receipt.js";
 import { selectProtocolRoute } from "./router.js";
 import { buildRiskContext } from "./risk-context.js";
 import { requestCopilotReviewer } from "./reviewer-dispatch.js";
@@ -184,7 +184,7 @@ function resultOutputs({ operation, result, adapter = "", changedLines = 0, sens
     "receipt-id": receipt?.receiptId ?? "",
     "logical-dispatch-id": receipt?.logicalDispatchId ?? "",
     "request-fingerprint": receipt?.requestFingerprint ?? "",
-    "durable-state": result.state,
+    "durable-state": durableState(result.state),
     "dispatch-status": verifiedReceipt?.dispatch.status ?? "",
     "dispatch-phase": verifiedReceipt?.dispatch.phase ?? "",
     "dispatch-allowed": String(result.dispatchAllowed === true),
@@ -203,6 +203,19 @@ function resultOutputs({ operation, result, adapter = "", changedLines = 0, sens
       : "",
     "adapter-request": adapter,
   };
+}
+
+// Enforces DURABLE_STATES on the way out, which is what keeps that set honest
+// rather than a list someone has to remember to update. Every routing test
+// passes through here.
+function durableState(state) {
+  if (!DURABLE_STATES.has(state)) {
+    throw new Error(
+      `durable-state "${state}" is not a declared durable state; add it to DURABLE_STATES `
+        + "and to the durable-state description in action.yml",
+    );
+  }
+  return state;
 }
 
 async function emitDurableResult(
