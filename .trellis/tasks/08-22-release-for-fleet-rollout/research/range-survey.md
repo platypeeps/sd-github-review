@@ -98,10 +98,14 @@ deliberately as part of this task.
 ## Still open
 
 - Whether to reconstruct a `0.3.0` CHANGELOG entry or fold that range into `0.4.0`.
-- Whether the unreachable v2 governance modules are inside this range. Session notes from
-  2026-08-20 record `prepareManagedPlan()` and `compileRoutedReviewConfiguration()` as having no
-  production callers, with roughly 28.6% of the tree reachable. Shipping unreachable code is
-  inert but should be a decision, not an accident. **Not verified against this range** — check
-  before tagging.
+- ~~Whether the unreachable v2 governance modules are inside this range.~~ **Resolved
+  2026-08-22 — not a `0.4.0` concern.** Both are confirmed unreachable: `prepareManagedPlan`
+  (`src/review-plan-authorization.js`) and `compileRoutedReviewConfiguration`
+  (`src/routed-review-compiler.js`) have **zero** non-definition references in `src/` and no
+  `src/` file imports either module; they are reached only from tests. But both were added
+  2026-08-05 (`d08a37b`, `352baa8`) and `git log --diff-filter=A v0.3.0..origin/main` returns
+  nothing for either file, so they are **ancestors of `v0.3.0` and already shipped in it**.
+  Releasing `0.4.0` neither introduces nor worsens this. It is a pre-existing condition worth a
+  separate decision, not a release blocker.
 - `08-22-installer-secret-gate-mode-aware` (PR #113) is not yet merged and must be contained in
   the tag.
