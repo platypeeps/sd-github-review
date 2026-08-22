@@ -64,6 +64,13 @@ inputs:
       explicit request outside the policy is refused; auto is always permitted,
       so the floor and risk rules still choose the automatic route. Empty means
       no policy is recorded and every route is permitted.
+
+      Wire this from the repository variable only -- `${{ vars.REVIEW_ROUTE_MODE
+      }}` -- and never from a workflow_dispatch input. The policy exists to
+      bound what a dispatching caller may ask for, so letting that caller supply
+      it hands them their own bound and silently disables enforcement. The
+      neighbouring policy inputs on the shipped lane are deliberately wired the
+      other way, which is what makes a consistency-minded edit here dangerous.
     required: false
     default: ""
   local-confidence-threshold:

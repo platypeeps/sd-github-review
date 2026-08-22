@@ -2438,6 +2438,41 @@ test("the durable lane reads route policy from the repository variable, not a di
   );
 });
 
+// The test above is pinned to one path, so it cannot see a *second* lane that
+// wires route-policy wrongly -- and adding a lane is exactly how this would
+// recur. This enumerates every shipped workflow instead of naming one. The
+// scan is deliberately over all of them, not only the ones that mention
+// route-policy today: a file joins the set by existing, not by being listed.
+function shippedWorkflowPaths() {
+  const paths = [];
+  for (const directory of ["examples", ".github/workflows"]) {
+    for (const entry of readdirSync(path.join(REPO_ROOT, directory))) {
+      if (entry.endsWith(".yml") || entry.endsWith(".yaml")) paths.push(`${directory}/${entry}`);
+    }
+  }
+  return paths;
+}
+
+test("no shipped workflow lets a caller supply its own route policy", () => {
+  const offenders = [];
+  for (const relative of shippedWorkflowPaths()) {
+    const source = readFileSync(path.join(REPO_ROOT, relative), "utf8");
+    for (const line of source.split("\n")) {
+      if (!line.trim().startsWith("route-policy:")) continue;
+      // `inputs.` and `github.event.inputs.` are both caller-supplied on a
+      // workflow_dispatch lane; either one hands the constrained caller the
+      // constraint itself.
+      if (/inputs\./u.test(line)) offenders.push(`${relative}: ${line.trim()}`);
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    "route-policy bounds what a workflow_dispatch caller may request, so sourcing it "
+      + "from a dispatch input lets that caller lift its own bound",
+  );
+});
+
 // The installer's ROUTE_MODES and the action's ROUTES are two literals in two
 // trees. A mode added to the installer but not the action would be written into
 // a consumer's REVIEW_ROUTE_MODE and then refused on every dispatch against it.
