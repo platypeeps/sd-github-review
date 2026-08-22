@@ -173,7 +173,10 @@ head-bound receipt without dispatching. The additive `acknowledge` helper
 converts a bounded GitHub adapter-step outcome into that canonical
 acknowledgment without contacting GitHub or a model provider. If a side effect
 is uncertain, the receipt reports `reconciliation-required` and never
-authorizes a fallback.
+authorizes a fallback; `route` fails the step on it, since a receipt needing a
+human means no review was dispatched and reporting that only on an output
+leaves a green job and a silently unreviewed pull request. A dispatch that
+could still be running reports `in-flight` instead and does not fail.
 
 The example performs no checkout and runs no pull-request-controlled command.
 The setup descriptor distinguishes a truly absent declaration from missing,

@@ -107,8 +107,11 @@ failure that looks like a product defect but is a setup error:
   what makes changed-head reconciliation expressible at all.
 - Changed-head reconciliation needs a receipt still in dispatch phase
   `started` — routed but never finalized. `reconciliationRequired` is derived
-  from that phase, so finalizing an already-`observed` receipt correctly
-  returns `false` and is idempotent, not a reconciliation case.
+  from that phase *and its age*, so finalizing an already-`observed` receipt
+  correctly returns `false` and is idempotent, not a reconciliation case. A
+  `started` receipt younger than `stranded-receipt-minutes` reports `in-flight`
+  and `reconciliationRequired: false`; exercising this case in a pilot means
+  either waiting out the window or lowering the input for the run.
 - A mismatched `acknowledgment.logicalDispatchId` throws rather than reporting
   reconciliation. That *is* the no-fallback behavior; `reconciliation-required`
   is reserved for concurrent duplicate receipts. Derive the prior identity from

@@ -239,8 +239,10 @@ published setup descriptor/on-demand workflows.
   It copies no provider output and accepts no raw error text.
 - `finalize` requires a matching v1 acknowledgment, revalidates the head, and
   advances the same receipt to failed or observed. Replays are idempotent.
-- `query` is read-only. A started receipt is reconciliation-required; absence
-  is `not-found`, never permission to dispatch.
+- `query` is read-only. A started receipt is `in-flight` while a dispatching job
+  could still be running, and `reconciliation-required` only once it is older
+  than `stranded-receipt-minutes` or its dispatch is recorded failed. Neither is
+  permission to dispatch, and absence is `not-found`, which is not either.
 - Same-workflow `receipt` output is byte-for-byte canonical protocol JSON from
   the persisted Check Run. Durable outputs include only bounded normalized
   fields and never sensitive paths. Ambiguous writes set
