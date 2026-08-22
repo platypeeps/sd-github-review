@@ -95,6 +95,13 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   at all — the SHA is the installation reference and the tag is for discovery,
   which is what the surrounding prose already said.
 
+- **The route-policy refusal under-reported what a caller may request.** It
+  named only the policy value, though `auto` is always permitted. Under a
+  `none` policy the sole suggestion was `--remote none` — asking for no review,
+  which is never what an operator who just requested one wants — while `auto`,
+  the actionable answer, went unmentioned. The message now reads
+  `permitted: auto, <policy>` and advises `--remote auto`.
+
 - **The release gate now verifies that a lane's inputs exist in the action it
   pins.** `assertFirstPartyConsistency` proves every lane agrees on one SHA and
   `assertPinFreshness` proves that SHA carries the release's action code, but

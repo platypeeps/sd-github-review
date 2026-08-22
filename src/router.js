@@ -140,8 +140,15 @@ export function selectProtocolRoute(inputs) {
     throw new Error(
       `route "${request.route}" is not permitted by this repository's review policy.\n`
         + `  REVIEW_ROUTE_MODE = ${routePolicy}\n`
-        + `  permitted: ${routePolicy}\n`
-        + `Set REVIEW_ROUTE_MODE, or dispatch --remote ${routePolicy}.`,
+        // `auto` is always permitted -- see policyConstrains above -- so naming
+        // only the policy value under-reports the permitted set. That matters
+        // most under a `none` policy, where the old text's sole suggestion was
+        // to request no review at all, and the one genuinely useful answer,
+        // "ask for the automatic route", went unmentioned.
+        + `  permitted: auto, ${routePolicy}\n`
+        + `Dispatch --remote auto to take this repository's configured route`
+        + `${routePolicy === "none" ? "" : `, or --remote ${routePolicy}`}, `
+        + "or change REVIEW_ROUTE_MODE.",
     );
   }
 

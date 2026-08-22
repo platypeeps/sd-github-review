@@ -708,8 +708,29 @@ test("the refusal names the variable, its value, and the permitted route", () =>
     assert.fail("expected the policy refusal to throw");
   } catch (error) {
     assert.match(error.message, /REVIEW_ROUTE_MODE = copilot/u);
-    assert.match(error.message, /permitted: copilot/u);
-    assert.match(error.message, /Set REVIEW_ROUTE_MODE, or dispatch --remote copilot\./u);
+    // `auto` must be named. It is always permitted, so a message listing only
+    // the policy value tells the operator that fewer routes are open than
+    // really are.
+    assert.match(error.message, /permitted: auto, copilot/u);
+    assert.match(error.message, /--remote auto/u);
+    assert.match(error.message, /--remote copilot/u);
+  }
+});
+
+test("a none policy advises the automatic route rather than requesting no review", () => {
+  // Under `none` the old text's only suggestion was `--remote none` -- asking
+  // for no review, which is never what an operator who just requested one
+  // wants. `auto` is the actionable answer and was not mentioned at all.
+  try {
+    selectProtocolRoute({
+      request: requestRouted("copilot"),
+      policy: { routePolicy: "none" },
+    });
+    assert.fail("expected the policy refusal to throw");
+  } catch (error) {
+    assert.match(error.message, /permitted: auto, none/u);
+    assert.match(error.message, /--remote auto/u);
+    assert.doesNotMatch(error.message, /--remote none/u);
   }
 });
 
