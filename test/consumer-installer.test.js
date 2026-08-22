@@ -38,6 +38,8 @@ import {
   resolveSourceRelease,
   routeModeNeedsProviderSecret,
   runConsumerInstaller,
+  variableValues,
+  variableValuesForSchema,
 } from "../scripts/consumer-installer.mjs";
 import { reviewLabelNames } from "../src/normalize.js";
 import * as installerModule from "../scripts/consumer-installer.mjs";
@@ -176,6 +178,23 @@ async function makeTarget() {
 
 async function readManifest(target) {
   return JSON.parse(await readFile(path.join(target, MANIFEST_PATH), "utf8"));
+}
+
+// Reduce a manifest's managed variable block to exactly what a manifest at the
+// given schema version records. Every downgrade shim below needs this because
+// the decoder compares the variable name set by exact equality against the tier
+// the manifest declares — a schema-2 manifest carrying REVIEW_ROUTE_MODE or a
+// backend descriptor is as malformed as one missing a variable it should have.
+//
+// Derived from the production table rather than listing the names to delete, so
+// a variable joining at a future tier is dropped here without another edit. The
+// old form named REVIEW_ROUTE_MODE explicitly and silently stopped covering the
+// tier boundary the moment a second variable joined above it.
+function retainVariablesForSchema(manifest, schemaVersion) {
+  const managed = variableValuesForSchema(manifest.configuration, schemaVersion);
+  for (const name of Object.keys(manifest.resources.variables)) {
+    if (!(name in managed)) delete manifest.resources.variables[name];
+  }
 }
 
 // Every path a complete installation owns: the manifest plus each managed
@@ -836,7 +855,7 @@ test("a schema-1 manifest decodes as pre-provenance; check flags it and update m
   delete manifest.descriptor;
   delete manifest.durableWorkflow;
   delete manifest.configuration.routeMode;
-  delete manifest.resources.variables.REVIEW_ROUTE_MODE;
+  retainVariablesForSchema(manifest, 1);
   manifest.schemaVersion = 1;
   await writeManifest(target, manifest);
 
@@ -1148,17 +1167,19 @@ const DEFAULT_CONFIG = {
 };
 const ALL_LABELS = ROUTING_LABELS.map(({ name }) => name);
 
+// Every managed variable already set by hand at exactly the value the installer
+// would synthesize — the shape of a consumer whose lane a human wired up. That
+// is the only way its lane ever ran, and adoption must claim each one unowned
+// rather than rewrite it.
+//
+// Derived from the managed table rather than listed, so a variable joining it
+// is pre-provisioned here too. Listing them by hand is what made this helper
+// need editing every time the table grew.
+const FULLY_PROVISIONED_VARIABLES = variableValues({ ...DEFAULT_CONFIG, routeMode: "copilot" });
+
 function fullyProvisionedGitHub() {
   return new FakeGitHub({
-    variables: {
-      PR_AGENT_MODEL_PROVIDER: DEFAULT_CONFIG.provider,
-      CHEAP_REVIEW_MODEL: DEFAULT_CONFIG.cheapModel,
-      DEEP_REVIEW_MODEL: DEFAULT_CONFIG.deepModel,
-      // A manually installed consumer already set the route variable by hand —
-      // that is the only way its lane ever ran. Adoption must claim it unowned
-      // rather than rewrite it.
-      REVIEW_ROUTE_MODE: "copilot",
-    },
+    variables: { ...FULLY_PROVISIONED_VARIABLES },
     secrets: [SECRET_NAME],
     labels: ALL_LABELS,
   });
@@ -1210,11 +1231,16 @@ test("adopt brings a current manual workflow under management and preserves unow
 
   // Uninstall preserves resources adoption never claimed.
   await runConsumerInstaller({ command: "uninstall", target, yes: true }, { sourceRoot, github });
-  assert.equal(github.variables.size, 4);
+  assert.equal(github.variables.size, Object.keys(FULLY_PROVISIONED_VARIABLES).length);
   assert.equal(
     github.variables.get("REVIEW_ROUTE_MODE"),
     "copilot",
     "a route variable adoption found already set is unowned, so uninstall must leave it",
+  );
+  assert.equal(
+    github.variables.get("SD_REVIEW_CHEAP_BACKEND_V1"),
+    FULLY_PROVISIONED_VARIABLES.SD_REVIEW_CHEAP_BACKEND_V1,
+    "a backend descriptor adoption found already set is unowned, so uninstall must leave it",
   );
   assert.equal(github.secrets.has(SECRET_NAME), true);
   assert.ok(ALL_LABELS.every((name) => github.labels.has(name)));
@@ -1855,7 +1881,7 @@ async function downgradeToSchema2(target) {
   // schema 2 must not carry it: the decoder checks the managed variable set by
   // exact equality against the tier the manifest declares.
   delete manifest.configuration.routeMode;
-  delete manifest.resources.variables.REVIEW_ROUTE_MODE;
+  retainVariablesForSchema(manifest, 2);
   manifest.schemaVersion = 2;
   await writeFile(path.join(target, MANIFEST_PATH), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   await removeManagedFile(target, DESCRIPTOR_PATH);
@@ -2152,7 +2178,7 @@ test("a schema-3 manifest decodes, reports only the route-mode migration, and up
   // set by hand on the repository.
   const manifest = await readManifest(target);
   delete manifest.configuration.routeMode;
-  delete manifest.resources.variables.REVIEW_ROUTE_MODE;
+  retainVariablesForSchema(manifest, 3);
   manifest.schemaVersion = 3;
   await writeFile(
     path.join(target, MANIFEST_PATH),
@@ -2185,6 +2211,67 @@ test("a schema-3 manifest decodes, reports only the route-mode migration, and up
     (await runConsumerInstaller({ command: "check", target }, { sourceRoot, github })).ok,
     true,
   );
+});
+
+test("a schema-4 manifest reports the missing backend descriptors, and update provisions them", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  await runConsumerInstaller(
+    { command: "install", target, routeMode: "copilot" },
+    { sourceRoot, github },
+  );
+
+  // Present the installed consumer as the schema-4 shape sd-github-review itself
+  // is running: route mode managed, neither backend descriptor present — on the
+  // repository as well as in the manifest. Deleting them from GitHub too is what
+  // makes this the real defect rather than a manifest-only shim; without it the
+  // check below would pass on variables the install had just created.
+  const manifest = await readManifest(target);
+  retainVariablesForSchema(manifest, 4);
+  manifest.schemaVersion = 4;
+  await writeManifest(target, manifest);
+  github.variables.delete("SD_REVIEW_CHEAP_BACKEND_V1");
+  github.variables.delete("SD_REVIEW_DEEP_BACKEND_V1");
+
+  const checked = await runConsumerInstaller({ command: "check", target }, { sourceRoot, github });
+  assert.equal(checked.ok, false);
+  assert.deepEqual(checked.issues.sort(), [
+    "GitHub variable SD_REVIEW_CHEAP_BACKEND_V1 is missing",
+    "GitHub variable SD_REVIEW_DEEP_BACKEND_V1 is missing",
+    "manifest predates durable backend management; run update to record SD_REVIEW_CHEAP_BACKEND_V1 and SD_REVIEW_DEEP_BACKEND_V1",
+  ]);
+  // The ladder names the tier the manifest is actually at. Reporting the
+  // route-mode migration here would mean a bump had retargeted the previous
+  // rung at manifests that already satisfy it.
+  assert.equal(
+    checked.issues.some((issue) => issue.includes("route-mode management")),
+    false,
+    "schema 4 already records the route mode; the ladder must not misname its tier",
+  );
+
+  await runConsumerInstaller({ command: "update", target }, { sourceRoot, github });
+
+  const migrated = await readManifest(target);
+  assert.equal(migrated.schemaVersion, MANIFEST_SCHEMA_VERSION);
+  const expected = variableValues(migrated.configuration);
+  for (const name of ["SD_REVIEW_CHEAP_BACKEND_V1", "SD_REVIEW_DEEP_BACKEND_V1"]) {
+    assert.deepEqual(
+      migrated.resources.variables[name],
+      { value: expected[name], owned: true },
+      `${name} must be installer-created, since uninstall only removes what it owns`,
+    );
+    assert.equal(github.variables.get(name), expected[name]);
+  }
+  assert.equal(
+    (await runConsumerInstaller({ command: "check", target }, { sourceRoot, github })).ok,
+    true,
+  );
+
+  // The point of managing them: uninstall takes back what it created.
+  await runConsumerInstaller({ command: "uninstall", target, yes: true }, { sourceRoot, github });
+  assert.equal(github.variables.has("SD_REVIEW_CHEAP_BACKEND_V1"), false);
+  assert.equal(github.variables.has("SD_REVIEW_DEEP_BACKEND_V1"), false);
 });
 
 test("uninstall rejects a route option the way it rejects provider and model options", () => {

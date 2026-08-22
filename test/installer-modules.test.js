@@ -33,7 +33,13 @@ import {
   sha256,
   validateConfiguration,
   variableValues,
+  variableValuesForSchema,
 } from "../scripts/consumer-installer/codecs.mjs";
+// The action's own backend decoder. Importing it here is the point: what the
+// installer writes and what the action accepts are two sides of one contract,
+// and asserting the installer against its own idea of the shape would test
+// nothing.
+import { decodeBackend } from "../src/protocol.js";
 import {
   GitHubCli,
   gitOutput,
@@ -71,7 +77,10 @@ function manifestBody(schemaVersion, overrides = {}) {
   const configuration = { ...DEFAULT_CONFIG };
   // Route mode joined the managed set at schema 4, so it belongs in the
   // configuration only from that tier up; below it the manifest must record
-  // three variables and still decode.
+  // three variables and still decode. The two backend descriptors joined at
+  // schema 5 the same way, but they derive from cheapModel/deepModel rather than
+  // from a configuration field of their own, so the tier scoping for them lives
+  // entirely in variableValuesForSchema rather than here.
   if (schemaVersion >= ROUTE_MODE_MIN_SCHEMA_VERSION) configuration.routeMode = "copilot";
   const body = {
     schemaVersion,
@@ -83,10 +92,9 @@ function manifestBody(schemaVersion, overrides = {}) {
     configuration,
     resources: {
       variables: Object.fromEntries(
-        Object.entries(variableValues(configuration)).map(([name, value]) => [
-          name,
-          { value, owned: true },
-        ]),
+        Object.entries(variableValuesForSchema(configuration, schemaVersion)).map(
+          ([name, value]) => [name, { value, owned: true }],
+        ),
       ),
       secret: { name: SECRET_NAME, owned: true },
       labels: ROUTING_LABELS.map(({ name }) => ({ name, owned: true })),
@@ -112,6 +120,97 @@ function manifestBody(schemaVersion, overrides = {}) {
   return { ...body, ...overrides };
 }
 
+// ---------------------------------------------------------------------------
+// synthesized backend descriptors
+// ---------------------------------------------------------------------------
+
+test("codecs: the synthesized backend descriptors satisfy the action's decoder", () => {
+  // The whole failure mode this variable exists to remove: the installer writes
+  // a descriptor the action then refuses, turning a silent missing-variable
+  // error into a silent malformed-variable one. Assert across the exact path the
+  // consumer takes — table -> JSON string in `vars.*` -> JSON.parse in the
+  // action -> decodeBackend — rather than against the object the table builds,
+  // so a value that only survives in memory cannot pass.
+  const configuration = { ...DEFAULT_CONFIG, routeMode: "copilot" };
+  const values = variableValues(configuration);
+  for (const [name, modelField, costTier, qualityTier] of [
+    ["SD_REVIEW_CHEAP_BACKEND_V1", "cheapModel", "low", "standard"],
+    ["SD_REVIEW_DEEP_BACKEND_V1", "deepModel", "medium", "advanced"],
+  ]) {
+    const raw = values[name];
+    assert.equal(typeof raw, "string", `${name} must be provisioned`);
+    const backend = decodeBackend(JSON.parse(raw), name);
+    // `kind: external` is not cosmetic: selectedBackend rejects anything else
+    // for a `{route}-backend` input, so a descriptor that decodes but is not
+    // external still fails the route it was provisioned for.
+    assert.equal(backend.kind, "external");
+    assert.equal(backend.model, configuration[modelField]);
+    assert.equal(backend.costTier, costTier);
+    assert.equal(backend.qualityTier, qualityTier);
+    // reviewAuthors feeds finding attribution. An empty list is accepted by the
+    // decoder only when every channel is `check`, which these are not, so an
+    // empty value here would misattribute every finding rather than fail.
+    assert.deepEqual(backend.reviewAuthors, ["github-actions[bot]"]);
+  }
+});
+
+test("codecs: a backend descriptor follows the configured model, not the default", () => {
+  // Falsifies the derivation being a constant. A synthesized descriptor that
+  // ignored the configuration would pass the decode test above unchanged.
+  const configuration = {
+    provider: "anthropic",
+    cheapModel: "anthropic/claude-haiku-4-5",
+    deepModel: "anthropic/claude-opus-4-1",
+    routeMode: "cheap",
+  };
+  const values = variableValues(configuration);
+  assert.equal(JSON.parse(values.SD_REVIEW_CHEAP_BACKEND_V1).model, "anthropic/claude-haiku-4-5");
+  assert.equal(JSON.parse(values.SD_REVIEW_DEEP_BACKEND_V1).model, "anthropic/claude-opus-4-1");
+  // The model is the configured value verbatim, never `${provider}/${model}`.
+  // validateConfiguration already requires the prefix, so concatenating would
+  // produce "anthropic/anthropic/..." and a model no provider resolves.
+  assert.equal(
+    JSON.parse(values.SD_REVIEW_CHEAP_BACKEND_V1).model.startsWith("anthropic/anthropic/"),
+    false,
+  );
+});
+
+test("codecs: a schema-5 manifest must record a descriptor naming its own model", () => {
+  // The decoder deliberately does not compare a derived variable against a fresh
+  // synthesis — that would couple every stored manifest to the descriptor shape
+  // of whichever installer version reads it. What it does assert is that the
+  // recorded descriptor names the recorded model, which is the disagreement that
+  // actually matters.
+  const drifted = manifestBody(MANIFEST_SCHEMA_VERSION);
+  drifted.resources.variables.SD_REVIEW_CHEAP_BACKEND_V1.value = JSON.stringify({
+    ...JSON.parse(drifted.resources.variables.SD_REVIEW_CHEAP_BACKEND_V1.value),
+    model: "openrouter/someone/else",
+  });
+  assert.throws(
+    () => decodeManifest(JSON.stringify(drifted)),
+    /variable SD_REVIEW_CHEAP_BACKEND_V1 must match the recorded configuration/u,
+  );
+
+  const notJson = manifestBody(MANIFEST_SCHEMA_VERSION);
+  notJson.resources.variables.SD_REVIEW_DEEP_BACKEND_V1.value = "not-json";
+  assert.throws(
+    () => decodeManifest(JSON.stringify(notJson)),
+    /variable SD_REVIEW_DEEP_BACKEND_V1 must match the recorded configuration/u,
+  );
+
+  // But a descriptor whose shape differs while still naming the right model
+  // decodes, which is what keeps `check` and `update` usable on a manifest an
+  // older installer wrote.
+  const olderShape = manifestBody(MANIFEST_SCHEMA_VERSION);
+  const recorded = JSON.parse(olderShape.resources.variables.SD_REVIEW_CHEAP_BACKEND_V1.value);
+  delete recorded.limitations;
+  olderShape.resources.variables.SD_REVIEW_CHEAP_BACKEND_V1.value = JSON.stringify(recorded);
+  assert.equal(
+    decodeManifest(JSON.stringify(olderShape)).schemaVersion,
+    MANIFEST_SCHEMA_VERSION,
+  );
+});
+
 test("codecs: every supported schema decodes at the current schema version", () => {
   // The fleet-breaking direction. Bumping MANIFEST_SCHEMA_VERSION must not stop
   // a live manifest at any earlier schema from decoding.
@@ -130,6 +229,32 @@ test("codecs: every supported schema decodes at the current schema version", () 
     () => decodeManifest(JSON.stringify(manifestBody(MANIFEST_SCHEMA_VERSION + 1))),
     /unsupported or malformed manifest header/u,
   );
+});
+
+test("codecs: the managed variable tiers are monotone, not pinned to the current version", () => {
+  // The gate this locks is `>= BACKEND_MIN_SCHEMA_VERSION`, not
+  // `=== MANIFEST_SCHEMA_VERSION`. Today those two are indistinguishable —
+  // BACKEND_MIN_SCHEMA_VERSION *is* the current version — so a decode sweep over
+  // schemas 1..current cannot tell them apart, and the equality form would sit
+  // there passing until the next bump silently dropped both backend descriptors
+  // out of the managed set for every schema-5 manifest in the fleet.
+  //
+  // Probing one version above the current one is what separates them: an
+  // introduced-at gate keeps returning the tier, an equality gate stops.
+  const configuration = { ...DEFAULT_CONFIG, routeMode: "copilot" };
+  const current = Object.keys(variableValuesForSchema(configuration, MANIFEST_SCHEMA_VERSION));
+  const beyond = Object.keys(variableValuesForSchema(configuration, MANIFEST_SCHEMA_VERSION + 1));
+  assert.deepEqual(beyond.sort(), current.sort());
+
+  // And each tier is a superset of the one below it, which is the same property
+  // stated across the whole ladder rather than at its top edge only.
+  for (let version = 2; version <= MANIFEST_SCHEMA_VERSION; version += 1) {
+    const lower = Object.keys(variableValuesForSchema(configuration, version - 1));
+    const upper = new Set(Object.keys(variableValuesForSchema(configuration, version)));
+    for (const name of lower) {
+      assert.ok(upper.has(name), `schema ${version} must still manage ${name}`);
+    }
+  }
 });
 
 test("codecs: schema-2 provenance stays validated after the schema-3 bump", () => {
@@ -334,24 +459,25 @@ test("codecs: formatReport renders healthy check and dry-run action lists", () =
 test("plan: planResources creates missing resources and marks them owned", () => {
   const { actions, resources } = planResources(DEFAULT_CONFIG, snapshot(), null, true);
   const kinds = actions.map((action) => action.kind).sort();
+  // Enumerated from the managed table rather than written out, so a variable
+  // joining it extends this assertion instead of failing it with a literal that
+  // says nothing about which variable appeared.
   assert.deepEqual(kinds, [
-    "create-label",
-    "create-label",
-    "create-label",
-    "create-label",
-    "create-label",
+    ...ROUTING_LABELS.map(() => "create-label"),
     "set-secret",
-    "set-variable",
-    "set-variable",
-    "set-variable",
+    ...Object.keys(variableValues(DEFAULT_CONFIG)).map(() => "set-variable"),
   ]);
+  assert.deepEqual(
+    actions.filter((action) => action.kind === "set-variable").map(({ name }) => name).sort(),
+    Object.keys(variableValues(DEFAULT_CONFIG)).sort(),
+  );
   assert.equal(resources.secret.owned, true);
   assert.ok(Object.values(resources.variables).every((entry) => entry.owned === true));
 });
 
 test("plan: planResources preserves matching unowned resources and rejects an unowned conflict", () => {
   const existing = snapshot({
-    variables: { PR_AGENT_MODEL_PROVIDER: "openrouter", CHEAP_REVIEW_MODEL: DEFAULT_CONFIG.cheapModel, DEEP_REVIEW_MODEL: DEFAULT_CONFIG.deepModel },
+    variables: variableValues(DEFAULT_CONFIG),
     secrets: [SECRET_NAME],
     labels: ROUTING_LABELS.map(({ name }) => name),
   });
@@ -359,10 +485,25 @@ test("plan: planResources preserves matching unowned resources and rejects an un
   assert.deepEqual(actions, []);
   assert.equal(resources.secret.owned, false);
   const conflicting = snapshot({
-    variables: { PR_AGENT_MODEL_PROVIDER: "different", CHEAP_REVIEW_MODEL: DEFAULT_CONFIG.cheapModel, DEEP_REVIEW_MODEL: DEFAULT_CONFIG.deepModel },
+    variables: { ...variableValues(DEFAULT_CONFIG), PR_AGENT_MODEL_PROVIDER: "different" },
     secrets: [SECRET_NAME],
   });
   assert.throws(() => planResources(DEFAULT_CONFIG, conflicting, null, false), /already exists with a different unowned value/u);
+
+  // The same rejection for a derived variable a repository already set by hand,
+  // which is the pilot's shape: a descriptor naming a model the configuration
+  // does not. Without this the synthesized value would silently overwrite it.
+  const conflictingBackend = snapshot({
+    variables: {
+      ...variableValues(DEFAULT_CONFIG),
+      SD_REVIEW_CHEAP_BACKEND_V1: JSON.stringify({ id: "pr-agent", model: "openrouter/other/model" }),
+    },
+    secrets: [SECRET_NAME],
+  });
+  assert.throws(
+    () => planResources(DEFAULT_CONFIG, conflictingBackend, null, false),
+    /SD_REVIEW_CHEAP_BACKEND_V1 already exists with a different unowned value/u,
+  );
 });
 
 test("plan: planResources without a secret and without --set-secret fails closed", () => {
