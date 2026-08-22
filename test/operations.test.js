@@ -824,3 +824,30 @@ test("durable Markdown summaries expose bounded state but never sensitive paths"
   assert.match(writes[0].value, /Sensitive file count: 1/u);
   assert.equal(writes[0].value.includes("src/auth/session.js"), false);
 });
+
+// The route-policy unit tests call selectProtocolRoute directly, which bypasses
+// the contract -> action.yml -> operations.js input plumbing entirely. A typo in
+// the input name would leave every one of them green while the installed lane
+// enforced nothing. This drives the real INPUT_ env var the runner sets.
+test("route policy reaches the router through the action's own input plumbing", async () => {
+  const request = clone(requestByName.get("explicit cheap"));
+  const client = new FakeGitHubClient(request.headSha);
+  const harness = createHarness(client);
+
+  await assert.rejects(
+    () => harness.run("route", request, { "INPUT_ROUTE-POLICY": "copilot" }),
+    /route "cheap" is not permitted by this repository's review policy/u,
+  );
+});
+
+test("an unset route-policy input leaves the durable lane unconstrained", async () => {
+  const request = clone(requestByName.get("explicit cheap"));
+  const client = new FakeGitHubClient(request.headSha);
+  const harness = createHarness(client);
+
+  const routed = await harness.run("route", request, {
+    "INPUT_CHEAP-BACKEND": JSON.stringify(backendByName.get("external comment backend")),
+    "INPUT_ROUTE-POLICY": "",
+  });
+  assert.equal(routed.state, "started");
+});
