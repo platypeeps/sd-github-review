@@ -45,6 +45,7 @@ function contractActionYaml() {
   ].join("\n");
 }
 import { SUPPORTED_PROVIDERS } from "../scripts/consumer-installer.mjs";
+import { DEFAULT_STRANDED_RECEIPT_MINUTES } from "../src/receipt.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -1073,4 +1074,25 @@ test("assertPinFreshness rejects a tag that resolves to noncanonical commit evid
       `expected noncanonical rejection for ${JSON.stringify(noncanonical)}`,
     );
   }
+});
+
+// action.yml declares a default and the runtime declares another; they are two
+// literals in two files and nothing made them agree. The action.yml value is
+// what a consumer's lane actually sends, so a divergence means the documented
+// default and the effective one differ silently -- and for
+// stranded-receipt-minutes that is the difference between finding a stranded
+// receipt and never finding one. Derived from the runtime constants rather than
+// restated, so changing a default in one place fails here rather than drifting.
+test("action.yml defaults agree with the runtime defaults they mirror", async () => {
+  const root = path.resolve(import.meta.dirname, "..");
+  const action = parseDocument(await readFile(path.join(root, "action.yml"), "utf8")).toJS();
+
+  assert.equal(
+    action.inputs["stranded-receipt-minutes"].default,
+    String(DEFAULT_STRANDED_RECEIPT_MINUTES),
+    "the declared window must match the constant the store falls back to",
+  );
+  // The gate defaults on: a consumer that sets nothing must still be told when
+  // a receipt needs a human.
+  assert.equal(action.inputs["fail-on-reconciliation"].default, "true");
 });

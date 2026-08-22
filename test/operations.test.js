@@ -186,7 +186,10 @@ test("durable external route emits one canonical adapter request and replay emit
     env,
   );
   assert.equal(replay.dispatchAllowed, false);
-  assert.equal(replay.reconciliationRequired, true);
+  // A replay while the first dispatch is still running is healthy: it must not
+  // authorize a second dispatch, and must not call for a human either.
+  assert.equal(replay.reconciliationRequired, false);
+  assert.equal(replay.state, "in-flight");
   assert.equal(harness.outputs.get("adapter-request"), "");
   assert.equal(harness.outputs.get("run-external-reviewer"), "false");
   assert.equal(client.calls.filter(([name]) => name === "createCheckRun").length, 1);
@@ -557,11 +560,18 @@ test("ambiguous Copilot dispatch returns reconciliation state and never suggests
   client.requestError = new Error("connection closed after review request");
   const harness = createHarness(client);
 
-  const result = await harness.run("route", request);
+  // The step fails rather than returning quietly: nobody will finalize this
+  // receipt, so a green job here is a pull request that is never reviewed.
+  await assert.rejects(
+    () => harness.run("route", request),
+    /durable receipt that needs reconciliation/u,
+  );
 
-  assert.equal(result.state, "reconciliation-required");
-  assert.equal(result.dispatchAllowed, false);
-  assert.equal(result.reconciliationRequired, true);
+  // The outputs and summary are written before the failure, so the durable
+  // state stays machine-readable on a red step instead of being lost with it.
+  assert.equal(harness.outputs.get("durable-state"), "reconciliation-required");
+  assert.equal(harness.outputs.get("reconciliation-required"), "true");
+  assert.equal(harness.outputs.get("dispatch-allowed"), "false");
   assert.equal(harness.outputs.get("receipt-verified"), "true");
   assert.equal(harness.outputs.get("dispatch-phase"), "started");
   assert.match(harness.outputs.get("reconciliation-error"), /connection closed/u);
@@ -764,18 +774,21 @@ test("durable operations reject stale, malformed, and ambiguous inputs without d
   const ambiguousClient = new FakeGitHubClient(request.headSha);
   ambiguousClient.createError = new Error("connection closed after request body");
   const ambiguousHarness = createHarness(ambiguousClient);
-  const ambiguous = await ambiguousHarness.run("route", request, {
-    "INPUT_CHEAP-BACKEND": JSON.stringify(backendByName.get("external comment backend")),
-  });
-  assert.equal(ambiguous.state, "reconciliation-required");
-  assert.equal(ambiguous.dispatchAllowed, false);
+  // The create may or may not have landed, so nothing can be concluded about
+  // this head without a human. Failing is the point: an unverified receipt that
+  // reported success would be a pull request nobody reviews and nobody notices.
+  await assert.rejects(
+    () => ambiguousHarness.run("route", request, {
+      "INPUT_CHEAP-BACKEND": JSON.stringify(backendByName.get("external comment backend")),
+    }),
+    /durable receipt that needs reconciliation/u,
+  );
+  assert.equal(ambiguousHarness.outputs.get("durable-state"), "reconciliation-required");
+  assert.equal(ambiguousHarness.outputs.get("dispatch-allowed"), "false");
   assert.equal(ambiguousHarness.outputs.get("adapter-request"), "");
   assert.equal(ambiguousHarness.outputs.get("receipt"), "");
   assert.equal(ambiguousHarness.outputs.get("receipt-verified"), "false");
-  assert.equal(
-    ambiguousHarness.outputs.get("logical-dispatch-id"),
-    ambiguous.receipt.logicalDispatchId,
-  );
+  assert.ok(ambiguousHarness.outputs.get("logical-dispatch-id"));
 
   await assert.rejects(
     runAction({
@@ -954,4 +967,51 @@ test("a recorded skip re-dispatched under unchanged conditions stays idempotent"
     first.receipt.dispatch.completedAt,
     "the original skip's durable record must be preserved, not rewritten at the new clock",
   );
+});
+
+// The gate lives in the action, not the lane: the canonical durable workflow
+// (examples/on-demand-review-router.yml) may contain no `run:` step at all
+// because it holds checks:write, so it has nowhere to put a shell gate -- and a
+// YAML gate is one a consumer can quietly drop while believing it still runs.
+test("a stranded receipt fails the route step instead of reporting a green job", async () => {
+  const request = clone(requestByName.get("explicit cheap"));
+  const client = new FakeGitHubClient(request.headSha);
+  const harness = createHarness(client);
+  const env = {
+    "INPUT_CHEAP-BACKEND": JSON.stringify(backendByName.get("external comment backend")),
+  };
+
+  const started = await harness.run("route", request, env);
+  assert.equal(started.dispatchAllowed, true);
+
+  // Inside the window the dispatch could still be running, so a replay stays
+  // green and simply declines to dispatch again.
+  harness.clock.now = "2026-07-23T18:00:00Z";
+  const inFlight = await harness.run("route", { ...clone(request), correlationId: "corr-b" }, env);
+  assert.equal(inFlight.state, "in-flight");
+  assert.equal(inFlight.dispatchAllowed, false);
+
+  // Past GitHub's job ceiling nothing can still finalize it, so the step fails.
+  harness.clock.now = "2026-07-24T12:30:10Z";
+  await assert.rejects(
+    () => harness.run("route", { ...clone(request), correlationId: "corr-c" }, env),
+    /durable receipt that needs reconciliation/u,
+  );
+});
+
+test("fail-on-reconciliation false reports a stranded receipt without failing", async () => {
+  const request = clone(requestByName.get("explicit cheap"));
+  const client = new FakeGitHubClient(request.headSha);
+  const harness = createHarness(client);
+  const env = {
+    "INPUT_CHEAP-BACKEND": JSON.stringify(backendByName.get("external comment backend")),
+    "INPUT_FAIL-ON-RECONCILIATION": "false",
+  };
+
+  await harness.run("route", request, env);
+  harness.clock.now = "2026-07-24T12:30:10Z";
+  const opted = await harness.run("route", { ...clone(request), correlationId: "corr-opt" }, env);
+
+  assert.equal(opted.state, "reconciliation-required");
+  assert.equal(harness.outputs.get("reconciliation-required"), "true");
 });

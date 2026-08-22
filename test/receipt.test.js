@@ -190,9 +190,12 @@ test("matching retries append aliases without authorizing a second dispatch", as
 
   const second = await store.begin(retry, cheapBeginOptions());
 
-  assert.equal(second.state, "reconciliation-required");
+  // The first dispatch is still running, so this retry is a healthy replay, not
+  // a case for a human. It reported reconciliation-required until the state was
+  // split by age -- which is why no lane could gate on that flag.
+  assert.equal(second.state, "in-flight");
   assert.equal(second.dispatchAllowed, false);
-  assert.equal(second.reconciliationRequired, true);
+  assert.equal(second.reconciliationRequired, false);
   assert.deepEqual(second.receipt.correlationIds, ["corr-cheap", "corr-cheap-retry"]);
   assert.equal(client.calls.filter(([name]) => name === "createCheckRun").length, 1);
   assert.equal(client.calls.filter(([name]) => name === "updateCheckRun").length, 1);
@@ -768,4 +771,107 @@ test("trusted successor comparison emits no raw paths and detects a changed live
   };
   const changed = await store.compareSuccessor(successor);
   assert.equal(changed.evidence.comparison, "changed-head");
+});
+
+// The stranded case, and the reason the state was split at all. A finalize that
+// never lands -- a transient 502 on the PATCH is enough -- leaves a receipt at
+// phase "started" forever. GitHub's REST API has no delete-check-run endpoint,
+// so there is no manual escape: the receipt outlives every job that could
+// advance it and the pull request cannot be reviewed again at that head.
+// Before the split this was indistinguishable from a healthy in-flight replay,
+// so no lane could gate on it and it stayed silent.
+test("a receipt that outlives any job that could advance it is reported stranded", async () => {
+  const request = clone(requestByName.get("explicit cheap"));
+  const client = new FakeGitHubClient({ headSha: request.headSha });
+  const clock = { now: "2026-07-23T12:30:00Z" };
+  const store = new ReceiptStore({
+    client,
+    now: () => clock.now,
+    bookkeepingPatterns: [".trellis/**", ".obsidian-kb/**"],
+  });
+
+  await store.begin(request, cheapBeginOptions());
+
+  // Still inside the window: the dispatching job could plausibly be alive.
+  clock.now = "2026-07-23T18:29:00Z";
+  const young = await store.begin(
+    { ...clone(request), correlationId: "corr-young" },
+    cheapBeginOptions(),
+  );
+  assert.equal(young.state, "in-flight");
+  assert.equal(young.reconciliationRequired, false);
+
+  // Past GitHub's maximum job lifetime, no job can still be running to finalize
+  // it, so this receipt is stranded rather than slow.
+  clock.now = "2026-07-23T18:31:00Z";
+  const stranded = await store.begin(
+    { ...clone(request), correlationId: "corr-stranded" },
+    cheapBeginOptions(),
+  );
+  assert.equal(stranded.state, "reconciliation-required");
+  assert.equal(stranded.reconciliationRequired, true);
+  assert.equal(stranded.dispatchAllowed, false, "a stranded receipt still authorizes nothing");
+});
+
+// A dispatch recorded as failed is known broken, not slow, so it must call for
+// a human immediately rather than waiting out the window.
+test("a failed dispatch needs reconciliation regardless of how recent it is", async () => {
+  const request = clone(requestByName.get("explicit cheap"));
+  const client = new FakeGitHubClient({ headSha: request.headSha });
+  const store = makeStore(client);
+  const begun = await store.begin(request, cheapBeginOptions());
+
+  // Rewrite the durable record in place as a failed dispatch still at phase
+  // "started" -- the shape mutationFailure leaves behind.
+  const failed = decodeReceipt({
+    ...begun.receipt,
+    dispatch: { ...begun.receipt.dispatch, status: "failed", phase: "started" },
+  });
+  for (const checks of client.checks.values()) {
+    for (const check of checks) check.output = { ...check.output, text: encodeReceiptCheckText(failed) };
+  }
+
+  // Same clock as the create, so it is as young as a receipt can be. Age must
+  // not rescue it.
+  const seen = await store.begin(
+    { ...clone(request), correlationId: "corr-after-failure" },
+    cheapBeginOptions(),
+  );
+  assert.equal(seen.state, "reconciliation-required");
+  assert.equal(seen.reconciliationRequired, true);
+});
+
+// `dispatch.startedAt` is optional in the protocol (src/protocol.js:819), so a
+// receipt can sit at phase "started" with no timestamp to age it against --
+// from an older action version, or any path that omits it. This pins the
+// deliberate choice rather than leaving it to fall out of Date.parse: a receipt
+// that cannot be dated is reported stranded, not in flight.
+//
+// Fail-closed is the right side here. Nothing tracks such a receipt, so it will
+// never be finalized, and calling it in-flight would recreate exactly the
+// permanent wedge this split exists to end. It is also the pre-split behaviour,
+// where every "started" receipt reported reconciliation-required. The cost is
+// real and accepted: with the route gate in place this now fails a job rather
+// than setting an output nobody read.
+test("a started receipt with no timestamp is reported stranded rather than in flight", async () => {
+  const request = clone(requestByName.get("explicit cheap"));
+  const client = new FakeGitHubClient({ headSha: request.headSha });
+  const store = makeStore(client);
+  const begun = await store.begin(request, cheapBeginOptions());
+
+  const { startedAt: _dropped, ...dispatch } = begun.receipt.dispatch;
+  const undatable = decodeReceipt({ ...begun.receipt, dispatch });
+  assert.equal(undatable.dispatch.startedAt, undefined, "the fixture must actually lack a timestamp");
+  for (const checks of client.checks.values()) {
+    for (const check of checks) check.output = { ...check.output, text: encodeReceiptCheckText(undatable) };
+  }
+
+  // Same clock as the create: it is as young as a receipt can be, so only the
+  // missing timestamp can make it stranded.
+  const seen = await store.begin(
+    { ...clone(request), correlationId: "corr-undatable" },
+    cheapBeginOptions(),
+  );
+  assert.equal(seen.state, "reconciliation-required");
+  assert.equal(seen.reconciliationRequired, true);
 });

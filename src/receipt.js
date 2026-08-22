@@ -150,11 +150,46 @@ function checkRunPayload(receipt, { update = false } = {}) {
   return payload;
 }
 
-function receiptState(receipt) {
+// GitHub's maximum job lifetime. A receipt is advanced out of "started" by the
+// job that dispatched it, so past this age no job can still be alive to do it
+// and a false strand is impossible. It is a ceiling derived from the platform,
+// not a tuning guess -- the shipped lanes declare no `timeout-minutes`, so the
+// platform default is what actually bounds them. A lane that declares its own
+// lower timeout can safely lower this to match, which is what the
+// `stranded-receipt-minutes` input is for.
+export const DEFAULT_STRANDED_RECEIPT_MINUTES = 360;
+
+// Whether a receipt sitting at phase "started" has outlived any job that could
+// still advance it.
+function startedReceiptIsStranded(receipt, now, strandedAfterMinutes) {
+  const startedAt = Date.parse(receipt.dispatch.startedAt ?? "");
+  const observedAt = Date.parse(typeof now === "function" ? now() : now);
+  // No usable clock on either side means there is no age to judge. Report
+  // stranded: a receipt that cannot be shown to be running is exactly the case
+  // a human must look at, and this is also the pre-existing behaviour, so an
+  // unreadable timestamp degrades to the old semantics rather than to silence.
+  if (!Number.isFinite(startedAt) || !Number.isFinite(observedAt)) return true;
+  return observedAt - startedAt >= strandedAfterMinutes * 60_000;
+}
+
+// `reconciliation-required` used to cover every receipt at phase "started",
+// which conflated a dispatch running right now with one stranded by a finalize
+// that never landed. Nothing could gate on it without failing healthy in-flight
+// replays, so no shipped lane gated on it at all and a stranded receipt was
+// silent. Splitting by age restores the meaning docs/RELEASE_CHECKLIST.md
+// already claims -- reserved for cases needing a human -- and makes the gate
+// safe to ship.
+function receiptState(receipt, { now, strandedAfterMinutes } = {}) {
+  // A failed dispatch is known broken rather than running, so age is
+  // irrelevant to it and it always needs a human.
   if (receipt.dispatch.status === "failed" && receipt.dispatch.phase === "started") {
     return "reconciliation-required";
   }
-  if (receipt.dispatch.phase === "started") return "reconciliation-required";
+  if (receipt.dispatch.phase === "started") {
+    return startedReceiptIsStranded(receipt, now, strandedAfterMinutes)
+      ? "reconciliation-required"
+      : "in-flight";
+  }
   if (receipt.dispatch.phase === "acknowledged") {
     return receipt.dispatch.status === "failed" ? "failed" : "acknowledged";
   }
@@ -298,10 +333,12 @@ export class ReceiptStore {
     now = () => new Date().toISOString(),
     bookkeepingPatterns = [".trellis/**", ".obsidian-kb/**"],
     maximumCompareFiles = DEFAULT_MAX_COMPARE_FILES,
+    strandedAfterMinutes = DEFAULT_STRANDED_RECEIPT_MINUTES,
   }) {
     if (!client) throw new Error("ReceiptStore requires a GitHub client");
     this.client = client;
     this.now = now;
+    this.strandedAfterMinutes = strandedAfterMinutes;
     this.bookkeepingPatterns = bookkeepingPatterns;
     this.maximumCompareFiles = maximumCompareFiles;
     this.repository = { owner: lower(client.owner), name: lower(client.repo) };
@@ -391,6 +428,17 @@ export class ReceiptStore {
     return match;
   }
 
+  // The store owns the clock and the staleness window, so every state read goes
+  // through here rather than calling receiptState with them spelled out at each
+  // site -- a site that forgot them would silently report every in-flight
+  // receipt as stranded.
+  #stateOf(receipt) {
+    return receiptState(receipt, {
+      now: this.now,
+      strandedAfterMinutes: this.strandedAfterMinutes,
+    });
+  }
+
   // `authorizeDispatch` is for replacing a recorded skip with a real dispatch.
   // The default result shape reports every update as non-dispatching and runs
   // the state through receiptState, which maps phase "started" to
@@ -422,11 +470,12 @@ export class ReceiptStore {
         reconciliationRequired: false,
       };
     }
+    const updatedState = this.#stateOf(updated.receipt);
     return {
-      state: receiptState(updated.receipt),
+      state: updatedState,
       receipt: updated.receipt,
       dispatchAllowed: false,
-      reconciliationRequired: receiptState(updated.receipt) === "reconciliation-required",
+      reconciliationRequired: updatedState === "reconciliation-required",
     };
   }
 
@@ -565,7 +614,7 @@ export class ReceiptStore {
           correlationIds,
         }));
       }
-      const state = receiptState(existing.receipt);
+      const state = this.#stateOf(existing.receipt);
       return {
         state,
         receipt: existing.receipt,
