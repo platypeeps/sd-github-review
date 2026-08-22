@@ -1,8 +1,8 @@
 {
   "id": "fleet-rollout-smoke",
   "name": "fleet-rollout-smoke",
-  "title": "Roll the durable lane out to the 8 fleet consumers with a per-repo smoke PR",
-  "description": "Deploy the routed review lane to the eight fleet consumer repositories, of which zero currently carry either the discovery descriptor or the durable review workflow. For each repository install the setup descriptor and the workflow_dispatch sd-review.yml lane through the sd-ai-command-pack fleet-refresh mechanism, then open one smoke pull request per repository and confirm the sd-github-review/receipt Check Run is published against it. Sequenced after the installer task, which is what makes the descriptor and the durable lane installable in the first place.",
+  "title": "Roll the durable lane out to the 9 fleet consumers with a per-repo smoke PR",
+  "description": "Deploy the routed review lane to the nine fleet consumer repositories, of which one (sd-github-review, the router itself) currently carries the discovery descriptor and durable review workflow and eight carry neither. For each undeployed repository install the setup descriptor and the workflow_dispatch sd-review.yml lane through this repository's consumer installer (scripts/install-consumer.mjs), not the sd-ai-command-pack fleet refresh, which installs the pack rather than the lane. Then open one smoke pull request per repository and confirm the sd-github-review/receipt Check Run is published against it. --route-mode is required per consumer and has no default.",
   "status": "planning",
   "dev_type": null,
   "scope": null,
@@ -22,6 +22,6 @@
   "parent": null,
   "relatedFiles": [],
   "blockedOn": null,
-  "notes": "2026-08-09: Unblocked. Both prerequisites are archived — 08-08-installer-durable-lane (installer emits the descriptor and the sd-review.yml lane) and 08-09-descriptor-contract-path (published descriptor relocated off the consumer discovery path). Note that execution mutates eight external fleet repositories and opens a pull request in each, so it is outside the sd-work-backlog run-level authority and needs explicit per-run approval. See prd.md Notes.",
+  "notes": "2026-08-22: Planning artifacts refreshed against the live manifest and a probe of all nine checkouts; design.md and implement.md added. Fleet is schema 5 with 9 consumers (people-profiles added at priority 80), not schema 4 with 8. Install mechanism corrected to this repository's consumer installer. Per-consumer --route-mode resolved by owner 2026-08-22: auto for all eight undeployed consumers; sd-github-review keeps its existing copilot install. Remaining blocker is explicit external-repo scope approval. 2026-08-09: Unblocked. Both prerequisites are archived — 08-08-installer-durable-lane and 08-09-descriptor-contract-path; emitting artifacts verified present 2026-08-22. Execution mutates nine fleet repositories and opens a pull request in each, so it is outside the sd-work-backlog run-level authority and needs explicit per-run approval. See prd.md Notes.",
   "meta": {}
 }
