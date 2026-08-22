@@ -78,6 +78,22 @@ purpose.
 
 Blocks `08-08-fleet-rollout-smoke`.
 
+## Survey result
+
+Done 2026-08-22 — see `research/range-survey.md`. Headline findings:
+
+- Recommended version is **`0.4.0`**, not a patch: schema 3 → 4, `--route-mode` now required
+  with no default, the published descriptor relocated to `contract/`, a new installed file set,
+  and a changed `high-risk-route` default with a failure mode for consumers omitting two inputs.
+- **The CHANGELOG has no `0.3.0` section.** It jumps from `## Unreleased` to `## 0.2.0`, so the
+  existing tag was cut without notes. Decide whether to reconstruct that entry or fold it in.
+- **`## Unreleased` is badly stale** — it documents three items and omits every breaking change
+  in the range. It cannot be promoted as-is; notes must be rebuilt from the survey.
+- **`npm run validate:release -- vX.Y.Z` already exists** and is deliberately not in CI, because
+  a fresh tag does not exist on ordinary builds. Run it by hand when cutting.
+- The bookkeeping share is large (48 `task`, 15 `spec`, 9 `trellis`, 45 `docs`), so the
+  consumer-facing surface is much smaller than 180 commits suggests.
+
 ## Notes
 
 2026-08-22: Queued while `08-08-fleet-rollout-smoke` was paused. The rollout's own preconditions
