@@ -58,17 +58,23 @@ since the release. The new version number is a decision this task must make, not
 
 ## Acceptance Criteria
 
-- [ ] A written survey of `v0.3.0..main` exists in this task's `research/`, grouping commits and
-      naming every consumer-facing behavior change.
-- [ ] Anything unsuitable for release is listed explicitly with a disposition, or the survey
-      states that nothing was found and shows how that was checked.
-- [ ] `package.json` version is bumped, with the choice justified against the survey.
-- [ ] The release tag exists, is an exact `v<version>` match for `package.json`, and points at a
-      commit with a clean template tree.
-- [ ] `resolveSourceRelease` against the tagged checkout returns `released: true` with a non-null
+- [x] A written survey of `v0.3.0..main` exists in this task's `research/`, grouping commits and
+      naming every consumer-facing behavior change. Extended to `v0.2.0..main` once the CHANGELOG
+      decision was to fold `0.3.0` in.
+- [x] Anything unsuitable for release is listed explicitly with a disposition, or the survey
+      states that nothing was found and shows how that was checked. No reverts, WIP, or
+      do-not-ship markers; the eight unreachable v2 modules are dispositioned as pre-existing and
+      recorded under `### Internal` in the notes.
+- [x] `package.json` version is bumped, with the choice justified against the survey. `0.4.0`,
+      merged as #114.
+- [x] The release tag exists, is an exact `v<version>` match for `package.json`, and points at a
+      commit with a clean template tree. `v0.4.0` at `3e41f23`;
+      `git rev-list -n1 v0.4.0` confirms.
+- [x] `resolveSourceRelease` against the tagged checkout returns `released: true` with a non-null
       tag — verified by running it, not by inspection.
-- [ ] `08-22-installer-secret-gate-mode-aware` is merged and contained in the tag. A release
-      without it does not unblock the rollout.
+      `{"commit":"3e41f23…","tag":"v0.4.0","released":true}`.
+- [x] `08-22-installer-secret-gate-mode-aware` is merged and contained in the tag. Merged as
+      `fe8754e` (#113), which is an ancestor of `3e41f23`.
 
 ## Dependencies
 
@@ -93,6 +99,28 @@ Done 2026-08-22 — see `research/range-survey.md`. Headline findings:
   a fresh tag does not exist on ordinary builds. Run it by hand when cutting.
 - The bookkeeping share is large (48 `task`, 15 `spec`, 9 `trellis`, 45 `docs`), so the
   consumer-facing surface is much smaller than 180 commits suggests.
+
+## Outcome
+
+`v0.4.0` was cut 2026-08-22 at `3e41f23`, published as a GitHub release, and every first-party
+pin advanced to it (#115, `09efa5e`). `resolveSourceRelease` returns `released: true`, so the
+provenance blocker this task existed to clear is closed.
+
+**One thing this release does not give the rollout.** The tagged tree at `v0.4.0` pins
+`744a9f1` — `v0.3.0`'s commit — because pins can only advance after the tag exists. Verified
+empirically from a worktree at the tag, not inferred. So installing the fleet from `v0.4.0`
+writes an `actionReference` of `744a9f1` into each consumer, which does not satisfy
+`08-08-fleet-rollout-smoke` acceptance criterion 4, "every installed descriptor pins the same
+first-party SHA as the current release."
+
+That is a decision for the rollout, not a defect in this release: either close the lag first via
+`08-22-pin-freshness-lag` and cut `0.4.1` with self-consistent pins, or install from `v0.4.0`
+and accept that consumers run one commit of older action code (`0b44277`, the pre-routing
+gates — the only `src/`/`action.yml` change in the range).
+
+A dry run from the tagged checkout against `platypeeps/rwbp-coordinator` produces a full plan
+with **no `set-secret` action**, confirming the merged secret-gate fix behaves as intended under
+`--route-mode copilot`.
 
 ## Notes
 
