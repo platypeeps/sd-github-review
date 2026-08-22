@@ -26,7 +26,8 @@ from an untagged checkout.
 Installing from the existing release is equally wrong:
 
 - `v0.3.0` → `744a9f1`
-- `main` is **179 commits** past `v0.3.0`
+- `main` is **~180 commits** past `v0.3.0` and the figure moves with every merge; recompute
+  with `git log --oneline v0.3.0..origin/main | wc -l` rather than trusting this number
 - `v0.3.0` predates `08-22-installer-secret-gate-mode-aware`, so it still refuses a `copilot`
   install without a PR-Agent credential — the defect the rollout was paused for
 
@@ -34,7 +35,7 @@ Neither the release nor the branch is rollout-ready. A new tag is required.
 
 ## The actual question
 
-179 commits is a large gap, and tagging ships all of it, not just the installer fix. The survey
+That gap is large, and tagging ships all of it, not just the installer fix. The survey
 is the substance of this task: what would a release off current `main` actually deliver, and is
 any of it unfinished, breaking, or unintended for consumers?
 
@@ -84,5 +85,6 @@ are otherwise satisfied — route mode `copilot` decided, external-repo scope ap
 consumer checkouts verified clean, and the credential-distribution problem resolved by the
 installer fix. Provenance is the only remaining blocker.
 
-The survey has not been done. The 179-commit figure is from `git log --oneline v0.3.0..main | wc -l`
-and is the only thing known about the range so far; nothing in it has been read.
+The survey has not been done. The commit-count figure is a `wc -l` snapshot and nothing more; nothing in the range has
+been read. It was 179 when this task was written and 180 an hour later, which is why the
+requirement above is to recompute it rather than cite it.
