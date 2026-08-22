@@ -141,3 +141,55 @@ from a reverted version.
 `npm test` green with F1 and F2 both demonstrated failing under their mutations,
 then `validate-action-metadata.mjs` clean. Report the mutation results as
 measured, including any that did not fail as predicted.
+
+## Executed scope — 2026-08-22
+
+The plan above covers the route-policy change (`0bec772`, `85a3050`). The
+approved expansion added the following, in order. All are on
+`feat/durable-lane-route-policy`; every one was falsified by mutation before
+being kept, and mutations that did not fail as predicted are recorded.
+
+| Commit | Change |
+| --- | --- |
+| `47a887f` | `attempt > 1` requires `rerequestOf` |
+| `f80067c` | first-party lane reconverged; template-variable guard |
+| `9d98eb5` | a recorded skip no longer wedges its head |
+| `605dae1` | guard scanning every lane for a caller-supplied policy |
+| `2148525` | in-flight/stranded split; `route` fails on reconciliation |
+| `4798070`, `d07fb08`, `1ec6c0b`, `b36dd85` | changelog and doc corrections; `durable-state` list made self-enforcing |
+| `99ab35b` | route policy wired into the two remaining on-demand lanes |
+| `52c3027` | prose-pin gate; mislabelled release tag corrected |
+| `b1ac293` | never-tagged 0.4.1 folded into 0.5.0 |
+| `a97434e` | stale manifest no longer wedges a consumer at current source |
+| `585182b` | release gate refuses a lane input the pinned action never declared |
+| `6788436` | route-policy refusal names `auto` |
+| `5e358bf` | pin advance unblocked; three ungated drift paths closed |
+
+### Verification as run
+
+- `npm test` 711/711, `npm run check` exit 0, `npm run validate:metadata` exit 0.
+- A complete 22-site pin-advance simulation passes both the ordinary and the
+  `SD_RELEASE_TAG` form of the gate; a pin left on v0.3.0's commit still fails.
+- Fleet surveyed directly: 8 of 9 consumers have no installation, no manifest,
+  and no `REVIEW_ROUTE_MODE`; 7 hold no provider credential and
+  `answerbook/mezmo_benchmark` holds only a truncated dead one. So the rollout
+  is 8 fresh installs plus one update, and `copilot` is the approved mode.
+
+### Mutations that did not fail as predicted
+
+- Deleting the first-party filter in `assertPinnedInputsDeclared` initially
+  failed nothing: the fixture had no third-party step carrying a `with:` block,
+  so `actions/checkout`'s `fetch-depth` would have been reported as undeclared
+  and no test noticed. Fixture and assertion added; the mutation is now caught.
+- An early idempotency test stayed green with its narrowness clause removed,
+  because at a fixed clock a preserved record and one rewritten with identical
+  content are the same bytes. Fixed with a settable clock and a `completedAt`
+  assertion.
+
+### Process note
+
+Twice a blanket `git checkout -- .` used to clean up a pin-advance simulation
+discarded uncommitted work in the same sweep. Nothing committed was lost and
+both edits were reapplied, but the pin count, lane parity, and full suite were
+re-verified before committing rather than assuming the reapply was complete.
+

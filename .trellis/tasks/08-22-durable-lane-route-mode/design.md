@@ -221,3 +221,56 @@ still pending:
 
 The consumers that would newly refuse anything are the ones someone deliberately
 dispatches an explicit off-policy route at.
+
+## Design decisions added by the scope expansion
+
+Each of these was a judgement call with a rejected alternative, so it belongs
+here rather than in `implement.md`.
+
+**Staleness is derived, not tuned.** `stranded-receipt-minutes` defaults to 360
+because no shipped lane declares `timeout-minutes`, so GitHub's 360-minute job
+ceiling bounds them all. Past it, no job can still be alive to finalize, which
+makes a false strand impossible rather than merely unlikely. A tuned value would
+have had to trade false strands against slow detection; a derived one does not.
+
+**The reconciliation gate lives in the action, not the lane.** The first attempt
+put a `run:` gate in the four shipped lanes and broke the no-shell invariant —
+the canonical no-checkout durable workflow holds `checks: write` and may contain
+no shell step at all. The action is also the better home on its own terms: a
+consumer cannot drop it. It exempts the concurrency-race loser, keyed on
+`reconciliation.authoritativeCheckId`, because a loser whose winner is reviewing
+that head has not failed.
+
+**A skip supersedes; every other terminal state does not.** A skip is the one
+terminal state representing *no dispatched work*, so replacing it in place
+authorizes a first dispatch rather than a second. This is the narrowest rule
+that unwedges the draft case without weakening at-most-once dispatch.
+
+**The route policy bounds the requested route; the review floor raises the
+resolved one.** Opposite bounds on different values, deliberately never
+reconciled with each other. Applying both to the same value makes them mutually
+unsatisfiable — a `cheap`-mode consumer carrying the shipped `copilot` floor
+would refuse its own default review. Membership, never `ROUTE_STRENGTH`: that
+ordering ranks assurance, not cost, so "anything weaker than the policy" would
+permit paid `deep` under a `copilot` policy.
+
+**Pre-tag, the pin is compared against HEAD.** In that window the tree under
+validation *is* the release, so HEAD is the correct authority for "the code this
+release ships". Comparing against the previous tag deadlocked every release that
+changes action code. The post-tag path is untouched, so a pin left on an older
+release still fails against the tag, and a descendant pin whose action code
+differs from the candidate still fails.
+
+**Drift is fixed by enumeration, not correction.** Every recurrence in this
+branch came from a restated list: managed variable names, durable states, the
+lanes enforcing policy, historical template hashes, code line numbers in
+`DESIGN.md`. Each is now derived — from `CONFIG_VARIABLES`, from `DURABLE_STATES`,
+from the filesystem, from the release tags, from symbol names. Correcting the
+text would have deferred the same failure to the next release.
+
+**Guards must be checked against the blast radius, not the edit.** Two guards in
+this branch passed while the defect stood, because each checked only what already
+complied: the route-policy guard scanned lanes that already had the input, and
+the pinned-input test had no third-party step so deleting its first-party filter
+failed nothing. Both were rewritten to enumerate.
+
