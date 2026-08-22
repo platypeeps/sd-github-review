@@ -344,6 +344,22 @@ node scripts/install-consumer.mjs uninstall [options]
   drifted descriptor `actionReference`, a missing/unknown descriptor, and a
   non-semver version; assert `validateReleaseConsistency` accepts a matching
   not-yet-existing tag and rejects version mismatch and an existing tag.
+- Pin freshness is **action-code identity, not commit equality**. A pin is fresh
+  when it is reachable from the current release's commit and resolves `src` and
+  `action.yml` to the same tree and blob as that commit. Equality was
+  unsatisfiable at the instant of tagging — a commit cannot contain its own SHA —
+  which forced pins to advance only after the tag and left every tagged tree
+  carrying the previous release's pins. Do not "simplify" this back to `===`.
+  Assert: a pin trailing by action-code-neutral commits passes; a pin whose `src`
+  or `action.yml` differs fails naming which one; a pin ahead of the tag passes
+  only while it is an ancestor of `HEAD`, which is the pin-advance pull request's
+  own state; a pin on neither the release nor `HEAD` fails even with matching
+  code; and an ancestry probe exiting non-1 throws rather than reading as
+  `false`, since git reserves exit 1 for "not an ancestor" and anything else means
+  the repository could not be read.
+- Releases therefore advance every pin **before** tagging, and the tag sits on the
+  pin-advance commit, which must touch neither `src/` nor `action.yml`.
+  `docs/RELEASE_CHECKLIST.md` section 5 is the live owner of that order.
 - Cover `adopt`: a current-template manual install adopts without claiming
   pre-existing unowned resources and later uninstalls cleanly; an allow-listed
   historical workflow adopts and converges to the current source; an
