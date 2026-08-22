@@ -763,9 +763,17 @@ test("rejects a prohibited path even when it is force-added to Git", async () =>
 // R-003 freshness gate. Driven entirely through the injected gitImpl seam, so
 // these run against a synthetic root with no real tags — the same reason the
 // check lives beside validateMetadata rather than inside it.
-const freshnessGit = (tags, commits) => ({
+//
+// The two defaults below describe the ordinary case: a pin left on an older
+// release IS an ancestor of the current one, and two different commits carry
+// different action code. Overriding them is how the interesting cases are
+// expressed.
+const freshnessGit = (tags, commits, overrides = {}) => ({
   listReleaseTags: async () => tags,
   resolveTagCommit: async (_root, tag) => commits[tag],
+  isAncestor: async () => true,
+  resolvePathObject: async (_root, commit, targetPath) => `${commit}:${targetPath}`,
+  ...overrides,
 });
 
 test("assertPinFreshness accepts a pin equal to the latest release commit", async () => {
@@ -847,6 +855,142 @@ test("assertPinFreshness fails when no release tag is visible rather than skippi
   await assert.rejects(
     assertPinFreshness({ repositoryRoot: root, gitImpl: freshnessGit([], {}) }),
     /no v<semver> release tag found; pin freshness cannot be verified/u,
+  );
+});
+
+// The freshness rule is action-code identity, not commit equality. Equality was
+// unsatisfiable at the instant of tagging — a commit cannot contain its own SHA
+// — which forced pins to advance only after the tag and left every tagged tree
+// carrying the previous release's pins. See 08-22-pin-freshness-lag.
+
+// Same action code at both commits: `src` and `action.yml` resolve identically
+// no matter which commit is asked.
+const identicalActionCode = {
+  resolvePathObject: async (_root, _commit, targetPath) => `shared:${targetPath}`,
+};
+
+test("assertPinFreshness accepts a pin trailing the release by action-code-neutral commits", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-neutral-"));
+  const pinned = "a".repeat(40);
+  const release = "b".repeat(40);
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: pinned,
+  });
+
+  // This is the case equality made impossible, and the whole point of the task:
+  // a tag placed on a pin-advance commit pins its own parent. The parent's
+  // action code is byte-identical, so consumers cannot observe the difference.
+  const result = await assertPinFreshness({
+    repositoryRoot: root,
+    gitImpl: freshnessGit(["v0.1.0", "v0.2.0"], { "v0.1.0": "c".repeat(40), "v0.2.0": release }, identicalActionCode),
+  });
+  assert.equal(result.releaseTag, "v0.2.0");
+  assert.equal(result.actionSha, pinned);
+});
+
+test("assertPinFreshness names src when the pinned commit's action code differs", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-src-differs-"));
+  const pinned = "a".repeat(40);
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: pinned,
+  });
+
+  await assert.rejects(
+    assertPinFreshness({
+      repositoryRoot: root,
+      gitImpl: freshnessGit(["v0.2.0"], { "v0.2.0": "b".repeat(40) }, {
+        resolvePathObject: async (_root, commit, targetPath) =>
+          targetPath === "src" ? `${commit}:src` : "shared:action.yml",
+      }),
+    }),
+    /and src differs \(a{40}:src vs b{40}:src\)/u,
+  );
+});
+
+test("assertPinFreshness names action.yml when only the action contract differs", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-action-differs-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: "a".repeat(40),
+  });
+
+  // src alone is not the whole action: action.yml carries the input/output
+  // contract, and a consumer pinned across a change to it runs a different
+  // interface with identical source.
+  await assert.rejects(
+    assertPinFreshness({
+      repositoryRoot: root,
+      gitImpl: freshnessGit(["v0.2.0"], { "v0.2.0": "b".repeat(40) }, {
+        resolvePathObject: async (_root, commit, targetPath) =>
+          targetPath === "action.yml" ? `${commit}:action.yml` : "shared:src",
+      }),
+    }),
+    /and action\.yml differs/u,
+  );
+});
+
+test("assertPinFreshness accepts a pin ahead of the tag while it is an ancestor of HEAD", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-pretag-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: "a".repeat(40),
+  });
+
+  // The pre-tag window: on the pull request that advances the pins, the new pin
+  // is newer than the last release and the new tag does not exist yet. Without
+  // this branch that pull request can never go green, so the tag can never be
+  // cut on it — the deadlock every ancestry-only formulation hits.
+  const result = await assertPinFreshness({
+    repositoryRoot: root,
+    gitImpl: freshnessGit(["v0.2.0"], { "v0.2.0": "b".repeat(40) }, {
+      ...identicalActionCode,
+      isAncestor: async (_root, _ancestor, descendant) => descendant === "HEAD",
+    }),
+  });
+  assert.equal(result.releaseTag, "v0.2.0");
+});
+
+test("assertPinFreshness rejects a pin that is on neither the release nor HEAD", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-orphan-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: "a".repeat(40),
+  });
+
+  // Matching action code is not enough on its own. A commit on an abandoned
+  // branch can carry an identical tree, and pinning it would send consumers to
+  // a commit that is not in the released history.
+  await assert.rejects(
+    assertPinFreshness({
+      repositoryRoot: root,
+      gitImpl: freshnessGit(["v0.2.0"], { "v0.2.0": "b".repeat(40) }, {
+        ...identicalActionCode,
+        isAncestor: async () => false,
+      }),
+    }),
+    /is not contained in the current release v0\.2\.0 \(b{40}\) and is not an ancestor of HEAD/u,
+  );
+});
+
+test("assertPinFreshness propagates an ancestry probe failure instead of reading it as false", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-ancestry-error-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: "a".repeat(40),
+  });
+
+  // git exits 1 for "not an ancestor" and nonzero-otherwise for an unknown
+  // revision or an unreadable object store. Collapsing the second into the
+  // first would let a broken checkout report a fresh pin, which is the one
+  // direction this gate must never fail in.
+  await assert.rejects(
+    assertPinFreshness({
+      repositoryRoot: root,
+      gitImpl: freshnessGit(["v0.2.0"], { "v0.2.0": "b".repeat(40) }, {
+        isAncestor: async () => {
+          const error = new Error("fatal: bad object");
+          error.code = 128;
+          throw error;
+        },
+      }),
+    }),
+    /fatal: bad object/u,
   );
 });
 

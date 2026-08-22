@@ -84,10 +84,26 @@ floor.
 
 - [ ] Confirm the candidate SHA and pilot evidence still match.
 - [ ] Obtain explicit maintainer approval to publish the proposed version.
-- [ ] Create an annotated version tag at the approved candidate SHA and publish
-  a GitHub release with routing, permission, and consumer-adapter notes.
-- [ ] Update consumer examples to the released full commit SHA. The tag is for
-  discovery; the SHA is the immutable installation reference.
+- [ ] Advance every first-party pin to the approved candidate SHA, in one commit
+  so mutual consistency is never observed split, and merge it. That commit must
+  touch neither `src/` nor `action.yml`.
+- [ ] Create the annotated version tag **on the pin-advance commit**, not on the
+  candidate, and publish a GitHub release with routing, permission, and
+  consumer-adapter notes. The tag is for discovery; the SHA is the immutable
+  installation reference.
+- [ ] Run `node scripts/validate-action-metadata.mjs` against a checkout of the
+  new tag. It must exit 0.
+
+Pins are advanced **before** the tag, and the tag sits on the pin advance. The
+reverse order — tag the candidate, then advance pins onto it — is what shipped
+`v0.3.0` and `v0.4.0` with tagged trees pinning the *previous* release, so every
+consumer installing from a tag ran a release behind. The order cannot be fixed by
+pinning the tagged commit itself: a commit cannot contain its own SHA. It works
+because `assertPinFreshness` compares the action code at the pin against the
+action code at the release, and a pin-advance commit that leaves `src/` and
+`action.yml` alone pins a parent whose action code is byte-identical. Touching
+either of those in the pin advance breaks that and the tag will fail its own
+gate.
 
 ## Rollback
 

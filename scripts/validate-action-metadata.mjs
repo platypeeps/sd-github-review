@@ -557,6 +557,41 @@ async function defaultResolveTagCommit(repositoryRoot, tag) {
   return stdout.trim();
 }
 
+// Exit 1 is git's answer for "not an ancestor" and is the only nonzero exit that
+// means false. Anything else — an unknown revision, a corrupt or shallow object
+// store, git missing entirely — is rethrown. Collapsing those to false would let
+// an unreadable repository report a fresh pin, which is the one direction this
+// gate must never fail in.
+async function defaultIsAncestor(repositoryRoot, ancestor, descendant) {
+  try {
+    await execFileAsync(
+      "git",
+      ["-C", repositoryRoot, "merge-base", "--is-ancestor", ancestor, descendant],
+      { encoding: "utf8" },
+    );
+    return true;
+  } catch (error) {
+    if (error?.code === 1) return false;
+    throw error;
+  }
+}
+
+// Resolve <commit>:<path> to its tree or blob id. Deliberately lets a missing
+// object reject: a pin whose tree cannot be read is unverifiable, not fresh.
+async function defaultResolvePathObject(repositoryRoot, commit, targetPath) {
+  const { stdout } = await execFileAsync(
+    "git",
+    ["-C", repositoryRoot, "rev-parse", `${commit}:${targetPath}`],
+    { encoding: "utf8" },
+  );
+  return stdout.trim();
+}
+
+// The paths whose contents decide whether a pinned commit runs the same action
+// as the release. Everything else a release touches — docs, examples, the pins
+// themselves, Trellis records — cannot change what a consumer executes.
+const ACTION_CODE_PATHS = Object.freeze(["src", "action.yml"]);
+
 // Semver precedence over the numeric core. Release tags here are always
 // v<major>.<minor>.<patch>, so a three-part numeric compare is total and no
 // prerelease ordering is required.
@@ -593,6 +628,8 @@ export async function assertPinFreshness({
 } = {}) {
   const listReleaseTags = gitImpl?.listReleaseTags ?? defaultListReleaseTags;
   const resolveTagCommit = gitImpl?.resolveTagCommit ?? defaultResolveTagCommit;
+  const isAncestor = gitImpl?.isAncestor ?? defaultIsAncestor;
+  const resolvePathObject = gitImpl?.resolvePathObject ?? defaultResolvePathObject;
   const { descriptorPath, actionSha } = await readSetupDescriptor(repositoryRoot);
 
   // Re-filter rather than trust the lookup: an injected gitImpl is a test seam,
@@ -611,11 +648,49 @@ export async function assertPinFreshness({
   if (!/^[0-9a-f]{40}$/u.test(latestCommit)) {
     throw new Error(`${descriptorPath}: release tag ${latest} did not resolve to a commit`);
   }
+  // This was equality: actionSha === latestCommit. No commit can satisfy that at
+  // the moment it is tagged, because it would have to contain its own SHA — the
+  // same infeasible fixed point validateReleaseConsistency disclaims below. The
+  // consequence was structural rather than cosmetic: pins could only advance
+  // AFTER the tag existed, so every tagged tree permanently carried the previous
+  // release's pins, and a consumer installing from a tag ran a release behind.
+  //
+  // What a consumer depends on is not where the pin sits in the commit graph but
+  // whether the code at the pin is the code the release ships. Comparing that
+  // directly dissolves the fixed point: a tag placed on a pin-advance commit can
+  // pin its own parent, whose action code is byte-identical.
+  //
+  // Ancestry-only formulations were tried first and all fail — see the task
+  // 08-22-pin-freshness-lag design notes. They either deadlock the pin-advance
+  // pull request, whose CI runs before the new tag exists, or widen the window
+  // enough to re-admit the stale pin they were meant to reject.
   if (actionSha !== latestCommit) {
-    throw new Error(
-      `${descriptorPath}: actionReference is stale — pinned to ${actionSha}, but the ` +
-        `current release ${latest} is ${latestCommit}; advance every first-party pin together`,
-    );
+    if (!(await isAncestor(repositoryRoot, actionSha, latestCommit))) {
+      // The pre-tag window. On the pull request that advances the pins, the new
+      // pin is newer than the last release and the new tag does not exist yet,
+      // so the pin is a descendant of the current release rather than an
+      // ancestor. Accept it only while it is on the history being validated. The
+      // action-code comparison below still runs, so a descendant pin that
+      // changes behaviour is still refused.
+      if (!(await isAncestor(repositoryRoot, actionSha, "HEAD"))) {
+        throw new Error(
+          `${descriptorPath}: actionReference ${actionSha} is not contained in the current ` +
+            `release ${latest} (${latestCommit}) and is not an ancestor of HEAD; ` +
+            "advance every first-party pin together",
+        );
+      }
+    }
+    for (const targetPath of ACTION_CODE_PATHS) {
+      const pinnedObject = await resolvePathObject(repositoryRoot, actionSha, targetPath);
+      const releasedObject = await resolvePathObject(repositoryRoot, latestCommit, targetPath);
+      if (pinnedObject !== releasedObject) {
+        throw new Error(
+          `${descriptorPath}: actionReference is stale — pinned to ${actionSha}, but the ` +
+            `current release ${latest} is ${latestCommit} and ${targetPath} differs ` +
+            `(${pinnedObject} vs ${releasedObject}); advance every first-party pin together`,
+        );
+      }
+    }
   }
   return { releaseTag: latest, releaseCommit: latestCommit, actionSha };
 }
