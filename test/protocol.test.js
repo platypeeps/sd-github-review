@@ -98,7 +98,19 @@ test("canonical identity and request intent change only their owned digests", ()
   const base = requestByName.get("explicit cheap");
   const differentRoute = { ...clone(base), route: "deep" };
   const differentHead = { ...clone(base), headSha: "9999999999999999999999999999999999999999" };
-  const differentAttempt = { ...clone(base), attempt: 2 };
+  // A valid attempt-2 request must declare what it retries, so this carries a
+  // rerequestOf. rerequestOf is excluded from neither digest, but the property
+  // under test is that `attempt` alone moves both, and the prior-attempt fields
+  // here are constant against `base` by construction.
+  const differentAttempt = {
+    ...clone(base),
+    attempt: 2,
+    rerequestOf: {
+      priorReceiptId: "a".repeat(64),
+      priorLogicalDispatchId: deriveLogicalDispatchId(base),
+      priorAttempt: 1,
+    },
+  };
   const differentPolicy = { ...clone(base), policyReference: "stricter-policy" };
 
   assert.equal(deriveLogicalDispatchId(differentRoute), deriveLogicalDispatchId(base));
@@ -806,4 +818,25 @@ test("a non-string route policy is refused as a string error", () => {
     }),
     /policy\.routePolicy must be a string/u,
   );
+});
+
+// A bare attempt bump used to be an authorization bypass: ReceiptStore's
+// #validateRerequest returns immediately when rerequestOf is absent, so
+// rerequest-authorized, prior-receipt identity, supportsRerequest, the policy
+// version check and the route/backend match were all skipped -- and because
+// attempt is part of the logical identity, the bump minted a fresh dispatch
+// instead of colliding with the stored receipt. review-request is a free-text
+// workflow_dispatch input, so this was reachable by anyone who could dispatch.
+test("a same-head retry must declare what it retries", () => {
+  const base = requestByName.get("explicit cheap");
+  assert.throws(
+    () => decodeReviewRequest({ ...clone(base), attempt: 2 }),
+    /request\.attempt above 1 requires request\.rerequestOf identifying the prior attempt/u,
+  );
+  assert.throws(
+    () => decodeReviewRequest({ ...clone(base), attempt: 7 }),
+    /request\.attempt above 1 requires request\.rerequestOf/u,
+  );
+  // attempt 1 is the ordinary first dispatch and must stay unencumbered.
+  assert.doesNotThrow(() => decodeReviewRequest({ ...clone(base), attempt: 1 }));
 });

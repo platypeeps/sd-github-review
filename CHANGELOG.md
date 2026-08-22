@@ -6,6 +6,31 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Security
+
+- **A same-head retry must now declare what it retries, closing a bypass of the
+  entire rerequest authorization chain.** `ReceiptStore#validateRerequest`
+  returns at its first line when `request.rerequestOf` is absent
+  (`src/receipt.js:420`), and the protocol tied `attempt` to `rerequestOf` only
+  when `rerequestOf` was present. So a request carrying `attempt: 2` and no
+  `rerequestOf` skipped the `rerequest-authorized` input, the prior-receipt
+  identity check, `supportsRerequest`, the policy-version match, and the
+  route/backend match — all of them.
+
+  Because `attempt` is part of the logical dispatch identity, the bare bump did
+  not collide with the stored receipt either: it minted a fresh dispatch and a
+  second durable check run, reading as a clean new review. `review-request` is a
+  free-text `workflow_dispatch` input, so this was reachable by anyone able to
+  dispatch the workflow, repeatedly, at a single head.
+
+  `decodeReviewRequest` now refuses `attempt > 1` without `rerequestOf`. No
+  fixture or flow used that shape; every `attempt: 2` in the suite already
+  carried a `rerequestOf`.
+
+  Impact was bounded in practice rather than by design: it required repository
+  write access, and the routes that bill a provider need a credential no fleet
+  consumer holds. It was still an authorization control that did not hold.
+
 ### Added
 
 - **The durable lane now enforces the repository's recorded `REVIEW_ROUTE_MODE`.**

@@ -555,6 +555,21 @@ function normalizeReviewRequest(value, { verifyCompatibility = true } = {}) {
   if (rerequestOf && attempt !== rerequestOf.priorAttempt + 1) {
     throw new Error("request.attempt must be the next attempt after request.rerequestOf.priorAttempt");
   }
+  // An attempt above 1 is a same-head retry, and every same-head retry must
+  // declare what it retries. Without this, ReceiptStore#validateRerequest
+  // returns at its first line (`if (!request.rerequestOf) return`) and the whole
+  // authorization chain -- the rerequest-authorized input, prior-receipt
+  // identity, supportsRerequest, policy version, route/backend match -- is
+  // skipped. Because `attempt` is part of the logical identity, the bare bump
+  // also mints a fresh dispatch rather than colliding with the stored receipt,
+  // so it reads as a clean new review. review-request is a free-text
+  // workflow_dispatch input, which makes that an authorization bypass available
+  // to anyone who can dispatch the workflow.
+  if (attempt > 1 && !rerequestOf) {
+    throw new Error(
+      "request.attempt above 1 requires request.rerequestOf identifying the prior attempt",
+    );
+  }
   if (supersedes && rerequestOf) {
     throw new Error("request.supersedes and request.rerequestOf cannot be combined");
   }

@@ -851,3 +851,31 @@ test("an unset route-policy input leaves the durable lane unconstrained", async 
   });
   assert.equal(routed.state, "started");
 });
+
+// Measured before the fix: a bare attempt bump reached dispatchAllowed=true with
+// two check runs on one head, skipping the entire rerequest authorization chain.
+// Driven through the action's real entry point rather than the decoder alone,
+// because the bypass was only reachable end to end.
+test("a bare attempt bump is refused end to end", async () => {
+  const request = clone(requestByName.get("explicit cheap"));
+  const client = new FakeGitHubClient(request.headSha);
+  const harness = createHarness(client);
+  const env = {
+    "INPUT_CHEAP-BACKEND": JSON.stringify(backendByName.get("external comment backend")),
+  };
+
+  const first = await harness.run("route", request, env);
+  assert.equal(first.state, "started");
+
+  const bumped = { ...clone(request), correlationId: "corr-bare-bump", attempt: 2 };
+  await assert.rejects(
+    () => harness.run("route", bumped, env),
+    /request\.attempt above 1 requires request\.rerequestOf/u,
+  );
+
+  assert.equal(
+    client.calls.filter(([name]) => name === "createCheckRun").length,
+    1,
+    "the refused bump must not mint a second durable check run",
+  );
+});
