@@ -221,15 +221,16 @@ have to wait for it.
 - After step 5: delete the scratch repository. It is disposable and must not be
   the pilot.
 
-**Not yet deleted.** `platypeeps/sd-review-scratch-0822` is fully uninstalled —
-no variables, no managed workflows, no secrets — but the empty private
-repository still exists, because the `gh` token lacks the `delete_repo` scope:
+**Deleted.** `platypeeps/sd-review-scratch-0822` was uninstalled through the
+normal lifecycle (all six variables removed, `total_count: 0`, every managed
+file removed) and the repository itself is gone:
 
 ```
-HTTP 403: Must have admin rights to Repository.
-This API operation needs the "delete_repo" scope.
+$ gh api repos/platypeeps/sd-review-scratch-0822
+404 Not Found
 ```
 
-Removing it needs `gh auth refresh -h github.com -s delete_repo` followed by
-`gh repo delete platypeeps/sd-review-scratch-0822 --yes`, or a deletion through
-the web UI. Both require the operator; do not treat this as done until it is.
+The deletion needed the operator: the session's `gh` token carries
+`gist, read:org, repo, workflow` and not `delete_repo`, so `gh repo delete`
+returned `HTTP 403 ... needs the "delete_repo" scope`. Noting the scope gap
+because it will recur the next time a scratch consumer is used.
