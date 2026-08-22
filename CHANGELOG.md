@@ -70,6 +70,22 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **A consumer whose managed files were advanced by a release, but whose
+  manifest stayed behind, was wedged with no supported recovery.** The
+  modification guard compared a managed file only against the hash the manifest
+  recorded at install time, so a file byte-identical to the *current* template
+  still read as operator drift. `update` refused, `uninstall` refused, and
+  `adopt` refuses whenever a manifest exists — leaving hand-editing the manifest
+  as the only way out. `sd-github-review`'s own installation was in exactly this
+  state and would have failed its rollout cohort.
+
+  All three guards now also exempt content equal to current source, which is
+  what the no-manifest path and the pre-durable migration path already did.
+  Bytes the installer is about to write are not operator content: the next write
+  reproduces them, so nothing can be lost by adopting them. Content matching
+  neither the manifest nor the template is still refused, and a test asserts
+  that half specifically.
+
 - **Published documentation labelled the shipped pin as `v0.3.0` when it is
   `v0.4.0`'s commit.** `3e41f23` is the commit `v0.4.0` points at; `v0.3.0` is
   `744a9f1`. Five places in `README.md`, `SETUP-COPILOT.md`, and `SETUP-PR-AGENT.md` told a

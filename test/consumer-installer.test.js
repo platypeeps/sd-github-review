@@ -1786,6 +1786,36 @@ for (const { field, destination, sourceOption, freshBytes } of DURABLE_CASES) {
     assert.equal(existsSync(path.join(target, MANIFEST_PATH)), true);
   });
 
+  test(`a stale manifest does not wedge ${destination} when its bytes match current source`, async () => {
+    // A-016, end to end. The file is exactly what the installer would write; only
+    // the manifest's recorded hash is behind, which is what a consumer looks like
+    // after a release advanced the template. Before the fix both update and
+    // uninstall refused here and `adopt` refuses whenever a manifest exists, so
+    // the only recovery was hand-editing the manifest. sd-github-review itself
+    // was in this state and would have failed its own rollout cohort.
+    const sourceRoot = await makeSource();
+    const target = await makeTarget();
+    const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+    await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
+
+    const manifestPath = path.join(target, MANIFEST_PATH);
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    const field = DURABLE_CASES.find((entry) => entry.destination === destination)?.field;
+    const block = field ? manifest[field] : manifest.workflow;
+    const current = await readFile(path.join(target, destination), "utf8");
+    block.sha256 = "0".repeat(64);
+    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+    await assert.doesNotReject(
+      runConsumerInstaller({ command: "update", target }, { sourceRoot, github }),
+    );
+    assert.equal(
+      await readFile(path.join(target, destination), "utf8"),
+      current,
+      "the adopted file is byte-identical after the recovering update",
+    );
+  });
+
   test(`check reports a newer source for ${destination}`, async () => {
     // Without this, a consumer stays "healthy" on an obsolete descriptor or
     // durable workflow after a later release changes it.
