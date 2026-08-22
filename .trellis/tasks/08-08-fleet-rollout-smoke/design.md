@@ -7,7 +7,7 @@ mechanism claim:
 
 | System | Owns | Not responsible for |
 | --- | --- | --- |
-| `sd-ai-command-pack` fleet refresh | installing/updating the pack in consumers; cohort order and concurrency policy in `docs/fleet/consumers.json` | the review lane |
+| `sd-ai-command-pack` fleet refresh | installing/updating the pack in consumers; cohort order and concurrency policy in its own docs/fleet/consumers.json | the review lane |
 | `sd-github-review` consumer installer (`scripts/install-consumer.mjs`) | descriptor + durable workflow + GitHub variable/label/secret setup in one consumer | cohort sequencing; cross-repo orchestration |
 | this task | driving the installer across consumers in manifest order, and proving each with a smoke PR | changing either tool |
 

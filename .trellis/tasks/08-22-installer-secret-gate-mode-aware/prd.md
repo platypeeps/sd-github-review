@@ -104,10 +104,33 @@ increase with no functional benefit.
 - [ ] A `--dry-run` install of `copilot` against `platypeeps/rwbp-coordinator` produces a plan
       instead of the refusal, which is the exact command that fails today.
 
+## Review findings
+
+**Rebutted — Prism, "Duplicate knowledge in code and tests for route mode secret requirement"**
+(`test/consumer-installer.test.js`, maintainability, 80%). The suggestion is to import
+`PROVIDER_SECRET_OPTIONAL_ROUTE_MODES` into the test instead of restating the partition. Doing
+so makes the assertion tautological — it would reduce to `!set.has(m) === !set.has(m)` and
+verify nothing. The independent restatement is the oracle; that is what makes the test able to
+fail. The `expected` key-set is separately asserted equal to `ROUTE_MODES`, so a mode added
+without a decision here fails the test rather than drifting silently, which is the drift the
+finding is concerned about.
+
+This finding is also the second of two contradictory rounds: the prior round asked for the
+partition to be derived from `ROUTE_MODES` rather than hardcoded, and this round asks for the
+derivation to be removed as duplication. Satisfying both is not possible. Not remediated
+further; see the convergence note below.
+
 ## Notes
 
 Found while executing `08-08-fleet-rollout-smoke`. The rollout is paused on this task rather
 than working around the gate by distributing the credential.
+
+2026-08-22 convergence state: `npm test` is 656/656 and the SD review preflight reports
+`0 failure(s), 1 warning(s)` (the warning is that this branch carries two Trellis task
+directories, which is accurate — the rollout task and this one). `npm run check:full` still
+exits 1, solely on the rebutted Prism maintainability finding above. That is a live instance of
+`08-09-review-gate-advisory-convergence`: an advisory-severity finding fails the gate with no
+convergent remediation available. The gate is red for that reason and no other; it is not green.
 
 The `auto` boundary is the one to get right. `auto` can resolve to a PR-Agent route at runtime,
 so it belongs with the strict modes despite not naming a provider up front. Treating it as

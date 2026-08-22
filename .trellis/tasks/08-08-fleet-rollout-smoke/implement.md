@@ -6,12 +6,13 @@
       (owner decision, 2026-08-22; revised from `auto` on the billing finding below).
       `sd-github-review` keeps its existing `copilot` install. Pass `--route-mode copilot`
       explicitly on every install; do not rely on an ambient `REVIEW_ROUTE_MODE` variable.
-- [ ] `PR_AGENT_MODEL_API_KEY` available to pipe via `--secret-stdin`. **Required for every
-      install regardless of route mode** — verified 2026-08-22 that `--route-mode none` is
-      refused identically, and that `planResources` (`plan.mjs:118`) never consults `routeMode`
-      when deciding the secret gate at line 148. See the open question below before supplying it.
-- [ ] Explicit owner approval for the external-repo scope: nine repositories mutated, nine pull
-      requests opened, GitHub variables/labels/secrets set in each.
+- [x] `PR_AGENT_MODEL_API_KEY` **not required**. The gate was mode-blind and refused every mode,
+      including `copilot` and `none`, which reach no PR-Agent provider.
+      `08-22-installer-secret-gate-mode-aware` makes it route-mode aware, so a `copilot` install
+      needs no credential and the rollout distributes none. Do not pass `--secret-stdin`: doing
+      so would provision a key into eight repositories that never read it.
+- [x] Explicit owner approval for the external-repo scope: nine repositories mutated, nine pull
+      requests opened, GitHub variables/labels/secrets set in each. Granted 2026-08-22.
 - [ ] `npm run check:full` green in this repository — the installer being rolled out is the
       code under test.
 - [ ] Every consumer checkout clean. A dirty checkout is skipped and reported, never
@@ -87,6 +88,6 @@ The count check is not ceremonial. The prior PRD revision said 8; a verification
 ## Out of scope
 
 - Merging any smoke PR
-- Modifying `docs/fleet/consumers.json`
+- Modifying the fleet manifest (docs/fleet/consumers.json in sd-ai-command-pack)
 - Changing the consumer installer or the descriptor/workflow sources
 - Converting any consumer between thin and fat

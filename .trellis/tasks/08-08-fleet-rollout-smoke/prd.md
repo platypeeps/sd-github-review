@@ -34,8 +34,8 @@ erroring: the failure mode is silence, which is why it went unnoticed.
 
 ## Fleet shape
 
-The fleet is the schema-version-5 manifest at `docs/fleet/consumers.json` in
-`sd-ai-command-pack`. Rollout order and cohort policy:
+The fleet is the schema-version-5 manifest kept at docs/fleet/consumers.json inside the
+`sd-ai-command-pack` repository. Rollout order and cohort policy:
 
 - **canary** — sequential: `rwbp-coordinator`, `loadsmith`, `hoa-manager`
 - **post-canary** — bounded-parallel, max concurrency 2: `rwbp-website`, `mezmo_benchmark`,
@@ -117,11 +117,12 @@ decision before its install (see Open Decisions).
      PR-Agent key. This is a change to the consumer installer and belongs in its own task;
      the rollout would then need no credential distribution at all.
 
-  Decided 2026-08-22 by the owner: path 2. The rollout is paused pending
-  `08-22-installer-secret-gate-mode-aware` and will not distribute the credential. Confirmed
-  before deciding that the gate is a defect rather than a deliberate requirement: the durable
-  workflow references the secret only in provider-gated PR-Agent bindings that fall through to
-  `''`, and no test asserts the refusal for any mode.
+  Decided 2026-08-22 by the owner: path 2, and now implemented. The gate is route-mode aware
+  as of `08-22-installer-secret-gate-mode-aware`, so a `copilot` install requires no credential
+  and this rollout distributes none. Confirmed before deciding that the gate was a defect
+  rather than a deliberate requirement: both installed lanes reference the secret only in
+  provider-gated PR-Agent bindings that fall through to `''`, and no test asserted the refusal
+  for any mode.
 
 ## Scope and Authority
 

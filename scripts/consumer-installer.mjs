@@ -34,6 +34,7 @@ import {
   recognizeTemplate,
   resolveConfiguration,
   resolveRouteMode,
+  routeModeNeedsProviderSecret,
   sameConfiguration,
   sameRepository,
   sha256,
@@ -95,6 +96,7 @@ export {
   parseArguments,
   parseGitHubRemote,
   resolveSourceRelease,
+  routeModeNeedsProviderSecret,
   validateConfiguration,
 };
 
@@ -509,7 +511,13 @@ async function checkInstallation(options, dependencies) {
     if (actualValue === undefined) issues.push(`GitHub variable ${name} is missing`);
     else if (actualValue !== desiredValue) issues.push(`GitHub variable ${name} has drifted`);
   }
-  if (!target.snapshot.secrets.has(SECRET_NAME)) {
+  // Mirrors the install gate in planResources: a mode that reaches no PR-Agent
+  // provider does not need the credential, so reporting it missing would fail
+  // check on exactly the installations that gate now permits.
+  if (
+    routeModeNeedsProviderSecret(configuration.routeMode) &&
+    !target.snapshot.secrets.has(SECRET_NAME)
+  ) {
     issues.push(`GitHub secret ${SECRET_NAME} is missing`);
   }
   for (const { name } of ROUTING_LABELS) {
