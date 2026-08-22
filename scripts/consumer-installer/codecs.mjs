@@ -270,6 +270,14 @@ function configVariablesForSchema(schemaVersion) {
   if (schemaVersion >= ROUTE_MODE_MIN_SCHEMA_VERSION) return ROUTE_MODE_CONFIG_VARIABLES;
   return LEGACY_CONFIG_VARIABLES;
 }
+
+// Every variable name this tier manages, independent of any configuration.
+// Deliberately not `Object.keys(variableValues(someConfig))`: that filters out
+// names whose backing field the given configuration leaves unset, so a default
+// configuration reports REVIEW_ROUTE_MODE as unmanaged when it is merely
+// unpopulated. Callers asking "is this name under management" -- which is what
+// decides whether `check` can see it and `uninstall` removes it -- want this.
+export const MANAGED_VARIABLE_NAMES = Object.freeze(Object.keys(CONFIG_VARIABLES));
 export const COMMIT_PATTERN = /^[0-9a-f]{40}$/u;
 export const RELEASE_TAG_PATTERN =
   /^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;

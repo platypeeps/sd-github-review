@@ -27,6 +27,7 @@ import {
   MANAGED_RESOURCES,
   MANIFEST_PATH,
   MANIFEST_SCHEMA_VERSION,
+  MANAGED_VARIABLE_NAMES,
   ROUTE_MODES,
   ROUTING_LABELS,
   SECRET_NAME,
@@ -2445,5 +2446,68 @@ test("installer route modes stay identical to the action's accepted route set", 
     [...ROUTE_MODES].sort(),
     [...ACTION_ROUTES].sort(),
     "ROUTE_MODES and src/protocol.js ROUTES accept different route sets",
+  );
+});
+
+// This repository dogfoods its own durable lane: .github/workflows/sd-review.yml
+// is an installer-managed copy of DURABLE_TEMPLATE_PATH, and the manifest records
+// the source hash, so `check` treats any difference as drift. Nothing asserted
+// that here, and the gap is not hypothetical -- adding route-policy to the
+// template left this repository as the one consumer not enforcing what it ships.
+// The same applies to the event-driven lane, so both are bound.
+for (const [source, installed] of [
+  [DURABLE_TEMPLATE_PATH, ".github/workflows/sd-review.yml"],
+  [TEMPLATE_PATH, ".github/workflows/ai-review-router.yml"],
+]) {
+  test(`${installed} stays byte-identical to ${source}`, () => {
+    assert.equal(
+      readFileSync(path.join(REPO_ROOT, installed), "utf8"),
+      readFileSync(path.join(REPO_ROOT, source), "utf8"),
+      `${installed} has drifted from ${source}; run update rather than editing it`,
+    );
+  });
+}
+
+// The generalization of the SD_REVIEW_*_BACKEND_V1 defect. That bug was a
+// template reading `${{ vars.X }}` that no installer table entry ever created;
+// an unset GitHub variable expands to "", so the lane installed clean, passed
+// `check`, and failed only at dispatch. The shipped fix was point-wise -- two
+// table entries -- so the next template to add a vars. reference reproduces it
+// exactly. This enumerates the references from the installed templates instead
+// of restating them, which is the only form that can catch a name nobody
+// thought to add here.
+function installedTemplateVariables() {
+  const found = new Map();
+  for (const source of [DURABLE_TEMPLATE_PATH, TEMPLATE_PATH]) {
+    const text = readFileSync(path.join(REPO_ROOT, source), "utf8");
+    for (const match of text.matchAll(/vars\.([A-Z][A-Z0-9_]*)/gu)) {
+      const name = match[1];
+      // A `vars.X || 'literal'` fallback makes an unset variable harmless, so
+      // those are exempt -- but record them, because an exempt variable is still
+      // invisible to `check` and cannot be configured through the installer.
+      const covered = new RegExp(`vars\\.${name}\\s*\\|\\|`, "u").test(text);
+      const prior = found.get(name);
+      found.set(name, { covered: (prior?.covered ?? true) && covered, source });
+    }
+  }
+  return found;
+}
+
+// Managed *names*, not the values a particular configuration produces.
+// `variableValues(DEFAULT_CONFIG)` drops REVIEW_ROUTE_MODE, because
+// DEFAULT_CONFIG leaves routeMode unset and variableValuesForSchema filters
+// undefined out -- an unpopulated variable, not an unmanaged one. That
+// distinction is the whole question here, so this reads the table directly.
+test("every variable the installed templates read is installer-managed or has a fallback", () => {
+  const managed = new Set(MANAGED_VARIABLE_NAMES);
+  const unmanaged = [];
+  for (const [name, { covered, source }] of installedTemplateVariables()) {
+    if (!managed.has(name) && !covered) unmanaged.push(`${name} (read by ${source})`);
+  }
+  assert.deepEqual(
+    unmanaged,
+    [],
+    "these variables are read by an installed lane but nothing creates them, so an "
+      + "install produces a lane that fails at dispatch and `check` cannot see it",
   );
 });
