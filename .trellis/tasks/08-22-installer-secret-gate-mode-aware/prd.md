@@ -40,6 +40,26 @@ OPENAI__KEY: ${{ vars.PR_AGENT_MODEL_PROVIDER == 'openai' && secrets.PR_AGENT_MO
 So the workflow already tolerates the secret's absence by construction. The gate is stricter
 than the artifact it protects.
 
+## Sites to change
+
+Two behavioural sites are mode-blind, not one. Fixing only the first leaves `check` failing on
+every installation the fix newly permits:
+
+1. `scripts/consumer-installer/plan.mjs:148` — the install/update refusal quoted above.
+2. `scripts/consumer-installer.mjs:512-513` — `check` pushes
+   `` `GitHub secret ${SECRET_NAME} is missing` `` unconditionally.
+
+`consumer-installer.mjs:581` (`--remove-secret`) and the `codecs.mjs` name/help references are
+not behavioural gates and need no change.
+
+`auto` belongs with the strict modes, confirmed in the router rather than assumed:
+`src/router.js:74` rejects `auto` as a final route (`must be a resolved route`) and `:176`
+records "lowered auto to `${route}`". `auto` is resolved at review time and can land on a
+PR-Agent route, so an install that skipped the secret under `auto` would fail during review
+instead of at install.
+
+## Coverage
+
 The refusal is untested. `test/consumer-installer.test.js` has no `secrets: []` case and no
 assertion of the missing-secret error; every test seeds `secrets: [SECRET_NAME]`. The two
 `copilot` install tests (lines 2066, 2145) both seed it, so `copilot`-without-secret is
@@ -75,7 +95,10 @@ increase with no functional benefit.
 - [ ] `update --route-mode auto` on an installation made under `copilot` without a secret
       refuses unless a secret is present or supplied.
 - [ ] `check` on a secret-less `copilot` installation reports `ok`, and does not list the
-      missing secret as an issue.
+      missing secret as an issue. This exercises `consumer-installer.mjs:512`, the second
+      mode-blind site; a fix to `plan.mjs` alone fails this criterion.
+- [ ] `check` on a secret-less installation whose recorded mode is `auto`, `cheap`, or `deep`
+      still reports the missing secret as an issue.
 - [ ] Tests cover the missing-secret path per mode — the case that has no coverage today.
 - [ ] `npm run check:full` green.
 - [ ] A `--dry-run` install of `copilot` against `platypeeps/rwbp-coordinator` produces a plan
