@@ -301,6 +301,15 @@ export const HISTORICAL_TEMPLATE_HASHES = Object.freeze([
     tag: "v0.2.0",
     sha256: "79ee12926723d0b073fdd33241b08047faa9e75ea4243db797be15ade73e3b6f",
   }),
+  // Superseded by the 0.5.0 pin advance. Missing for the whole v0.4.0 cycle,
+  // which left anyone who copied that release's template un-adoptable: `adopt`
+  // matches exact bytes against this list plus the current source, and v0.4.0's
+  // bytes were in neither. A test derives the expected set from the release
+  // tags, so the next release cannot repeat it silently.
+  Object.freeze({
+    tag: "v0.4.0",
+    sha256: "eba0bb9e767b2302ea13c3dc999d977470721eee6ace71b9585a7da7305a28f7",
+  }),
 ]);
 
 export function isObject(value) {

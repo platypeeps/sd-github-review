@@ -1707,6 +1707,41 @@ test("a fresh install writes the descriptor and the durable workflow beside the 
   assert.equal(manifest.durableWorkflow.source, DURABLE_TEMPLATE_PATH);
 });
 
+test("every superseded release's template hash is registered for adoption", () => {
+  // Enumerates the release tags from git rather than restating them. `adopt`
+  // matches a hand-copied workflow by exact bytes against HISTORICAL_TEMPLATE_HASHES
+  // plus the current source; a release whose template bytes appear in neither
+  // leaves everyone who copied that release un-adoptable, and nothing else
+  // fails. v0.4.0's entry was missing for its entire cycle.
+  const tags = execFileSync("git", ["tag", "--list", "v*"], { cwd: REPO_ROOT, encoding: "utf8" })
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => /^v[0-9]+\.[0-9]+\.[0-9]+$/u.test(line));
+  assert.ok(tags.length > 0, "expected at least one release tag");
+
+  const current = sha256Hex(readFileSync(path.join(REPO_ROOT, "examples", "pr-agent-router.yml"), "utf8"));
+  const registered = new Set(HISTORICAL_TEMPLATE_HASHES.map((entry) => entry.sha256));
+  const unadoptable = [];
+  for (const tag of tags) {
+    const released = sha256Hex(
+      execFileSync("git", ["show", `${tag}:examples/pr-agent-router.yml`], {
+        cwd: REPO_ROOT,
+        encoding: "utf8",
+      }),
+    );
+    // Bytes equal to the current template are matched dynamically, so they need
+    // no entry; anything else must be registered.
+    if (released === current || registered.has(released)) continue;
+    unadoptable.push(`${tag}: ${released}`);
+  }
+  assert.deepEqual(
+    unadoptable,
+    [],
+    "these releases' templates are un-adoptable — add each to HISTORICAL_TEMPLATE_HASHES:\n  " +
+      unadoptable.join("\n  "),
+  );
+});
+
 test("the installed durable workflow sits at the path the installed descriptor declares", async () => {
   // AC 2. Read both from the consumer after install and compare them to each
   // other; a literal on either side would pass while the two drifted together.

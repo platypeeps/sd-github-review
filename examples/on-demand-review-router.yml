@@ -36,7 +36,7 @@ jobs:
     steps:
       - name: Route or query the exact-head review
         id: review
-        # v0.3.0; upgrade every first-party reference together.
+        # Current release; upgrade every first-party reference together.
         uses: platypeeps/sd-github-review@3e41f23415c4eb2c0e2292c9b53690a5eff94175
         with:
           github-token: ${{ github.token }}

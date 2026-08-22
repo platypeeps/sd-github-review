@@ -224,6 +224,33 @@ function collectFirstPartyPins(document, filePath, actionOwnerRepo, pins) {
   }
 }
 
+// R-007: a shipped lane must not name a release tag.
+//
+// Nine lanes carried a `# v0.3.0` comment on the line above a `uses:` pin that
+// was v0.4.0's commit. Neither existing check could see it:
+// assertFirstPartyConsistency reads `uses:` *values* and never comment nodes,
+// and assertProseCommitReferences filters to Markdown. So the label drifted for
+// a full release cycle in the exact files consumers copy.
+//
+// The rule is the one these files already state: the SHA is the installation
+// reference and the tag is only for discovery. A lane naming a tag is therefore
+// always either redundant or wrong, and checking for absence needs no knowledge
+// of which tag would have been correct — which is what makes it drift-proof.
+function assertNoReleaseTagLabels(source, filePath) {
+  const named = [];
+  for (const [index, line] of source.split("\n").entries()) {
+    for (const [, tag] of line.matchAll(/\b(v[0-9]+\.[0-9]+\.[0-9]+)\b/gu)) {
+      named.push(`${filePath}:${index + 1}: ${tag}`);
+    }
+  }
+  if (named.length) {
+    throw new Error(
+      `shipped lane names a release tag; pin references must name only the SHA:\n  ${named.join("\n  ")}\n` +
+        "the tag is for discovery, the SHA is the installation reference",
+    );
+  }
+}
+
 async function readSetupDescriptor(repositoryRoot) {
   const descriptorPath = path.join(repositoryRoot, setupDescriptorPath);
   let descriptor;
@@ -490,7 +517,9 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
 
   for (const name of workflowNames) {
     const workflowPath = path.join(workflowDirectory, name);
-    const workflow = parseYaml(await readFile(workflowPath, "utf8"), workflowPath);
+    const workflowSource = await readFile(workflowPath, "utf8");
+    assertNoReleaseTagLabels(workflowSource, path.relative(repositoryRoot, workflowPath));
+    const workflow = parseYaml(workflowSource, workflowPath);
     assertObject(workflow, workflowPath, "document");
     assertObject(workflow.on, workflowPath, "on");
     assertObject(workflow.jobs, workflowPath, "jobs");
@@ -505,7 +534,9 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
     .sort();
   for (const name of exampleNames) {
     const examplePath = path.join(examplesDirectory, name);
-    const example = parseYaml(await readFile(examplePath, "utf8"), examplePath);
+    const exampleSource = await readFile(examplePath, "utf8");
+    assertNoReleaseTagLabels(exampleSource, path.relative(repositoryRoot, examplePath));
+    const example = parseYaml(exampleSource, examplePath);
     assertObject(example, examplePath, "document");
     assertObject(example.on, examplePath, "on");
     assertObject(example.jobs, examplePath, "jobs");
@@ -665,13 +696,15 @@ export async function assertPinFreshness({
   // pull request, whose CI runs before the new tag exists, or widen the window
   // enough to re-admit the stale pin they were meant to reject.
   if (actionSha !== latestCommit) {
+    // Which commit's action code the pin must reproduce. Post-tag that is the
+    // release; pre-tag it is HEAD. See the pre-tag branch below for why.
+    let referenceCommit = latestCommit;
+    let referenceLabel = `current release ${latest} is ${latestCommit}`;
     if (!(await isAncestor(repositoryRoot, actionSha, latestCommit))) {
       // The pre-tag window. On the pull request that advances the pins, the new
       // pin is newer than the last release and the new tag does not exist yet,
       // so the pin is a descendant of the current release rather than an
-      // ancestor. Accept it only while it is on the history being validated. The
-      // action-code comparison below still runs, so a descendant pin that
-      // changes behaviour is still refused.
+      // ancestor. Accept it only while it is on the history being validated.
       if (!(await isAncestor(repositoryRoot, actionSha, "HEAD"))) {
         throw new Error(
           `${descriptorPath}: actionReference ${actionSha} is not contained in the current ` +
@@ -679,14 +712,36 @@ export async function assertPinFreshness({
             "advance every first-party pin together",
         );
       }
+      // R-006: compare against HEAD, not the previous tag.
+      //
+      // This loop used to run against latestCommit in both windows, which
+      // deadlocked every release that changes action code — that is, every
+      // release except a pins-only one. The pin-advance pull request must move
+      // the pin to the candidate, and the candidate's `src` differs from the
+      // last release by construction, so the comparison could not succeed and
+      // CI could never go green on the one commit the release procedure
+      // requires. 0.4.1 shipped only because it was action-code neutral, which
+      // made this loop vacuous; 0.5.0 is not, and reproduced the deadlock.
+      //
+      // Reordering does not help: tagging the candidate first re-creates the
+      // v0.3.0/v0.4.0 lag that 0.4.1 exists to close.
+      //
+      // In this window the tree under validation *is* the release, so HEAD is
+      // the correct authority for "the code this release ships". The property
+      // the gate defends — consumers run the action code the release ships — is
+      // unchanged, and a descendant pin whose action code differs from the
+      // candidate still fails. The post-tag path is untouched, so a pin left on
+      // an older release still fails against the tag.
+      referenceCommit = "HEAD";
+      referenceLabel = "candidate at HEAD";
     }
     for (const targetPath of ACTION_CODE_PATHS) {
       const pinnedObject = await resolvePathObject(repositoryRoot, actionSha, targetPath);
-      const releasedObject = await resolvePathObject(repositoryRoot, latestCommit, targetPath);
+      const releasedObject = await resolvePathObject(repositoryRoot, referenceCommit, targetPath);
       if (pinnedObject !== releasedObject) {
         throw new Error(
           `${descriptorPath}: actionReference is stale — pinned to ${actionSha}, but the ` +
-            `current release ${latest} is ${latestCommit} and ${targetPath} differs ` +
+            `${referenceLabel} and ${targetPath} differs ` +
             `(${pinnedObject} vs ${releasedObject}); advance every first-party pin together`,
         );
       }

@@ -1080,6 +1080,55 @@ test("assertPinFreshness accepts a pin ahead of the tag while it is an ancestor 
   assert.equal(result.releaseTag, "v0.2.0");
 });
 
+test("assertPinFreshness compares a pre-tag pin against HEAD, not the previous release", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-pretag-"));
+  const candidate = "c".repeat(40);
+  const previousRelease = "b".repeat(40);
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: candidate,
+  });
+
+  // R-006. This is the pin-advance pull request: pins point at the candidate,
+  // the new tag does not exist yet, and the candidate's action code differs
+  // from the last release because that is what the release changes. Comparing
+  // against the previous tag here deadlocked every release that touches src/ --
+  // the one commit the procedure requires could never go green. 0.4.1 shipped
+  // only because it was action-code neutral, which made the comparison vacuous.
+  const result = await assertPinFreshness({
+    repositoryRoot: root,
+    gitImpl: freshnessGit(["v0.1.0", "v0.2.0"], { "v0.1.0": "a".repeat(40), "v0.2.0": previousRelease }, {
+      // Descendant of the release, contained in HEAD: the pre-tag window.
+      isAncestor: async (_root, _ancestor, descendant) => descendant === "HEAD",
+      // The candidate and HEAD agree; the previous release differs.
+      resolvePathObject: async (_root, commit, targetPath) =>
+        commit === previousRelease ? `old:${targetPath}` : `candidate:${targetPath}`,
+    }),
+  });
+  assert.equal(result.actionSha, candidate);
+});
+
+test("assertPinFreshness still rejects a pre-tag pin whose action code differs from HEAD", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-pretag-bad-"));
+  const strayPin = "c".repeat(40);
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: strayPin,
+  });
+
+  // Moving the comparison to HEAD must not make the window permissive: a pin
+  // reachable from HEAD but carrying different action code is exactly what the
+  // gate exists to refuse, and consumers would run code the release never ships.
+  await assert.rejects(
+    assertPinFreshness({
+      repositoryRoot: root,
+      gitImpl: freshnessGit(["v0.2.0"], { "v0.2.0": "b".repeat(40) }, {
+        isAncestor: async (_root, _ancestor, descendant) => descendant === "HEAD",
+        resolvePathObject: async (_root, commit, targetPath) => `${commit}:${targetPath}`,
+      }),
+    }),
+    /actionReference is stale — pinned to c{40}, but the candidate at HEAD and src differs/u,
+  );
+});
+
 test("assertPinFreshness rejects a pin that is on neither the release nor HEAD", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-orphan-"));
   await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {

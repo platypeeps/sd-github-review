@@ -95,6 +95,33 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   at all — the SHA is the installation reference and the tag is for discovery,
   which is what the surrounding prose already said.
 
+- **The release procedure could not be executed at all for any release that
+  changes action code.** `assertPinFreshness` compared the pin's `src` and
+  `action.yml` against the *previous tag* in both windows. The pin-advance
+  commit — which the checklist requires before tagging — moves the pin to the
+  candidate, whose action code differs from the last release by construction,
+  so that commit could never go green and the release could not proceed.
+  `0.4.1` shipped only because it was action-code neutral, which made the
+  comparison vacuous; `0.5.0` is not, and reproduced the deadlock exactly.
+  In the pre-tag window the tree under validation *is* the release, so the
+  comparison now runs against `HEAD`. The post-tag path is untouched, and a
+  descendant pin whose action code differs from the candidate still fails.
+
+- **A shipped lane may no longer name a release tag.** Nine lanes carried a
+  `# v0.3.0` comment directly above a `uses:` pin holding v0.4.0's commit —
+  the same wrong-label defect as the published docs, in the files consumers
+  copy. Neither existing check could see it: `assertFirstPartyConsistency`
+  reads `uses:` values and never comment nodes, and the new prose gate filters
+  to Markdown. Checking that no tag is named at all needs no knowledge of which
+  tag would be right, which is what makes it drift-proof.
+
+- **`v0.4.0`'s workflow template was never registered for adoption.** `adopt`
+  matches a hand-copied workflow by exact bytes against
+  `HISTORICAL_TEMPLATE_HASHES` plus the current source, and v0.4.0's bytes were
+  in neither, so anyone who copied that release's template could not be adopted
+  and nothing failed to say so. The entry is added, and a test now derives the
+  expected set from the release tags so the next release cannot repeat it.
+
 - **The route-policy refusal under-reported what a caller may request.** It
   named only the policy value, though `auto` is always permitted. Under a
   `none` policy the sole suggestion was `--remote none` — asking for no review,
