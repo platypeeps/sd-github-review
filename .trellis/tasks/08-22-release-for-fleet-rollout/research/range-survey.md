@@ -97,7 +97,31 @@ deliberately as part of this task.
 
 ## Still open
 
-- Whether to reconstruct a `0.3.0` CHANGELOG entry or fold that range into `0.4.0`.
+- ~~Whether to reconstruct a `0.3.0` CHANGELOG entry or fold that range into `0.4.0`.~~
+  **Decided 2026-08-22 by the owner — fold it in.** Reconstructing notes for a release nobody
+  read notes for buys nothing; no consumer is pinned to `v0.3.0` waiting on them. The `0.4.0`
+  entry covers everything since `0.2.0`, with `[0.3.0]` markers on entries that shipped in that
+  tag. Written in PR #114.
+
+  Folding required surveying `v0.2.0..v0.3.0`, which this survey had not covered: 153 commits,
+  ~55 of them `feat`/`fix`. Its consumer-facing content is the `A-*` installer and action
+  hardening series — `adopt`, request/subprocess timeouts, symlinked-target rejection, fresh
+  Copilot review on authorized rerequest, route-control precedence before label parsing, resumable
+  interrupted updates, and a secret reaching `gh` nonzero-exit error arguments. Most of the rest
+  is the v2 protocol contract work, recorded as internal (see below).
+
+- **Pin freshness lags the tag by one release, and it affects the rollout.** Per the archived
+  `08-08-release-v0-3-0-pin-freshness`, the order is: tag at `main`, *then* advance the 13
+  first-party pin sites to that tag's commit. So a tagged tree carries the *previous* release's
+  pins — `v0.3.0`'s tree still pins the `v0.1.0`-era SHA, and `v0.4.0`'s will pin `v0.3.0`'s
+  commit `744a9f1`. A consumer installed from tag `v0.4.0` would run `v0.3.0`'s action code,
+  which lacks the event-driven billing fix `c4d4314`. That conflicts with
+  `08-08-fleet-rollout-smoke` acceptance criterion 4. The rollout should install after the
+  pin-advance commit rather than from the tag. Not yet decided.
+
+- `validate:metadata` goes red between tagging and the pin-advance commit, because
+  `assertPinFreshness` requires the descriptor `actionReference` to equal the highest release
+  tag's commit. Expected, not a defect; it is why the two steps are adjacent.
 - ~~Whether the unreachable v2 governance modules are inside this range.~~ **Resolved
   2026-08-22 — not a `0.4.0` concern.** Both are confirmed unreachable: `prepareManagedPlan`
   (`src/review-plan-authorization.js`) and `compileRoutedReviewConfiguration`
@@ -107,5 +131,16 @@ deliberately as part of this task.
   nothing for either file, so they are **ancestors of `v0.3.0` and already shipped in it**.
   Releasing `0.4.0` neither introduces nor worsens this. It is a pre-existing condition worth a
   separate decision, not a release blocker.
-- `08-22-installer-secret-gate-mode-aware` (PR #113) is not yet merged and must be contained in
-  the tag.
+- ~~`08-22-installer-secret-gate-mode-aware` (PR #113) is not yet merged and must be contained in
+  the tag.~~ **Merged 2026-08-22 as `fe8754e`**, squashed onto `main`. Contained in the range.
+
+## The v2 modules, verified rather than assumed
+
+A transitive import walk from `src/index.js` reaches 11 of 19 `src/` modules. The eight it does
+not reach are `protocol-v2`, `retention-policy`, `review-budget-ledger`,
+`review-candidate-catalog`, `review-deferred-recovery`, `review-plan-authorization`,
+`review-usage-reconciliation`, and `routed-review-compiler` — the entire v2 review-protocol
+series, exercised only by tests. This supersedes the narrower two-module finding above with a
+whole-entrypoint result. They are recorded in the `0.4.0` notes under `### Internal` so the
+release does not imply shipped behavior. Still a pre-existing condition, still not a release
+blocker.
