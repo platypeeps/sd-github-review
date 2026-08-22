@@ -16,6 +16,7 @@ import {
   SECRET_NAME,
   TEMPLATE_PATH,
   WORKFLOW_PATH,
+  routeModeNeedsProviderSecret,
   sameRepository,
   sha256,
   variableValues,
@@ -145,7 +146,11 @@ export function planResources(configuration, snapshot, existingManifest, setSecr
 
   const secretExists = snapshot.secrets.has(SECRET_NAME);
   const priorSecret = existingManifest?.resources.secret;
-  if (!secretExists && !setSecretRequested) {
+  if (
+    !secretExists &&
+    !setSecretRequested &&
+    routeModeNeedsProviderSecret(configuration.routeMode)
+  ) {
     throw new Error(
       `${SECRET_NAME} is missing; rerun with --set-secret or pipe it to --secret-stdin`,
     );

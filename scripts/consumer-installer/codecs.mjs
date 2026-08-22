@@ -121,6 +121,29 @@ const SUPPORTED_PROVIDER_SET = new Set(SUPPORTED_PROVIDERS);
 // apart in one direction only.
 export const ROUTE_MODES = Object.freeze(["auto", "cheap", "deep", "copilot", "none"]);
 const ROUTE_MODE_SET = new Set(ROUTE_MODES);
+// The route modes that reach no PR-Agent provider and so do not need
+// PR_AGENT_MODEL_API_KEY present to install. Both installed lanes bind the
+// secret only inside `vars.PR_AGENT_MODEL_PROVIDER == '<name>'` guards that
+// fall through to '' (examples/sd-review.yml, examples/pr-agent-router.yml), so
+// under these modes the credential is never read.
+//
+// This is an allow-list of the safe modes rather than a list of the strict
+// ones, which is what keeps the unknown cases strict: a pre-schema-4 manifest
+// carries no recorded route mode, and a future mode added to ROUTE_MODES
+// without a decision here still requires the secret. Relaxing by default would
+// move the failure from install time to review time, which is the silent
+// failure the durable lane exists to remove.
+//
+// `auto` is deliberately absent. It names no provider up front, but src/router.js
+// resolves it at review time and can lower it to cheap or deep, both PR-Agent
+// routes.
+const PROVIDER_SECRET_OPTIONAL_ROUTE_MODES = new Set(["copilot", "none"]);
+
+// True when installing or checking under `routeMode` requires the PR-Agent
+// provider credential. Unknown and undefined modes return true.
+export function routeModeNeedsProviderSecret(routeMode) {
+  return !PROVIDER_SECRET_OPTIONAL_ROUTE_MODES.has(routeMode);
+}
 // The managed repository variables, keyed by variable name and valued by the
 // configuration field each carries. Every downstream behaviour derives from this
 // table: `variableValues` feeds the install/update plan and the `check` drift

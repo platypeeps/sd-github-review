@@ -36,6 +36,7 @@ import {
   parseArguments,
   parseGitHubRemote,
   resolveSourceRelease,
+  routeModeNeedsProviderSecret,
   runConsumerInstaller,
 } from "../scripts/consumer-installer.mjs";
 import { reviewLabelNames } from "../src/normalize.js";
@@ -2200,5 +2201,125 @@ test("uninstall rejects a route option the way it rejects provider and model opt
   assert.throws(
     () => installerModule.validateConfiguration({ ...DEFAULT_CONFIG, routeMode: "sometimes" }),
     /route mode must be one of/u,
+  );
+});
+
+// The install/check secret gate used to be mode-blind: every route mode was
+// refused without PR_AGENT_MODEL_API_KEY, including copilot and none, which
+// reach no PR-Agent provider. Both installed lanes bind the secret only behind
+// `vars.PR_AGENT_MODEL_PROVIDER == '<name>'` guards that fall through to '', so
+// the gate was stricter than the artifact it protected. Nothing pinned the
+// refusal for any mode, which is how it went unnoticed.
+
+test("routeModeNeedsProviderSecret classifies every declared route mode", () => {
+  // Keyed by every value in ROUTE_MODES. The key-set assertion below is the
+  // point: a mode added to ROUTE_MODES without a decision here fails this test
+  // rather than silently inheriting the strict default and going uncovered.
+  const expected = { auto: true, cheap: true, deep: true, copilot: false, none: false };
+
+  assert.deepEqual(
+    Object.keys(expected).sort(),
+    [...ROUTE_MODES].sort(),
+    "every declared route mode needs an explicit secret-requirement decision",
+  );
+  for (const [mode, needsSecret] of Object.entries(expected)) {
+    assert.equal(routeModeNeedsProviderSecret(mode), needsSecret, mode);
+  }
+
+  // Unknown and absent modes stay strict. A pre-schema-4 manifest records no
+  // route mode at all.
+  assert.equal(routeModeNeedsProviderSecret(undefined), true);
+  assert.equal(routeModeNeedsProviderSecret("future-mode"), true);
+});
+
+for (const routeMode of ["copilot", "none"]) {
+  test(`install under ${routeMode} succeeds with no provider secret present`, async () => {
+    const sourceRoot = await makeSource();
+    const target = await makeTarget();
+    const github = new FakeGitHub();
+    assert.equal(github.secrets.has(SECRET_NAME), false);
+
+    const report = await runConsumerInstaller(
+      { command: "install", target, routeMode },
+      { sourceRoot, github },
+    );
+
+    assert.equal(report.ok, true);
+    assert.equal(
+      github.calls.some((call) => call.kind === "set-secret"),
+      false,
+      "no secret was requested, so none should be set",
+    );
+    const checked = await runConsumerInstaller({ command: "check", target }, { sourceRoot, github });
+    assert.equal(checked.ok, true, checked.issues?.join("\n"));
+    assert.equal(
+      checked.issues.some((issue) => issue.includes(SECRET_NAME)),
+      false,
+      "check must not report a credential this mode never reads",
+    );
+  });
+}
+
+for (const routeMode of ["auto", "cheap", "deep"]) {
+  test(`install under ${routeMode} still refuses without the provider secret`, async () => {
+    const sourceRoot = await makeSource();
+    const target = await makeTarget();
+    const github = new FakeGitHub();
+
+    await assert.rejects(
+      runConsumerInstaller({ command: "install", target, routeMode }, { sourceRoot, github }),
+      new RegExp(`${SECRET_NAME} is missing`),
+    );
+  });
+}
+
+test("check reports the missing secret when the recorded mode needs it", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+  await runConsumerInstaller(
+    { command: "install", target, routeMode: "deep" },
+    { sourceRoot, github },
+  );
+
+  github.secrets.delete(SECRET_NAME);
+
+  const checked = await runConsumerInstaller({ command: "check", target }, { sourceRoot, github });
+  assert.equal(checked.ok, false);
+  assert.ok(
+    checked.issues.includes(`GitHub secret ${SECRET_NAME} is missing`),
+    checked.issues.join("\n"),
+  );
+});
+
+test("install under copilot still provisions the secret when one is supplied", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub();
+
+  const report = await runConsumerInstaller(
+    { command: "install", target, routeMode: "copilot", secretMode: "stdin", secretInput: "k" },
+    { sourceRoot, github },
+  );
+
+  assert.equal(report.ok, true);
+  assert.equal(github.secrets.has(SECRET_NAME), true, "an explicit secret is still honoured");
+});
+
+test("update to a PR-Agent mode refuses on an install that skipped the secret", async () => {
+  const sourceRoot = await makeSource();
+  const target = await makeTarget();
+  const github = new FakeGitHub();
+  await runConsumerInstaller(
+    { command: "install", target, routeMode: "copilot" },
+    { sourceRoot, github },
+  );
+  assert.equal(github.secrets.has(SECRET_NAME), false);
+
+  // Relaxing install must not open a path to a PR-Agent route with no
+  // credential: that would move the failure from install time to review time.
+  await assert.rejects(
+    runConsumerInstaller({ command: "update", target, routeMode: "auto" }, { sourceRoot, github }),
+    new RegExp(`${SECRET_NAME} is missing`),
   );
 });
