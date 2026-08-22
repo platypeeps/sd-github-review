@@ -47,6 +47,14 @@ jobs:
           rerequest-authorized: ${{ inputs.rerequest-authorized }}
           allow-bookkeeping-none: ${{ vars.SD_REVIEW_ALLOW_BOOKKEEPING_NONE || 'false' }}
           independent-review-floor: ${{ inputs.independent-review-floor }}
+          # Read straight from the repository variable, NOT from a
+          # workflow_dispatch input like the line above. This is the maximum
+          # route a caller may explicitly request, and the caller it constrains
+          # is a workflow_dispatch caller -- routing it through `inputs.` would
+          # let them set their own policy and defeat it entirely. Repository
+          # variables cannot be set from a dispatch form. Do not "make this
+          # consistent" with its neighbours.
+          route-policy: ${{ vars.REVIEW_ROUTE_MODE }}
 
       # This placeholder represents a consumer-owned action that accepts the
       # canonical adapter request, writes findings to its declared GitHub

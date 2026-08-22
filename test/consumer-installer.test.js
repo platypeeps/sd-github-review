@@ -2453,6 +2453,28 @@ function shippedWorkflowPaths() {
   return paths;
 }
 
+// The test below only constrains lanes that already wire route-policy, so it
+// stays green for a lane that omits it entirely -- and two published on-demand
+// lanes did exactly that, dispatching reviews with no REVIEW_ROUTE_MODE
+// enforcement at all while the enforcement looked shipped. A lane joins this
+// set by dispatching a review, not by being named here.
+test("every shipped lane that dispatches a review enforces the repository route policy", () => {
+  const unenforced = [];
+  for (const relative of shippedWorkflowPaths()) {
+    const source = readFileSync(path.join(REPO_ROOT, relative), "utf8");
+    if (!/^\s+review-request:/mu.test(source)) continue;
+    if (!/^\s+route-policy:\s*\$\{\{\s*vars\.REVIEW_ROUTE_MODE\s*\}\}/mu.test(source)) {
+      unenforced.push(relative);
+    }
+  }
+  assert.deepEqual(
+    unenforced,
+    [],
+    "these lanes dispatch reviews without passing the repository's recorded "
+      + "REVIEW_ROUTE_MODE, so an explicit route outside the policy is permitted",
+  );
+});
+
 test("no shipped workflow lets a caller supply its own route policy", () => {
   const offenders = [];
   for (const relative of shippedWorkflowPaths()) {
