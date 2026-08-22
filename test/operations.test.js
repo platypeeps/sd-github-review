@@ -50,6 +50,7 @@ class FakeGitHubClient {
     this.createError = null;
     this.requestError = null;
     this.comparison = null;
+    this.draft = false;
   }
 
   async getPullRequest(number) {
@@ -58,7 +59,7 @@ class FakeGitHubClient {
       number,
       additions: 40,
       deletions: 2,
-      draft: false,
+      draft: this.draft,
       head: { sha: this.headSha },
     };
   }
@@ -131,6 +132,10 @@ function createHarness(client) {
   const outputs = new Map();
   const summaries = [];
   const logs = [];
+  // Settable so a test can tell a preserved durable record apart from one that
+  // was rewritten with identical content; at a fixed clock the two are
+  // indistinguishable.
+  const clock = { now: "2026-07-23T12:30:10Z" };
   const run = (operation, request, extraEnv = {}) => {
     outputs.clear();
     summaries.length = 0;
@@ -149,10 +154,10 @@ function createHarness(client) {
       outputWriter: (name, value) => outputs.set(name, value),
       summaryWriter: (summary) => summaries.push(summary),
       logger: (message) => logs.push(message),
-      now: () => "2026-07-23T12:30:10Z",
+      now: () => clock.now,
     });
   };
-  return { outputs, summaries, logs, run };
+  return { outputs, summaries, logs, run, clock };
 }
 
 test("durable external route emits one canonical adapter request and replay emits none", async () => {
@@ -877,5 +882,76 @@ test("a bare attempt bump is refused end to end", async () => {
     client.calls.filter(([name]) => name === "createCheckRun").length,
     1,
     "the refused bump must not mint a second durable check run",
+  );
+});
+
+// The draft wedge. `draft` is read from live GitHub state (operations.js:377)
+// into routingContext, never into the request, so fingerprintFields cannot see
+// it and logicalDispatchId does not move when a pull request leaves draft. The
+// first review on a draft records route "none" / "draft pull requests are
+// disabled"; the second finds that receipt at the same exact head, agrees on
+// the fingerprint, and returns the stale skip with dispatchAllowed false. The
+// durable lane is workflow_dispatch-only, so both dispatches are a human
+// deliberately asking for a review -- and the second one silently gets none.
+test("a review requested after a pull request leaves draft is not answered with the draft skip", async () => {
+  const request = clone(requestByName.get("automatic with exact-head local evidence"));
+  const client = new FakeGitHubClient(request.headSha);
+  const harness = createHarness(client);
+
+  const env = {
+    "INPUT_CHEAP-BACKEND": JSON.stringify(backendByName.get("external comment backend")),
+    "INPUT_DEEP-BACKEND": JSON.stringify(backendByName.get("external check backend")),
+  };
+
+  client.draft = true;
+  const skipped = await harness.run("route", request, env);
+  assert.equal(skipped.receipt.selectedRoute, "none", "a draft is not reviewed");
+
+  // Marking a pull request ready for review does not change its head SHA.
+  client.draft = false;
+  const readied = await harness.run("route", { ...clone(request), correlationId: "corr-readied" }, env);
+
+  assert.notEqual(
+    readied.receipt.selectedRoute,
+    "none",
+    "the pull request is no longer a draft, so the review must actually happen",
+  );
+  assert.equal(readied.dispatchAllowed, true, "the readied review must be allowed to dispatch");
+});
+
+// The other half of the skip-supersede rule. Replacing a skip is safe only
+// because a skip represents no dispatched work; it must not cost idempotency
+// for the case the receipt exists to serve. A recorded none re-dispatched under
+// unchanged conditions is still the same non-decision, so it returns the
+// existing receipt, mints no second check run, and authorizes nothing.
+test("a recorded skip re-dispatched under unchanged conditions stays idempotent", async () => {
+  const request = clone(requestByName.get("automatic with exact-head local evidence"));
+  const client = new FakeGitHubClient(request.headSha);
+  const harness = createHarness(client);
+  const env = {
+    "INPUT_CHEAP-BACKEND": JSON.stringify(backendByName.get("external comment backend")),
+    "INPUT_DEEP-BACKEND": JSON.stringify(backendByName.get("external check backend")),
+  };
+
+  client.draft = true;
+  const first = await harness.run("route", request, env);
+  assert.equal(first.receipt.selectedRoute, "none");
+
+  // A later clock is what makes "preserved" distinguishable from "rewritten
+  // with the same content". Without it this test passes whether or not the
+  // supersede rule is narrowed to skip-becomes-not-skip, and so guards nothing.
+  harness.clock.now = "2026-07-23T18:45:00Z";
+  const again = await harness.run("route", { ...clone(request), correlationId: "corr-again" }, env);
+  assert.equal(again.receipt.selectedRoute, "none", "still a draft, still not reviewed");
+  assert.equal(again.dispatchAllowed, false, "an unchanged skip authorizes no dispatch");
+  assert.equal(
+    client.calls.filter(([name]) => name === "createCheckRun").length,
+    1,
+    "the repeated skip must not mint a second durable check run",
+  );
+  assert.equal(
+    again.receipt.dispatch.completedAt,
+    first.receipt.dispatch.completedAt,
+    "the original skip's durable record must be preserved, not rewritten at the new clock",
   );
 });

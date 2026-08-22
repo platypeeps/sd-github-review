@@ -391,7 +391,13 @@ export class ReceiptStore {
     return match;
   }
 
-  async #updateRecord(record, receipt) {
+  // `authorizeDispatch` is for replacing a recorded skip with a real dispatch.
+  // The default result shape reports every update as non-dispatching and runs
+  // the state through receiptState, which maps phase "started" to
+  // reconciliation-required -- correct for an in-place edit of a live receipt,
+  // wrong for one that is only now beginning. That case takes the same shape
+  // the create path returns for a freshly minted receipt.
+  async #updateRecord(record, receipt, { authorizeDispatch = false } = {}) {
     try {
       await this.#assertLiveHead(receipt);
     } catch (error) {
@@ -407,6 +413,14 @@ export class ReceiptStore {
       updated = await this.#rereadRecord(receipt);
     } catch (error) {
       return mutationFailure(receipt, error);
+    }
+    if (authorizeDispatch) {
+      return {
+        state: receipt.dispatch.status === "skipped" ? "skipped" : "started",
+        receipt: updated.receipt,
+        dispatchAllowed: receipt.dispatch.status === "requested",
+        reconciliationRequired: false,
+      };
     }
     return {
       state: receiptState(updated.receipt),
@@ -522,6 +536,29 @@ export class ReceiptStore {
         request.correlationId,
         ...request.correlationAliases,
       ]);
+      // A recorded skip is terminal but represents no work: nothing was
+      // dispatched and no reviewer ran, so replacing it cannot duplicate a
+      // review. Every input that produces a skip -- draft, sensitive-paths,
+      // changed-line-threshold, review-drafts -- is read from live GitHub state
+      // or action inputs into routingContext, never into the request, so none
+      // of them reach fingerprintFields and none move logicalDispatchId. Nor
+      // does marking a pull request ready for review change its head SHA.
+      // Without this, the first review of a draft wedges that exact head: every
+      // later dispatch matches the stale skip, agrees on the fingerprint, and
+      // is answered "not reviewed" for as long as the head stands.
+      //
+      // Narrow on purpose. It fires only when the recorded outcome was a skip
+      // and the fresh decision is not, so a bookkeeping none re-dispatched
+      // under unchanged conditions still returns its existing receipt
+      // untouched. Phase "not-started" -> "started" advances, so this does not
+      // regress the monotonic phase rule.
+      if (existing.receipt.dispatch.status === "skipped" && receipt.dispatch.status !== "skipped") {
+        return this.#updateRecord(
+          existing,
+          decodeReceipt({ ...receipt, correlationIds }),
+          { authorizeDispatch: true },
+        );
+      }
       if (stableProtocolJson(correlationIds) !== stableProtocolJson(existing.receipt.correlationIds)) {
         return this.#updateRecord(existing, decodeReceipt({
           ...existing.receipt,
