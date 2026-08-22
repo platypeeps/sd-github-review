@@ -390,6 +390,11 @@ async function routeOperation({ request, client, store, env, now }) {
         input("independent-review-floor", "none", env),
         "independent-review-floor",
       ),
+      // Raw on purpose: the default is "" (no recorded policy), and
+      // normalizeMode would reject that on every dispatch from a consumer
+      // below manifest schema 4. decodeRoutingInputs maps "" to "no policy"
+      // and validates every other value.
+      routePolicy: input("route-policy", "", env),
       localConfidenceThreshold: integerInput(
         "local-confidence-threshold",
         80,

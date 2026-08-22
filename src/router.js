@@ -115,9 +115,35 @@ export function selectProtocolRoute(inputs) {
     allowBookkeepingNone,
     localConfidenceThreshold,
     successorEvidence: decodedSuccessorEvidence,
+    routePolicy,
     independentReviewFloor,
     localEvidenceRoute,
   } = decodeRoutingInputs(inputs);
+
+  // The repository's recorded REVIEW_ROUTE_MODE bounds what a caller may ask
+  // for. Deliberately membership, not a ROUTE_STRENGTH comparison: that ordering
+  // ranks assurance (none < cheap < deep < copilot), not cost, so "anything
+  // weaker than the policy" would permit the paid `deep` route under a `copilot`
+  // policy -- exactly the route a provider-free consumer holds no credential for.
+  //
+  // Only an *explicit* request is policed. `auto` asks the repository to decide,
+  // and the floor and risk rules below then choose; policing the resolved route
+  // instead would let a consumer's own copilot floor raise an `auto` request
+  // above its own `cheap` policy and refuse it, breaking every default review on
+  // that consumer. Refusing here, before routeReview and before any receipt is
+  // written, keeps a refused dispatch free of durable state.
+  // A policy of `auto` declares no constraint -- it is what an unconfigured
+  // consumer installs with, and it means "the repository has no opinion", not
+  // "the repository requires an automatic route".
+  const policyConstrains = routePolicy !== undefined && routePolicy !== "auto";
+  if (policyConstrains && request.route !== "auto" && request.route !== routePolicy) {
+    throw new Error(
+      `route "${request.route}" is not permitted by this repository's review policy.\n`
+        + `  REVIEW_ROUTE_MODE = ${routePolicy}\n`
+        + `  permitted: ${routePolicy}\n`
+        + `Set REVIEW_ROUTE_MODE, or dispatch --remote ${routePolicy}.`,
+    );
+  }
 
   const baseDecision = routeReview({
     configuredMode: request.route,

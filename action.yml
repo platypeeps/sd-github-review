@@ -56,6 +56,16 @@ inputs:
     description: "Minimum durable automatic route: none, cheap, deep, or copilot."
     required: false
     default: none
+  route-policy:
+    description: >-
+      Maximum route a caller may explicitly request: auto, cheap, deep, copilot,
+      or none. This is the repository's recorded REVIEW_ROUTE_MODE and is the
+      opposite bound from independent-review-floor, which sets the minimum. An
+      explicit request outside the policy is refused; auto is always permitted,
+      so the floor and risk rules still choose the automatic route. Empty means
+      no policy is recorded and every route is permitted.
+    required: false
+    default: ""
   local-confidence-threshold:
     description: "Minimum 0-100 exact-head local confidence allowed to reduce an automatic route."
     required: false

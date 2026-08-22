@@ -6,6 +6,43 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Added
+
+- **The durable lane now enforces the repository's recorded `REVIEW_ROUTE_MODE`.**
+  The installer has managed that variable since manifest schema 4, and
+  `examples/pr-agent-router.yml` gated on it, but the durable lane never read it:
+  `grep -n "REVIEW_ROUTE_MODE" examples/sd-review.yml` returned nothing. A
+  consumer installed `--route-mode copilot` would still route `cheap` when
+  dispatched `sd-review --remote cheap`, contradicting what the operator declared
+  at install time. Measured on a live scratch consumer during the 0.4.x pilot.
+
+  The `route` operation takes a new `route-policy` input, wired in
+  `examples/sd-review.yml` **directly to `${{ vars.REVIEW_ROUTE_MODE }}`** — not
+  through a `workflow_dispatch` input like its neighbours, because the caller the
+  policy constrains is a `workflow_dispatch` caller who could otherwise supply
+  their own policy. An explicit route outside the policy is refused, naming the
+  variable, its value, and the permitted route.
+
+  Two properties are worth stating because they are easy to get backwards:
+
+  - The policy bounds the **requested** route, never the resolved one. `auto` is
+    always permitted, so `independent-review-floor` (a *minimum*) and the route
+    policy (a *maximum*) compose instead of contradicting. Enforcing against the
+    resolved route would let a consumer's own `copilot` floor raise an `auto`
+    request above a `cheap` policy and refuse it — breaking every default review
+    on that consumer.
+  - Membership, not `ROUTE_STRENGTH` ordering. That ordering ranks assurance
+    (`none < cheap < deep < copilot`), not cost, so "anything weaker than the
+    policy" would permit the paid `deep` route under a `copilot` policy — exactly
+    the route a provider-free consumer holds no credential for.
+
+  An absent or empty policy permits every route, so consumers below manifest
+  schema 4 are unaffected. An unrecognized value fails the dispatch rather than
+  silently disabling enforcement.
+
+  **Consumers must run `update` to take the new template.** This lands on top of
+  the schema-5 backend-variable migration below; one `update` covers both.
+
 ### Fixed
 
 - **The consumer installer now provisions the two backend descriptors the durable

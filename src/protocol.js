@@ -11,7 +11,11 @@ const REASON_MAX_BYTES = 512;
 const MAX_COLLECTION_ITEMS = 16;
 const MAX_NESTING_DEPTH = 32;
 
-const ROUTES = new Set(["auto", "cheap", "deep", "copilot", "none"]);
+// Exported so a test can assert set equality against the consumer installer's
+// ROUTE_MODES. The installer writes REVIEW_ROUTE_MODE and the action enforces
+// it, so a mode added on one side and not the other would be refused on every
+// dispatch. Binding them by import means neither list can drift silently.
+export const ROUTES = new Set(["auto", "cheap", "deep", "copilot", "none"]);
 const REMOTE_ROUTES = new Set(["cheap", "deep", "copilot"]);
 const EXTERNAL_ROUTES = new Set(["cheap", "deep"]);
 const CONFIDENCE_LEVELS = new Set(["unknown", "high", "medium", "low"]);
@@ -938,6 +942,12 @@ export function decodeReceipt(value) {
 // EXCEPT the route-strength policy fields independentReviewFloor and
 // localEvidenceRoute: those resolve through ROUTE_STRENGTH (policy), so they
 // pass through raw for the policy owner to resolve after decode.
+//
+// routePolicy is validated here rather than passed through, because it resolves
+// by set membership rather than through ROUTE_STRENGTH -- it is a maximum on
+// what a caller may ask for, not a point on the strength ordering. Validating
+// it here is also what makes a typo loud: an unrecognized REVIEW_ROUTE_MODE
+// fails the dispatch instead of silently permitting every route.
 export function decodeRoutingInputs({ request: requestValue, routingContext = {}, policy = {} }) {
   const request = decodeReviewRequest(requestValue);
   const context = objectValue(routingContext, "routingContext");
@@ -980,6 +990,20 @@ export function decodeRoutingInputs({ request: requestValue, routingContext = {}
   const successorEvidence = context.successorEvidence === undefined
     ? undefined
     : decodeSuccessorEvidence(context.successorEvidence);
+  // An absent policy and an empty one are the same thing: no recorded route
+  // mode, every route permitted. A consumer below manifest schema 4 records no
+  // mode at all, and `${{ vars.REVIEW_ROUTE_MODE }}` expands to "" when the
+  // variable is unset, so both arrive here as nothing to enforce.
+  // Trimmed before the emptiness test so a variable holding only whitespace
+  // reads as absent rather than failing every dispatch with "must not be
+  // empty". Operators set these by hand in the GitHub UI, and a blank-looking
+  // variable that behaves differently from an unset one is a trap.
+  const routePolicyRaw = typeof policyValue.routePolicy === "string"
+    ? policyValue.routePolicy.trim()
+    : policyValue.routePolicy;
+  const routePolicy = routePolicyRaw === undefined || routePolicyRaw === ""
+    ? undefined
+    : enumValue(routePolicyRaw, "policy.routePolicy", ROUTES);
   return {
     request,
     sensitiveFiles,
@@ -993,6 +1017,7 @@ export function decodeRoutingInputs({ request: requestValue, routingContext = {}
     allowBookkeepingNone,
     localConfidenceThreshold,
     successorEvidence,
+    routePolicy,
     independentReviewFloor: policyValue.independentReviewFloor,
     localEvidenceRoute: policyValue.localEvidenceRoute,
   };

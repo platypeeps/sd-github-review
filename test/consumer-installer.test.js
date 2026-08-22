@@ -41,6 +41,7 @@ import {
   variableValues,
   variableValuesForSchema,
 } from "../scripts/consumer-installer.mjs";
+import { ROUTES as ACTION_ROUTES } from "../src/protocol.js";
 import { reviewLabelNames } from "../src/normalize.js";
 import * as installerModule from "../scripts/consumer-installer.mjs";
 
@@ -2408,5 +2409,41 @@ test("update to a PR-Agent mode refuses on an install that skipped the secret", 
   await assert.rejects(
     runConsumerInstaller({ command: "update", target, routeMode: "auto" }, { sourceRoot, github }),
     new RegExp(`${SECRET_NAME} is missing`),
+  );
+});
+
+// Route policy is the durable lane's half of REVIEW_ROUTE_MODE: the installer
+// writes the variable, and the action refuses an explicit route outside it. The
+// two guards below are the ones that fail when the wiring is right in spirit
+// and wrong in fact.
+function durableLaneRoutePolicyWiring() {
+  const source = readFileSync(path.join(REPO_ROOT, DURABLE_TEMPLATE_PATH), "utf8");
+  const line = source.split("\n").find((entry) => entry.trim().startsWith("route-policy:"));
+  assert.ok(line, `${DURABLE_TEMPLATE_PATH} must pass route-policy to the durable action`);
+  return line;
+}
+
+// The policy exists to constrain workflow_dispatch callers. Sourcing it from a
+// dispatch input would let the constrained caller supply their own policy, so
+// this must read the repository variable and nothing else. Every neighbouring
+// policy line in the file *is* an `inputs.` line, which is exactly why a
+// consistency-minded edit would silently disable enforcement.
+test("the durable lane reads route policy from the repository variable, not a dispatch input", () => {
+  const line = durableLaneRoutePolicyWiring();
+  assert.match(line, /\$\{\{\s*vars\.REVIEW_ROUTE_MODE\s*\}\}/u);
+  assert.ok(
+    !line.includes("inputs."),
+    `route-policy must not be caller-settable, got: ${line.trim()}`,
+  );
+});
+
+// The installer's ROUTE_MODES and the action's ROUTES are two literals in two
+// trees. A mode added to the installer but not the action would be written into
+// a consumer's REVIEW_ROUTE_MODE and then refused on every dispatch against it.
+test("installer route modes stay identical to the action's accepted route set", () => {
+  assert.deepEqual(
+    [...ROUTE_MODES].sort(),
+    [...ACTION_ROUTES].sort(),
+    "ROUTE_MODES and src/protocol.js ROUTES accept different route sets",
   );
 });

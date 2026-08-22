@@ -77,6 +77,7 @@ const OPERATION_LIST = [
       "review-drafts",
       "allow-bookkeeping-none",
       "independent-review-floor",
+      "route-policy",
       "local-confidence-threshold",
       "local-evidence-route",
       "rerequest-authorized",

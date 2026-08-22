@@ -81,18 +81,28 @@ provisioning works; this one changes what is allowed on top of it.
 - `--route-mode auto` must keep permitting every route, since that is what it
   means.
 
-## Open questions
+## Open questions — all resolved
+
+Answered by the user on 2026-08-22 after `research/evidence.md`. Rationale for
+each is in `design.md`; recorded here so this section is not read as open.
 
 - **Where does the constraint live — the lane, the action, or the pack?**
-  The lane can gate before dispatch; the action can refuse in
-  `selectProtocolRoute`; the pack can refuse to send. Each has a different blast
-  radius, and only the action's applies to dispatches the pack did not make.
-- **Is a forbidden route an error or a downgrade?** Refusing is honest; silently
-  lowering to the permitted mode is friendlier and matches how the review floor
-  already behaves in the other direction. These are materially different
-  contracts and the choice belongs to the user, not to the implementer.
-- **Does this need a schema bump?** Probably not — schema 4 already records the
-  field. Confirm rather than assume.
+  → **The action only.** A new `route-policy` input on the `route` operation,
+  enforced in `selectProtocolRoute`. It is the only layer covering dispatches
+  the pack did not make. No pack release, no descriptor change.
+- **Is a forbidden route an error or a downgrade?** → **Refuse**, naming the
+  variable, its value, and the permitted routes.
+- **Does this need a schema bump?** → **No.** Confirmed: schema 4 already
+  records `routeMode` and nothing new is stored. A consumer at schema < 4
+  records no policy, and an absent policy permits everything — stated
+  deliberately, per the requirement above, with `check` already reporting the
+  migration that would give them one.
+
+One question the design surfaced that this PRD did not ask: **does the policy
+constrain the requested route or the resolved one?** → **the requested route.**
+Constraining the resolved route would let a consumer's own `independent-review-floor`
+raise an `auto` dispatch above its own policy and refuse it, breaking every
+default review on that consumer. See `design.md`.
 
 ## Non-goals
 

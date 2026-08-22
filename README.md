@@ -57,9 +57,18 @@ preserving the consumer's existing provider and cheap/deep model values.
 It never puts the provider key in an argument, manifest, or log. It also
 supports `update`, read-only `check`, and guarded `uninstall`:
 
-> **`--route-mode` is required, and there is no default.** The event-driven
-> router lane reads the `REVIEW_ROUTE_MODE` repository variable to decide its
-> route. The installer creates and manages it — `check` reports it missing,
+> **`--route-mode` is required, and there is no default.** Both installed lanes
+> read the `REVIEW_ROUTE_MODE` repository variable, in different ways: the
+> event-driven router lane uses it to *choose* its route, and the durable lane
+> enforces it as a **maximum** on what a caller may explicitly request. On the
+> durable lane, `sd-review --remote deep` against a consumer installed
+> `--route-mode copilot` is refused, naming the variable — `auto` is always
+> permitted, so ordinary reviews are unaffected. This enforcement arrived with
+> the durable route policy; a consumer installed before it must run `update` to
+> take the new workflow template, and until it does, its durable lane will honor
+> an explicit off-policy route as it did previously.
+>
+> The installer creates and manages the variable — `check` reports it missing,
 > `uninstall` removes it — but it will not choose a value for you, because
 > choosing means `auto`, and `auto` can select `cheap` or `deep` and bill your
 > provider key on a route you did not pick. Pass `copilot` or `none` for an

@@ -204,6 +204,32 @@ node scripts/install-consumer.mjs uninstall [options]
   `cheap`, `deep`, `copilot`, `none` — which is the same set the installed
   lane's own gate enforces. The two are bound by a test that extracts the lane's
   `case` pattern rather than restating the list, so neither side can drift alone.
+  A second test binds `ROUTE_MODES` to the action's own `ROUTES` by importing
+  both, because the durable lane now enforces the variable too: a mode the
+  installer writes but the action rejects would be refused on every dispatch
+  against that consumer.
+- **The durable lane enforces the variable as a maximum.** `examples/sd-review.yml`
+  passes it to the `route` operation as `route-policy`, and `selectProtocolRoute`
+  refuses an explicit request outside it before routing and before any receipt is
+  written. Three rules make this composable rather than contradictory, and each
+  has a test that fails when it is inverted:
+  - It bounds the **requested** route, never the resolved one. `auto` is always
+    permitted. `independent-review-floor` is a *minimum* applied to the resolved
+    automatic route; the policy is a *maximum* applied to the declared one.
+    Applying both to the same value makes them mutually unsatisfiable — a
+    `cheap`-mode consumer carrying the shipped `copilot` floor would refuse its
+    own default review.
+  - Membership, never `ROUTE_STRENGTH`. That ordering ranks assurance, not cost:
+    `deep` is the expensive route and `copilot` the strongest, so "anything
+    weaker than the policy" would permit paid `deep` under a `copilot` policy.
+  - It is wired **straight to `${{ vars.REVIEW_ROUTE_MODE }}`**, never through a
+    `workflow_dispatch` input, unlike every neighbouring policy line in that
+    file. The caller it constrains is a `workflow_dispatch` caller; an input
+    would let them supply their own policy. A test asserts the wiring, because
+    nothing else in the suite reads that file's `with:` block.
+  An absent or empty policy permits every route, so a consumer below schema 4 is
+  unaffected. An unrecognized value fails the dispatch: a typo must not silently
+  disable enforcement.
 - A fresh install **requires** `--route-mode`; there is no default. The lane
   refuses to guess a route because `auto` can select `cheap` or `deep` and bill
   `PR_AGENT_MODEL_API_KEY` on a route nobody chose, and an installer that
