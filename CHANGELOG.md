@@ -4,6 +4,43 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.4.1 - 2026-08-22
+
+**No runtime change.** The `src` tree and the `action.yml` blob are byte-identical
+to `0.4.0` (`98415e3` and `47a24a6` at both tags). Consumers already on `0.4.0`
+gain nothing by upgrading the action itself; the value is entirely in what the
+release *pins*.
+
+### Fixed
+
+- **A release tag can finally carry pins that point inside its own release.**
+  `assertPinFreshness` required the descriptor's `actionReference` to equal the
+  current release tag's commit. No commit can satisfy that at the instant it is
+  tagged, because it would have to contain its own SHA. Pins could therefore only
+  advance *after* the tag existed, so every tagged tree permanently carried the
+  previous release's pins — `0.3.0`'s tree pins the `0.1.0`-era commit, `0.4.0`'s
+  pins `0.3.0`'s. A consumer installing from a release tag ran a release behind,
+  and the gap never closed.
+
+  A pin is now fresh when it is reachable from the release commit **and** resolves
+  `src` and `action.yml` to the same tree and blob as that commit. That is what a
+  consumer actually depends on, and it dissolves the fixed point: a tag placed on
+  a pin-advance commit pins its own parent, whose action code is identical.
+
+  The gate does not get weaker where it was doing real work — a pin carried over
+  from an earlier release still fails, now naming which of `src` or `action.yml`
+  differs. A pin trailing only by commits that change neither is accepted,
+  deliberately: consumers run byte-identical code, so the lag is not observable to
+  them.
+
+### Changed
+
+- **Releases now advance every first-party pin *before* tagging, and the tag sits
+  on the pin-advance commit** (`docs/RELEASE_CHECKLIST.md` section 5). That commit
+  must touch neither `src/` nor `action.yml`, which is what lets the resulting tag
+  satisfy its own freshness gate. The previous order — tag the candidate, then
+  advance pins onto it — is what produced the lag above.
+
 ## 0.4.0 - 2026-08-22
 
 `0.3.0` was tagged without a changelog entry. Rather than reconstruct notes for

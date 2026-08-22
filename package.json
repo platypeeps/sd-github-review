@@ -1,6 +1,6 @@
 {
   "name": "sd-github-review",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "license": "MIT",
   "description": "A dependency-free GitHub Action that routes pull requests to cost-appropriate AI reviewers.",
