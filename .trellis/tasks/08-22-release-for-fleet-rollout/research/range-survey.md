@@ -110,14 +110,32 @@ deliberately as part of this task.
   interrupted updates, and a secret reaching `gh` nonzero-exit error arguments. Most of the rest
   is the v2 protocol contract work, recorded as internal (see below).
 
-- **Pin freshness lags the tag by one release, and it affects the rollout.** Per the archived
+- **Pin freshness lags the tag by one release.** Per the archived
   `08-08-release-v0-3-0-pin-freshness`, the order is: tag at `main`, *then* advance the 13
   first-party pin sites to that tag's commit. So a tagged tree carries the *previous* release's
   pins — `v0.3.0`'s tree still pins the `v0.1.0`-era SHA, and `v0.4.0`'s will pin `v0.3.0`'s
-  commit `744a9f1`. A consumer installed from tag `v0.4.0` would run `v0.3.0`'s action code,
-  which lacks the event-driven billing fix `c4d4314`. That conflicts with
-  `08-08-fleet-rollout-smoke` acceptance criterion 4. The rollout should install after the
-  pin-advance commit rather than from the tag. Not yet decided.
+  commit `744a9f1`. `validate-action-metadata.mjs:623-627` names why equality inside the tagged
+  tree is unreachable: "a commit cannot embed its own SHA — an infeasible fixed point."
+
+  **Cost to a consumer installed from tag `v0.4.0`: exactly one commit.** `0b44277`, the
+  deterministic pre-routing gates and cost-biased router defaults, is the *only* commit in
+  `v0.3.0..v0.4.0` touching `src/` or `action.yml`. Verified with
+  `git log --no-merges v0.3.0..HEAD -- src/ action.yml`, which returns one line. Everything else
+  consumer-facing in the range is installer-side or template-side and ships regardless of the
+  pinned action SHA.
+
+  **Correction.** An earlier revision of this file claimed the lag costs consumers the
+  event-driven billing fix. That was wrong. `c4d4314`, `f936946`, and `b6e2e88` touch only
+  `examples/pr-agent-router.yml`, `.github/workflows/ai-review-router.yml`, and this repository's
+  own config — no `src/` changes — so they arrive with the installed workflow template that the
+  `v0.4.0` installer writes, not with the pinned action. The claim was made from commit subjects
+  without reading the diffs.
+
+  The lag is pre-existing, permanent, and compounding: every release, a consumer installing from
+  the tag runs one release of action code behind. It does not block `0.4.0`. Closing it means
+  relaxing `assertPinFreshness` from `actionSha === latestCommit` to "contained in the latest
+  release tag and newer than the previous one" — satisfiable where equality is not. Its own task,
+  not a release-prep change.
 
 - `validate:metadata` goes red between tagging and the pin-advance commit, because
   `assertPinFreshness` requires the descriptor `actionReference` to equal the highest release
