@@ -82,22 +82,22 @@ a superset of the one below. Re-ran the same mutation and it now fails with
 `codecs: the managed variable tiers are monotone, not pinned to the current
 version`. Reverted; recorded in the spec so the next tier inherits the rule.
 
-## Step 5 — end-to-end against a scratch repository
+## Step 5 — end-to-end against a scratch repository — DONE
 
 Not the pilot. The pilot has hand-set variables and cannot falsify this — it is
 configured around the defect.
 
-- [ ] Create a scratch repository, `install --route-mode copilot` (no provider
+- [x] Create a scratch repository, `install --route-mode copilot` (no provider
       secret needed).
-- [ ] Confirm both variables exist and were installer-created.
-- [ ] Open a routine pull request. Dispatch with an **explicit `cheap` route**
+- [x] Confirm both variables exist and were installer-created.
+- [x] Open a routine pull request. Dispatch with an **explicit `cheap` route**
       at the shipped `independent-review-floor: copilot`, and confirm a receipt
       with `selectedRoute: cheap`.
-- [ ] Repeat with an explicit `deep` route, expecting `selectedRoute: deep`.
-- [ ] Dispatch once with `auto` at the shipped floor and confirm
+- [x] Repeat with an explicit `deep` route, expecting `selectedRoute: deep`.
+- [x] Dispatch once with `auto` at the shipped floor and confirm
       `selectedRoute: copilot` — the path the fleet actually uses must not
       regress.
-- [ ] `uninstall`, confirm no variable remains.
+- [x] `uninstall`, confirm no variable remains.
 
 Using an explicit route is the whole point of this step. The floor raises an
 *automatic* route to `copilot` but leaves an explicit one alone, so an `auto`
@@ -110,14 +110,65 @@ that job runs and its config validation fails. That is out of scope. Scope the
 acceptance to the `review` job's receipt, and record the workflow-level
 conclusion as expected-red with the reason.
 
-## Step 6 — falsify the fix
+### Measured, on `platypeeps/sd-review-scratch-0822`
 
-- [ ] Delete `SD_REVIEW_CHEAP_BACKEND_V1` from the scratch repository, re-run
+Install under `--route-mode copilot` with **no provider secret** — the scratch
+repository's secret count stayed `0` for the whole exercise, so no route could
+bill anything. Manifest came out at `schemaVersion: 5` with all six variables
+`owned=true`.
+
+| Dispatch | Floor | `selectedRoute` | Backend in the receipt |
+| --- | --- | --- | --- |
+| `route: cheap` | `copilot` (shipped) | **`cheap`** | `pr-agent`, `openrouter/qwen/qwen3-coder-30b-a3b-instruct`, low/standard |
+| `route: deep` | `copilot` (shipped) | **`deep`** | `pr-agent`, `openrouter/moonshotai/kimi-k2.6`, medium/advanced |
+| `route: auto` | `copilot` (shipped) | **`copilot`** | the Copilot backend (`inline-comments`), not the synthesized one |
+
+The `auto` row is the one that proves the fleet's actual path did not regress,
+and its backend confirms it never touches either new variable.
+
+`pr-agent` went **green**, not red as predicted above. The prediction was wrong
+about the mechanism, not about the credential: with no `PR_AGENT_MODEL_API_KEY`
+the provider guard falls through to `''` and the step does not fail its config
+validation the way the plan assumed. Nothing was billed — there was no
+credential to bill with. Left recorded rather than quietly corrected, since the
+plan's expected-red note would otherwise read as satisfied.
+
+Two dispatches failed on my own input error before this, not on any product
+defect: dispatching a second route against a head that already held a receipt
+returns `existing durable receipt conflicts with the canonical request
+fingerprint`. That is exact-head binding working as designed. Each route needs
+its own head.
+
+## Step 6 — falsify the fix — DONE
+
+- [x] Delete `SD_REVIEW_CHEAP_BACKEND_V1` from the scratch repository, re-run
       `check`, and confirm it reports the missing variable.
-- [ ] Re-dispatch and confirm the original error returns.
+- [x] Re-dispatch and confirm the original error returns.
 
 Without this the fix is untested against the actual defect: a passing install
 does not prove `check` detects the absence.
+
+### Measured
+
+```
+$ check                       # before
+Installation is healthy for platypeeps/sd-review-scratch-0822.   exit=0
+$ gh api -X DELETE .../variables/SD_REVIEW_CHEAP_BACKEND_V1
+$ check                       # after
+Installation drift detected for platypeeps/sd-review-scratch-0822:
+- GitHub variable SD_REVIEW_CHEAP_BACKEND_V1 is missing           exit=1
+```
+
+Re-dispatching `route: cheap` with the variable absent reproduced the original
+defect exactly:
+
+```
+##[error]Error: cheap-backend is required for durable operations
+```
+
+`update` then re-provisioned it (`- set GitHub variable
+SD_REVIEW_CHEAP_BACKEND_V1`) and `check` returned to healthy. `uninstall`
+deleted all six variables and left `total_count: 0` — no orphans.
 
 ## Step 7 — gates and documentation — DONE
 
@@ -169,3 +220,16 @@ have to wait for it.
 - Through step 4: revert the commit; no external state exists.
 - After step 5: delete the scratch repository. It is disposable and must not be
   the pilot.
+
+**Not yet deleted.** `platypeeps/sd-review-scratch-0822` is fully uninstalled —
+no variables, no managed workflows, no secrets — but the empty private
+repository still exists, because the `gh` token lacks the `delete_repo` scope:
+
+```
+HTTP 403: Must have admin rights to Repository.
+This API operation needs the "delete_repo" scope.
+```
+
+Removing it needs `gh auth refresh -h github.com -s delete_repo` followed by
+`gh repo delete platypeeps/sd-review-scratch-0822 --yes`, or a deletion through
+the web UI. Both require the operator; do not treat this as done until it is.
