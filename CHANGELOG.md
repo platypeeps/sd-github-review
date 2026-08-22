@@ -70,6 +70,36 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **A pull request reviewed while it was a draft could never be reviewed again at
+  that head.** Routing a draft records route `none` ("draft pull requests are
+  disabled"). Marking it ready for review does not change its head SHA, and
+  `draft` is read from live GitHub state into the routing context rather than
+  into the request (`src/operations.js:377`), so it reaches neither
+  `fingerprintFields` nor `logicalDispatchId`. The next dispatch therefore
+  matched the stale skip, agreed on the fingerprint, and was answered "not
+  reviewed" for as long as that head stood. The durable lane is
+  `workflow_dispatch`-only, so both dispatches are a human deliberately asking
+  for a review, and the second silently got none.
+
+  A recorded skip is now superseded when the fresh decision is not itself a
+  skip. This is safe because a skip represents no dispatched work — nothing ran,
+  so nothing is duplicated — and `not-started` → `started` advances the phase
+  rather than regressing it. A bookkeeping `none` re-dispatched under unchanged
+  conditions still returns its existing receipt untouched.
+
+  Beyond `draft` this also covers `sensitive-paths`, `changed-line-threshold`,
+  and `review-drafts`, which reach the decision by the same routing-context path.
+
+- **The first-party lane had diverged from the template it ships.**
+  `.github/workflows/sd-review.yml` is installed from `examples/sd-review.yml`,
+  but the route-policy wiring landed only in the example, leaving this
+  repository the one consumer not enforcing the policy it distributes. Both
+  installed lanes are now held byte-identical to their source templates by test,
+  and every `vars.` reference in an installed template must be an
+  installer-managed name or carry a `|| 'literal'` fallback — the general form of
+  the `SD_REVIEW_*_BACKEND_V1` defect fixed below, whose original fix was
+  point-wise and so did not prevent the next occurrence.
+
 - **The consumer installer now provisions the two backend descriptors the durable
   lane reads, so an install produces a lane that serves every route it offers.**
   `examples/sd-review.yml` supplies `cheap-backend` / `deep-backend` from
@@ -105,6 +135,47 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **A durable receipt that needs a human now fails the `route` step instead of
+  reporting a green job.** Read this one before upgrading: a route step that
+  previously always succeeded can now go red.
+
+  `reconciliation-required` used to cover every receipt at dispatch phase
+  `started`, which conflated a dispatch running right now with one stranded by a
+  finalize that never landed. Because the flag was true for every ordinary
+  replay, nothing could gate on it without failing healthy reviews — so no
+  shipped lane gated on it at all, and a stranded receipt was silent
+  permanently: GitHub's REST API has no delete-check-run endpoint, and the
+  receipt outlives every job that could advance it, so the pull request could
+  never be reviewed again at that head.
+
+  Receipts at `started` now report a new `durable-state` value **`in-flight`**
+  while a job could still be running, and `reconciliation-required` only once
+  they are older than `stranded-receipt-minutes` or their dispatch is recorded
+  failed. A failed dispatch is exempt from the age test: it is known broken
+  rather than slow. `durable-state` consumers that switch on its value should
+  add the new case.
+
+  The gate lives in the Action, not in the workflow, for two reasons: the
+  canonical durable workflow may contain no `run:` step at all because it holds
+  `checks: write`, and a gate written into YAML is one a consumer can drop while
+  believing it still runs. Outputs and the job summary are written before the
+  failure, so durable state stays machine-readable on a red step. A concurrent
+  begin that lost its election is exempt — its evidence names the authoritative
+  check run, so another dispatch is reviewing that head and failing the loser
+  would be a false alarm.
+
+  Set `fail-on-reconciliation: false` to keep the previous reporting-only
+  behaviour. It applies to `route` only: `query` exists to report durable state,
+  and `finalize` would mask the reconciliation it was invoked to record.
+
+- **New inputs `stranded-receipt-minutes` and `fail-on-reconciliation`.**
+  `stranded-receipt-minutes` defaults to `360` because that is GitHub's maximum
+  job lifetime and the shipped lanes declare no `timeout-minutes` — a ceiling
+  derived from the platform rather than a tuning guess, so it cannot report a
+  false strand. Lower it to match an explicit `timeout-minutes` to find stranded
+  receipts sooner; set it below real review latency and healthy in-flight
+  reviews will be reported as stranded.
+
 - **Consumer manifest schema 4 → 5**, gated on a new `BACKEND_MIN_SCHEMA_VERSION`
   rather than on equality with `MANIFEST_SCHEMA_VERSION`, matching how
   `REVIEW_ROUTE_MODE` joined at 4. Manifests at schema 1 through 4 keep decoding
@@ -118,11 +189,16 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Known limitations
 
-- The durable lane still takes its route from the dispatched request and never
-  reads `REVIEW_ROUTE_MODE`, so installing with `--route-mode copilot` does not
-  prevent a `--remote cheap` dispatch from routing `cheap`. That is a separate
-  defect about which routes are *permitted*, tracked on its own, and deliberately
-  not folded in here — this change alters what is *provisioned*.
+- A receipt at dispatch phase `started` that carries no `dispatch.startedAt`
+  cannot be dated, and is reported stranded rather than in flight. The field is
+  optional in the protocol (`src/protocol.js:819`), so such a receipt decodes
+  normally. Failing closed is deliberate — nothing tracks an undatable receipt,
+  so treating it as in flight would recreate the permanent wedge the split
+  exists to end — but with the new route gate this now fails a job where it
+  previously set an output nothing read.
+- `independent-review-floor` remains caller-overridable on the durable lane. The
+  new `route-policy` bounds the *maximum* a caller may request; the floor is the
+  separate *minimum* and is still supplied as a `workflow_dispatch` input.
 
 ## 0.4.1 - 2026-08-22
 
