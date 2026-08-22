@@ -138,6 +138,17 @@ floor.
 - [ ] Run `node scripts/validate-action-metadata.mjs` against a checkout of the
   new tag. It must exit 0.
 
+Run the release form of that gate — `SD_RELEASE_TAG=v<version> node
+scripts/validate-action-metadata.mjs` — on the pin-advance commit *before*
+tagging. It adds one check the ordinary form deliberately omits: every input a
+shipped lane passes to this action must be declared by the action **at the
+pin**. Ordinary runs skip it because the pin legitimately lags during
+development, when the lanes already reference inputs the last release never
+had; that lag is the whole reason pins advance before the tag. If this fails,
+the pin advance is incomplete and the release would ship lanes passing inputs
+nothing reads — which is how `route-policy` reached four lanes while pinned to
+a release declaring no such input, documented and completely inert.
+
 Pins are advanced **before** the tag, and the tag sits on the pin advance. The
 reverse order — tag the candidate, then advance pins onto it — is what shipped
 `v0.3.0` and `v0.4.0` with tagged trees pinning the *previous* release, so every

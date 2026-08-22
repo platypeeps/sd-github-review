@@ -821,6 +821,94 @@ export async function validateReleaseConsistency({
   return { ...base, releaseTag, releaseChecked: true };
 }
 
+// R-005: a lane may only pass inputs the action *at its pin* declares.
+//
+// assertFirstPartyConsistency proves every lane agrees on one SHA, and
+// assertPinFreshness proves that SHA carries the release's action code. Neither
+// looks at the `with:` block, so a lane can pass an input the pinned action has
+// never heard of and every check stays green. That is not hypothetical: four
+// lanes wired `route-policy`, `stranded-receipt-minutes`, and
+// `fail-on-reconciliation` while pinned to a release declaring none of the
+// three, which made a documented route policy silently inert.
+//
+// Deliberately release-time only, called from the CLI's --release-tag branch
+// rather than from validateMetadata. During development the pin legitimately
+// lags: the lanes reference the action being built while still pinned to the
+// last release, and that window is exactly what the pin-advance-before-tag
+// ordering exists to close. Failing CI throughout development would make the
+// gate something to disable rather than something to satisfy. At the moment a
+// release is cut the pin has advanced, and then the check must hold.
+export async function assertPinnedInputsDeclared({
+  repositoryRoot = process.cwd(),
+  gitImpl,
+} = {}) {
+  const readPinnedAction = gitImpl?.readPinnedAction ?? defaultReadPinnedAction;
+  const { actionOwnerRepo, actionSha } = await readSetupDescriptor(repositoryRoot);
+
+  const pinnedAction = parseYaml(
+    await readPinnedAction(repositoryRoot, actionSha),
+    `${actionSha}:action.yml`,
+  );
+  const declared = new Set(Object.keys(pinnedAction?.inputs ?? {}));
+
+  const undeclared = [];
+  for (const [filePath, document] of await laneDocuments(repositoryRoot)) {
+    for (const job of Object.values(document?.jobs ?? {})) {
+      for (const step of job?.steps ?? []) {
+        if (typeof step?.uses !== "string") continue;
+        if (!referencesThisAction(step.uses, actionOwnerRepo)) continue;
+        for (const key of Object.keys(step.with ?? {})) {
+          if (!declared.has(key)) undeclared.push(`${filePath}: ${key}`);
+        }
+      }
+    }
+  }
+  if (undeclared.length) {
+    throw new Error(
+      `lane passes an input the pinned action does not declare — ${actionSha} declares ` +
+        `${declared.size} input(s), and these are not among them:\n  ${undeclared.join("\n  ")}\n` +
+        "advance every first-party pin to the release that declares them",
+    );
+  }
+  return { actionSha, declaredCount: declared.size };
+}
+
+// Every shipped lane, parsed once: the tracked workflows plus the examples.
+// Enumerated from the filesystem rather than listed, so a lane added later
+// reaches this gate without an edit here.
+async function laneDocuments(repositoryRoot) {
+  const documents = [];
+  for (const directory of [
+    path.join(repositoryRoot, ".github", "workflows"),
+    path.join(repositoryRoot, "examples"),
+  ]) {
+    let names;
+    try {
+      names = await readdir(directory);
+    } catch {
+      continue;
+    }
+    for (const name of names.sort()) {
+      if (!name.endsWith(".yml") && !name.endsWith(".yaml")) continue;
+      const filePath = path.join(directory, name);
+      documents.push([
+        path.relative(repositoryRoot, filePath),
+        parseYaml(await readFile(filePath, "utf8"), filePath),
+      ]);
+    }
+  }
+  return documents;
+}
+
+async function defaultReadPinnedAction(repositoryRoot, sha) {
+  const { stdout } = await execFileAsync(
+    "git",
+    ["-C", repositoryRoot, "show", `${sha}:action.yml`],
+    { encoding: "utf8", maxBuffer: 10 * 1024 * 1024 },
+  );
+  return stdout;
+}
+
 export function parseReleaseTag(argv, env) {
   const flagIndex = argv.indexOf("--release-tag");
   if (flagIndex !== -1) {
@@ -844,10 +932,12 @@ export function parseReleaseTag(argv, env) {
 async function runCli() {
   const releaseTag = parseReleaseTag(process.argv.slice(2), process.env);
   return releaseTag
-    ? validateReleaseConsistency({ releaseTag }).then((result) => {
+    ? validateReleaseConsistency({ releaseTag }).then(async (result) => {
+        const { declaredCount } = await assertPinnedInputsDeclared();
         console.log(
           `Validated release ${result.releaseTag}: action.yml, ${result.workflowCount} workflow(s), ` +
-            `${result.exampleCount} example(s), and ${result.trackedPathCount} tracked public path(s).`,
+            `${result.exampleCount} example(s), ${result.trackedPathCount} tracked public path(s), ` +
+            `and every lane input against the pinned action's ${declaredCount} declared input(s).`,
         );
       })
     : validateMetadata().then(async ({ workflowCount, exampleCount, trackedPathCount }) => {

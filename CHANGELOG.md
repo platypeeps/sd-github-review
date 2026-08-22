@@ -95,6 +95,16 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   at all — the SHA is the installation reference and the tag is for discovery,
   which is what the surrounding prose already said.
 
+- **The release gate now verifies that a lane's inputs exist in the action it
+  pins.** `assertFirstPartyConsistency` proves every lane agrees on one SHA and
+  `assertPinFreshness` proves that SHA carries the release's action code, but
+  neither reads the `with:` block. Four lanes wired `route-policy` while pinned
+  to a release declaring no such input, so the policy was documented and
+  entirely inert with every check green. `SD_RELEASE_TAG=... node
+  scripts/validate-action-metadata.mjs` now refuses that. It is release-time
+  only by design: during development the pin lags on purpose, and failing every
+  CI run would make the gate something to switch off rather than satisfy.
+
 - **`validate:metadata` now gates prose pins, not only YAML ones.**
   `assertFirstPartyConsistency` reads `uses:` lines out of parsed YAML, so the
   four published documents that print a literal 40-character SHA beside "keep

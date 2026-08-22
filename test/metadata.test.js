@@ -8,6 +8,7 @@ import { promisify } from "node:util";
 import { parseDocument } from "yaml";
 import {
   assertPinFreshness,
+  assertPinnedInputsDeclared,
   parseReleaseTag,
   prohibitedPublishedMetadataReason,
   validateMetadata,
@@ -815,6 +816,77 @@ test("assertPinFreshness rejects a pin left on an older release", async () => {
     }),
     /actionReference is stale — pinned to a{40}, but the current release v0\.2\.0 is b{40}/u,
   );
+});
+
+// Carries a third-party step with its own `with:` block on purpose. Only the
+// first-party action's inputs are checkable against this repository's
+// action.yml; `fetch-depth` belongs to actions/checkout and must never be
+// reported. Without this step in the fixture, deleting the first-party filter
+// entirely still passed every test.
+const laneWith = (inputs) => `name: lane
+on:
+  workflow_dispatch:
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c
+        with:
+          fetch-depth: 0
+      - uses: platypeeps/sd-github-review@${"a".repeat(40)}
+        with:
+${inputs.map((key) => `          ${key}: value`).join("\n")}
+`;
+
+test("assertPinnedInputsDeclared rejects a lane input the pinned action never declared", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-inputs-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c");
+  await writeFile(
+    path.join(root, "examples", "durable.yml"),
+    laneWith(["operation", "route-policy"]),
+    "utf8",
+  );
+
+  // assertFirstPartyConsistency proves the lanes agree on a SHA and
+  // assertPinFreshness proves that SHA carries the release's action code.
+  // Neither reads the `with:` block, so a lane could pass route-policy to a
+  // release that declares no such input and every check stayed green — which is
+  // how a documented route policy became silently inert across four lanes.
+  await assert.rejects(
+    assertPinnedInputsDeclared({
+      repositoryRoot: root,
+      gitImpl: { readPinnedAction: async () => "inputs:\n  operation:\n    description: op\n" },
+    }),
+    /examples\/durable\.yml: route-policy/u,
+  );
+
+  await assert.rejects(
+    assertPinnedInputsDeclared({
+      repositoryRoot: root,
+      gitImpl: { readPinnedAction: async () => "inputs:\n  operation:\n    description: op\n" },
+    }),
+    (error) => !/fetch-depth/u.test(error.message),
+    "a third-party step's inputs are not this action's to declare",
+  );
+});
+
+test("assertPinnedInputsDeclared accepts a lane whose inputs the pinned action declares", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-inputs-ok-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c");
+  await writeFile(
+    path.join(root, "examples", "durable.yml"),
+    laneWith(["operation", "route-policy"]),
+    "utf8",
+  );
+
+  const result = await assertPinnedInputsDeclared({
+    repositoryRoot: root,
+    gitImpl: {
+      readPinnedAction: async () =>
+        "inputs:\n  operation:\n    description: op\n  route-policy:\n    description: policy\n",
+    },
+  });
+  assert.equal(result.declaredCount, 2);
 });
 
 test("assertPinFreshness rejects a Markdown SHA left behind by a pin advance", async () => {
