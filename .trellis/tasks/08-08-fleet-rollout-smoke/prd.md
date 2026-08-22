@@ -117,7 +117,11 @@ decision before its install (see Open Decisions).
      PR-Agent key. This is a change to the consumer installer and belongs in its own task;
      the rollout would then need no credential distribution at all.
 
-  This is an owner decision and blocks the first canary.
+  Decided 2026-08-22 by the owner: path 2. The rollout is paused pending
+  `08-22-installer-secret-gate-mode-aware` and will not distribute the credential. Confirmed
+  before deciding that the gate is a defect rather than a deliberate requirement: the durable
+  workflow references the secret only in provider-gated PR-Agent bindings that fall through to
+  `''`, and no test asserts the refusal for any mode.
 
 ## Scope and Authority
 
