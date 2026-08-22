@@ -1205,3 +1205,41 @@ Fleet refresh to 0.71.38; repairs the vendored review-layout helper's executable
 ### Next Steps
 
 - None - task complete
+
+
+## Session 79: Refresh sd-ai-command-pack to 0.71.45
+<!-- trellis-session: v=2 fp=874e6cf9364997ad -->
+
+**Date**: 2026-08-21
+**Task**: Refresh sd-ai-command-pack to 0.71.45
+**Branch**: `chore/pack-refresh-0.71.45`
+
+### Summary
+
+Fleet rollout lane: reinstalled the thin sd-ai-command-pack payload at 0.71.45, up from 0.71.38, and verified the manifest-ordered checks and the deterministic gate.
+
+### Main Changes
+
+- Reinstalled the thin sd-ai-command-pack payload at 0.71.45 (up from 0.71.38); the diff is installer-managed .github/prompts adapters plus .sd-ai-command-pack manifest and provenance receipts.
+- Dispositioned four advisory Prism notes on generated .github/prompts payload through the fleet finding severity gate: continue-with-follow-ups, zero blockers.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0377dd69826faba91d1767f62163f09b1fc31ddd` | chore(pack): refresh sd-ai-command-pack to 0.71.45 |
+
+### Testing
+
+- [OK] npm ci, then npm test, npm run check, npm run validate:metadata — all exit 0
+- [OK] npm run check:full — exit 0, including the sd-ai-command-pack full-check tail
+- [OK] sd-ai-command-pack install audit from the pack source checkout — 31 targets, provenance 0.71.45
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
