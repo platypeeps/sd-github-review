@@ -56,14 +56,19 @@ state, or output files.
   prior receipt and current head may take the bookkeeping-only `none` path.
 - Sensitive/large-change floors use the validated `high-risk-route`
   (`deep|copilot`) and, together with configured independent-review floors,
-  apply after automatic reductions. Explicit route intent retains precedence.
+  apply after automatic reductions. Explicit route intent retains precedence
+  over automatic reduction but is bounded above by `policy.routePolicy` (the
+  repository's `REVIEW_ROUTE_MODE`); an explicit route outside it is refused
+  before routing and before any receipt write. `auto` is always permitted, so
+  the floor and risk rules still choose the automatic route.
 
 ### 4. Validation & Error Matrix
 
 | Condition | Required behavior |
 | --- | --- |
 | Reordered equivalent allow-listed input | Produce the same canonical digest |
-| New head or attempt | Produce a new logical identity and fingerprint |
+| New head, or new attempt with a matching `rerequestOf` | Produce a new logical identity and fingerprint |
+| `attempt` above 1 without `rerequestOf` | Throw at decode, before identity derivation |
 | New correlation alias | Preserve identity and fingerprint |
 | New route, policy reference, or validated evidence | Preserve logical identity; change fingerprint |
 | Spoofed compatibility digest | Throw before future dispatch |
@@ -131,11 +136,17 @@ evidence from GitHub compare metadata.
   evidence fails closed.
 - `begin()` re-reads the live PR head before lookup, immediately before create,
   and after create before it returns dispatch authorization.
-- A matching retry reuses the receipt and may append correlation aliases. A
-  conflicting fingerprint throws before another dispatch is possible.
-- `started`, `acknowledged`, and `observed` are monotonic. Interrupted
-  `started` mutations and ambiguous GitHub writes return reconciliation
-  required and never recommend fallback dispatch.
+- A matching retry reuses the receipt and may append correlation aliases,
+  unless the stored receipt records a skip and the fresh decision does not --
+  that one case replaces the receipt in place and authorizes its first
+  dispatch, because a skip represents no dispatched work. A conflicting
+  fingerprint throws before another dispatch is possible.
+- `started`, `acknowledged`, and `observed` are monotonic. An interrupted
+  `started` mutation returns `in-flight` until the receipt outlives
+  `stranded-receipt-minutes` or its dispatch is recorded failed, and
+  reconciliation required thereafter. Ambiguous GitHub writes return
+  reconciliation required immediately. Neither ever recommends fallback
+  dispatch.
 - Same-head rerequest requires the next attempt, exact prior receipt and
   logical identity, unchanged policy/route/backend, backend rerequest support,
   and explicit repository-policy authorization.
@@ -149,7 +160,8 @@ evidence from GitHub compare metadata.
 
 | Condition | Required behavior |
 | --- | --- |
-| Matching identity and fingerprint | Return existing receipt; never dispatch twice |
+| Matching identity and fingerprint | Return existing receipt; never dispatch twice, except a recorded skip below |
+| Recorded skip whose fresh decision is not a skip | Supersede the receipt in place and authorize its first dispatch |
 | Matching retry with new correlation | Append the alias through the same Check Run |
 | Conflicting fingerprint or duplicate Check Runs | Throw before dispatch |
 | Check mutation response is uncertain | Return reconciliation required with dispatch forbidden |

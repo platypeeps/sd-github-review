@@ -165,7 +165,14 @@ The durable identity is derived from repository, pull request, full head SHA,
 and attempt. Correlation IDs are aliases, not permission to dispatch again. A
 matching retry returns the existing receipt; a conflicting fingerprint fails;
 an uncertain mutation leaves the receipt in `reconciliation-required` with
-dispatch forbidden.
+dispatch forbidden. Two refinements: a matching retry against a receipt that
+records a *skip* supersedes it in place and authorizes that receipt's first
+dispatch, because a skip represents no dispatched work; and a receipt still in
+dispatch phase `started` reports `in-flight` rather than
+`reconciliation-required` until it outlives `stranded-receipt-minutes` (default
+360, GitHub's own job ceiling) or its dispatch is recorded failed. Dispatch is
+forbidden in both `in-flight` and `reconciliation-required`; only the latter
+fails the `route` step.
 
 `acknowledge` is a workflow helper rather than a receipt operation exposed by
 setup discovery. It lets adapters such as PR-Agent record `success`, `failure`,
@@ -188,8 +195,12 @@ when explicitly enabled and no independent-review floor overrides it.
 Both published on-demand workflows expose that trusted repository policy
 directly. `rerequest-authorized` defaults to `false` and is enabled only for a
 validated attempt greater than one; `independent-review-floor` defaults to
-`none` and can require `cheap`, `deep`, or `copilot`. The two controls feed the
-initial route/query operation and never alter the canonical finalization
+`none` and can require `cheap`, `deep`, or `copilot`; `route-policy` is wired to
+the `REVIEW_ROUTE_MODE` repository variable and bounds an *explicit* route
+request from above. The floor and the policy are opposite bounds on different
+values — the floor raises an automatic route, the policy caps an explicit one —
+so they are deliberately not reconciled with each other. All three controls feed
+the initial route/query operation and never alter the canonical finalization
 identity.
 
 [`contract/routed-review-setup-v1.json`](contract/routed-review-setup-v1.json)
@@ -299,21 +310,22 @@ object rather than an `owner/repo` string — on both the request and the nested
 `localReview`. `localReview` is the only optional member shown; omitting it
 simply forgoes evidence-based lowering.
 
-`runOperation` reads the `review-request` input at `src/operations.js:539` —
-that is the **decode** site, not the consume site — and delegates.
-`src/protocol.js:538` decodes the `localReview` object itself,
-`selectProtocolRoute` (`src/operations.js:381`) reads the three policy inputs at
-`src/operations.js:390-401`, `src/router.js:161` evaluates the evidence, and the
-resulting decision is consumed at `src/operations.js:405`. The call order is not
-the file order: `:539` sits below `:381` and `:405` because `runOperation` calls
-`runRouteAction`.
+`runOperation` reads the `review-request` input via `decodeReviewRequest`
+(`src/operations.js`) — that is the **decode** site, not the consume site — and
+delegates to `runRouteAction`. `decodeLocalReviewSummary` (`src/protocol.js`)
+decodes the `localReview` object itself, `runRouteAction` assembles the `policy`
+object it hands to `selectProtocolRoute`, and `selectProtocolRoute`
+(`src/router.js`) evaluates the evidence and returns the decision that
+`selectedBackend` consumes. Symbol names rather than line numbers on purpose:
+these citations drifted the first time this file was edited alongside the code.
 
 **Exact-head binding.** `localReview.headSha` must equal the request's
-`headSha`; a mismatch is rejected at `src/protocol.js:459-460` with
+`headSha`; `decodeLocalReviewSummary` rejects a mismatch with
 `localReview.headSha must match the request headSha`. Evidence gathered against
 an earlier commit is therefore inadmissible rather than merely stale.
 
-**All three eligibility conditions must hold** (`src/router.js:163-165`):
+**All three eligibility conditions must hold** (the `eligible` predicate in
+`selectProtocolRoute`):
 
 1. `outcome` is `clean` or `fully-dispositioned`;
 2. `confidence` is at or above `local-confidence-threshold`;
@@ -327,7 +339,7 @@ no positive routing confidence` and routing proceeds unchanged.
 **Floors are applied after lowering and cannot be bypassed.** The risk floor is
 `high-risk-route` whenever a sensitive path matched or the changed-line
 threshold was met, `independent-review-floor` supplies a configured floor, and
-the stronger of the two is re-applied at `src/router.js:195` *after* any
+`strongerRoute(route, floor)` re-applies the stronger of the two *after* any
 evidence-driven reduction. Local evidence can lower an ordinary change to
 `cheap` or `none`; it can never lower a sensitive or oversized change below the
 high-risk floor.

@@ -149,10 +149,16 @@ node scripts/install-consumer.mjs uninstall [options]
   `openrouter/moonshotai/kimi-k2.6` for `deep`. An update with omitted
   provider/model options retains the active manifest's recorded configuration;
   changing source defaults never silently migrates an existing consumer.
-- GitHub resources are `PR_AGENT_MODEL_PROVIDER`, `CHEAP_REVIEW_MODEL`,
-  `DEEP_REVIEW_MODEL`, `SD_REVIEW_CHEAP_BACKEND_V1`, `SD_REVIEW_DEEP_BACKEND_V1`,
-  `PR_AGENT_MODEL_API_KEY`, and the router's five review labels. Matching
-  pre-existing resources are unowned and preserved.
+- The managed GitHub resources are every name in `MANAGED_VARIABLE_NAMES`
+  (exported from `scripts/consumer-installer/codecs.mjs` as the frozen key set
+  of `CONFIG_VARIABLES`), plus `PR_AGENT_MODEL_API_KEY` and the router's five
+  review labels. Read the exported set rather than restating it here: this list
+  previously omitted `REVIEW_ROUTE_MODE` for an entire release. Note also that
+  `Object.keys(variableValues(config))` is *not* the same answer —
+  `variableValuesForSchema` drops names the given configuration leaves unset, so
+  a default configuration reports `REVIEW_ROUTE_MODE` as unmanaged when it is
+  merely unpopulated. Matching pre-existing resources are unowned and
+  preserved.
 - `CONFIG_VARIABLES` carries two kinds of entry, and both stay in that one
   table because `install`, `update`, `check` drift, and `uninstall` all read
   from it — a parallel list beside it drifts from it silently:

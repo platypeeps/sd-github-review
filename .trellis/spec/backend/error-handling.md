@@ -59,7 +59,9 @@ does not define a custom error hierarchy.
 | Trusted successor evidence does not match `supersedes` and current head | Throw before applying successor policy |
 | Receipt route/backend/dispatch state is contradictory | Throw; do not publish a partial receipt |
 | Receipt Check Run is malformed, noncanonical, wrong-head, or duplicated | Throw; never authorize another dispatch |
-| Check Run create/update result is ambiguous | Return `reconciliationRequired: true` and `dispatchAllowed: false` |
+| Check Run create/update result is ambiguous | Return `reconciliationRequired: true` and `dispatchAllowed: false`; `route` additionally fails the step unless a concurrency winner already owns the head |
+| Explicit route outside the repository's `route-policy` | Throw before routing and before any receipt write; `auto` is always permitted |
+| Interrupted `started` receipt younger than `stranded-receipt-minutes` | Return `in-flight` with dispatch forbidden and `reconciliationRequired: false`; do not fail the step |
 | Live PR head changes before or during receipt creation | Fail closed; do not authorize dispatch for the stale head |
 | GitHub comparison is rewritten, truncated, incomplete, or changes head | Emit an ineligible bounded successor class; never infer bookkeeping-only |
 | Missing/mismatched external acknowledgment | Throw or retain started receipt; never finalize or dispatch a fallback |

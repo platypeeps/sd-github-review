@@ -423,8 +423,11 @@ upstream GitHub Action, whose Dockerfile inherits a floating image tag.
 For an installer-managed event workflow, use the guarded uninstall command in
 the [automated lifecycle section](#automated-event-driven-lifecycle). For a
 manual event-driven or durable installation, disable or remove the installed
-workflow, then remove `PR_AGENT_MODEL_API_KEY`, `PR_AGENT_MODEL_PROVIDER`, and
-the backend/model variables if nothing else uses them. Existing PR-Agent
+workflow, then remove `PR_AGENT_MODEL_API_KEY`, `PR_AGENT_MODEL_PROVIDER`,
+`REVIEW_ROUTE_MODE`, and the backend/model variables if nothing else uses them.
+Leaving `REVIEW_ROUTE_MODE` behind is not harmless: a durable lane that survives
+the rollback still reads it as a route-policy maximum and will refuse explicit
+routes outside it. Existing PR-Agent
 comments and durable Check Run receipts remain as historical GitHub records.
 
 ### Migrating a v0.1.0-era setup onto the installer
