@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.5.0 - 2026-08-22
 
 ### Security
 
@@ -219,14 +219,16 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   new `route-policy` bounds the *maximum* a caller may request; the floor is the
   separate *minimum* and is still supplied as a `workflow_dispatch` input.
 
-## 0.4.1 - 2026-08-22
+### Also in this release: the pin-freshness fix prepared as 0.4.1
 
-**No runtime change.** The `src` tree and the `action.yml` blob are byte-identical
-to `0.4.0` (`98415e3` and `47a24a6` at both tags). Consumers already on `0.4.0`
-gain nothing by upgrading the action itself; the value is entirely in what the
-release *pins*.
+`0.4.1` was written and version-stamped but never tagged, and its headline claim
+— that `src` and `action.yml` are byte-identical to `0.4.0` — stopped being true
+the moment this release's runtime work landed on the same branch. Publishing it
+would have shipped a false statement about the very trees the release is about.
+No consumer can distinguish the two, because no `v0.4.1` tag ever existed, so
+its entries are folded in here rather than back-dated onto a tag.
 
-### Fixed
+#### Fixed
 
 - **A release tag can finally carry pins that point inside its own release.**
   `assertPinFreshness` required the descriptor's `actionReference` to equal the
@@ -248,7 +250,7 @@ release *pins*.
   deliberately: consumers run byte-identical code, so the lag is not observable to
   them.
 
-### Changed
+#### Changed
 
 - **Releases now advance every first-party pin *before* tagging, and the tag sits
   on the pin-advance commit** (`docs/RELEASE_CHECKLIST.md` section 5). That commit
