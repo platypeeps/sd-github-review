@@ -692,7 +692,96 @@ export async function assertPinFreshness({
       }
     }
   }
+  await assertProseCommitReferences({
+    repositoryRoot,
+    actionSha,
+    listDocuments: gitImpl?.listDocuments ?? defaultListDocuments,
+    isCommit: gitImpl?.isCommit ?? defaultIsCommit,
+  });
   return { releaseTag: latest, releaseCommit: latestCommit, actionSha };
+}
+
+// R-004: prose pins. assertFirstPartyConsistency reads `uses:` lines out of
+// parsed YAML, so it is blind to the same SHA written into a Markdown sentence
+// — and four published documents tell a consumer to "keep that exact pin"
+// followed by a literal 40-character SHA. Nothing advanced those with the
+// YAML pins, and nothing failed when they were left behind.
+//
+// The discriminator is `git cat-file -e <sha>^{commit}`, not a regex. This
+// repository's docs legitimately contain 40-hex tokens that are not commits:
+// DESIGN.md's protocol examples use `0000...0001` as a headSha and `aaaa...`
+// as a scope digest. Those resolve to no object and are correctly ignored,
+// while any real commit reference is either the current pin or stale by
+// construction. A pattern narrow enough to skip the fixtures would have to
+// guess at prose, and would drift the moment a doc reworded its sentence.
+//
+// `.trellis/` is excluded on purpose: archived task records are a historical
+// account of what was true at the time, not instructions to a consumer.
+// CHANGELOG.md is deliberately NOT excluded, even though it is also historical:
+// a changelog is where upgrade instructions live, so a full SHA printed there
+// is exactly as consumer-facing as one in a setup guide. Cite an old commit in
+// the abbreviated form — that is the conventional notation for a historical
+// reference, and the full 40-character form is the notation for a pin.
+async function assertProseCommitReferences({
+  repositoryRoot,
+  actionSha,
+  listDocuments,
+  isCommit,
+}) {
+  const documents = await listDocuments(repositoryRoot);
+  const stale = [];
+  for (const filePath of documents) {
+    const source = await readFile(path.join(repositoryRoot, filePath), "utf8");
+    const lines = source.split("\n");
+    for (const [index, line] of lines.entries()) {
+      for (const [sha] of line.matchAll(/\b[0-9a-f]{40}\b/gu)) {
+        if (sha === actionSha) continue;
+        if (!(await isCommit(repositoryRoot, sha))) continue;
+        stale.push(`${filePath}:${index + 1}: ${sha}`);
+      }
+    }
+  }
+  if (stale.length) {
+    throw new Error(
+      `prose commit reference is stale — the first-party pin is ${actionSha}, but ` +
+        `${stale.length} Markdown reference(s) name a different commit of this ` +
+        `repository:\n  ${stale.join("\n  ")}\n` +
+        "advance prose SHAs with the YAML pins, in the same commit",
+    );
+  }
+}
+
+// The published Markdown set. A seam rather than a direct call because the
+// twenty-odd assertPinFreshness fixtures write into bare temp directories that
+// are not git repositories at all; `git ls-files` there fails on the repository
+// probe rather than on anything this gate is about. Production reads the real
+// tracked set, so a document cannot escape the gate by being unlisted.
+async function defaultListDocuments(repositoryRoot) {
+  return (await trackedRepositoryPaths(repositoryRoot)).filter(
+    (filePath) => filePath.endsWith(".md") && !filePath.startsWith(".trellis/"),
+  );
+}
+
+// True only for a SHA that names a commit object in this repository.
+//
+// `rev-parse --verify --quiet` rather than `cat-file -e`: peeling an absent
+// object with `^{commit}` makes cat-file exit 128 with `fatal: Not a valid
+// object name`, which is indistinguishable from a genuinely broken repository.
+// `--quiet` is the documented "answer false instead of failing" form — it exits
+// 1 with no output — so a nonzero exit other than 1, or git missing entirely,
+// still propagates rather than reporting a clean document set.
+async function defaultIsCommit(repositoryRoot, sha) {
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["-C", repositoryRoot, "rev-parse", "--verify", "--quiet", `${sha}^{commit}`],
+      { encoding: "utf8" },
+    );
+    return stdout.trim().length === 40;
+  } catch (error) {
+    if (error?.code === 1) return false;
+    throw error;
+  }
 }
 
 // Opt-in release-hygiene gate for the operator at release time. It layers a

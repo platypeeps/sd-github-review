@@ -118,8 +118,8 @@ failure recovery, and optional cleanup.
 For a provider-free evaluation, start with
 [`examples/pilot-router.yml`](examples/pilot-router.yml). It exercises routing
 and Copilot without checking out pull-request code or using LLM provider
-credentials. The checked-in example is pinned to the immutable `v0.3.0`
-release commit,
+credentials. The checked-in example is pinned to the immutable current release
+commit,
 `3e41f23415c4eb2c0e2292c9b53690a5eff94175`.
 
 Every checked-in first-party example uses that same released full SHA. When

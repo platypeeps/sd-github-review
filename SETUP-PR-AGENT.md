@@ -288,7 +288,7 @@ and
 1. Copy [`examples/pr-agent-router.yml`](examples/pr-agent-router.yml) to the
    consuming repository, for example as
    `.github/workflows/ai-review-router.yml`.
-2. The checked-in workflow is pinned to the `v0.3.0` release commit,
+2. The checked-in workflow is pinned to the current release commit,
    `3e41f23415c4eb2c0e2292c9b53690a5eff94175`. Keep that exact pin or update
    it to the reviewed full 40-character SHA of a later approved release. The
    PR-Agent container reference is independently pinned by digest.
@@ -330,7 +330,7 @@ repository's `issue_comment` workflow without checking out contributor code.
    [`examples/pr-agent-on-demand-review-router.yml`](examples/pr-agent-on-demand-review-router.yml)
    to `.github/workflows/sd-review.yml`.
 2. Keep every first-party Action reference on the checked-in immutable
-   `v0.3.0` SHA, or update all of them together to the reviewed full SHA of a
+   current-release SHA, or update all of them together to the reviewed full SHA of a
    later approved release.
 3. Configure `PR_AGENT_MODEL_PROVIDER` and `PR_AGENT_MODEL_API_KEY` as
    described above.

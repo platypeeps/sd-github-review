@@ -70,6 +70,25 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Published documentation labelled the shipped pin as `v0.3.0` when it is
+  `v0.4.0`'s commit.** `3e41f23` is the commit `v0.4.0` points at; `v0.3.0` is
+  `744a9f1`. Five places in `README.md`, `SETUP-COPILOT.md`, and `SETUP-PR-AGENT.md` told a
+  consumer they were installing `v0.3.0`. One file disagreed with itself:
+  `SETUP-PR-AGENT.md` printed `--source-tag v0.4.0` beside the same SHA it
+  called `v0.3.0` two hundred lines later. The pin claims no longer name a tag
+  at all — the SHA is the installation reference and the tag is for discovery,
+  which is what the surrounding prose already said.
+
+- **`validate:metadata` now gates prose pins, not only YAML ones.**
+  `assertFirstPartyConsistency` reads `uses:` lines out of parsed YAML, so the
+  four published documents that print a literal 40-character SHA beside "keep
+  that exact pin" were never checked against the current release. A pin advance
+  that missed them left consumers copying a stale commit out of the setup guide
+  while every automated check stayed green. The new check discriminates with
+  `git rev-parse --verify --quiet <sha>^{commit}` rather than a pattern,
+  because `DESIGN.md`'s protocol examples are legitimately 40 hex characters
+  (`0000...0001`, `aaaa...`) and resolve to no object.
+
 - **A pull request reviewed while it was a draft could never be reviewed again at
   that head.** Routing a draft records route `none` ("draft pull requests are
   disabled"). Marking it ready for review does not change its head SHA, and

@@ -774,6 +774,11 @@ const freshnessGit = (tags, commits, overrides = {}) => ({
   resolveTagCommit: async (_root, tag) => commits[tag],
   isAncestor: async () => true,
   resolvePathObject: async (_root, commit, targetPath) => `${commit}:${targetPath}`,
+  // These fixture roots are bare temp directories, not git repositories, so the
+  // real tracked-document scan would fail on the repository probe rather than
+  // on prose staleness. Empty by default; the prose tests below override it.
+  listDocuments: async () => [],
+  isCommit: async () => false,
   ...overrides,
 });
 
@@ -810,6 +815,60 @@ test("assertPinFreshness rejects a pin left on an older release", async () => {
     }),
     /actionReference is stale — pinned to a{40}, but the current release v0\.2\.0 is b{40}/u,
   );
+});
+
+test("assertPinFreshness rejects a Markdown SHA left behind by a pin advance", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-prose-"));
+  const current = "b".repeat(40);
+  const previous = "a".repeat(40);
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: current,
+  });
+  await writeFile(
+    path.join(root, "SETUP.md"),
+    `Pinned to the current release commit,\n\`${previous}\`. Keep that exact pin.\n`,
+    "utf8",
+  );
+
+  // assertFirstPartyConsistency reads `uses:` out of parsed YAML and is blind to
+  // a SHA written into a sentence. Four published documents tell a consumer to
+  // keep an exact pin and then print one, and nothing advanced them with the
+  // YAML pins.
+  await assert.rejects(
+    assertPinFreshness({
+      repositoryRoot: root,
+      gitImpl: freshnessGit(["v0.1.0", "v0.2.0"], { "v0.1.0": previous, "v0.2.0": current }, {
+        listDocuments: async () => ["SETUP.md"],
+        isCommit: async (_root, sha) => sha === previous,
+      }),
+    }),
+    /SETUP\.md:2: a{40}/u,
+  );
+});
+
+test("assertPinFreshness ignores Markdown hex that is not a commit of this repository", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-fixture-hex-"));
+  const current = "b".repeat(40);
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: current,
+  });
+  await writeFile(
+    path.join(root, "DESIGN.md"),
+    `"headSha": "${"0".repeat(39)}1", "scopeDigest": "${"a".repeat(40)}"\n`,
+    "utf8",
+  );
+
+  // The protocol examples in DESIGN.md are 40 hex characters and always will be.
+  // Discriminating on the pattern instead of on `git rev-parse` would reject
+  // every fixture digest in the repository.
+  const result = await assertPinFreshness({
+    repositoryRoot: root,
+    gitImpl: freshnessGit(["v0.2.0"], { "v0.2.0": current }, {
+      listDocuments: async () => ["DESIGN.md"],
+      isCommit: async () => false,
+    }),
+  });
+  assert.equal(result.actionSha, current);
 });
 
 test("assertPinFreshness orders releases by semver precedence, not lexically", async () => {
