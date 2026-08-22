@@ -144,21 +144,85 @@ const PROVIDER_SECRET_OPTIONAL_ROUTE_MODES = new Set(["copilot", "none"]);
 export function routeModeNeedsProviderSecret(routeMode) {
   return !PROVIDER_SECRET_OPTIONAL_ROUTE_MODES.has(routeMode);
 }
-// The managed repository variables, keyed by variable name and valued by the
-// configuration field each carries. Every downstream behaviour derives from this
-// table: `variableValues` feeds the install/update plan and the `check` drift
-// loop, and the manifest's recorded variable block drives `uninstall`.
+// The backend descriptor the durable lane reads from SD_REVIEW_<ROUTE>_BACKEND_V1.
+// Its shape must satisfy the action's `decodeBackend` (src/protocol.js) and be
+// `kind: external`, since selectedBackend rejects anything else for a
+// `{route}-backend` input.
 //
-// REVIEW_ROUTE_MODE joined at schema 4, so the set is version-scoped: a manifest
-// written before then records three variables and must keep decoding.
+// `model` is the configured model verbatim, not `${provider}/${model}`.
+// validateConfiguration already requires every model but an openai one to carry
+// its own `<provider>/` prefix, so concatenating would double it.
+//
+// `reviewAuthors` is load-bearing rather than cosmetic: it is how the action
+// decides which review comments count as this backend's findings. The installed
+// PR-Agent job runs with `GITHUB__USER_TOKEN: ${{ github.token }}`, so it posts
+// as the Actions bot. Verified against real PR-Agent comments in the pilot
+// rather than assumed.
+function backendDescriptor({ model, costTier, qualityTier }) {
+  return {
+    id: "pr-agent",
+    label: "PR-Agent",
+    kind: "external",
+    model,
+    costTier,
+    qualityTier,
+    capabilities: ["review", "conversation-comments"],
+    reviewAuthors: ["github-actions[bot]"],
+    checkNames: [],
+    findingChannels: ["conversation-comment"],
+    supportsRerequest: true,
+    limitations: ["Inline comments depend on adapter configuration"],
+  };
+}
+
+// The managed repository variables, keyed by variable name. Every downstream
+// behaviour derives from this table: `variableValues` feeds the install/update
+// plan and the `check` drift loop, and the manifest's recorded variable block
+// drives `uninstall`. Keeping the two entry kinds in one table rather than
+// adding a second list beside it is what keeps `install`, `update`, `check`, and
+// `uninstall` reading the same set — a parallel list drifts from this one.
+//
+// Two entry kinds:
+//   { field }            the variable carries a configuration field verbatim
+//   { derive, model }    the variable carries a value synthesized from the
+//                        configuration; `model` names the configuration field
+//                        the synthesized descriptor's `model` must equal, which
+//                        is what the decoder checks in place of an equality it
+//                        cannot assert (see decodeManifest).
+//
+// The set is version-scoped, because names joined over time: a manifest written
+// before REVIEW_ROUTE_MODE joined at schema 4 records three variables, one
+// written before the two backend descriptors joined at schema 5 records four,
+// and both must keep decoding.
 const LEGACY_CONFIG_VARIABLES = Object.freeze({
-  PR_AGENT_MODEL_PROVIDER: "provider",
-  CHEAP_REVIEW_MODEL: "cheapModel",
-  DEEP_REVIEW_MODEL: "deepModel",
+  PR_AGENT_MODEL_PROVIDER: Object.freeze({ field: "provider" }),
+  CHEAP_REVIEW_MODEL: Object.freeze({ field: "cheapModel" }),
+  DEEP_REVIEW_MODEL: Object.freeze({ field: "deepModel" }),
+});
+const ROUTE_MODE_CONFIG_VARIABLES = Object.freeze({
+  ...LEGACY_CONFIG_VARIABLES,
+  REVIEW_ROUTE_MODE: Object.freeze({ field: "routeMode" }),
 });
 const CONFIG_VARIABLES = Object.freeze({
-  ...LEGACY_CONFIG_VARIABLES,
-  REVIEW_ROUTE_MODE: "routeMode",
+  ...ROUTE_MODE_CONFIG_VARIABLES,
+  SD_REVIEW_CHEAP_BACKEND_V1: Object.freeze({
+    model: "cheapModel",
+    derive: (configuration) =>
+      backendDescriptor({
+        model: configuration.cheapModel,
+        costTier: "low",
+        qualityTier: "standard",
+      }),
+  }),
+  SD_REVIEW_DEEP_BACKEND_V1: Object.freeze({
+    model: "deepModel",
+    derive: (configuration) =>
+      backendDescriptor({
+        model: configuration.deepModel,
+        costTier: "medium",
+        qualityTier: "advanced",
+      }),
+  }),
 });
 export const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const REPOSITORY_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u;
@@ -168,19 +232,21 @@ const MAX_MODEL_LENGTH = 256;
 // Consumer-manifest schema version. Bumped 1 -> 2 to record source provenance
 // (commit, tag, released) on the source template, then 2 -> 3 to record the two
 // resources the durable lane adds: the setup discovery descriptor and the
-// durable workflow, then 3 -> 4 to bring REVIEW_ROUTE_MODE under management.
+// durable workflow, then 3 -> 4 to bring REVIEW_ROUTE_MODE under management,
+// then 4 -> 5 to bring the two durable backend descriptors under management.
 // Distinct from the action contract descriptor's own schemaVersion in
 // config/routed-review-setup-v1.json.
 //
 // Required fields per version, so the decoder can be read against the matrix:
 //
-//   | version | workflow + source | provenance | descriptor + durableWorkflow | REVIEW_ROUTE_MODE |
-//   | 1       | required          | absent     | absent                       | absent            |
-//   | 2       | required          | required   | absent                       | absent            |
-//   | 3       | required          | required   | required                     | absent            |
-//   | 4       | required          | required   | required                     | required          |
-export const MANIFEST_SCHEMA_VERSION = 4;
-const SUPPORTED_MANIFEST_SCHEMA_VERSIONS = new Set([1, 2, 3, 4]);
+//   | version | workflow + source | provenance | descriptor + durableWorkflow | REVIEW_ROUTE_MODE | SD_REVIEW_*_BACKEND_V1 |
+//   | 1       | required          | absent     | absent                       | absent            | absent                 |
+//   | 2       | required          | required   | absent                       | absent            | absent                 |
+//   | 3       | required          | required   | required                     | absent            | absent                 |
+//   | 4       | required          | required   | required                     | required          | absent                 |
+//   | 5       | required          | required   | required                     | required          | required               |
+export const MANIFEST_SCHEMA_VERSION = 5;
+const SUPPORTED_MANIFEST_SCHEMA_VERSIONS = new Set([1, 2, 3, 4, 5]);
 // Provenance became mandatory at schema 2 and stays mandatory afterwards.
 // Gating it on `=== MANIFEST_SCHEMA_VERSION` would silently stop validating
 // source.commit/tag/released on every schema-2 manifest the fleet is running.
@@ -192,14 +258,17 @@ export const DURABLE_MIN_SCHEMA_VERSION = 3;
 // equality with MANIFEST_SCHEMA_VERSION, or bumping the constant narrows an
 // existing tier instead of adding one.
 export const ROUTE_MODE_MIN_SCHEMA_VERSION = 4;
+// The two durable backend descriptors became mandatory at schema 5. Same rule
+// again: gate on the version the requirement was introduced at.
+export const BACKEND_MIN_SCHEMA_VERSION = 5;
 
 // The managed variable set a manifest at the given schema version is expected to
 // record. Callers reading a manifest must use this rather than CONFIG_VARIABLES
-// directly, or every pre-schema-4 manifest in the fleet fails to decode.
+// directly, or every pre-schema-5 manifest in the fleet fails to decode.
 function configVariablesForSchema(schemaVersion) {
-  return schemaVersion >= ROUTE_MODE_MIN_SCHEMA_VERSION
-    ? CONFIG_VARIABLES
-    : LEGACY_CONFIG_VARIABLES;
+  if (schemaVersion >= BACKEND_MIN_SCHEMA_VERSION) return CONFIG_VARIABLES;
+  if (schemaVersion >= ROUTE_MODE_MIN_SCHEMA_VERSION) return ROUTE_MODE_CONFIG_VARIABLES;
+  return LEGACY_CONFIG_VARIABLES;
 }
 export const COMMIT_PATTERN = /^[0-9a-f]{40}$/u;
 export const RELEASE_TAG_PATTERN =
@@ -410,10 +479,34 @@ export function decodeManifest(source, filePath = MANIFEST_PATH) {
   if (JSON.stringify(variableNames) !== JSON.stringify(expectedVariableNames)) {
     throw new Error(`${filePath}: variable ownership must contain only managed variables`);
   }
-  for (const name of Object.keys(managedVariables)) {
+  for (const [name, expectation] of Object.entries(managedVariables)) {
     const entry = value.resources.variables[name];
     assertOwnedResource(entry, `${filePath}: variable ${name}`);
-    if (entry.value !== value.configuration[managedVariables[name]]) {
+    if (expectation.field !== undefined) {
+      if (entry.value !== value.configuration[expectation.field]) {
+        throw new Error(`${filePath}: variable ${name} must match the recorded configuration`);
+      }
+      continue;
+    }
+    // A derived variable is deliberately NOT compared against a fresh synthesis.
+    // Doing so would couple every stored manifest to the descriptor shape of the
+    // installer version that reads it: change a capability or a limitation
+    // string here and every schema-5 manifest in the fleet stops decoding —
+    // which breaks `check` and `update`, the two commands you would use to
+    // repair it. The `_V1` suffix is the mechanism for a breaking shape change;
+    // a decoder error is not.
+    //
+    // What is asserted instead is the one relationship that must hold across
+    // versions: the recorded descriptor names the recorded model. That catches a
+    // manifest whose variable block disagrees with its own configuration, which
+    // is what this check exists for.
+    let descriptor;
+    try {
+      descriptor = JSON.parse(entry.value);
+    } catch {
+      descriptor = null;
+    }
+    if (!isObject(descriptor) || descriptor.model !== value.configuration[expectation.model]) {
       throw new Error(`${filePath}: variable ${name} must match the recorded configuration`);
     }
   }
@@ -460,7 +553,15 @@ export function decodeManifest(source, filePath = MANIFEST_PATH) {
 // type non-questions rather than documented assumptions. A field absent on one
 // side and present on the other still differs, which is what distinguishes a
 // pre-schema-4 configuration from a migrated one.
-const CONFIGURATION_FIELDS = Object.freeze(Object.values(CONFIG_VARIABLES));
+//
+// Derived entries contribute nothing here on purpose. They carry no independent
+// configuration field — they are a function of `cheapModel` / `deepModel`, which
+// are already compared — so listing them would compare the same fact twice.
+const CONFIGURATION_FIELDS = Object.freeze(
+  Object.values(CONFIG_VARIABLES)
+    .map((expectation) => expectation.field)
+    .filter((field) => field !== undefined),
+);
 
 export function sameConfiguration(left, right) {
   return CONFIGURATION_FIELDS.every((field) => (left?.[field] ?? null) === (right?.[field] ?? null));
@@ -470,15 +571,36 @@ export function manifestJson(manifest) {
   return `${JSON.stringify(manifest, null, 2)}\n`;
 }
 
+// The value a managed variable should hold for the given configuration, or
+// undefined when the configuration does not carry what the entry needs.
+// Both entry kinds resolve through here so that every caller — install/update
+// planning, `check` drift, and the manifest decoder — computes the same value
+// from the same place.
+function variableValue(expectation, configuration) {
+  if (expectation.field !== undefined) return configuration[expectation.field];
+  if (configuration[expectation.model] === undefined) return undefined;
+  return JSON.stringify(expectation.derive(configuration));
+}
+
+// The variables a manifest at the given schema version records, and their
+// values. Reading a stored manifest means asking what its own tier manages, not
+// what the current one does; `variableValues` below is this at the current tier.
+// Keeping both on one implementation is what stops a caller from rebuilding the
+// version-to-names mapping by hand and drifting from the table.
+//
 // Omitting fields the configuration does not carry is what lets a pre-schema-4
 // manifest manage three variables instead of reporting REVIEW_ROUTE_MODE as
 // missing on a repository where it is set by hand.
-export function variableValues(configuration) {
+export function variableValuesForSchema(configuration, schemaVersion) {
   return Object.fromEntries(
-    Object.entries(CONFIG_VARIABLES)
-      .filter(([, field]) => configuration[field] !== undefined)
-      .map(([name, field]) => [name, configuration[field]]),
+    Object.entries(configVariablesForSchema(schemaVersion))
+      .map(([name, expectation]) => [name, variableValue(expectation, configuration)])
+      .filter(([, value]) => value !== undefined),
   );
+}
+
+export function variableValues(configuration) {
+  return variableValuesForSchema(configuration, MANIFEST_SCHEMA_VERSION);
 }
 
 export function resolveConfiguration(options, existingManifest) {

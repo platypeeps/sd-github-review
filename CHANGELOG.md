@@ -4,6 +4,64 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+- **The consumer installer now provisions the two backend descriptors the durable
+  lane reads, so an install produces a lane that serves every route it offers.**
+  `examples/sd-review.yml` supplies `cheap-backend` / `deep-backend` from
+  `vars.SD_REVIEW_CHEAP_BACKEND_V1` and `vars.SD_REVIEW_DEEP_BACKEND_V1`, and
+  nothing created them — `grep -rn "SD_REVIEW_.*_BACKEND_V1" scripts/` returned
+  nothing at all. An unset variable expands to the empty string, which
+  `selectedBackend` rejects with `<route>-backend is required for durable
+  operations`.
+
+  This was **not** a rollout blocker, and the correction is worth stating: the
+  installed template's `independent-review-floor: copilot` raises every
+  *automatic* route to `copilot`, which synthesizes its own backend, so a review
+  dispatched at the default `--remote auto` never read either variable. But the
+  floor does not override an *explicit* route. `sd-review --remote cheap` against
+  an installed consumer routed `cheap`, reached the external branch, and failed —
+  ordinary documented usage of the pack's own CLI, with nothing on the consumer
+  side to diagnose it.
+
+  Two things made it worse than an ordinary bug. `check` could not detect it,
+  because drift detection is scoped to the managed variable table, so a consumer
+  with a non-functional durable lane reported healthy. And the pilot could not
+  detect it either: `sd-github-review-pilot` had both variables set by hand and
+  its pilot workflow passes `cheap-backend` directly, so it was configured around
+  the defect from both directions.
+
+  The descriptors are **synthesized** from the recorded configuration rather than
+  stored beside it, so provider and model stay the single source of truth. They
+  are provisioned unconditionally, including under `copilot` and `none`, because
+  neither route mode nor the review floor durably constrains which route a
+  dispatch may select. A descriptor is not a credential: the PR-Agent step still
+  binds `PR_AGENT_MODEL_API_KEY` inside a provider guard that falls through to
+  `''`, so a `copilot`/`none` consumer still installs with no provider secret.
+
+### Changed
+
+- **Consumer manifest schema 4 → 5**, gated on a new `BACKEND_MIN_SCHEMA_VERSION`
+  rather than on equality with `MANIFEST_SCHEMA_VERSION`, matching how
+  `REVIEW_ROUTE_MODE` joined at 4. Manifests at schema 1 through 4 keep decoding
+  and `update` migrates them with no manual step.
+- **`check` will newly report existing consumers as needing both variables.** Any
+  consumer installed before this change — every one in the fleet, including
+  `sd-github-review` itself — reports `GitHub variable SD_REVIEW_CHEAP_BACKEND_V1
+  is missing`, its `_DEEP_` counterpart, and a `manifest predates durable backend
+  management` migration issue. That report is accurate rather than noise: those
+  lanes really do fail on `cheap` and `deep`. Run `update` to resolve it.
+
+### Known limitations
+
+- The durable lane still takes its route from the dispatched request and never
+  reads `REVIEW_ROUTE_MODE`, so installing with `--route-mode copilot` does not
+  prevent a `--remote cheap` dispatch from routing `cheap`. That is a separate
+  defect about which routes are *permitted*, tracked on its own, and deliberately
+  not folded in here — this change alters what is *provisioned*.
+
 ## 0.4.1 - 2026-08-22
 
 **No runtime change.** The `src` tree and the `action.yml` blob are byte-identical

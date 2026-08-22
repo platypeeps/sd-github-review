@@ -7,6 +7,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import {
   DEFAULT_CONFIG,
+  BACKEND_MIN_SCHEMA_VERSION,
   DESCRIPTOR_PATH,
   DESCRIPTOR_SOURCE_PATH,
   DURABLE_MIN_SCHEMA_VERSION,
@@ -40,6 +41,7 @@ import {
   sha256,
   validateConfiguration,
   variableValues,
+  variableValuesForSchema,
 } from "./consumer-installer/codecs.mjs";
 import {
   GH_COMMAND_TIMEOUT_MS,
@@ -98,6 +100,8 @@ export {
   resolveSourceRelease,
   routeModeNeedsProviderSecret,
   validateConfiguration,
+  variableValues,
+  variableValuesForSchema,
 };
 
 async function resolveTarget(options, github) {
@@ -477,6 +481,10 @@ async function checkInstallation(options, dependencies) {
     } else if (local.manifest.schemaVersion < ROUTE_MODE_MIN_SCHEMA_VERSION) {
       issues.push(
         "manifest predates route-mode management; run update to record REVIEW_ROUTE_MODE",
+      );
+    } else if (local.manifest.schemaVersion < BACKEND_MIN_SCHEMA_VERSION) {
+      issues.push(
+        "manifest predates durable backend management; run update to record SD_REVIEW_CHEAP_BACKEND_V1 and SD_REVIEW_DEEP_BACKEND_V1",
       );
     }
     if (release && local.manifest.schemaVersion >= PROVENANCE_MIN_SCHEMA_VERSION) {

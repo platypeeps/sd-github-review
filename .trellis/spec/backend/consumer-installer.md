@@ -83,7 +83,7 @@ node scripts/install-consumer.mjs uninstall [options]
   confirmation (interactive `confirm` seam or `--yes`), honors `--dry-run`, and
   writes `pending` then `active` so a partial GitHub failure is resumable
   through the normal lifecycle.
-- The manifest schema is version `4` (`MANIFEST_SCHEMA_VERSION`), tool
+- The manifest schema is version `5` (`MANIFEST_SCHEMA_VERSION`), tool
   `sd-github-review`, and state `pending`, `active`, or `uninstalling`. It
   records repository, workflow and source SHA-256, source provenance
   (`source.commit`, `source.tag`, `source.released`), the `descriptor` and
@@ -91,29 +91,38 @@ node scripts/install-consumer.mjs uninstall [options]
   was copied from, and `sha256`), provider/models, and exact
   variable/secret/label ownership. Source and workflow hashes must match. Extra
   owned resources are forbidden.
-- The decoder admits schema 1, 2, and 3, and validates by version rather than
+- The decoder admits schema 1 through 4, and validates by version rather than
   by equality with the current constant:
 
-  | Version | `workflow` + `source` | provenance (`commit`, `tag`, `released`) | `descriptor` + `durableWorkflow` | `REVIEW_ROUTE_MODE` |
-  | --- | --- | --- | --- | --- |
-  | 1 | required | not present | not present | not present |
-  | 2 | required | **required** | not present | not present |
-  | 3 | required | required | required | not present |
-  | 4 | required | required | required | **required** |
+  | Version | `workflow` + `source` | provenance (`commit`, `tag`, `released`) | `descriptor` + `durableWorkflow` | `REVIEW_ROUTE_MODE` | `SD_REVIEW_*_BACKEND_V1` |
+  | --- | --- | --- | --- | --- | --- |
+  | 1 | required | not present | not present | not present | not present |
+  | 2 | required | **required** | not present | not present | not present |
+  | 3 | required | required | required | not present | not present |
+  | 4 | required | required | required | **required** | not present |
+  | 5 | required | required | required | required | **required** |
 
   Gating provenance validation on `schemaVersion === MANIFEST_SCHEMA_VERSION`
   is forbidden: it silently stops validating `source.commit`/`tag`/`released`
   on every schema-2 manifest in the fleet. A legacy schema-`1` manifest decodes
   as a pre-provenance install and a schema-`2` one as a pre-durable install;
-  a schema-`3` one as pre-route-mode; each is read-only at its own version and
-  `update` rewrites it to the current schema.
+  a schema-`3` one as pre-route-mode and a schema-`4` one as pre-backend; each is
+  read-only at its own version and `update` rewrites it to the current schema.
+
+  A decode sweep over schemas 1..current **cannot** catch the equality form for
+  the tier that was just introduced, because at that moment its constant and
+  `MANIFEST_SCHEMA_VERSION` are the same number — the bug lies dormant until the
+  next bump. Assert monotonicity directly instead: the managed set resolved at
+  `MANIFEST_SCHEMA_VERSION + 1` must equal the set at the current version, and
+  each tier must be a superset of the one below it.
 
   The managed *variable set* is version-scoped for the same reason the field
   requirements are. `decodeManifest` checks variable names by exact set
-  equality, so reading a pre-schema-4 manifest against the current four-name set
+  equality, so reading a pre-schema-5 manifest against the current six-name set
   would not report drift — it would throw, taking `check` out on every installed
   consumer before it could report the migration it needs. Resolve the expected
-  set from the manifest's own `schemaVersion`.
+  set from the manifest's own `schemaVersion`
+  (`variableValuesForSchema`), never from `variableValues`.
 
   `check`'s migration messages are one branch per tier, never a final
   `< MANIFEST_SCHEMA_VERSION` catch-all. A catch-all silently retargets the
@@ -141,8 +150,53 @@ node scripts/install-consumer.mjs uninstall [options]
   provider/model options retains the active manifest's recorded configuration;
   changing source defaults never silently migrates an existing consumer.
 - GitHub resources are `PR_AGENT_MODEL_PROVIDER`, `CHEAP_REVIEW_MODEL`,
-  `DEEP_REVIEW_MODEL`, `PR_AGENT_MODEL_API_KEY`, and the router's five review
-  labels. Matching pre-existing resources are unowned and preserved.
+  `DEEP_REVIEW_MODEL`, `SD_REVIEW_CHEAP_BACKEND_V1`, `SD_REVIEW_DEEP_BACKEND_V1`,
+  `PR_AGENT_MODEL_API_KEY`, and the router's five review labels. Matching
+  pre-existing resources are unowned and preserved.
+- `CONFIG_VARIABLES` carries two kinds of entry, and both stay in that one
+  table because `install`, `update`, `check` drift, and `uninstall` all read
+  from it — a parallel list beside it drifts from it silently:
+
+  | Entry | Shape | Value |
+  | --- | --- | --- |
+  | verbatim | `{ field }` | the named configuration field, copied |
+  | derived | `{ derive, model }` | `JSON.stringify(derive(configuration))` |
+
+  A derived entry has no configuration field of its own, so it contributes
+  nothing to `CONFIGURATION_FIELDS` — listing it would compare the same fact
+  twice, since the model it derives from is already compared.
+- `SD_REVIEW_CHEAP_BACKEND_V1` and `SD_REVIEW_DEEP_BACKEND_V1` are
+  installer-managed from schema 5 and hold the backend descriptors
+  `examples/sd-review.yml` passes as `cheap-backend` / `deep-backend`. Without
+  them `selectedBackend` throws `<route>-backend is required for durable
+  operations`, so an installed lane serves `copilot` and `none` but fails
+  `cheap` and `deep` — reachable by an ordinary `sd-review --remote cheap`,
+  because the `copilot` review floor raises only *automatic* routes.
+  - Synthesized from the configuration, never stored as a second copy of it.
+    Recording the rendered JSON alongside `cheapModel`/`deepModel` would create
+    two representations of one fact, free to disagree.
+  - `model` is the configured model **verbatim**, never `${provider}/${model}`:
+    `validateConfiguration` already requires every non-`openai` model to carry
+    its own `<provider>/` prefix, so concatenating doubles it.
+  - `kind` must be `external` and `reviewAuthors` non-empty. `reviewAuthors`
+    decides which review comments count as that backend's findings, so a wrong
+    value misattributes provenance silently rather than failing. It is
+    `github-actions[bot]` because the PR-Agent job runs with
+    `GITHUB__USER_TOKEN: ${{ github.token }}`.
+  - Provisioned **unconditionally**, including under `copilot` and `none`.
+    Neither route mode nor the review floor durably constrains which route a
+    dispatch may select, so conditional provisioning would leave the gap
+    reachable. A descriptor is not a credential: the PR-Agent step still binds
+    `PR_AGENT_MODEL_API_KEY` inside a provider guard falling through to `''`, so
+    a `copilot`/`none` consumer still installs with no secret.
+  - The decoder does **not** compare a recorded derived value against a fresh
+    synthesis. That would couple every stored manifest to the descriptor shape
+    of whichever installer version reads it, so changing a capability string
+    would stop every schema-5 manifest from decoding — breaking `check` and
+    `update`, the two commands needed to repair it. The `_V1` suffix is the
+    mechanism for a breaking shape change. What the decoder asserts instead is
+    the one relationship that must hold across versions: the recorded descriptor
+    parses and its `model` equals the recorded configuration's model.
 - `REVIEW_ROUTE_MODE` is installer-managed from schema 4, alongside the three
   configuration variables: `install` writes it, the manifest records its
   ownership, `check` reports it missing or drifted, and `uninstall` removes it
@@ -196,9 +250,15 @@ node scripts/install-consumer.mjs uninstall [options]
   secret-presence, or label drift. Each managed resource gets both signals:
   local drift against the recorded hash, and a newer source than the one
   recorded. It additionally reports a schema-1 migration issue, a distinct
-  schema-2 durable-lane migration issue, a newer-source-commit issue, and a
+  schema-2 durable-lane migration issue, a schema-3 route-mode issue, a
+  schema-4 backend-descriptor issue, a newer-source-commit issue, and a
   released-tag-drift issue when the recorded provenance no longer matches the
   resolved source identity.
+
+  Consequence to surface rather than suppress: because the backend descriptors
+  joined the managed set, `check` now reports every already-installed consumer
+  at schema 1–4 as missing both variables. That report is true — the lane's
+  `cheap` and `deep` routes really do fail there — and `update` resolves it.
 - `released: true` requires a clean working tree for **every** copied source
   artifact — the event-driven template, the durable template, and the
   descriptor source — not the event-driven template alone. A dirty copy of any
@@ -317,12 +377,31 @@ node scripts/install-consumer.mjs uninstall [options]
   copy of *any* copied source artifact or a mismatched tag falling back to
   `released:false`, and the `.git`-less override recording `(false, v-tag)`); a
   schema-1 manifest decodes as pre-provenance, a schema-2 one as pre-durable,
-  and a schema-3 one as pre-route-mode, and `update` rewrites each to the
-  current schema with a recorded commit.
-- Assert schema 1 through 4 manifests all decode, that a malformed schema-2
+  a schema-3 one as pre-route-mode, and a schema-4 one as pre-backend, and
+  `update` rewrites each to the current schema with a recorded commit.
+- Assert schema 1 through 5 manifests all decode, that a malformed schema-2
   manifest is still rejected on each provenance invariant, and that the
   schema-3 `descriptor`/`durableWorkflow` blocks are validated by exact
   equality on `path` and `source` plus `SHA256_PATTERN` on `sha256`.
+- Assert the managed variable tiers are **monotone**: the set resolved at
+  `MANIFEST_SCHEMA_VERSION + 1` equals the current set, and each tier is a
+  superset of the one below. The decode sweep alone cannot catch an
+  `=== MANIFEST_SCHEMA_VERSION` gate on the newest tier, since the two constants
+  are equal at the moment it is introduced.
+- Assert each synthesized backend descriptor survives the whole consumer path —
+  managed table, JSON string, `JSON.parse`, then the action's own
+  `decodeBackend` — and comes out `kind: external` with `model` equal to the
+  configured model. Asserting against the object the table builds tests nothing:
+  the failure this variable exists to remove is the action refusing what the
+  installer wrote.
+- Assert the derivation follows the configuration rather than being a constant,
+  and that `model` is never `${provider}/${model}`.
+- Assert a schema-5 manifest whose recorded descriptor names a different model,
+  or is not JSON, fails to decode — while one whose shape merely differs from
+  the current derivation still decodes.
+- Assert `update` on a schema-4 consumer with both variables absent from GitHub
+  reports them missing, provisions them **owned**, and that `uninstall` then
+  removes them.
 - Assert the durable template's `name:` equals the descriptor's `workflow.name`
   and that the managed durable-workflow path equals its `workflow.path`, read
   from the parsed descriptor rather than repeated as a literal.

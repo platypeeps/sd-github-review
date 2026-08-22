@@ -152,7 +152,7 @@ pilot already runs:
   "id": "pr-agent",
   "label": "PR-Agent",
   "kind": "external",
-  "model": "<provider>/<model>",
+  "model": "<the configured cheapModel / deepModel, verbatim>",
   "costTier": "low",
   "qualityTier": "standard",
   "capabilities": ["review", "conversation-comments"],
@@ -166,6 +166,16 @@ pilot already runs:
 
 Cheap and deep differ in `model`, `costTier` (`low` / `medium`), and
 `qualityTier` (`standard` / `advanced`).
+
+**Correction made during implementation.** An earlier draft of this block wrote
+`"model": "<provider>/<model>"`, which reads as a concatenation and would have
+been wrong. `validateConfiguration` (`codecs.mjs:268`) already requires every
+non-`openai` model to start with `${provider}/`, so building the field that way
+yields `anthropic/anthropic/claude-...`. The descriptor carries the configured
+model **verbatim**, and `configuration.provider` plays no part in the
+derivation. Confirmed against the pilot's live variable, which holds
+`"model":"openrouter/qwen/qwen3-coder-30b-a3b-instruct"` — the config value
+unchanged. A regression test asserts the doubled form never appears.
 
 `reviewAuthors: ["github-actions[bot]"]` is load-bearing and must be verified
 against what the PR-Agent step actually posts as, not assumed — a wrong value
