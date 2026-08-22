@@ -40,6 +40,16 @@ provider-free pilot, cheap/deep are observed as outputs only;
 permission to invoke one. A credentialed adapter pilot requires separate
 approval and must keep the credential on its adapter step only.
 
+Before opening the smoke pull request, confirm that no *other* event-driven
+lane is still enabled on the default branch. The pilot repository may already
+carry an installer-managed router that binds `PR_AGENT_MODEL_API_KEY` and fires
+on `pull_request`; it will bill the provider on the smoke pull request even
+though nothing in the pilot workflow reaches one. Disabling it is a rename to
+`.disabled`, which is reversible and which Actions ignores. Verify afterwards
+that the credentialed workflow has no run newer than the pilot's first run —
+that is the check that the pilot was actually provider-free, and it is the one
+worth quoting in the pilot record.
+
 ## 3. Exercise the Routes
 
 Use one open smoke pull request and preserve its Actions logs and review state.
@@ -48,12 +58,27 @@ Remove any prior `review:*` label before applying the next one.
 | Scenario | Trigger | Required evidence |
 | --- | --- | --- |
 | Automatic cheap | Change only a routine fixture | `route=cheap`, `model=pilot-cheap`, `run-external-reviewer=true` |
-| Automatic Copilot | Change a path under `src/auth/` | `route=copilot` and the Copilot reviewer is newly requested or already present |
+| Automatic high-risk | Change a path under `src/auth/` | `route=deep`, `model=pilot-deep`, `reason` names the sensitive file |
 | Trusted command | Comment `/review deep` as a repository member | `route=deep`, `model=pilot-deep`, no file enumeration failure |
 | Label cheap/deep | Apply `review:cheap`, then `review:deep` | Matching route/model outputs and `run-external-reviewer=true` |
 | Label none | Apply `review:none` | `route=none`, `run-external-reviewer=false` |
 | Copilot deduplication | Retrigger the Copilot route | No duplicate reviewer request; `copilot-requested=false` when already requested |
 | Unrelated event | Add a non-command comment or unrelated label | `route=none` and no reviewer side effect |
+
+The high-risk row expects `deep`, not `copilot`: since `0.4.0`, `high-risk-route`
+defaults to `deep`, and `examples/pilot-router.yml` does not override it. Leave
+that default alone during the pilot — routing a sensitive path to `deep` is the
+shipped behavior under test. The Copilot request and deduplication paths are
+covered by the `review:copilot` row below, which is where they belong.
+
+The Copilot deduplication row is head-scoped, and that distinction decides
+whether a rerun is a duplicate. `requestCopilotReviewer` treats Copilot as
+already present only when it is a requested reviewer, or when it has a
+non-`DISMISSED` review whose `commit_id` equals the *current* head. Re-requesting
+after the head moves is therefore correct, not a duplicate. Let the current
+head's Copilot review land before retriggering: probing while it is still in
+flight reports `copilot-requested=true` and looks like a dedup failure when
+nothing is wrong.
 
 ## 4. Pilot Exit Criteria
 
@@ -72,6 +97,22 @@ For the durable candidate, also exercise `route`, `query`, and external
 `finalize` on one exact head. Confirm matching replay emits no second adapter
 request, a new head creates a different logical identity, and changed-head or
 ambiguous finalization requires reconciliation without fallback.
+
+Three preconditions on that durable pass, each of which otherwise produces a
+failure that looks like a product defect but is a setup error:
+
+- `route` binds to the *live* pull request head. Dispatching it with a
+  superseded `headSha` fails with `live pull request head must match
+  review-request.headSha`. Only `finalize` accepts a superseded head, which is
+  what makes changed-head reconciliation expressible at all.
+- Changed-head reconciliation needs a receipt still in dispatch phase
+  `started` — routed but never finalized. `reconciliationRequired` is derived
+  from that phase, so finalizing an already-`observed` receipt correctly
+  returns `false` and is idempotent, not a reconciliation case.
+- A mismatched `acknowledgment.logicalDispatchId` throws rather than reporting
+  reconciliation. That *is* the no-fallback behavior; `reconciliation-required`
+  is reserved for concurrent duplicate receipts. Derive the prior identity from
+  the repository, pull request number, and head rather than inventing a digest.
 
 Leave `rerequest-authorized` disabled for initial requests and replay. Exercise
 one attempt greater than one only with the prior receipt/logical identity,

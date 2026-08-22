@@ -256,21 +256,48 @@ matter how they are set.
 The evidence does not travel as its own action input. It rides inside the
 `review-request` JSON input (`action.yml:13`) as a `localReview` object:
 
+Every field below is required unless marked otherwise. `test/design-examples.test.js`
+decodes this exact block, so it cannot drift from the decoder again.
+
 ```jsonc
 {
   "schemaVersion": 1,
-  "repository": "owner/repo",
+  "correlationId": "review-2026-08-22-0001",
+  "attempt": 1,
+  "repository": { "owner": "owner", "name": "repo" },
   "pullRequestNumber": 23,
-  "headSha": "<40-hex head sha>",
-  "mode": "auto",
+  "headSha": "0000000000000000000000000000000000000001",
+  "route": "auto",
+  "policyVersion": "policy-v1",
   "localReview": {
-    "headSha": "<the same 40-hex head sha>",
+    "schemaVersion": 1,
+    "receiptId": "local-review-0001",
+    "repository": { "owner": "owner", "name": "repo" },
+    "pullRequestNumber": 23,
+    "headSha": "0000000000000000000000000000000000000001",
+    "providers": [
+      {
+        "id": "local-lint",
+        "capabilityTier": "standard",
+        "costTier": "free",
+        "qualityTier": "standard"
+      }
+    ],
+    "scopeDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "configurationDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "latencyMs": 42000,
+    "costTier": "free",
     "outcome": "clean",
     "confidence": 90,
-    "dispositionCounts": { "unresolved": 0 }
+    "dispositionCounts": { "total": 0, "unresolved": 0, "fixed": 0, "rebutted": 0 }
   }
 }
 ```
+
+Note that the request field is `route`, not `mode`, and that `repository` is an
+object rather than an `owner/repo` string — on both the request and the nested
+`localReview`. `localReview` is the only optional member shown; omitting it
+simply forgoes evidence-based lowering.
 
 `runOperation` reads the `review-request` input at `src/operations.js:539` —
 that is the **decode** site, not the consume site — and delegates.
