@@ -2,10 +2,14 @@
 
 ## Preconditions (all must hold before step 1)
 
-- [x] Route mode chosen for each of the eight undeployed consumers: **`auto` for all eight**
-      (owner decision, 2026-08-22). `sd-github-review` keeps its existing `copilot` install.
-      Pass `--route-mode auto` explicitly on every install; do not rely on an ambient
-      `REVIEW_ROUTE_MODE` variable.
+- [x] Route mode chosen for each of the eight undeployed consumers: **`copilot` for all eight**
+      (owner decision, 2026-08-22; revised from `auto` on the billing finding below).
+      `sd-github-review` keeps its existing `copilot` install. Pass `--route-mode copilot`
+      explicitly on every install; do not rely on an ambient `REVIEW_ROUTE_MODE` variable.
+- [ ] `PR_AGENT_MODEL_API_KEY` available to pipe via `--secret-stdin`. **Required for every
+      install regardless of route mode** — verified 2026-08-22 that `--route-mode none` is
+      refused identically, and that `planResources` (`plan.mjs:118`) never consults `routeMode`
+      when deciding the secret gate at line 148. See the open question below before supplying it.
 - [ ] Explicit owner approval for the external-repo scope: nine repositories mutated, nine pull
       requests opened, GitHub variables/labels/secrets set in each.
 - [ ] `npm run check:full` green in this repository — the installer being rolled out is the

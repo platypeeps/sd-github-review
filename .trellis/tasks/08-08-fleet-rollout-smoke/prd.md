@@ -95,15 +95,29 @@ decision before its install (see Open Decisions).
 
 ## Resolved Decisions
 
-- **Route mode per consumer.** Decided 2026-08-22 by the owner: `auto` for all eight
-  undeployed consumers. `sd-github-review` stays on its existing `copilot` installation and is
-  not reinstalled. The flag is passed explicitly on every install rather than relying on an
-  ambient `REVIEW_ROUTE_MODE` variable, so the mode is recorded in each local manifest.
+- **Route mode per consumer.** Decided 2026-08-22 by the owner: `copilot` for all eight
+  undeployed consumers, revised from an initial `auto` once the installer's own help surfaced
+  that `auto` can bill the provider key and is the stated reason the lane refuses to default.
+  This matches the mode `sd-github-review` already runs. `sd-github-review` is not reinstalled.
+  The flag is passed explicitly on every install rather than relying on an ambient
+  `REVIEW_ROUTE_MODE` variable, so the mode is recorded in each local manifest.
 
 ## Open Decisions
 
-- **External-repo scope approval.** Still required before the first install. See Scope and
-  Authority.
+- **External-repo scope approval.** Granted 2026-08-22.
+- **Provider-key distribution under `copilot`.** The installer's secret gate is unconditional
+  and mode-blind: `planResources` refuses without `PR_AGENT_MODEL_API_KEY` for every route
+  mode, including `copilot` and `none`, neither of which spends a PR-Agent provider key.
+  Proceeding as planned therefore copies a live provider credential into eight repositories
+  that will not use it, one of which (`answerbook/mezmo_benchmark`) is in a different GitHub
+  org. That widens credential exposure with no corresponding benefit. Two paths:
+  1. Supply the key and proceed. Spend risk under `copilot` is near zero because the key sits
+     unused, but eight more copies of the credential exist.
+  2. Make the secret gate mode-aware first, so `copilot` and `none` install without a
+     PR-Agent key. This is a change to the consumer installer and belongs in its own task;
+     the rollout would then need no credential distribution at all.
+
+  This is an owner decision and blocks the first canary.
 
 ## Scope and Authority
 
