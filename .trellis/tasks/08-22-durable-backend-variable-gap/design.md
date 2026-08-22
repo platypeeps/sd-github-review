@@ -111,20 +111,35 @@ joined still decodes. Two names joining is the same event as
   narrows an existing tier instead of adding one.
 - `update` rewrites a schema 1–4 manifest to 5 and provisions the variables.
 
-## Adoption of hand-set variables
+## Adoption of hand-set variables — narrower than expected
 
-Two repositories already have these variables set by hand:
-`sd-github-review-pilot` and, to be confirmed, `sd-github-review` itself. On
-`update` the installer claims ownership and overwrites with the synthesized
-value.
+Verified during step 0. `sd-github-review` itself has **only** the four managed
+variables:
 
-This is a real behavior change and needs to be visible, because those hand-set
-values are already drifted: the pilot's manifest records
-`cheapModel: openrouter/moonshotai/kimi-k2.6` while its `CHEAP_REVIEW_MODEL`
-variable holds `openrouter/qwen/qwen3-coder-30b-a3b-instruct`, and its
-`SD_REVIEW_CHEAP_BACKEND_V1` embeds a third value. Overwriting resolves the
-disagreement toward the manifest, which is the source of truth. `check` should
-report the pre-existing drift rather than silently correcting it.
+```
+$ gh api repos/platypeeps/sd-github-review/actions/variables --jq '.variables[].name'
+CHEAP_REVIEW_MODEL
+DEEP_REVIEW_MODEL
+PR_AGENT_MODEL_PROVIDER
+REVIEW_ROUTE_MODE
+```
+
+So the only repository with hand-set backend variables is
+`sd-github-review-pilot`, which is **not one of the nine fleet consumers**.
+Every rollout target — `sd-github-review` included, at manifest schema 4 with
+its durable workflow already installed — needs plain provisioning, not
+adoption.
+
+That removes the conflict case from the fleet path entirely. `update` writes
+the synthesized value; nothing in the fleet has a competing value to overwrite.
+
+The pilot is still worth handling correctly, because its hand-set values are
+already mutually drifted: its manifest records
+`cheapModel: openrouter/moonshotai/kimi-k2.6` while `CHEAP_REVIEW_MODEL` holds
+`openrouter/qwen/qwen3-coder-30b-a3b-instruct` and
+`SD_REVIEW_CHEAP_BACKEND_V1` embeds a third value. `check` should report that
+drift rather than silently correcting it. But this is a pilot-hygiene concern,
+not a rollout risk.
 
 ## Descriptor shape
 

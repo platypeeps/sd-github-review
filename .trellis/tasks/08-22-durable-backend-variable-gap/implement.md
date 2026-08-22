@@ -2,20 +2,17 @@
 
 Ordered. Each step names the check that would catch it being wrong.
 
-## Step 0 — verify the two assumptions the design rests on
+## Step 0 — verify the two assumptions the design rests on — DONE
 
-Do this first; both can invalidate the plan.
-
-- [ ] Confirm `reviewAuthors` for the PR-Agent backend. Read what the PR-Agent
-      step in `examples/sd-review.yml` actually posts as, and cross-check
-      against a real PR-Agent comment author in the pilot. **Do not assume
-      `github-actions[bot]`** — a wrong value breaks finding attribution
-      silently rather than loudly.
-- [ ] Confirm whether `sd-github-review` itself already has
-      `SD_REVIEW_CHEAP_BACKEND_V1` / `SD_REVIEW_DEEP_BACKEND_V1` set:
-      `gh api repos/platypeeps/sd-github-review/actions/variables --jq '.variables[].name'`
-
-Check: both answers written into `research/evidence.md` before any code change.
+- [x] `reviewAuthors` confirmed as `github-actions[bot]`, by observation rather
+      than inference. The PR-Agent job runs with
+      `GITHUB__USER_TOKEN: ${{ github.token }}`, and real PR-Agent comments on
+      pilot PR #7 (2026-07-25) are authored by `github-actions[bot]`
+      ("Preparing review..."). Recorded in `research/evidence.md`.
+- [x] `sd-github-review` has **only** the four managed variables — neither
+      backend variable. So no fleet consumer has a hand-set value to adopt;
+      only the pilot does, and it is not a rollout target. `design.md` updated;
+      the adoption/conflict path drops out of the fleet scope.
 
 ## Step 1 — extend the managed-variable table
 

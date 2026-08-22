@@ -2,12 +2,14 @@
 
 Collected 2026-08-22 against `main` at `f6b5388` (the `0.4.1` candidate).
 
-> **Correction.** An earlier draft of this file and of `prd.md` claimed the
-> defect fires on the default dispatch path and would fail canary 1. That was
-> wrong. It was reasoned from `--remote` defaulting to `auto` without checking
-> what the installed template does with `independent-review-floor`. The floor
-> section below is the correction, and it lowers the severity from "rollout
-> blocker" to "latent, conditional".
+> **Corrections, in order.** The first draft claimed the defect fires on the
+> default dispatch path and would fail canary 1 — wrong, reasoned from
+> `--remote` defaulting to `auto` without checking what the installed template
+> does with `independent-review-floor`. The second draft then called it
+> "latent, conditional" on the floor — also wrong: the floor raises only an
+> *automatic* route, so an explicit `--remote cheap` reaches the failure with
+> nothing changed from defaults. Settled position: **not a rollout blocker,
+> reachable through ordinary explicit pack usage.**
 
 ## The two variables are read but never written
 
@@ -184,3 +186,40 @@ must be `external` for a `{route}-backend` input (`src/operations.js:135-137`).
 `examples/sd-review.yml` never reads `REVIEW_ROUTE_MODE`. The durable route
 comes from the dispatched request, so `--route-mode copilot` does not constrain
 what a dispatch may select. Separable finding; see `design.md`.
+
+## Step 0 verification (2026-08-22)
+
+### `reviewAuthors` is `github-actions[bot]` — observed, not inferred
+
+The PR-Agent job runs the container with
+`GITHUB__USER_TOKEN: ${{ github.token }}` (`examples/sd-review.yml`), so its
+comments are authored by the Actions bot. Confirmed against real PR-Agent
+output in the pilot:
+
+```
+$ gh api repos/platypeeps/sd-github-review-pilot/issues/7/comments \
+    --jq '.[]|"\(.user.login) \(.created_at) \(.body[0:30])"'
+github-actions[bot] 2026-07-25T03:50:06Z Preparing review...
+github-actions[bot] 2026-07-25T03:54:18Z Preparing review...
+```
+
+Those runs are from 2026-07-25, the same day as the last credentialed-lane
+runs, so they are genuine PR-Agent output rather than pilot scaffolding.
+
+### No fleet consumer has hand-set backend variables
+
+```
+$ gh api repos/platypeeps/sd-github-review/actions/variables --jq '.variables[].name'
+CHEAP_REVIEW_MODEL
+DEEP_REVIEW_MODEL
+PR_AGENT_MODEL_PROVIDER
+REVIEW_ROUTE_MODE
+```
+
+`sd-github-review` is the only already-installed fleet consumer (manifest
+schema 4, `durableWorkflow` present) and it has neither backend variable. Its
+own durable lane therefore fails on `cheap` and `deep` exactly like the eight
+uninstalled consumers.
+
+Only `sd-github-review-pilot` has them set by hand, and it is not among the
+nine. The adoption/overwrite path is out of fleet scope.
