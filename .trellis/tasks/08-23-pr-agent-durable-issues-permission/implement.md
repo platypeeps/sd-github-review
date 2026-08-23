@@ -135,6 +135,13 @@ the CHANGELOG where an operator making that change will meet it.
 No variable to set first, so no ordering hazard — unlike D2. Canary first
 regardless.
 
+- [ ] **This repository's own install first.** It is an installer-managed
+      consumer of itself, so the lane edits already put
+      `.github/sd-github-review.json` out of convergence —
+      `node scripts/install-consumer.mjs check` reports both workflows differing
+      from their managed hashes. That cannot be fixed before the release,
+      because the manifest records a released source commit and tag; it is the
+      same post-release step `#135` was for `0.6.0`, not a defect in the change.
 - [ ] Canary one consumer, verify, then `update` the remaining eight.
 - [ ] Expect the same consumer-local gates as last time: `docs/repomix-map.md`
       staleness in `hoa-manager` and `mezmo_benchmark`, and the
