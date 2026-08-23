@@ -58,20 +58,34 @@ The lane comment is accurate about the pack, which dispatches only `operation`,
 `review-request`, and `rerequest-authorized`. It is not accurate about a manual
 dispatcher.
 
-This needs a decision before a fix: may a dispatch caller ever lower the floor?
+This needed a decision before a fix: may a dispatch caller ever lower the floor?
 
-- If no, wire it from a repository variable exactly as `route-policy` is, and
-  the `action.yml` warning against "consistency-minded" edits should then name
-  both inputs rather than contrast them.
-- If yes, the lane comment and `action.yml` description must say so plainly,
-  because both currently read as though the floor is not caller-controlled.
+**Decided 2026-08-22 by the owner: no.** The floor moves onto an
+installer-managed repository variable, `REVIEW_INDEPENDENT_FLOOR`, wired exactly
+as `route-policy` is, and the `workflow_dispatch` input is removed. The
+`action.yml` warning against "consistency-minded" edits then names both inputs
+rather than contrasting them. Hardcoding the floor in the lane template and
+keeping the override with corrected prose were both considered and rejected —
+see `design.md`.
+
+One claim that motivated the original framing turned out to be false and is
+corrected in `design.md`: an unset variable does **not** silently yield a floor
+of `none`. `input()` uses `??` (`src/operations.js:30`), so an empty variable is
+a present-but-empty env var that reaches `normalizeMode` and throws. The
+naive wiring already fails closed. The remaining fail-open is an *absent* input
+key, not an empty one, and it is closed by a test rather than by the wiring.
 
 ### Acceptance criteria
 
-- [ ] The question above is decided and recorded.
-- [ ] The wiring and the prose agree, whichever way it is decided.
-- [ ] If the floor becomes variable-wired, a test pins that a dispatch input
-      cannot lower it.
+- [x] The question above is decided and recorded. Decided 2026-08-22; see above.
+- [ ] The wiring and the prose agree, whichever way it is decided. Covers the
+      lane comment and the `action.yml` `route-policy` description, both of
+      which currently describe the defect as deliberate.
+- [ ] A test pins that a dispatch input cannot lower the floor — asserting the
+      lane declares no such input, not merely that the wiring reads from `vars`.
+- [ ] A test pins that the lane still *passes* `independent-review-floor`. An
+      absent key reaches the action's `"none"` fallback and silently unfloors
+      the lane; this is the one path the variable wiring does not close.
 
 ## Out of scope
 
