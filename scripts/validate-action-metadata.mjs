@@ -516,11 +516,29 @@ function laneGrantUnion(doc) {
   return union;
 }
 
+// `permissionMap` collapses the `write-all`/`read-all` shorthand to a single
+// `__all` key rather than enumerating scopes, so a blanket grant is real but
+// noncanonical evidence: `granted.issues` stays undefined while the token in
+// fact holds `issues: write`. Neither gate may compare that key by name --
+// both route it through `grantedLevel`, which is the one place that knows
+// `__all` covers every scope.
+function blanketGrant(granted) {
+  return granted.__all === undefined ? null : granted.__all;
+}
+
 export function assertDescriptorLaneGrants(doc, filePath, requiredPermissions) {
   const granted = laneGrantUnion(doc);
   const declared = requiredPermissions ?? {};
   const offenders = [];
+  const blanket = blanketGrant(granted);
+  if (blanket !== null) {
+    offenders.push(
+      `the lane grants ${blanket}-all, a blanket grant over every scope, which can never ` +
+        "equal an enumerated descriptor -- name the scopes the jobs actually need",
+    );
+  }
   for (const scope of new Set([...Object.keys(granted), ...Object.keys(declared)])) {
+    if (scope === "__all") continue;
     if (granted[scope] === declared[scope]) continue;
     offenders.push(
       declared[scope] === undefined
@@ -548,7 +566,15 @@ export function assertNoDeadIssuesGrant(lanes) {
   const offenders = [];
   for (const [filePath, doc] of lanes) {
     const granted = laneGrantUnion(doc ?? {});
-    if (granted.issues !== undefined) offenders.push(`${filePath}: issues:${granted.issues}`);
+    // Through `grantedLevel`, not `granted.issues`: a `write-all` lane grants
+    // the scope without ever naming it.
+    if (grantedLevel(granted, "issues") === 0) continue;
+    const blanket = blanketGrant(granted);
+    offenders.push(
+      granted.issues !== undefined
+        ? `${filePath}: issues:${granted.issues}`
+        : `${filePath}: ${blanket}-all, which covers issues:${blanket}`,
+    );
   }
   if (offenders.length) {
     throw new Error(
@@ -663,16 +689,21 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
     collectFirstPartyPins(workflow, workflowPath, descriptor.actionOwnerRepo, firstPartyPins);
   }
   // A path-matched gate that matches nothing does not fail -- it vanishes. If
-  // the lane is ever renamed without updating the descriptor, the permission
-  // equality check above would stop running and every run would stay green.
-  //
-  // Scoped to a declared-but-unmatched path. A descriptor that declares no lane
-  // at all is a different shape -- synthetic fixtures trim it -- and is covered
-  // by a test asserting the *shipped* descriptor declares one, which is where
-  // the omission would actually matter.
-  if (typeof setupConfig.workflow?.path === "string" && !descriptorLaneSeen) {
+  // the lane is renamed without updating the descriptor, or the field is
+  // dropped entirely, the permission equality check above stops running and
+  // every run stays green. Both shapes fail here, unconditionally: an earlier
+  // draft exempted a descriptor declaring no lane at all so synthetic fixtures
+  // could omit the field, which made deleting the field the cheapest way to
+  // disable the gate. Fixtures declare a lane instead.
+  if (typeof setupConfig.workflow?.path !== "string" || setupConfig.workflow.path === "") {
     throw new Error(
-      `${setupDescriptorPath}: workflow.path is "${setupConfig.workflow?.path}" but no tracked ` +
+      `${setupDescriptorPath}: workflow.path must be a nonempty string naming the lane the ` +
+        "permission gate anchors on; without it the gate silently does not run",
+    );
+  }
+  if (!descriptorLaneSeen) {
+    throw new Error(
+      `${setupDescriptorPath}: workflow.path is "${setupConfig.workflow.path}" but no tracked ` +
         "workflow sits there, so the lane permission gate matched nothing and silently did not run",
     );
   }

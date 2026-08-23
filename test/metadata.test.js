@@ -63,6 +63,10 @@ async function writeMetadataFixture(root, actionReference, options = {}) {
     version = "0.0.0",
     writeDescriptor = true,
     writePackage = true,
+    // The lane the A-023 permission gate anchors on. Fixtures must declare one:
+    // the validator refuses a descriptor without it rather than skipping the
+    // gate, so `null` here drives that rejection path.
+    workflowPath = ".github/workflows/ci.yml",
   } = options;
   await mkdir(path.join(root, ".github", "workflows"), { recursive: true });
   await mkdir(path.join(root, "examples"), { recursive: true });
@@ -77,6 +81,7 @@ async function writeMetadataFixture(root, actionReference, options = {}) {
           contractMajor,
           supportedContractMajors,
           actionReference: `platypeeps/sd-github-review@${descriptorSha}`,
+          ...(workflowPath === null ? {} : { workflow: { path: workflowPath } }),
           supportedOperations: ["route", "finalize", "query"],
           requiredPermissions: {
             contents: "read",
@@ -1422,6 +1427,79 @@ test("no shipped lane may grant the issues scope", () => {
   dirty.push(["b.yml", { permissions: { issues: "write" }, jobs: { j: {} } }]);
   assert.notDeepEqual(dirty, clean);
   assert.throws(() => assertNoDeadIssuesGrant(dirty), /b\.yml: issues:write/u);
+});
+
+// The shorthand is the case where the grant is real but the evidence is not
+// canonical: `permissionMap` collapses `write-all` to a single `__all` key, so
+// a gate comparing `granted.issues` by name sees nothing while the token holds
+// the scope. Both gates must resolve it, not match on the literal.
+test("a write-all lane is caught even though it never names the issues scope", () => {
+  const blanket = [["c.yml", { permissions: "write-all", jobs: { j: {} } }]];
+  assert.equal(blanket[0][1].permissions, "write-all");
+  assert.throws(
+    () => assertNoDeadIssuesGrant(blanket),
+    /c\.yml: write-all, which covers issues:write/u,
+  );
+
+  // read-all grants the scope too, at a lower level; no lane may hold either.
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["d.yml", { permissions: "read-all", jobs: { j: {} } }]]),
+    /d\.yml: read-all, which covers issues:read/u,
+  );
+
+  // "none" is a string too, and grants nothing -- it must not be swept up.
+  assert.doesNotThrow(() =>
+    assertNoDeadIssuesGrant([["e.yml", { permissions: "none", jobs: { j: {} } }]]),
+  );
+
+  // The equality gate must reject a blanket grant outright rather than compare
+  // `__all` against a scope the descriptor could never declare.
+  assert.throws(
+    () =>
+      assertDescriptorLaneGrants({ permissions: "write-all", jobs: { j: {} } }, "c.yml", {
+        contents: "read",
+      }),
+    /the lane grants write-all, a blanket grant over every scope/u,
+  );
+});
+
+// The three tests above call the gates directly. That proves the gates, not
+// that `validateMetadata` still calls them: deleting either call site would
+// leave a clean repository green and every seam test passing. These three cover
+// the production wiring instead, through a fixture repository.
+test("validateMetadata rejects a descriptor that names no lane, rather than skipping the gate", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-a023-nolane-"));
+  await writeMetadataFixture(root, A010_VALID_PIN, { workflowPath: null });
+  await assert.rejects(validateMetadata(root), /workflow\.path must be a nonempty string/u);
+});
+
+test("validateMetadata rejects a descriptor whose lane does not exist", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-a023-badlane-"));
+  await writeMetadataFixture(root, A010_VALID_PIN, {
+    workflowPath: ".github/workflows/renamed.yml",
+  });
+  await assert.rejects(validateMetadata(root), /matched nothing and silently did not run/u);
+});
+
+test("validateMetadata sweeps every lane for the dead issues grant, not only the descriptor's", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-a023-sweep-"));
+  await writeMetadataFixture(root, A010_VALID_PIN);
+  // Deliberately not the descriptor's lane: an over-grant there would trip the
+  // equality gate first, which would leave the sweep's wiring unproven.
+  await writeExampleFixture(root, A010_VALID_PIN);
+  const examplePath = path.join(root, "examples", "fixture.yml");
+  const clean = await readFile(examplePath, "utf8");
+  // No clean-baseline assertion here: the fixture root is not a git repository,
+  // so a full pass would fail later on the tracked-public-path check. The
+  // notEqual below is what keeps this from passing vacuously -- it proves the
+  // grant is actually present in the document the sweep reads.
+  const drifted = clean.replace("  contents: read", "  contents: read\n  issues: write");
+  assert.notEqual(drifted, clean);
+  await writeFile(examplePath, drifted, "utf8");
+  await assert.rejects(
+    validateMetadata(root),
+    /no shipped lane may grant the issues scope[\s\S]*fixture\.yml: issues:write/u,
+  );
 });
 
 test("the shipped descriptor declares the lane the permission gate anchors on", async () => {
