@@ -35,3 +35,14 @@ this tag. Recorded as a known gap, not as a pass.
 | 7 | tracked config scan | no provider credential value present | |
 
 ## Observations
+
+### Operator friction
+
+- `request.policyVersion` is required, but DESIGN.md's canonical example is the
+  only place the full required set appears together. A caller that reads
+  `normalizeReviewRequest` top-down and stops at the obvious fields produces a
+  request that fails late, at dispatch, with
+  `request.policyVersion must be a string`. Clear error, wasted round trip.
+- `.trellis/**` is a configured bookkeeping path, so a pilot whose only change
+  is its own evidence file is bookkeeping-only and will not route. The pilot
+  branch therefore also carries an inert comment outside that set.

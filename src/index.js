@@ -309,3 +309,5 @@ if (isEntrypoint) {
     process.exitCode = 1;
   });
 }
+
+// Pilot v0.5.0: inert change so the pilot pull request is not bookkeeping-only.
