@@ -479,6 +479,22 @@ function grantedLevel(effective, scope) {
 // for how that reasoning failed. The upper bound lives in A-023, not here.
 // Jobs with no step invoking this Action (isolated adapter containers) are out
 // of scope.
+// Every lane's declaration must be readable before any gate reasons about it.
+// This runs first in the production path because `assertJobPermissions` is the
+// first gate to touch permissions, and it reads levels it has not validated:
+// a malformed level reaches its own message interpolation, and a job that is
+// not a mapping reaches `job.permissions` directly. Placing the check only in
+// `assertDescriptorLaneGrants` left both live for every lane, and left
+// non-descriptor lanes with no readability check at all until the sweep.
+export function assertReadablePermissions(doc, filePath) {
+  const malformed = invalidPermissionDeclaration(doc);
+  if (malformed !== null) {
+    throw new Error(
+      `${filePath} declares permissions this validator cannot read: ${malformed}`,
+    );
+  }
+}
+
 function assertJobPermissions(doc, filePath, actionOwnerRepo, supportedOperations) {
   const workflowLevel = permissionMap(doc.permissions);
   for (const [jobName, job] of Object.entries(doc.jobs ?? {})) {
@@ -488,9 +504,15 @@ function assertJobPermissions(doc, filePath, actionOwnerRepo, supportedOperation
     const effective = permissionMap(job.permissions) ?? workflowLevel ?? {};
     for (const [scope, level] of Object.entries(required)) {
       if (grantedLevel(effective, scope) < permissionRank(level)) {
+        // The granted value is unvalidated at this point, so a non-string must
+        // not be interpolated raw -- a mapping with a non-callable `toString`
+        // throws while building the message. Strings pass through unchanged so
+        // the diagnostic reads as it always has.
+        const held = effective.__all ?? effective[scope] ?? "none";
         throw new Error(
           `${filePath}: job "${jobName}" runs [${[...operations].join(", ")}] needing ` +
-            `${scope}:${level} but grants ${scope}:${effective.__all ?? effective[scope] ?? "none"}`,
+            `${scope}:${level} but grants ` +
+            `${scope}:${typeof held === "string" ? held : describeLevel(held)}`,
         );
       }
     }
@@ -507,9 +529,10 @@ function assertJobPermissions(doc, filePath, actionOwnerRepo, supportedOperation
 // `/issues/...` REST paths, so `issues: write` looked required; on a pull
 // request those paths are governed by `pull-requests: write`, because the
 // prefix reflects GitHub modelling pull requests as issues in the REST layout
-// rather than the scope that authorizes them. Every lane carried a dead
-// `issues: write`, and SETUP-PR-AGENT.md instructed operators to grant it to a
-// job that runs a third-party container. Probed and removed in 0.6.1.
+// rather than the scope that authorizes them. The five PR-Agent workflow copies
+// each carried a dead `issues: write` -- the other shipped examples never did --
+// and SETUP-PR-AGENT.md instructed operators to grant it to a job that runs a
+// third-party container. Probed and removed in 0.6.1.
 //
 // Scoped to the descriptor's own lane, resolved from its `workflow.path`, and
 // not to every lane: `requiredPermissions` documents what a consumer must
@@ -965,6 +988,7 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
     assertObject(workflow.on, workflowPath, "on");
     assertObject(workflow.jobs, workflowPath, "jobs");
     validateUsesReferences(workflow, workflowPath, {});
+    assertReadablePermissions(workflow, workflowPath);
     assertJobPermissions(workflow, workflowPath, descriptor.actionOwnerRepo, supportedOperations);
     // A-023: the descriptor names one lane by path; that lane's grants must
     // equal requiredPermissions exactly. Resolved from the descriptor rather
@@ -1020,6 +1044,7 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
     assertObject(example.on, examplePath, "on");
     assertObject(example.jobs, examplePath, "jobs");
     validateUsesReferences(example, examplePath, { allowActionPlaceholder: true });
+    assertReadablePermissions(example, examplePath);
     assertJobPermissions(example, examplePath, descriptor.actionOwnerRepo, supportedOperations);
     collectFirstPartyPins(example, examplePath, descriptor.actionOwnerRepo, firstPartyPins);
   }

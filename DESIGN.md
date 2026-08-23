@@ -447,7 +447,8 @@ Durable mode exposes a sensitive-file count but never emits the paths.
   other steps require, which is why `assertJobPermissions` is a lower bound and
   never re-merges the A-004-isolated adapter-container job.
 
-  Until `0.6.1` the shipped lanes used that latitude to grant `issues: write`,
+  Until `0.6.1` the five PR-Agent workflow copies used that latitude to grant
+  `issues: write` -- the other shipped examples never did --
   and this document described the resulting lane-versus-descriptor asymmetry as
   intentional: the PR-comment side-effect channel was said to need the scope even
   though no contract operation does. **That was wrong, and the record is kept

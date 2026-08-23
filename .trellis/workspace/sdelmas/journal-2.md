@@ -1254,7 +1254,7 @@ Fleet rollout lane: reinstalled the thin sd-ai-command-pack payload at 0.71.45, 
 
 ### Summary
 
-Removed the dead issues: write grant from all five shipped lanes, added the A-023 gates that keep it from drifting back, and corrected the documentation and the 0.6.0 changelog entry that taught the belief. Eleven review passes followed, which is where most of the work went: twelve real defects, all in the gates rather than the removal.
+Removed the dead issues: write grant from all five shipped lanes, added the A-023 gates that keep it from drifting back, and corrected the documentation and the 0.6.0 changelog entry that taught the belief. Sixteen review passes followed, which is where most of the work went: nineteen real defects, all in the gates and the documentation rather than in the removal.
 
 ### Main Changes
 
@@ -1271,9 +1271,9 @@ Removed the dead issues: write grant from all five shipped lanes, added the A-02
 
 ### Testing
 
-- [OK] npm run check:full - 743 tests, 743 pass, 0 fail
+- [OK] npm run check:full - 744 tests, 744 pass, 0 fail
 - [OK] npm run validate:metadata - action.yml, 3 workflows, 7 examples, 1154 tracked paths
-- [OK] every gate mutation-proven; M21-M32 this session, each failing its test alone
+- [OK] every gate mutation-proven; M21-M34 this session, each failing its test alone
 
 ### Status
 

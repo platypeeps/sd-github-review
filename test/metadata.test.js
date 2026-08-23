@@ -1966,6 +1966,31 @@ test("validateMetadata runs the equality gate on the descriptor's own lane", asy
   );
 });
 
+test("validateMetadata rejects an unreadable declaration before any gate reads it", async () => {
+  // Ordering, proven through the production path rather than at the seam. The
+  // readability check used to live only in `assertDescriptorLaneGrants`, which
+  // `validateMetadata` reaches *after* `assertJobPermissions` -- so a malformed
+  // level in an action job hit the lower bound first, where it was interpolated
+  // into an error message unvalidated. The lane below is the descriptor's own,
+  // and its `contents` grant is one the route job needs, so A-010 is guaranteed
+  // to look at it.
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-a023-unreadable-"));
+  await writeMetadataFixture(root, A010_VALID_PIN);
+  const lanePath = path.join(root, ".github", "workflows", "ci.yml");
+  const clean = await readFile(lanePath, "utf8");
+  const drifted = clean.replace("  contents: read\n", "  contents:\n    toString: null\n");
+  assert.notEqual(drifted, clean);
+  await writeFile(lanePath, drifted, "utf8");
+  await assert.rejects(validateMetadata(root), (error) => {
+    // Not a TypeError: the old ordering crashed inside A-010's message rather
+    // than reporting the lane, and a crash must not read as a rejection.
+    assert.ok(!(error instanceof TypeError), "a malformed level must not crash the validator");
+    assert.match(error.message, /declares permissions this validator cannot read/u);
+    assert.match(error.message, /sets contents to \{"toString":null\}/u);
+    return true;
+  });
+});
+
 test("validateMetadata sweeps every lane for the dead issues grant, not only the descriptor's", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-a023-sweep-"));
   await writeMetadataFixture(root, A010_VALID_PIN);
