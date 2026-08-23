@@ -161,7 +161,7 @@ cannot verify archive bytes against a commit offline:
 node scripts/install-consumer.mjs install --target /path/to/consumer \
   --route-mode copilot \
   --review-floor copilot \
-  --source-tag v0.4.0 --source-commit 6ba1eff049962faded1c289f666ef56b58c61b4d \
+  --source-tag v0.6.1 --source-commit 6ba1eff049962faded1c289f666ef56b58c61b4d \
   --set-secret
 ```
 
