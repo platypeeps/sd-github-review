@@ -480,10 +480,54 @@ function assertJobPermissions(doc, filePath, actionOwnerRepo, supportedOperation
   }
 }
 
+// R-008: GitHub evaluates `${{ }}` in action.yml when it *loads* the action,
+// including inside `description` prose -- a delimited example is evaluated, not
+// quoted. The contexts an action definition may reference are a strict subset of
+// a workflow's, and `vars` is not among them, so documenting the very wiring the
+// route-policy input requires made the 0.5.0 candidate fail to load with
+// "Unrecognized named-value: 'vars'" before a single line of src/ ran. That
+// failure mode is total and fleet-wide: no consumer can dispatch at all.
+//
+// Only `runs:` can legitimately carry an expression, and only for a composite
+// action; this one is `using: node24`, so the legitimate count today is zero.
+// The walk is structural rather than line-based so a future composite `runs:`
+// keeps its expressions without loosening the rule anywhere else. Workflows are
+// deliberately not covered -- `vars` is available there, which is why the
+// shipped lanes carry the delimited form this file must not.
+export function assertNoActionExpressions(action, actionPath) {
+  const offenders = [];
+  const walk = (node, trail) => {
+    if (typeof node === "string") {
+      if (node.includes("${{")) offenders.push(trail.join("."));
+      return;
+    }
+    if (Array.isArray(node)) {
+      node.forEach((item, index) => walk(item, [...trail, index]));
+      return;
+    }
+    if (node && typeof node === "object") {
+      for (const [key, value] of Object.entries(node)) walk(value, [...trail, key]);
+    }
+  };
+  for (const [key, value] of Object.entries(action ?? {})) {
+    if (key === "runs") continue;
+    walk(value, [key]);
+  }
+  if (offenders.length) {
+    throw new Error(
+      `${actionPath}: expression delimiters outside runs: ${offenders.join(", ")}\n` +
+        "GitHub evaluates these when it loads the action, and an action definition cannot " +
+        "reference vars; a bad one fails the load for every consumer at once. " +
+        "Write the expression body without its surrounding delimiters.",
+    );
+  }
+}
+
 export async function validateMetadata(repositoryRoot = process.cwd()) {
   const actionPath = path.join(repositoryRoot, "action.yml");
   const action = parseYaml(await readFile(actionPath, "utf8"), actionPath);
   assertObject(action, actionPath, "document");
+  assertNoActionExpressions(action, actionPath);
   if (typeof action.name !== "string" || typeof action.description !== "string") {
     throw new Error(`${actionPath}: name and description are required strings`);
   }

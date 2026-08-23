@@ -8,6 +8,7 @@ import { promisify } from "node:util";
 import { parseDocument } from "yaml";
 import {
   assertPinFreshness,
+  assertNoActionExpressions,
   assertPinnedInputsDeclared,
   parseReleaseTag,
   prohibitedPublishedMetadataReason,
@@ -553,6 +554,49 @@ test("rejects an action.yml input used by no operation (A-010)", async () => {
   await assert.rejects(
     validateMetadata(root),
     /inputs \[bogus-drift-input\] are used by no operation/u,
+  );
+});
+
+// R-008. The failure this pins is not a wrong review decision but a total one:
+// GitHub evaluates expressions in action.yml at load time, so a delimited
+// example inside a `description` makes every consumer's dispatch fail before
+// src/ runs. `vars` is the specific trap -- available in a workflow, absent from
+// an action definition -- so the wiring instruction for route-policy is exactly
+// the prose most likely to reintroduce it.
+test("rejects an expression delimiter in an input description (R-008)", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-r008-description-"));
+  await writeMetadataFixture(root, A010_VALID_PIN);
+  const drifted = contractActionYaml().replace(
+    "  route-policy:\n    description: route-policy",
+    "  route-policy:\n    description: \"wire it from ${{ vars.REVIEW_ROUTE_MODE }}\"",
+  );
+  assert.notEqual(drifted, contractActionYaml(), "fixture must actually carry the drift");
+  await writeFile(path.join(root, "action.yml"), drifted, "utf8");
+  await assert.rejects(
+    validateMetadata(root),
+    /expression delimiters outside runs: inputs\.route-policy\.description/u,
+  );
+});
+
+// The other half of the rule, exercised at the seam rather than through
+// validateMetadata: `runs:` is the one place an expression is legitimate (a
+// composite action's steps), so the gate must not degrade into "no expressions
+// in the file". Without this, deleting the runs: exemption still passes the
+// reject-half above and every other test in the suite.
+test("scopes the expression ban to everything but runs (R-008)", () => {
+  assert.throws(
+    () => assertNoActionExpressions({ description: "${{ vars.X }}" }, "action.yml"),
+    /expression delimiters outside runs: description/u,
+  );
+  assert.throws(
+    () => assertNoActionExpressions({ inputs: { a: { default: "${{ vars.X }}" } } }, "action.yml"),
+    /expression delimiters outside runs: inputs\.a\.default/u,
+  );
+  assert.doesNotThrow(() =>
+    assertNoActionExpressions(
+      { runs: { using: "composite", steps: [{ with: { policy: "${{ inputs.route-policy }}" } }] } },
+      "action.yml",
+    ),
   );
 });
 
