@@ -4,7 +4,62 @@ Both were found by the newly installed review lane reviewing its own install
 pull requests across the eight fleet consumers on 2026-08-22. Neither affects an
 installed lane at runtime, which is why the rollout merged ahead of them.
 
-## D1 — the descriptor under-declares required permissions
+## D1 — WITHDRAWN. Not a defect; the behaviour is documented and deliberate
+
+**Resolved 2026-08-22 by attempting the fix and having the repository reject
+it.** The section below is left as originally filed, because it is what three
+consumer pull requests reported and what this task was created to close. It is
+wrong, and the evidence is:
+
+1. **The action makes no `/issues` API call at all.** Its entire request surface
+   is `/pulls`, `/compare`, `/check-runs`, and `/requested_reviewers`
+   (`src/github.js`). The operation contract agrees: no operation declares an
+   `issues` permission.
+2. **An existing gate already pins the descriptor.** Adding `issues: write` to
+   `requiredPermissions` fails `assertSetupContract` immediately —
+   "requiredPermissions.issues is write but the contract union over
+   supportedOperations needs none". The descriptor is bound to the operation
+   contract, which is the correct source of truth for it.
+3. **`DESIGN.md:447-449` documents the mismatch as intentional**, in terms that
+   name this exact case: "A job may hold extra permissions its other steps
+   require — the durable receipt jobs carry `issues: write` for the PR-comment
+   side-effect channel, which is job-level and distinct from the receipt
+   operations' contract set, **not a claim that `route`/`finalize` need
+   `issues`**."
+4. **The router lane genuinely needs it.** `examples/pr-agent-router.yml` is a
+   single `route` job that runs both the action and `docker run pragent/pr-agent`,
+   so its top-level `issues: write` belongs to PR-Agent, exactly as
+   `SETUP-PR-AGENT.md:311` states: "`issues: write` and `pull-requests: write`
+   allow PR-Agent to publish its conversation comment."
+
+The reviewer found a real *asymmetry* and mis-attributed it, and this task
+repeated the mis-attribution. Both directions of "fix" are wrong: adding the
+permission to the descriptor breaks the contract gate, and removing it from the
+lanes breaks PR-Agent's comment channel in the router.
+
+### What is actually left underneath it, unresolved
+
+In the **durable** lane, PR-Agent is isolated in its own `pr-agent` job holding
+`contents: read, pull-requests: write` and **no** `issues: write`. In the
+**router** lane it shares a job that has `issues: write`. The two lanes give the
+same container different permissions for the same task.
+
+If PR-Agent needs `issues: write` to post a conversation comment, the durable
+lane cannot publish findings at `cheap`/`deep` — which is precisely what the
+`mezmo_benchmark` #522 reviewer claimed. If a PR conversation comment is covered
+by `pull-requests: write` (GitHub treats pull requests and issues as separate
+permission scopes for comments), then the router's grant is dead and the
+isolation comment naming `issues: write` is misleading.
+
+**This cannot be settled from inside this repository.** It needs a live PR-Agent
+run on the durable lane at `cheap` or `deep`, observing whether the comment
+posts — and that needs the provider credential `docs/RELEASE_CHECKLIST.md` §2
+puts behind separate approval. Parked on that approval; not blocking D2.
+
+Nothing was shipped for D1. The working tree was returned to 713/713 passing
+with the validator green.
+
+## D1 as originally filed — the descriptor under-declares required permissions
 
 `contract/routed-review-setup-v1.json` (and its `config/` copy) declares:
 
