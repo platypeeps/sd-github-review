@@ -18,7 +18,7 @@ jobs:
       - name: Choose reviewer
         id: review
         # Current release; upgrade only to another reviewed full release SHA.
-        uses: platypeeps/sd-github-review@98eebf6d1526265daf8e36d9e98d9759c6181bb3
+        uses: platypeeps/sd-github-review@6ba1eff049962faded1c289f666ef56b58c61b4d
         with:
           github-token: ${{ github.token }}
           cheap-model: ${{ vars.CHEAP_REVIEW_MODEL }}
