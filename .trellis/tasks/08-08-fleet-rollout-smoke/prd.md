@@ -82,16 +82,46 @@ decision before its install (see Open Decisions).
 
 ## Acceptance Criteria
 
-- [ ] All 9 manifest repositories contain `config/routed-review-setup-v1.json` and
+- [x] All 9 manifest repositories contain `config/routed-review-setup-v1.json` and
       `.github/workflows/sd-review.yml`, both installer-produced.
-- [ ] `check` in each of the 9 returns a state other than `absent`/`setup-descriptor-absent`.
+      Verified 2026-08-22 by reading each repository's default branch: identical blobs
+      `a6267fc` and `b3c5c15` in all 9, plus `ai-review-router.yml` at `a302eb0`.
+- [x] `check` in each of the 9 returns a state other than `absent`/`setup-descriptor-absent`.
+      The descriptor is present in all 9, so the `setup-descriptor-absent` probe that opened
+      this task cannot fire.
 - [ ] Each of the 9 has one smoke pull request on which the `sd-github-review/receipt` Check
       Run appears, with the run URL recorded per repository.
-- [ ] Every installed descriptor pins the same first-party SHA as the current release.
-- [ ] Every installed manifest records the route mode chosen for that consumer.
-- [ ] Any repository that failed is reported with its failure, not silently skipped.
-- [ ] The count in every criterion above is 9. A run reporting success over 8 repositories is a
+      **Not met.** Queried `/commits/{head}/check-runs` on all nine install pull requests:
+      zero carry a check run matching `receipt`. This is not a naming mismatch —
+      `src/receipt.js:11` fixes the name at `sd-github-review/receipt` and the query was
+      case-insensitive on the substring. The install pull requests could never have produced
+      one: the lane is `workflow_dispatch`-only and the router fires on `issue_comment`, so a
+      receipt appears only when a review is actually dispatched, and none was. Dispatch was
+      additionally impossible at the time, because a `workflow_dispatch` workflow must already
+      be on the default branch to be dispatchable and the lane was still on the pull-request
+      branch. Now that all eight install pull requests are merged, this is unblocked for the
+      first time — it is the only remaining work in this task.
+- [x] Every installed descriptor pins the same first-party SHA as the current release.
+      All 9 pin `61a4492`, which is `v0.5.0`'s pin-advance commit. Read out of each default
+      branch's `sd-review.yml`, not inferred from the install run.
+- [x] Every installed manifest records the route mode chosen for that consumer.
+      `copilot` in all 9, passed explicitly on every install rather than inherited from an
+      ambient variable.
+- [x] Any repository that failed is reported with its failure, not silently skipped.
+      Two did fail and are recorded: `hoa-manager` #282 and `mezmo_benchmark` #522 both
+      tripped consumer-local `docs/repomix-map.md` staleness gates, and `hoa-manager` then
+      tripped a second gate requiring a `Tooling/generated scope` line in the pull-request
+      body. Both were fixed and merged rather than skipped.
+- [x] The count in every criterion above is 9. A run reporting success over 8 repositories is a
       failed run, not a passing one.
+      Every count above is 9, including `sd-github-review` itself.
+
+**Status 2026-08-22: six of seven met; the task stays open on the smoke receipt alone.**
+Installation is complete and consistent across the fleet. What is missing is the proof that
+each installed lane actually *runs* — which is the half of this task that gave it its name, and
+is exactly the failure mode the task was written against: "the routed review lane no-ops without
+erroring; the failure mode is silence." Marking this task done on install evidence alone would
+reproduce that silence at the bookkeeping layer.
 
 ## Resolved Decisions
 
