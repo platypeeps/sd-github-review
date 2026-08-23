@@ -18,6 +18,7 @@ import {
   validateReleaseConsistency,
 } from "../scripts/validate-action-metadata.mjs";
 import {
+  PERMISSION_LEVELS,
   contractInputNames,
   contractOutputNames,
 } from "../src/operation-contract.js";
@@ -1518,6 +1519,37 @@ test("a permissions map entry GitHub does not accept is rejected, not dropped", 
   assert.throws(
     () => assertNoDeadIssuesGrant([["q.yml", { permissions: ["contents"], jobs: { j: {} } }]]),
     /q\.yml: the workflow sets permissions to a list/u,
+  );
+});
+
+test("a permission level inherited from Object.prototype is not a valid level", () => {
+  // `PERMISSION_LEVELS` is a frozen object literal, so it still inherits from
+  // `Object.prototype`. A membership test with `in` therefore accepts
+  // `toString`, and the lookup then returns a *function*, which `?? 0` does not
+  // replace -- every downstream comparison becomes NaN and is silently false.
+  // The level comes from a workflow file, so it must never be resolved through
+  // a prototype chain.
+  assert.ok("toString" in PERMISSION_LEVELS, "the prototype chain is the hazard being guarded");
+  assert.ok(!Object.hasOwn(PERMISSION_LEVELS, "toString"));
+
+  for (const inherited of ["toString", "constructor", "valueOf", "hasOwnProperty"]) {
+    assert.throws(
+      () =>
+        assertNoDeadIssuesGrant([
+          ["r.yml", { permissions: { issues: inherited }, jobs: { j: {} } }],
+        ]),
+      new RegExp(`r\\.yml: the workflow sets issues to "${inherited}"`, "u"),
+      `an inherited level "${inherited}" must be rejected, not ranked`,
+    );
+  }
+
+  // A scope named `__proto__` must be stored, not swallowed by assignment.
+  assert.throws(
+    () =>
+      assertNoDeadIssuesGrant([
+        ["s.yml", { permissions: { __proto__: "write", issues: "write" }, jobs: { j: {} } }],
+      ]),
+    /s\.yml: issues:write/u,
   );
 });
 

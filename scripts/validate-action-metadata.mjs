@@ -447,14 +447,25 @@ function permissionMap(permissions) {
     if (permissions === "read-all") return { __all: "read" };
     return {}; // "none" or anything else grants nothing scoped
   }
-  const out = {};
+  // Null-prototype: a workflow is untrusted YAML, and a scope literally named
+  // `__proto__` would otherwise be swallowed by assignment rather than stored.
+  const out = Object.create(null);
   for (const [scope, level] of Object.entries(permissions)) out[scope] = level;
   return out;
 }
 
+// Own-property lookup, not `PERMISSION_LEVELS[level]`. `PERMISSION_LEVELS` is a
+// frozen object literal, so it still inherits from `Object.prototype`: a level
+// of `toString` reads back as a *function*, which `?? 0` does not replace and
+// which turns every downstream comparison into NaN -- silently false. The level
+// comes from a workflow file, so it is exactly the kind of value that must not
+// be looked up through a prototype chain.
+function permissionRank(level) {
+  return Object.hasOwn(PERMISSION_LEVELS, level) ? PERMISSION_LEVELS[level] : 0;
+}
+
 function grantedLevel(effective, scope) {
-  const levels = [effective.__all, effective[scope]]
-    .map((level) => PERMISSION_LEVELS[level] ?? 0);
+  const levels = [effective.__all, effective[scope]].map(permissionRank);
   return Math.max(...levels, 0);
 }
 
@@ -470,7 +481,7 @@ function assertJobPermissions(doc, filePath, actionOwnerRepo, supportedOperation
     const required = unionPermissions([...operations]);
     const effective = permissionMap(job.permissions) ?? workflowLevel ?? {};
     for (const [scope, level] of Object.entries(required)) {
-      if (grantedLevel(effective, scope) < PERMISSION_LEVELS[level]) {
+      if (grantedLevel(effective, scope) < permissionRank(level)) {
         throw new Error(
           `${filePath}: job "${jobName}" runs [${[...operations].join(", ")}] needing ` +
             `${scope}:${level} but grants ${scope}:${effective.__all ?? effective[scope] ?? "none"}`,
@@ -504,13 +515,13 @@ function assertJobPermissions(doc, filePath, actionOwnerRepo, supportedOperation
 // the point: it is where an over-grant to a third-party container would live.
 function laneGrantUnion(doc) {
   const workflowLevel = permissionMap(doc.permissions) ?? {};
-  const union = {};
+  const union = Object.create(null);
   for (const job of Object.values(doc.jobs ?? {})) {
     const effective = permissionMap(job.permissions) ?? workflowLevel;
     for (const [scope, level] of Object.entries(effective)) {
-      const rank = PERMISSION_LEVELS[level] ?? 0;
+      const rank = permissionRank(level);
       if (rank === 0) continue;
-      if (rank > (PERMISSION_LEVELS[union[scope]] ?? 0)) union[scope] = level;
+      if (rank > permissionRank(union[scope])) union[scope] = level;
     }
   }
   return union;
@@ -606,11 +617,11 @@ function invalidPermissionDeclaration(doc) {
     }
     // Map entries need the same treatment as the scalar above, and for the same
     // reason: `laneGrantUnion` ranks an unrecognized level through
-    // `PERMISSION_LEVELS[level] ?? 0` and drops it, so `issues: wirte` passes
+    // `permissionRank` and drops it, so `issues: wirte` passes
     // the sweep as though it granted nothing while GitHub would reject the
     // workflow outright. A typo must not be the way past this gate.
     for (const [scope, level] of Object.entries(value)) {
-      if (!(level in PERMISSION_LEVELS)) {
+      if (!Object.hasOwn(PERMISSION_LEVELS, level)) {
         return (
           `${where} sets ${scope} to "${level}", which GitHub does not accept -- a map entry ` +
           "must be none, read, or write"
