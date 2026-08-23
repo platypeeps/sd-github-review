@@ -602,6 +602,37 @@ function undeclaredPermissionJobs(doc) {
 // nothing. Nobody knows what such a lane's token holds, so it must not pass.
 const PERMISSION_SCALARS = new Set(["read-all", "write-all"]);
 
+// GitHub's `permissions` scopes, from its workflow-syntax documentation. Listed
+// rather than shape-matched so a typo cannot pass as a scope: an unrecognized
+// key ranks 0 and vanishes, which is how `{ __proto__: none }` and
+// `{ frobnicate: none }` both read as clean grants. Includes no entry for the
+// `__all` sentinel this module uses for the read-all/write-all shorthand, so a
+// lane declaring `__all` directly cannot ride into a blanket grant.
+//
+// Not probe-verified as a set: the pilot repository stopped registering new
+// workflows partway through checking it, and a 404 from an unregistered
+// workflow is indexing lag rather than a syntax verdict. Being wrong here in
+// the inclusive direction is inert -- it accepts a lane GitHub would reject
+// anyway. Being wrong in the exclusive direction is the real cost, and a test
+// derives the scopes the shipped lanes actually use from disk to catch it.
+const GITHUB_PERMISSION_SCOPES = new Set([
+  "actions",
+  "attestations",
+  "checks",
+  "contents",
+  "deployments",
+  "discussions",
+  "id-token",
+  "issues",
+  "models",
+  "packages",
+  "pages",
+  "pull-requests",
+  "repository-projects",
+  "security-events",
+  "statuses",
+]);
+
 function invalidPermissionDeclaration(doc) {
   const declarations = [
     ["the workflow", doc.permissions],
@@ -645,18 +676,18 @@ function invalidPermissionDeclaration(doc) {
       // `{ __proto__: none }` read as clean. Verified against the API:
       //   422: failed to parse workflow: (Line: 5, Col: 3): Unexpected value '__proto__'
       //
-      // Deliberately a shape check rather than an allow-list of GitHub's scope
-      // names: that list grows, and a stale copy would reject a valid lane
-      // using a newly added scope -- trading a fail-open for a fail-shut. The
-      // shape is enough for the hazard that matters here, which is a key that
-      // is not a scope name at all, including the internal `__all` sentinel
-      // this module uses for the `read-all`/`write-all` shorthand. A lane
-      // declaring `__all` directly would otherwise be read as a blanket grant
-      // it never asked for.
-      if (!/^[a-z][a-z-]*$/u.test(scope)) {
+      // An allow-list rather than a shape check. A shape check would let
+      // `{ frobnicate: none }` through, and the first draft of this gate did.
+      // The usual argument against a hardcoded list -- GitHub adds scopes and a
+      // stale copy rejects a valid lane -- does not apply here: every document
+      // this sweep reads is a first-party lane in this repository. Adding a new
+      // scope to one means editing this list in the same commit, guided by an
+      // error that names the scope. `GITHUB_PERMISSION_SCOPES` is versioned
+      // repository data, the same shape as HISTORICAL_TEMPLATE_HASHES.
+      if (!GITHUB_PERMISSION_SCOPES.has(scope)) {
         return (
-          `${where} names a permission scope "${scope}", which is not a scope name ` +
-          "-- GitHub's scopes are lowercase words, optionally hyphenated"
+          `${where} names a permission scope "${scope}", which GitHub does not define ` +
+          "-- if GitHub has added it, add it to GITHUB_PERMISSION_SCOPES in this file"
         );
       }
       // `typeof` first: `Object.hasOwn` coerces its key, so `issues: [none]`
@@ -671,6 +702,8 @@ function invalidPermissionDeclaration(doc) {
   }
   return null;
 }
+
+export { GITHUB_PERMISSION_SCOPES };
 
 export function assertNoDeadIssuesGrant(lanes) {
   const offenders = [];

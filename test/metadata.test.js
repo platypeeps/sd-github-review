@@ -7,6 +7,7 @@ import test from "node:test";
 import { promisify } from "node:util";
 import { parseDocument } from "yaml";
 import {
+  GITHUB_PERMISSION_SCOPES,
   assertDescriptorLaneGrants,
   assertNoDeadIssuesGrant,
   assertPinFreshness,
@@ -1572,7 +1573,7 @@ test("a non-string permission level is rejected rather than coerced into a valid
   }
 });
 
-test("a permission scope name GitHub does not accept is rejected, not ranked away", () => {
+test("a permission scope name GitHub does not define is rejected, not ranked away", () => {
   // Keys, not only values. An unknown scope name ranks like any other and then
   // vanishes at rank 0, so the lane read as clean. Verified against the API:
   //   422: failed to parse workflow: (Line: 5, Col: 3): Unexpected value '__proto__'
@@ -1593,8 +1594,16 @@ test("a permission scope name GitHub does not accept is rejected, not ranked awa
     /aa\.yml: the workflow names a permission scope "__all"/u,
   );
 
-  // Real hyphenated scopes must keep working -- this is a shape check, and it
-  // must not become a fail-shut on the scopes the shipped lanes actually use.
+  // A scope-shaped typo is the case a shape check let through, and the reason
+  // this is an allow-list instead.
+  assert.throws(
+    () =>
+      assertNoDeadIssuesGrant([["ac.yml", { permissions: { frobnicate: "none" }, jobs: { j: {} } }]]),
+    /ac\.yml: the workflow names a permission scope "frobnicate"/u,
+  );
+
+  // Real hyphenated scopes must keep working -- the allow-list must not become
+  // a fail-shut on the scopes the shipped lanes actually use.
   assert.doesNotThrow(() =>
     assertNoDeadIssuesGrant([
       [
@@ -1605,6 +1614,35 @@ test("a permission scope name GitHub does not accept is rejected, not ranked awa
         },
       ],
     ]),
+  );
+});
+
+test("every scope the shipped lanes declare is in the allow-list", async () => {
+  // The allow-list's real risk is being wrong in the exclusive direction: a
+  // missing scope turns a valid lane into a release-blocking failure. Derived
+  // from disk rather than restated, so adding a scope to a lane without adding
+  // it here fails here first, naming it.
+  const root = path.resolve(import.meta.dirname, "..");
+  const declared = new Set();
+  for (const directory of [".github/workflows", "examples"]) {
+    const entries = await readdir(path.join(root, directory));
+    for (const name of entries.filter((entry) => /\.ya?ml$/u.test(entry))) {
+      const doc = parseDocument(
+        await readFile(path.join(root, directory, name), "utf8"),
+      ).toJS();
+      const blocks = [doc?.permissions, ...Object.values(doc?.jobs ?? {}).map((job) => job?.permissions)];
+      for (const block of blocks) {
+        if (!block || typeof block !== "object") continue;
+        for (const scope of Object.keys(block)) declared.add(scope);
+      }
+    }
+  }
+  assert.ok(declared.size > 0, "the sweep must have found real lanes to read");
+  const unknown = [...declared].filter((scope) => !GITHUB_PERMISSION_SCOPES.has(scope));
+  assert.deepEqual(
+    unknown,
+    [],
+    "these scopes are used by shipped lanes but missing from GITHUB_PERMISSION_SCOPES",
   );
 });
 
