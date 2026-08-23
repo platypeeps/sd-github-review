@@ -1544,12 +1544,68 @@ test("a permission level inherited from Object.prototype is not a valid level", 
   }
 
   // A scope named `__proto__` must be stored, not swallowed by assignment.
+  // Built with a computed key on purpose: `{ __proto__: "write" }` is the
+  // prototype-setter form and creates no own property at all, so a literal here
+  // would make this test vacuous. The YAML parser does produce an own property,
+  // which is what makes the null-prototype handling load-bearing for real lanes.
+  const protoScope = { ["__proto__"]: "write" };
+  assert.ok(Object.hasOwn(protoScope, "__proto__"), "the fixture must carry an own __proto__");
+  assert.throws(
+    () => assertDescriptorLaneGrants({ permissions: protoScope, jobs: { j: {} } }, "s.yml", {}),
+    /__proto__: lane grants write but the descriptor declares none/u,
+  );
+});
+
+test("a non-string permission level is rejected rather than coerced into a valid one", () => {
+  // `Object.hasOwn` coerces its property key, so `issues: [none]` stringifies to
+  // "none" and would be accepted, then rank 0 and vanish from the union -- a
+  // GitHub-invalid lane reported as clean. Ninth variant of the same shape.
+  assert.ok(Object.hasOwn(PERMISSION_LEVELS, ["none"]), "key coercion is the hazard being guarded");
+
+  for (const level of [["none"], ["write"], 1, true, null]) {
+    assert.throws(
+      () =>
+        assertNoDeadIssuesGrant([["t.yml", { permissions: { issues: level }, jobs: { j: {} } }]]),
+      /t\.yml: the workflow sets issues to/u,
+      `a non-string level ${JSON.stringify(level)} must be rejected, not coerced`,
+    );
+  }
+});
+
+test("a workflow-level issues grant is caught even when every job overrides it", () => {
+  // `laneGrantUnion` consults the workflow-level block only for jobs that
+  // inherit it, so a lane whose every current job declares its own permissions
+  // hid a top-level grant -- one that is still written down, and that any job
+  // added later inherits.
+  const overridden = {
+    permissions: { contents: "read", issues: "write" },
+    jobs: {
+      review: { permissions: { contents: "read", "pull-requests": "write" } },
+      "pr-agent": { permissions: { contents: "read" } },
+    },
+  };
+  // The union genuinely does not see it -- otherwise this test would pass for
+  // the wrong reason and prove nothing about the direct workflow-level check.
+  // `assertDescriptorLaneGrants` is the union's observable surface: it accepts
+  // this lane against a descriptor that declares no `issues` at all.
+  assert.doesNotThrow(() =>
+    assertDescriptorLaneGrants(overridden, "u.yml", {
+      contents: "read",
+      "pull-requests": "write",
+    }),
+  );
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["u.yml", overridden]]),
+    /u\.yml: workflow-level issues:write/u,
+  );
+
+  // The blanket shorthand at the workflow level is caught the same way.
   assert.throws(
     () =>
       assertNoDeadIssuesGrant([
-        ["s.yml", { permissions: { __proto__: "write", issues: "write" }, jobs: { j: {} } }],
+        ["v.yml", { permissions: "write-all", jobs: { j: { permissions: { contents: "read" } } } }],
       ]),
-    /s\.yml: issues:write/u,
+    /v\.yml: workflow-level write-all, which covers issues:write/u,
   );
 });
 

@@ -461,6 +461,7 @@ function permissionMap(permissions) {
 // comes from a workflow file, so it is exactly the kind of value that must not
 // be looked up through a prototype chain.
 function permissionRank(level) {
+  if (typeof level !== "string") return 0; // `hasOwn` would coerce a non-string key
   return Object.hasOwn(PERMISSION_LEVELS, level) ? PERMISSION_LEVELS[level] : 0;
 }
 
@@ -550,13 +551,21 @@ export function assertDescriptorLaneGrants(doc, filePath, requiredPermissions) {
   }
   for (const scope of new Set([...Object.keys(granted), ...Object.keys(declared)])) {
     if (scope === "__all") continue;
-    if (granted[scope] === declared[scope]) continue;
+    // Own-property reads: `declared` comes from the descriptor JSON with an
+    // ordinary prototype, so a scope named `__proto__` that it does *not*
+    // declare reads back as `Object.prototype` rather than undefined -- which
+    // both garbles the message and, if the lane's value matched, would skip the
+    // offender entirely.
+    const grantedLevelForScope = Object.hasOwn(granted, scope) ? granted[scope] : undefined;
+    const declaredLevelForScope = Object.hasOwn(declared, scope) ? declared[scope] : undefined;
+    if (grantedLevelForScope === declaredLevelForScope) continue;
     offenders.push(
-      declared[scope] === undefined
-        ? `${scope}: lane grants ${granted[scope]} but the descriptor declares none`
-        : granted[scope] === undefined
-          ? `${scope}: the descriptor declares ${declared[scope]} but no job grants it`
-          : `${scope}: lane grants ${granted[scope]} but the descriptor declares ${declared[scope]}`,
+      declaredLevelForScope === undefined
+        ? `${scope}: lane grants ${grantedLevelForScope} but the descriptor declares none`
+        : grantedLevelForScope === undefined
+          ? `${scope}: the descriptor declares ${declaredLevelForScope} but no job grants it`
+          : `${scope}: lane grants ${grantedLevelForScope} but the descriptor declares ` +
+            `${declaredLevelForScope}`,
     );
   }
   if (offenders.length) {
@@ -621,7 +630,9 @@ function invalidPermissionDeclaration(doc) {
     // the sweep as though it granted nothing while GitHub would reject the
     // workflow outright. A typo must not be the way past this gate.
     for (const [scope, level] of Object.entries(value)) {
-      if (!Object.hasOwn(PERMISSION_LEVELS, level)) {
+      // `typeof` first: `Object.hasOwn` coerces its key, so `issues: [none]`
+      // would stringify to "none" and be accepted, then rank 0 and vanish.
+      if (typeof level !== "string" || !Object.hasOwn(PERMISSION_LEVELS, level)) {
         return (
           `${where} sets ${scope} to "${level}", which GitHub does not accept -- a map entry ` +
           "must be none, read, or write"
@@ -652,12 +663,31 @@ export function assertNoDeadIssuesGrant(lanes) {
     const granted = laneGrantUnion(doc ?? {});
     // Through `grantedLevel`, not `granted.issues`: a `write-all` lane grants
     // the scope without ever naming it.
-    if (grantedLevel(granted, "issues") === 0) continue;
-    const blanket = blanketGrant(granted);
+    if (grantedLevel(granted, "issues") > 0) {
+      const blanket = blanketGrant(granted);
+      offenders.push(
+        granted.issues !== undefined
+          ? `${filePath}: issues:${granted.issues}`
+          : `${filePath}: ${blanket}-all, which covers issues:${blanket}`,
+      );
+      continue;
+    }
+    // Two places, not one. `laneGrantUnion` reaches the workflow-level block
+    // only for jobs that inherit it, so a lane whose every current job declares
+    // its own permissions hides a top-level `issues: write` -- a grant that is
+    // still written down and that any job added later inherits. This gate
+    // refuses the scope outright, so the workflow-level declaration is checked
+    // directly too. Reported distinctly, because "no job holds it but the lane
+    // still grants it" is the fact worth naming.
+    const workflowLevel = permissionMap((doc ?? {}).permissions) ?? {};
+    if (grantedLevel(workflowLevel, "issues") === 0) continue;
+    const blanket = blanketGrant(workflowLevel);
     offenders.push(
-      granted.issues !== undefined
-        ? `${filePath}: issues:${granted.issues}`
-        : `${filePath}: ${blanket}-all, which covers issues:${blanket}`,
+      workflowLevel.issues !== undefined
+        ? `${filePath}: workflow-level issues:${workflowLevel.issues}, which no current job ` +
+            "inherits but any job added later would"
+        : `${filePath}: workflow-level ${blanket}-all, which covers issues:${blanket} and which ` +
+            "no current job inherits but any job added later would",
     );
   }
   if (offenders.length) {
