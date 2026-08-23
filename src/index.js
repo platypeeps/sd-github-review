@@ -311,3 +311,4 @@ if (isEntrypoint) {
 }
 
 // Pilot v0.5.0: inert change so the pilot pull request is not bookkeeping-only.
+// Pilot v0.5.0 scenario 4: new head.
