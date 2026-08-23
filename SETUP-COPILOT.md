@@ -55,7 +55,7 @@ and
    consuming repository, for example as
    `.github/workflows/ai-review-router.yml`.
 2. The checked-in workflow is pinned to the current release commit,
-   `98eebf6d1526265daf8e36d9e98d9759c6181bb3`. Keep that exact pin or replace
+   `6ba1eff049962faded1c289f666ef56b58c61b4d`. Keep that exact pin or replace
    it with the reviewed full 40-character SHA of a later approved release. Do
    not use a floating branch or tag in production.
 3. Keep these workflow permissions:

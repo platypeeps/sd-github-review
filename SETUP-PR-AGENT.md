@@ -161,7 +161,7 @@ cannot verify archive bytes against a commit offline:
 node scripts/install-consumer.mjs install --target /path/to/consumer \
   --route-mode copilot \
   --review-floor copilot \
-  --source-tag v0.4.0 --source-commit 98eebf6d1526265daf8e36d9e98d9759c6181bb3 \
+  --source-tag v0.6.1 --source-commit 6ba1eff049962faded1c289f666ef56b58c61b4d \
   --set-secret
 ```
 
@@ -311,7 +311,7 @@ and
    consuming repository, for example as
    `.github/workflows/ai-review-router.yml`.
 2. The checked-in workflow is pinned to the current release commit,
-   `98eebf6d1526265daf8e36d9e98d9759c6181bb3`. Keep that exact pin or update
+   `6ba1eff049962faded1c289f666ef56b58c61b4d`. Keep that exact pin or update
    it to the reviewed full 40-character SHA of a later approved release. The
    PR-Agent container reference is independently pinned by digest.
 3. Under **Settings → Secrets and variables → Actions → Variables**, create:
