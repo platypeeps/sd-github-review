@@ -1799,6 +1799,40 @@ test("a workflow-level grant every job overrides is caught for scopes the sweep 
   );
 });
 
+test("a job that is not a mapping is rejected, not read as inheritance", () => {
+  // `job?.permissions` establishes nothing about `job` itself. A string or a
+  // list yields undefined, which every downstream check reads as inheritance,
+  // so the malformed job silently borrowed the workflow-level grant and
+  // validated clean against a job GitHub rejects outright.
+  for (const bad of ["not-a-job", ["steps"], 42]) {
+    const doc = { permissions: { contents: "read" }, jobs: { bad } };
+    assert.throws(
+      () => assertDescriptorLaneGrants(doc, "u.yml", { contents: "read" }),
+      /u\.yml declares permissions this validator cannot read.*job "bad" is not a mapping/su,
+      `a job value of ${JSON.stringify(bad)} must be rejected`,
+    );
+    assert.throws(() => assertNoDeadIssuesGrant([["u.yml", doc]]), /job "bad" is not a mapping/u);
+  }
+
+  // A null job was worse than fail-open: it reached `job.permissions` and threw
+  // a raw TypeError rather than a validator error naming the file. Asserted as
+  // a non-TypeError so a regression cannot pass by crashing.
+  const nullJob = { permissions: { contents: "read" }, jobs: { bad: null } };
+  let thrown;
+  try {
+    assertDescriptorLaneGrants(nullJob, "u.yml", { contents: "read" });
+  } catch (error) {
+    thrown = error;
+  }
+  assert.ok(thrown, "a null job must be rejected");
+  assert.ok(!(thrown instanceof TypeError), "a malformed job must not crash the validator");
+  assert.match(thrown.message, /job "bad" is not a mapping/u);
+
+  // laneGrantUnion is exported and callable on an unscreened document, so it
+  // must survive the same input rather than crashing before a gate can name it.
+  assert.doesNotThrow(() => laneGrantUnion(nullJob));
+});
+
 test("the equality gate refuses a lane whose jobs never declared permissions", () => {
   // Unreadable and unwritten are separate holes. `invalidPermissionDeclaration`
   // treats an absent block as inheritance by design, so a lane with no

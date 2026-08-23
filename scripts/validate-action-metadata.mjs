@@ -518,7 +518,10 @@ export function laneGrantUnion(doc) {
   const workflowLevel = permissionMap(doc.permissions) ?? {};
   const union = Object.create(null);
   for (const job of Object.values(doc.jobs ?? {})) {
-    const effective = permissionMap(job.permissions) ?? workflowLevel;
+    // `job?.` rather than `job.`: this is exported and callable on a document
+    // no gate has screened, and a malformed job must not crash the union before
+    // `invalidPermissionDeclaration` gets the chance to name it.
+    const effective = permissionMap(job?.permissions) ?? workflowLevel;
     for (const [scope, level] of Object.entries(effective)) {
       const rank = permissionRank(level);
       if (rank === 0) continue;
@@ -705,6 +708,18 @@ const GITHUB_PERMISSION_LEVELS = new Map([
 const GITHUB_PERMISSION_SCOPES = new Set(GITHUB_PERMISSION_LEVELS.keys());
 
 function invalidPermissionDeclaration(doc) {
+  // Establish that each job *is* a mapping before reading `permissions` off it.
+  // `job?.permissions` yields `undefined` for a string or a list, which every
+  // downstream check reads as inheritance -- so `jobs: { bad: "not-a-job" }`
+  // borrowed the workflow-level grant and validated clean against a job GitHub
+  // rejects outright. A `null` job was worse than fail-open: it reached
+  // `job.permissions` in `laneGrantUnion` and threw a raw TypeError instead of
+  // a validator error naming the file.
+  for (const [name, job] of Object.entries(doc.jobs ?? {})) {
+    if (job === null || typeof job !== "object" || Array.isArray(job)) {
+      return `job "${name}" is not a mapping, so its permissions cannot be read`;
+    }
+  }
   const declarations = [
     ["the workflow", doc.permissions],
     ...Object.entries(doc.jobs ?? {}).map(([name, job]) => [`job "${name}"`, job?.permissions]),
