@@ -1572,6 +1572,42 @@ test("a non-string permission level is rejected rather than coerced into a valid
   }
 });
 
+test("a permission scope name GitHub does not accept is rejected, not ranked away", () => {
+  // Keys, not only values. An unknown scope name ranks like any other and then
+  // vanishes at rank 0, so the lane read as clean. Verified against the API:
+  //   422: failed to parse workflow: (Line: 5, Col: 3): Unexpected value '__proto__'
+  // Computed key: `{ __proto__: "none" }` is the prototype-setter form and
+  // creates no own property, which would make this assertion vacuous.
+  const unknownScope = { ["__proto__"]: "none", contents: "read" };
+  assert.ok(Object.hasOwn(unknownScope, "__proto__"), "the fixture must carry an own __proto__");
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["z.yml", { permissions: unknownScope, jobs: { j: {} } }]]),
+    /z\.yml: the workflow names a permission scope "__proto__"/u,
+  );
+
+  // `__all` is this module's internal sentinel for the read-all/write-all
+  // shorthand. A lane declaring it directly would otherwise be read as a
+  // blanket grant it never asked for -- the sentinel colliding with user data.
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["aa.yml", { permissions: { __all: "write" }, jobs: { j: {} } }]]),
+    /aa\.yml: the workflow names a permission scope "__all"/u,
+  );
+
+  // Real hyphenated scopes must keep working -- this is a shape check, and it
+  // must not become a fail-shut on the scopes the shipped lanes actually use.
+  assert.doesNotThrow(() =>
+    assertNoDeadIssuesGrant([
+      [
+        "ab.yml",
+        {
+          permissions: { "pull-requests": "write", contents: "read", "id-token": "write" },
+          jobs: { j: {} },
+        },
+      ],
+    ]),
+  );
+});
+
 test("a bare permissions key is rejected, not read as inheritance", () => {
   // `permissions:` alone on a line parses to null, not to an absent key. The
   // validator treated the two alike, so a malformed declaration passed as

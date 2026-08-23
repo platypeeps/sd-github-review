@@ -640,6 +640,25 @@ function invalidPermissionDeclaration(doc) {
     // the sweep as though it granted nothing while GitHub would reject the
     // workflow outright. A typo must not be the way past this gate.
     for (const [scope, level] of Object.entries(value)) {
+      // Keys, not only values. A scope name GitHub does not accept ranks
+      // through `permissionRank` like any other and then vanishes at rank 0, so
+      // `{ __proto__: none }` read as clean. Verified against the API:
+      //   422: failed to parse workflow: (Line: 5, Col: 3): Unexpected value '__proto__'
+      //
+      // Deliberately a shape check rather than an allow-list of GitHub's scope
+      // names: that list grows, and a stale copy would reject a valid lane
+      // using a newly added scope -- trading a fail-open for a fail-shut. The
+      // shape is enough for the hazard that matters here, which is a key that
+      // is not a scope name at all, including the internal `__all` sentinel
+      // this module uses for the `read-all`/`write-all` shorthand. A lane
+      // declaring `__all` directly would otherwise be read as a blanket grant
+      // it never asked for.
+      if (!/^[a-z][a-z-]*$/u.test(scope)) {
+        return (
+          `${where} names a permission scope "${scope}", which is not a scope name ` +
+          "-- GitHub's scopes are lowercase words, optionally hyphenated"
+        );
+      }
       // `typeof` first: `Object.hasOwn` coerces its key, so `issues: [none]`
       // would stringify to "none" and be accepted, then rank 0 and vanish.
       if (typeof level !== "string" || !Object.hasOwn(PERMISSION_LEVELS, level)) {
