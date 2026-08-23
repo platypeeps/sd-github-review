@@ -11,16 +11,35 @@ Baseline: `0.5.0`, `main` at the tip. Target: `0.6.0`.
 
 ## Phase 0 — establish the baseline
 
-- [ ] `npm run check:full` on a clean tree. Record the test count. Every later
+- [x] `npm run check:full` on a clean tree. Record the test count. Every later
       phase compares against this number, not against zero failures — a suite
       that shrinks silently passes just as well as one that grows.
-- [ ] Confirm both descriptor copies are still byte-identical:
+      Baseline **713**; released `0.6.0` runs **720**, strictly greater.
+- [x] Confirm both descriptor copies are still byte-identical:
       `shasum -a256 contract/routed-review-setup-v1.json config/routed-review-setup-v1.json`
-      → both `ea6f34bb…`.
+      → both `ea6f34bb…`. Confirmed at the baseline. Both are now
+      `854504864fb1ef3fdf9137ca63245b31be51795e5b5d4419bd92614bc7b57da1` — the
+      descriptor carries a first-party pin, so the release moved it. Its
+      `requiredPermissions` is unchanged at
+      `{contents: read, pull-requests: write, checks: write}`, which is the part
+      D1 concerned.
 
 **Rollback point.** Nothing changed yet.
 
-## Phase 1 — D1, the descriptor gate
+## Phase 1 — D1, the descriptor gate — VOID, executed and reverted
+
+**Do not work this phase.** It was attempted on 2026-08-22 and the repository
+rejected it: adding `issues: write` to `requiredPermissions` fails
+`assertSetupContract` with "requiredPermissions.issues is write but the contract
+union over supportedOperations needs none". The action makes no `/issues` API
+call at all, and `DESIGN.md:447-449` already documents the lane/descriptor
+asymmetry as intentional. See `prd.md` for the full disposition. The working
+tree was returned to 713/713 with the validator green; nothing shipped.
+
+The boxes below are left unticked on purpose — ticking them would claim work
+that does not exist. They are kept because they are what three consumer pull
+requests asked for, and the next reviewer to raise it should find the answer
+here rather than re-derive it.
 
 Gate before value, so the gate is seen failing against the real defect rather
 than against a fixture. A gate first observed passing has proven nothing.
@@ -149,21 +168,21 @@ Everything after this is fleet-visible.
 
 ## Phase 4 — release `0.6.0`
 
-- [ ] Bump `package.json` to `0.6.0`. Justify minor over patch in the CHANGELOG:
+- [x] Bump `package.json` to `0.6.0`. Justify minor over patch in the CHANGELOG:
       a removed dispatch input, a newly required repository variable, a schema
       bump, and a lane that fails closed without it.
-- [ ] CHANGELOG entry covering both defects, how the reviewer found them on its
+- [x] CHANGELOG entry covering both defects, how the reviewer found them on its
       own install pull requests, and the upgrade step consumers must take.
-- [ ] Cut the pin-advance commit. It must touch neither `src/` nor `action.yml`,
+- [x] Cut the pin-advance commit. It must touch neither `src/` nor `action.yml`,
       and must pin a parent whose action code is byte-identical.
-- [ ] Tag `v0.6.0` on the pin-advance commit. Never force-move a published tag —
+- [x] Tag `v0.6.0` on the pin-advance commit. Never force-move a published tag —
       if the tag is wrong, cut a new version.
-- [ ] `npm run validate:release`.
-- [ ] Verify from a worktree at the tag, not from `main`. Run `npm ci` there
+- [x] `npm run validate:release`.
+- [x] Verify from a worktree at the tag, not from `main`. Run `npm ci` there
       first: `yaml` is a devDependency and its absence reads as a release defect
       when it is only a missing `node_modules`. `src/` imports only `node:`
       builtins and the action declares no runtime dependencies.
-- [ ] Publish the GitHub release.
+- [x] Publish the GitHub release.
 
 **Rollback point.** A bad tag is superseded by a new version, never repaired in
 place.
@@ -176,7 +195,7 @@ lane advances. The old lane does not read it, so writing it early is inert and
 there is no window in which it is set and harmful. The reverse order has no safe
 window at all and breaks all nine simultaneously.
 
-- [ ] Set `REVIEW_INDEPENDENT_FLOOR=copilot` on all nine consumers. Enumerate
+- [x] Set `REVIEW_INDEPENDENT_FLOOR=copilot` on all nine consumers. Enumerate
       them from the fleet manifest, not from memory. `copilot` is the explicit
       per-consumer choice required by Phase 3's no-silent-default rule, not a
       fallback; it matches each consumer's existing `REVIEW_ROUTE_MODE` and
@@ -184,21 +203,21 @@ window at all and breaks all nine simultaneously.
       floor at the top of `ROUTE_STRENGTH` and the policy refusing explicit
       `cheap`/`deep`, the paid routes stay unreachable, which is what lets the
       fleet hold no provider credential.
-- [ ] Verify by reading the variable back from each of the nine. A write that
+- [x] Verify by reading the variable back from each of the nine. A write that
       reported success is not evidence the value is there.
-- [ ] Confirm the fleet still routes on the *old* lane with the variable set —
+- [x] Confirm the fleet still routes on the *old* lane with the variable set —
       one dispatch is enough to show the early write is genuinely inert.
-- [ ] Run `update` per consumer to advance lanes and pins. Canary first, exactly
+- [x] Run `update` per consumer to advance lanes and pins. Canary first, exactly
       as the 0.5.0 rollout did: one consumer, verified, before the rest.
-- [ ] Expect consumer-local policy gates to fire again on the install pull
+- [x] Expect consumer-local policy gates to fire again on the install pull
       requests. Two are known: `docs/repomix-map.md` staleness in `hoa-manager`
       and `mezmo_benchmark`, and a required `Tooling/generated scope:` line in
       the `hoa-manager` pull-request body. A body edit alone will not clear the
       latter — `gh run rerun` replays the original event payload, so the branch
       needs a fresh push.
-- [ ] After merge, verify from each default branch that all nine carry the new
+- [x] After merge, verify from each default branch that all nine carry the new
       lane blob and the new pin. Enumerate; do not restate the install run.
-- [ ] Smoke each of the nine: a throwaway pull request, `operation: route` with
+- [x] Smoke each of the nine: a throwaway pull request, `operation: route` with
       an explicit `route: "copilot"`, collect the `sd-github-review/receipt`
       check run, then close unmerged and delete the branch. Explicit for
       determinism — the receipt should record the same `selectedRoute` on every
@@ -210,7 +229,7 @@ window at all and breaks all nine simultaneously.
       floor of `copilot` outranks `deep` and `src/router.js:188` resolves the
       floor to `copilot`. `auto` is safe here. Do not carry the old rationale
       forward.
-- [ ] Confirm `pr-agent` and `finalize` are `skipped` on all nine. Any other
+- [x] Confirm `pr-agent` and `finalize` are `skipped` on all nine. Any other
       outcome means an external adapter ran and must be explained before the
       rollout is called done.
 
@@ -218,13 +237,98 @@ window at all and breaks all nine simultaneously.
 reverting the lane; `REVIEW_INDEPENDENT_FLOOR` is inert to that lane and can be
 left in place.
 
+## Phase 5 — what actually happened, 2026-08-22/23
+
+Released `v0.6.0` at `0d298aa6a7e12fab34e565bd6afce4f127af1589`; the lane pin is
+the pin-advance commit `98eebf6d1526265daf8e36d9e98d9759c6181bb3`. Those are two
+different SHAs on purpose — the tag sits on a commit touching neither `src/` nor
+`action.yml`, so `assertPinFreshness` sees byte-identical action code at the
+pin's parent, and a commit cannot contain its own SHA.
+
+**Variable first, as planned.** `REVIEW_INDEPENDENT_FLOOR=copilot` was written to
+all nine and read back individually before any lane moved. Inertness against the
+0.5.0 lane was proven live rather than assumed, on people-profiles PR #12 /
+run 32617464315: with the variable already set, the old lane still produced
+`selectedRoute: copilot`, `dispatch.phase: observed`,
+`backend: github-copilot/copilot`, and skipped adapters. people-profiles was the
+canary; its 0.6.0 lane logged `Independent review floor: copilot` from the guard
+step, which is the step's own evidence that it reads the variable.
+
+**Merge order.** sd-github-review's self-update (#135) merged first, then the
+remaining seven together. One consumer, `loadsmith` #252, was `BLOCKED` with
+zero failing checks: `required_conversation_resolution` was enabled and the
+Copilot reviewer had left one unresolved thread on the guard step, claiming that
+`::error::` written to stderr is not processed as a workflow command and so
+produces no annotation.
+
+**That claim is false, and it was checked rather than argued with.** A throwaway
+push-triggered probe in this repository (run 32618129997) emitted one `::error::`
+to each stream:
+
+```
+failure | PROBE-FROM-STDOUT
+failure | PROBE-FROM-STDERR
+```
+
+Both became `failure` annotations. The runner wires `OutputDataReceived` and
+`ErrorDataReceived` to the same handler, so `>&2` does not bypass command
+parsing. The finding was answered with that evidence, the thread resolved, the
+probe branch deleted, and the guard step left as written. Worth recording
+because the same reviewer will raise it again on the next consumer that reads
+this lane.
+
+**Verification, enumerated from GitHub rather than restated from the install
+run.** All nine default branches were re-read after merge and every one reports
+the same four facts — `.github/workflows/sd-review.yml` at blob
+`371675e024a8f7a435d61ba1bcfc2e8717ddf538` (identical to this repository's own
+template *and* to `examples/sd-review.yml`), the new pin appearing 3×, exactly
+one `independent-review-floor: ${{ vars.REVIEW_INDEPENDENT_FLOOR }}` wiring, and
+a manifest at `schema=6 tag=v0.6.0 commit=0d298aa6 floor=copilot mode=copilot`.
+
+**Smoke, all nine.** Throwaway pull request, `operation: route`, explicit
+`route: "copilot"`. Every consumer returned the identical receipt shape —
+`route=copilot phase=observed backend=github-copilot status=requested`, check run
+`success`, `pr-agent=skipped`, `finalize=skipped`:
+
+| consumer | run | smoke PR |
+| --- | --- | --- |
+| `sd-github-review` | 32617931614 | #136 |
+| `people-profiles` | 32617581875 | #13 (the canary, merged) |
+| `loadsmith` | 32618207171 | #253 |
+| `hoa-manager` | 32618227499 | #285 |
+| `mezmo_benchmark` | 32618247597 | #525 |
+| `se-ai-command-pack` | 32618266959 | #267 |
+| `anomaly-metric-creator` | 32618287367 | #402 |
+| `rwbp-coordinator` | 32618305304 | #257 |
+| `rwbp-website` | 32618325215 | #265 |
+
+`pr-agent=skipped` on all nine is the standing constraint holding: no provider
+credential reached any consumer, and with the floor at the top of
+`ROUTE_STRENGTH` and the policy refusing explicit `cheap`/`deep`, the paid routes
+stay unreachable. Every smoke pull request was closed unmerged and its branch
+deleted; a sweep of all nine repositories afterwards found no `smoke/`,
+`probe/`, or `chore/sd-review-0.6.0` branch and no open rollout pull request.
+
 ## Phase 6 — close out
 
-- [ ] Tick the acceptance criteria in `prd.md` with the evidence that settled
-      each, not with a restatement of the criterion.
-- [ ] Record the D2 decision and its date in `prd.md`, where the open question
-      currently sits.
-- [ ] Archive the task.
+- [x] Tick the acceptance criteria in `prd.md` with the evidence that settled
+      each, not with a restatement of the criterion. D2's four are ticked with
+      the gate and mutation evidence behind each. D1's four are recorded as
+      **void** and left unticked — the fix they describe was attempted, rejected
+      by `assertSetupContract`, and reverted, so ticking them would claim work
+      that does not exist.
+- [x] Record the D2 decision and its date in `prd.md`, where the open question
+      currently sits. Decided 2026-08-22.
+- [x] Archive the task. Moved to `.trellis/tasks/archive/2026-08/`.
+
+**Carried forward, not closed here.** The D1 residual — whether PR-Agent needs
+`issues: write` to post its conversation comment from the durable lane's
+isolated `pr-agent` job — is unresolved and unresolvable from inside this
+repository. It needs a live credentialed run at `cheap` or `deep`, which
+`docs/RELEASE_CHECKLIST.md` §2 puts behind separate owner approval. That
+approval was not requested and not given, so the external `finalize`,
+adapter-replay, and changed-head reconciliation paths remain unit-covered and
+unexercised. Recorded as a known gap, not folded into a pass.
 
 ## Validation commands
 

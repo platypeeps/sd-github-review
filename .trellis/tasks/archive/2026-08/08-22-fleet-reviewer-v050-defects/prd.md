@@ -83,15 +83,31 @@ operation contract — that is the gate that produces "needing checks:write but
 grants checks:none". It does **not** check them against the descriptor's
 `requiredPermissions`, so this drift had nothing watching it.
 
-### Acceptance criteria
+### Acceptance criteria — VOID, not met and not to be met
 
-- [ ] `requiredPermissions` is the union of what the shipped lanes actually
-      request, derived by enumeration rather than restated by hand.
-- [ ] A gate fails when a lane requests a permission the descriptor omits, and
-      when the descriptor declares one no lane requests.
-- [ ] The gate is proven by mutation: removing `issues: write` from the
-      descriptor must fail it.
-- [ ] Both descriptor copies stay byte-identical.
+These four describe the fix for a defect that does not exist. They are recorded
+unticked on purpose: ticking them would claim work that was attempted, found
+wrong, and reverted. Criteria one through three cannot be satisfied without
+breaking `assertSetupContract`, which is the gate that rejected the attempt.
+The fourth is not this task's to claim. The two copies were byte-identical to
+each other before this task and still are, but the file itself is **not**
+unchanged — it carries a first-party pin, so the release moved it from
+`ea6f34bb…` at `v0.5.0` to `854504…` at `v0.6.0`. What did not change is
+`requiredPermissions`, which is the field D1 was about:
+
+```
+$ shasum -a256 contract/routed-review-setup-v1.json config/routed-review-setup-v1.json
+854504864fb1ef3fdf9137ca63245b31be51795e5b5d4419bd92614bc7b57da1  contract/routed-review-setup-v1.json
+854504864fb1ef3fdf9137ca63245b31be51795e5b5d4419bd92614bc7b57da1  config/routed-review-setup-v1.json
+```
+
+- [ ] ~~`requiredPermissions` is the union of what the shipped lanes actually
+      request, derived by enumeration rather than restated by hand.~~
+- [ ] ~~A gate fails when a lane requests a permission the descriptor omits, and
+      when the descriptor declares one no lane requests.~~
+- [ ] ~~The gate is proven by mutation: removing `issues: write` from the
+      descriptor must fail it.~~
+- [ ] ~~Both descriptor copies stay byte-identical.~~
 
 ## D2 — the review floor is dispatch-overridable, the route policy is not
 
@@ -133,14 +149,54 @@ key, not an empty one, and it is closed by a test rather than by the wiring.
 ### Acceptance criteria
 
 - [x] The question above is decided and recorded. Decided 2026-08-22; see above.
-- [ ] The wiring and the prose agree, whichever way it is decided. Covers the
+
+- [x] The wiring and the prose agree, whichever way it is decided. Covers the
       lane comment and the `action.yml` `route-policy` description, both of
       which currently describe the defect as deliberate.
-- [ ] A test pins that a dispatch input cannot lower the floor — asserting the
+
+      The `action.yml` sentence claiming the neighbouring inputs were
+      "deliberately wired the other way" was the prose the defect had made
+      false; it is rewritten in place, and both bound descriptions now say the
+      same thing about the same asymmetry. The lane comment at
+      `.github/workflows/sd-review.yml:21` is now the negative form — it
+      explains why there is *no* input — rather than describing the input that
+      used to be there. `npm run validate:metadata` passes over the rewritten
+      metadata, including R-008, which is the gate that would have caught a
+      `${{ … }}` expression smuggled into a description while editing it:
+
+      ```
+      Validated action.yml, 3 workflow(s), 7 example(s), and 1148 tracked
+      public path(s), pinned to the current release v0.6.0.
+      ```
+
+- [x] A test pins that a dispatch input cannot lower the floor — asserting the
       lane declares no such input, not merely that the wiring reads from `vars`.
-- [ ] A test pins that the lane still *passes* `independent-review-floor`. An
+
+      `test/metadata.test.js:406` asserts `inputs["independent-review-floor"]`
+      is `undefined` on both durable lanes, and `:463` repeats it for the
+      installed descriptor's workflow. Because the metadata suite loads the
+      example lanes rather than `DURABLE_TEMPLATE_PATH`, it does not on its own
+      cover the blob consumers receive — mutation testing showed both mutations
+      to `examples/sd-review.yml` left metadata green. The gate that does cover
+      it is `test/consumer-installer.test.js:2189`, "no shipped workflow lets a
+      caller supply its own review floor", which enumerates the shipped
+      workflow paths from disk. All three were mutation-verified: reintroducing
+      the input fails them and passes nothing.
+
+- [x] A test pins that the lane still *passes* `independent-review-floor`. An
       absent key reaches the action's `"none"` fallback and silently unfloors
       the lane; this is the one path the variable wiring does not close.
+
+      `test/consumer-installer.test.js:2168`, "every shipped lane that
+      dispatches a review passes a repository review floor", enumerates every
+      shipped workflow, selects the ones carrying a `review-request:` key, and
+      requires each to wire the floor from `vars.REVIEW_INDEPENDENT_FLOOR`. It
+      is a sweep rather than a fixed list, so a lane added later is covered
+      without anyone remembering to add it. Mutation-verified by deleting the
+      `with:` key. `test/metadata.test.js:411` pins the same key on the two
+      example lanes.
+
+Suite at the released commit: `npm test` → `tests 720 / pass 720 / fail 0`.
 
 ## Out of scope
 
