@@ -89,18 +89,8 @@ decision before its install (see Open Decisions).
 - [x] `check` in each of the 9 returns a state other than `absent`/`setup-descriptor-absent`.
       The descriptor is present in all 9, so the `setup-descriptor-absent` probe that opened
       this task cannot fire.
-- [ ] Each of the 9 has one smoke pull request on which the `sd-github-review/receipt` Check
-      Run appears, with the run URL recorded per repository.
-      **Not met.** Queried `/commits/{head}/check-runs` on all nine install pull requests:
-      zero carry a check run matching `receipt`. This is not a naming mismatch —
-      `src/receipt.js:11` fixes the name at `sd-github-review/receipt` and the query was
-      case-insensitive on the substring. The install pull requests could never have produced
-      one: the lane is `workflow_dispatch`-only and the router fires on `issue_comment`, so a
-      receipt appears only when a review is actually dispatched, and none was. Dispatch was
-      additionally impossible at the time, because a `workflow_dispatch` workflow must already
-      be on the default branch to be dispatchable and the lane was still on the pull-request
-      branch. Now that all eight install pull requests are merged, this is unblocked for the
-      first time — it is the only remaining work in this task.
+- [x] Each of the 9 has one smoke pull request on which the `sd-github-review/receipt` Check
+      Run appears, with the run URL recorded per repository. See "Smoke evidence" below.
 - [x] Every installed descriptor pins the same first-party SHA as the current release.
       All 9 pin `61a4492`, which is `v0.5.0`'s pin-advance commit. Read out of each default
       branch's `sd-review.yml`, not inferred from the install run.
@@ -116,12 +106,57 @@ decision before its install (see Open Decisions).
       failed run, not a passing one.
       Every count above is 9, including `sd-github-review` itself.
 
-**Status 2026-08-22: six of seven met; the task stays open on the smoke receipt alone.**
-Installation is complete and consistent across the fleet. What is missing is the proof that
-each installed lane actually *runs* — which is the half of this task that gave it its name, and
-is exactly the failure mode the task was written against: "the routed review lane no-ops without
-erroring; the failure mode is silence." Marking this task done on install evidence alone would
-reproduce that silence at the bookkeeping layer.
+**Status 2026-08-22: all seven met.**
+
+## Smoke evidence
+
+An earlier sweep looked for the receipt on the eight *install* pull requests and found none,
+and briefly recorded criterion 3 as unmet fleet-wide. That sweep was wrong in one repository
+and right in eight. It was wrong about `sd-github-review`, whose receipt sits on pilot pull
+request **#127**, not on #128 — the wrong pull request was queried. It was right about the
+other eight, and for a structural reason: the durable lane is `workflow_dispatch`-only and the
+router fires on `issue_comment`, so a receipt exists only where a review was actually
+dispatched. None had been. Dispatch was impossible at the time regardless, because a
+`workflow_dispatch` workflow must already be on the default branch to be dispatchable, and the
+lane was still sitting on the install branch. Merging the install pull requests unblocked it.
+
+Each of the eight then got a throwaway smoke pull request adding a single file,
+`.github/sd-review-smoke.md`, purely to give the lane a head to write against. Each was
+dispatched `operation: route` with an explicit `route: "copilot"` — explicit rather than
+`auto`, because the lane sets `high-risk-route: deep` and an `auto` selection is free to land
+above the floor on `deep`, which reaches the external PR-Agent adapter. All eight were closed
+without merging and their branches deleted; `.github/sd-review-smoke.md` was confirmed absent
+from all eight default branches afterwards.
+
+| consumer | PR | receipt check run |
+| --- | --- | --- |
+| rwbp-coordinator | #255 | [97132976196](https://github.com/platypeeps/rwbp-coordinator/runs/97132976196) |
+| loadsmith | #251 | [97133150135](https://github.com/platypeeps/loadsmith/runs/97133150135) |
+| hoa-manager | #283 | [97133151305](https://github.com/platypeeps/hoa-manager/runs/97133151305) |
+| rwbp-website | #263 | [97133155459](https://github.com/platypeeps/rwbp-website/runs/97133155459) |
+| mezmo_benchmark | #523 | [97133164230](https://github.com/answerbook/mezmo_benchmark/runs/97133164230) |
+| se-ai-command-pack | #265 | [97133165369](https://github.com/platypeeps/se-ai-command-pack/runs/97133165369) |
+| people-profiles | #11 | [97133172241](https://github.com/platypeeps/people-profiles/runs/97133172241) |
+| anomaly-metric-creator | #400 | [97133173998](https://github.com/platypeeps/anomaly-metric-creator/runs/97133173998) |
+| sd-github-review | #127 | pilot, run 32610929039 |
+
+All nine `success`. The receipt is a real routed-review receipt, not an empty check run — at
+the canary it carries `selectedRoute: "copilot"`, `backend.id: "github-copilot"`,
+`dispatch.status: "requested"`, `dispatch.phase: "observed"`, and reason `explicit copilot
+route selected`. Copilot genuinely reviewed: the timeline shows `review_requested -> Copilot`
+and `copilot-pull-request-reviewer` left a `COMMENTED` review.
+
+**No provider spend.** `pr-agent = skipped` and `finalize = skipped` on all eight dispatches,
+which is the expected `copilot` shape — `adapter-request` is emitted only for
+`backend.kind === "external"`, so the adapter jobs are gated off. No consumer holds a
+`PR_AGENT_MODEL_API_KEY` in any case; none was distributed by this rollout.
+
+**Still not exercised live.** These smokes prove the `copilot` path only. The external
+`finalize` path, adapter replay, and changed-head reconciliation remain unit-covered but never
+run live at this tag, for the same reason recorded in the v0.5.0 pilot evidence: reaching them
+requires routing to an external backend, which requires the provider credential that
+`docs/RELEASE_CHECKLIST.md` §2 puts behind separate approval. Recorded as a known gap, not as a
+pass.
 
 ## Resolved Decisions
 
