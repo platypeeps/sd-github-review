@@ -1451,6 +1451,32 @@ test("a write-all lane is caught even though it never names the issues scope", (
   assert.doesNotThrow(() =>
     assertNoDeadIssuesGrant([["e.yml", { permissions: "none", jobs: { j: {} } }]]),
   );
+});
+
+test("a lane declaring no permissions at all fails closed rather than reading as clean", () => {
+  // Absent is not empty. With no `permissions:` on the workflow or the job,
+  // GitHub applies the repository/organization default GITHUB_TOKEN scopes,
+  // which the lane does not control and which may include issues:write. The
+  // sweep must not report clean on the one lane whose scopes are unknown.
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["f.yml", { jobs: { review: {}, finalize: {} } }]]),
+    /f\.yml: job\(s\) review, finalize declare no permissions/u,
+  );
+
+  // A workflow-level declaration covers jobs that omit their own.
+  assert.doesNotThrow(() =>
+    assertNoDeadIssuesGrant([["g.yml", { permissions: { contents: "read" }, jobs: { j: {} } }]]),
+  );
+
+  // So does a per-job declaration with nothing at the workflow level.
+  assert.doesNotThrow(() =>
+    assertNoDeadIssuesGrant([
+      ["h.yml", { jobs: { j: { permissions: { contents: "read" } } } }],
+    ]),
+  );
+
+  // An explicit empty block is a real declaration of no scopes, unlike absence.
+  assert.doesNotThrow(() => assertNoDeadIssuesGrant([["i.yml", { permissions: {}, jobs: { j: {} } }]]));
 
   // The equality gate must reject a blanket grant outright rather than compare
   // `__all` against a scope the descriptor could never declare.
@@ -1481,6 +1507,25 @@ test("validateMetadata rejects a descriptor whose lane does not exist", async ()
   await assert.rejects(validateMetadata(root), /matched nothing and silently did not run/u);
 });
 
+test("validateMetadata runs the equality gate on the descriptor's own lane", async () => {
+  // The sweep and the path guards are covered below and above, but deleting the
+  // `assertDescriptorLaneGrants` call site would leave every one of those green:
+  // the sweep only rejects the `issues` scope, so drift in any other scope has
+  // no second failure path. This mutates the matched lane in a scope the sweep
+  // does not look at, so only the equality gate can catch it.
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-a023-matched-"));
+  await writeMetadataFixture(root, A010_VALID_PIN);
+  const lanePath = path.join(root, ".github", "workflows", "ci.yml");
+  const clean = await readFile(lanePath, "utf8");
+  const drifted = clean.replace("  contents: read", "  contents: read\n  packages: write");
+  assert.notEqual(drifted, clean);
+  await writeFile(lanePath, drifted, "utf8");
+  await assert.rejects(
+    validateMetadata(root),
+    /packages: lane grants write but the descriptor declares none/u,
+  );
+});
+
 test("validateMetadata sweeps every lane for the dead issues grant, not only the descriptor's", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-a023-sweep-"));
   await writeMetadataFixture(root, A010_VALID_PIN);
@@ -1498,7 +1543,7 @@ test("validateMetadata sweeps every lane for the dead issues grant, not only the
   await writeFile(examplePath, drifted, "utf8");
   await assert.rejects(
     validateMetadata(root),
-    /no shipped lane may grant the issues scope[\s\S]*fixture\.yml: issues:write/u,
+    /none may grant the issues scope[\s\S]*fixture\.yml: issues:write/u,
   );
 });
 

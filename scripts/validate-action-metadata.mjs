@@ -562,9 +562,32 @@ export function assertDescriptorLaneGrants(doc, filePath, requiredPermissions) {
 // Separate from the equality gate above, which only sees the descriptor's lane:
 // this one reaches the router and generic examples, where the dead grant also
 // lived and where the docs told operators to add it.
+// A job with no `permissions:` anywhere above it does not run with an empty
+// token. GitHub falls back to the repository or organization default
+// `GITHUB_TOKEN` permissions, which the lane does not control and which may
+// well include `issues: write`. Reading that as "grants nothing" is the sweep's
+// worst failure mode: it reports clean on precisely the lane whose scopes are
+// unknown. Fail closed instead -- every shipped lane declares permissions at
+// the workflow level today, so this costs nothing until someone omits one.
+function undeclaredPermissionJobs(doc) {
+  if (permissionMap(doc.permissions) !== null) return [];
+  return Object.entries(doc.jobs ?? {})
+    .filter(([, job]) => permissionMap(job?.permissions) === null)
+    .map(([jobName]) => jobName);
+}
+
 export function assertNoDeadIssuesGrant(lanes) {
   const offenders = [];
   for (const [filePath, doc] of lanes) {
+    const undeclared = undeclaredPermissionJobs(doc ?? {});
+    if (undeclared.length) {
+      offenders.push(
+        `${filePath}: job(s) ${undeclared.join(", ")} declare no permissions and neither does ` +
+          "the workflow, so the token falls back to the repository default, which this lane " +
+          "does not control and may include issues:write",
+      );
+      continue;
+    }
     const granted = laneGrantUnion(doc ?? {});
     // Through `grantedLevel`, not `granted.issues`: a `write-all` lane grants
     // the scope without ever naming it.
@@ -578,9 +601,10 @@ export function assertNoDeadIssuesGrant(lanes) {
   }
   if (offenders.length) {
     throw new Error(
-      "no shipped lane may grant the issues scope -- nothing in this action or in PR-Agent " +
-        "needs it, and on a pull request pull-requests:write already covers the /issues/... " +
-        `REST paths:\n  ${offenders.join("\n  ")}`,
+      "every shipped lane must declare its permissions, and none may grant the issues scope " +
+        "-- nothing in this action or in PR-Agent needs it, and on a pull request " +
+        "pull-requests:write already covers the /issues/... REST paths:\n  " +
+        offenders.join("\n  "),
     );
   }
 }
@@ -678,11 +702,18 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
     // A-023: the descriptor names one lane by path; that lane's grants must
     // equal requiredPermissions exactly. Resolved from the descriptor rather
     // than from a list here, so renaming the lane cannot silently skip the gate.
-    if (path.relative(repositoryRoot, workflowPath) === setupConfig.workflow?.path) {
+    // Normalized: `path.relative` uses the host separator, but the descriptor
+    // stores repository-format `/` paths. Comparing them raw would never match
+    // on Windows, and the guard below would then reject every valid checkout
+    // with "matched nothing" -- the gate failing loudly for the wrong reason.
+    const relativeWorkflowPath = normalizeRepositoryPath(
+      path.relative(repositoryRoot, workflowPath),
+    );
+    if (relativeWorkflowPath === setupConfig.workflow?.path) {
       descriptorLaneSeen = true;
       assertDescriptorLaneGrants(
         workflow,
-        path.relative(repositoryRoot, workflowPath),
+        relativeWorkflowPath,
         setupConfig.requiredPermissions,
       );
     }
