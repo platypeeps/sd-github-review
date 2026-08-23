@@ -470,15 +470,6 @@ function grantedLevel(effective, scope) {
   return Math.max(...levels, 0);
 }
 
-// A-010 lower-bound: every job that runs this Action must grant at least the
-// union of its operations' contract permissions. No upper bound here — a job
-// may need scopes for steps that are not this Action. That is the only
-// justification: an extra scope must be traceable to a specific non-Action step
-// that needs it. This comment used to say "comment/side-effect", which is what
-// made a dead `issues: write` look justified for years; see the A-023 note below
-// for how that reasoning failed. The upper bound lives in A-023, not here.
-// Jobs with no step invoking this Action (isolated adapter containers) are out
-// of scope.
 // Every lane's declaration must be readable before any gate reasons about it.
 // This runs first in the production path because `assertJobPermissions` is the
 // first gate to touch permissions, and it reads levels it has not validated:
@@ -495,6 +486,15 @@ export function assertReadablePermissions(doc, filePath) {
   }
 }
 
+// A-010 lower-bound: every job that runs this Action must grant at least the
+// union of its operations' contract permissions. No upper bound here — a job
+// may need scopes for steps that are not this Action. That is the only
+// justification: an extra scope must be traceable to a specific non-Action step
+// that needs it. This comment used to say "comment/side-effect", which is what
+// made a dead `issues: write` look justified for years; see the A-023 note below
+// for how that reasoning failed. The upper bound lives in A-023, not here.
+// Jobs with no step invoking this Action (isolated adapter containers) are out
+// of scope.
 function assertJobPermissions(doc, filePath, actionOwnerRepo, supportedOperations) {
   const workflowLevel = permissionMap(doc.permissions);
   for (const [jobName, job] of Object.entries(doc.jobs ?? {})) {
