@@ -471,9 +471,14 @@ function grantedLevel(effective, scope) {
 }
 
 // A-010 lower-bound: every job that runs this Action must grant at least the
-// union of its operations' contract permissions. No upper bound — jobs hold
-// extra permissions for comment/side-effect and non-Action steps. Jobs with no
-// step invoking this Action (isolated adapter containers) are out of scope.
+// union of its operations' contract permissions. No upper bound here — a job
+// may need scopes for steps that are not this Action. That is the only
+// justification: an extra scope must be traceable to a specific non-Action step
+// that needs it. This comment used to say "comment/side-effect", which is what
+// made a dead `issues: write` look justified for years; see the A-023 note below
+// for how that reasoning failed. The upper bound lives in A-023, not here.
+// Jobs with no step invoking this Action (isolated adapter containers) are out
+// of scope.
 function assertJobPermissions(doc, filePath, actionOwnerRepo, supportedOperations) {
   const workflowLevel = permissionMap(doc.permissions);
   for (const [jobName, job] of Object.entries(doc.jobs ?? {})) {
@@ -707,6 +712,23 @@ const GITHUB_PERMISSION_LEVELS = new Map([
 ]);
 const GITHUB_PERMISSION_SCOPES = new Set(GITHUB_PERMISSION_LEVELS.keys());
 
+// Never interpolate an unvalidated level into the message directly. The value
+// comes from untrusted YAML, and `${level}` on a mapping calls its `toString`:
+// `{ issues: { toString: null } }` parses fine, satisfies the non-string branch,
+// and then throws `Cannot convert object to primitive value` -- a raw TypeError
+// instead of the file-and-scope diagnostic this gate exists to produce. A gate
+// that crashes while reporting a malformed lane has still failed to report it.
+function describeLevel(level) {
+  if (typeof level === "string") return `"${level}"`;
+  try {
+    const serialized = JSON.stringify(level);
+    return serialized === undefined ? Object.prototype.toString.call(level) : serialized;
+  } catch {
+    // Circular, or a throwing getter/`toJSON`. The type is still worth naming.
+    return Object.prototype.toString.call(level);
+  }
+}
+
 function invalidPermissionDeclaration(doc) {
   // Establish that each job *is* a mapping before reading `permissions` off it.
   // `job?.permissions` yields `undefined` for a string or a list, which every
@@ -786,7 +808,7 @@ function invalidPermissionDeclaration(doc) {
       const allowed = GITHUB_PERMISSION_LEVELS.get(scope);
       if (typeof level !== "string" || !allowed.includes(level)) {
         return (
-          `${where} sets ${scope} to "${level}", which GitHub does not accept -- ` +
+          `${where} sets ${scope} to ${describeLevel(level)}, which GitHub does not accept -- ` +
           `${scope} must be ${allowed.join(", ")}`
         );
       }

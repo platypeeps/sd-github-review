@@ -8,8 +8,8 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 
-- **The shipped lanes no longer grant `issues: write`.** Every lane granted it —
-  eight occurrences across `examples/sd-review.yml`,
+- **The PR-Agent workflow copies no longer grant `issues: write`.** Every lane
+  that granted it was one of these — eight occurrences across `examples/sd-review.yml`,
   `examples/pr-agent-router.yml`,
   `examples/pr-agent-on-demand-review-router.yml`,
   `.github/workflows/sd-review.yml`, and

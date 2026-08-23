@@ -1515,7 +1515,7 @@ test("a permissions map entry GitHub does not accept is rejected, not dropped", 
       assertNoDeadIssuesGrant([
         ["p.yml", { jobs: { j: { permissions: { contents: true } } } }],
       ]),
-    /p\.yml: job "j" sets contents to "true"/u,
+    /p\.yml: job "j" sets contents to true,/u,
   );
 
   // A list is neither a scalar nor a map, and must not read as empty either.
@@ -1761,7 +1761,7 @@ test("a workflow-level issues grant is caught even when every job overrides it",
 
 test("a workflow-level grant every job overrides is caught for scopes the sweep never looks at", () => {
   // The sweep's dedicated workflow-level check covers `issues` only. Every other
-  // scope depends on the descriptor equality gate, which read the job union and
+  // scope depends on the descriptor equality gate, which reads the job union and
   // so was blind to the same shape: a top-level grant no current job inherits,
   // but that any job added later would.
   const overridden = {
@@ -1797,6 +1797,34 @@ test("a workflow-level grant every job overrides is caught for scopes the sweep 
       { contents: "read", "pull-requests": "write" },
     ),
   );
+});
+
+test("a mapping-valued level is reported, not crashed on", () => {
+  // The message used to interpolate the raw level. `${level}` on a mapping calls
+  // its `toString`, so `{ issues: { toString: null } }` -- valid YAML, and it
+  // reaches the non-string branch correctly -- threw `Cannot convert object to
+  // primitive value` instead of naming the file and scope. A gate that crashes
+  // while reporting a malformed lane has still failed to report it.
+  const circular = {};
+  circular.self = circular;
+  const hostile = [
+    [{ toString: null }, /sets issues to \{"toString":null\}/u],
+    [["none"], /sets issues to \["none"\]/u],
+    [42, /sets issues to 42,/u],
+    [circular, /sets issues to \[object Object\]/u],
+    [{ toJSON() { throw new Error("boom"); } }, /sets issues to \[object Object\]/u],
+  ];
+  for (const [level, expected] of hostile) {
+    let thrown;
+    try {
+      assertNoDeadIssuesGrant([["u.yml", { permissions: { issues: level }, jobs: { j: {} } }]]);
+    } catch (error) {
+      thrown = error;
+    }
+    assert.ok(thrown, "a non-string level must be rejected");
+    assert.ok(!(thrown instanceof TypeError), `a level of ${typeof level} must not crash the gate`);
+    assert.match(thrown.message, expected);
+  }
 });
 
 test("a job that is not a mapping is rejected, not read as inheritance", () => {
@@ -1960,10 +1988,12 @@ test("validateMetadata sweeps every lane for the dead issues grant, not only the
 });
 
 test("the shipped descriptor declares the lane the permission gate anchors on", async () => {
-  // The gate above is scoped to a declared-but-unmatched path so synthetic
-  // fixtures may omit `workflow.path`. That tolerance is only safe while the
-  // real descriptor declares one -- otherwise the gate would silently not run
-  // in production, which is exactly the failure the guard exists to prevent.
+  // `validateMetadata` rejects a descriptor with no `workflow.path`, and rejects
+  // one whose path matches no lane on disk -- both proven above. Those guards
+  // only help if the shipped descriptor actually names an existing lane, so
+  // this asserts the production side: a gate anchored on a path nobody declares
+  // would silently not run, which is exactly the failure the guards exist to
+  // prevent.
   const root = path.resolve(import.meta.dirname, "..");
   const descriptor = JSON.parse(
     await readFile(path.join(root, "contract", "routed-review-setup-v1.json"), "utf8"),
