@@ -70,6 +70,23 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **`action.yml` failed to load, for every consumer at once.** The
+  `route-policy` input's description explained the required wiring with a
+  delimited `vars.REVIEW_ROUTE_MODE` expression. GitHub evaluates `${{ }}` in
+  `action.yml` when it *loads* the action, including inside `description`
+  prose — and an action definition cannot reference `vars`, which is a workflow
+  context. Every dispatch failed at "Set up job" with `Unrecognized named-value:
+  'vars'`, before any of `src/` ran. The description now spells the expression
+  body without its delimiters and says why. A new metadata gate rejects
+  expression delimiters anywhere in `action.yml` outside `runs:`, which is the
+  only place a (composite) action may legitimately carry one.
+
+  This was invisible to every check that ran before the release's pin-advance
+  step, because the self-hosted `route` lane exercises the action *at its pin* —
+  the previous release, whose `action.yml` predates the input. Advancing pins
+  before tagging is what surfaced it; the reverse order would have tagged and
+  shipped it.
+
 - **A consumer whose managed files were advanced by a release, but whose
   manifest stayed behind, was wedged with no supported recovery.** The
   modification guard compared a managed file only against the hash the manifest

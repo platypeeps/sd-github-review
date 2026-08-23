@@ -91,8 +91,13 @@ inputs:
       so the floor and risk rules still choose the automatic route. Empty means
       no policy is recorded and every route is permitted.
 
-      Wire this from the repository variable only -- `${{ vars.REVIEW_ROUTE_MODE
-      }}` -- and never from a workflow_dispatch input. The policy exists to
+      Wire this from the repository variable only -- an expression whose body is
+      `vars.REVIEW_ROUTE_MODE` -- and never from a workflow_dispatch input. The
+      body is spelled without its surrounding expression delimiters on purpose:
+      GitHub evaluates expressions inside action.yml descriptions when it loads
+      the action, `vars` is not a context an action definition may reference, and
+      a delimited example here makes the action fail to load for every consumer.
+      See the shipped lanes for the delimited form. The policy exists to
       bound what a dispatching caller may ask for, so letting that caller supply
       it hands them their own bound and silently disables enforcement. The
       neighbouring policy inputs on the shipped lane are deliberately wired the
