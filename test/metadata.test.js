@@ -1447,9 +1447,37 @@ test("a write-all lane is caught even though it never names the issues scope", (
     /d\.yml: read-all, which covers issues:read/u,
   );
 
-  // "none" is a string too, and grants nothing -- it must not be swept up.
+  // `permissions: {}` is the blanket "no scopes" form, and grants nothing.
   assert.doesNotThrow(() =>
-    assertNoDeadIssuesGrant([["e.yml", { permissions: "none", jobs: { j: {} } }]]),
+    assertNoDeadIssuesGrant([["e.yml", { permissions: {}, jobs: { j: {} } }]]),
+  );
+});
+
+test("a permissions scalar GitHub does not accept is rejected, not read as empty", () => {
+  // `permissions: none` looks like it means "no scopes" and is not valid
+  // workflow syntax -- `read-all`, `write-all`, or a map are the only forms.
+  // `permissionMap` maps every unrecognized scalar to an empty grant, which is
+  // the same fail-open shape as an absent declaration: a lane nobody can read
+  // is reported as granting nothing.
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["j.yml", { permissions: "none", jobs: { j: {} } }]]),
+    /j\.yml: the workflow sets permissions to the scalar "none", which GitHub does not accept/u,
+  );
+
+  // Also on a job, where the workflow-level declaration would otherwise cover.
+  assert.throws(
+    () =>
+      assertNoDeadIssuesGrant([
+        ["k.yml", { permissions: { contents: "read" }, jobs: { j: { permissions: "all" } } }],
+      ]),
+    /k\.yml: job "j" sets permissions to the scalar "all"/u,
+  );
+
+  // The two valid scalars are still read as scalars, not rejected as malformed:
+  // read-all grants issues:read, so it fails for the right reason.
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["l.yml", { permissions: "read-all", jobs: { j: {} } }]]),
+    /l\.yml: read-all, which covers issues:read/u,
   );
 });
 

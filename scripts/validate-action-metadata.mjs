@@ -576,9 +576,36 @@ function undeclaredPermissionJobs(doc) {
     .map(([jobName]) => jobName);
 }
 
+// The only scalars GitHub accepts. `permissionMap` maps every other string to
+// an empty grant, which is the same fail-open shape as the absent case above:
+// a lane whose declaration cannot be understood is reported as granting
+// nothing. Nobody knows what such a lane's token holds, so it must not pass.
+const PERMISSION_SCALARS = new Set(["read-all", "write-all"]);
+
+function invalidPermissionScalar(doc) {
+  const declarations = [
+    ["the workflow", doc.permissions],
+    ...Object.entries(doc.jobs ?? {}).map(([name, job]) => [`job "${name}"`, job?.permissions]),
+  ];
+  for (const [where, value] of declarations) {
+    if (typeof value === "string" && !PERMISSION_SCALARS.has(value)) {
+      return `${where} sets permissions to the scalar "${value}"`;
+    }
+  }
+  return null;
+}
+
 export function assertNoDeadIssuesGrant(lanes) {
   const offenders = [];
   for (const [filePath, doc] of lanes) {
+    const invalid = invalidPermissionScalar(doc ?? {});
+    if (invalid !== null) {
+      offenders.push(
+        `${filePath}: ${invalid}, which GitHub does not accept -- the valid forms are ` +
+          "read-all, write-all, or a map of scopes, with {} meaning none",
+      );
+      continue;
+    }
     const undeclared = undeclaredPermissionJobs(doc ?? {});
     if (undeclared.length) {
       offenders.push(
