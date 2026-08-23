@@ -1799,6 +1799,38 @@ test("a workflow-level grant every job overrides is caught for scopes the sweep 
   );
 });
 
+test("the equality gate refuses a lane whose jobs never declared permissions", () => {
+  // Unreadable and unwritten are separate holes. `invalidPermissionDeclaration`
+  // treats an absent block as inheritance by design, so a lane with no
+  // workflow-level permissions where one job declares every required scope and
+  // another declares nothing produces a union matching the descriptor exactly --
+  // while the second job runs on the repository default token, whose scopes the
+  // lane neither controls nor can enumerate.
+  const doc = {
+    jobs: {
+      review: { permissions: { contents: "read", "pull-requests": "write" } },
+      stray: {},
+    },
+  };
+  // Non-vacuity: the union really does match, so nothing but the undeclared
+  // check can reject this lane.
+  assert.deepEqual({ ...laneGrantUnion(doc) }, { contents: "read", "pull-requests": "write" });
+  assert.throws(
+    () => assertDescriptorLaneGrants(doc, "u.yml", { contents: "read", "pull-requests": "write" }),
+    /u\.yml leaves job "stray" with no permissions declaration/u,
+  );
+
+  // A job inheriting a workflow-level block is declared, not undeclared -- the
+  // check must not reject the shape every shipped lane uses.
+  assert.doesNotThrow(() =>
+    assertDescriptorLaneGrants(
+      { permissions: { contents: "read", "pull-requests": "write" }, jobs: { j: {} } },
+      "u.yml",
+      { contents: "read", "pull-requests": "write" },
+    ),
+  );
+});
+
 test("a lane declaring no permissions at all fails closed rather than reading as clean", () => {
   // Absent is not empty. With no `permissions:` on the workflow or the job,
   // GitHub applies the repository/organization default GITHUB_TOKEN scopes,

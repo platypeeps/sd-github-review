@@ -1271,9 +1271,9 @@ Removed the dead issues: write grant from all five shipped lanes, added the A-02
 
 ### Testing
 
-- [OK] npm run check:full - 740 tests, 740 pass, 0 fail
+- [OK] npm run check:full - 741 tests, 741 pass, 0 fail
 - [OK] npm run validate:metadata - action.yml, 3 workflows, 7 examples, 1154 tracked paths
-- [OK] every gate mutation-proven; M21-M24 this session, each failing its test alone
+- [OK] every gate mutation-proven; M21-M28 this session, each failing its test alone
 
 ### Status
 

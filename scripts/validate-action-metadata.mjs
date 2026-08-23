@@ -573,6 +573,21 @@ export function assertDescriptorLaneGrants(doc, filePath, requiredPermissions) {
         `compared against the descriptor: ${malformed}`,
     );
   }
+  // Unreadable and *unwritten* are separate holes, and the check above only
+  // closes the first. `invalidPermissionDeclaration` treats `undefined` as
+  // inheritance by design, so a lane with no workflow-level block where one job
+  // declares every required scope and another declares nothing produces a union
+  // that matches the descriptor exactly -- while the second job silently runs on
+  // the repository default token, whose scopes this lane does not control and
+  // cannot enumerate. An equality gate cannot compare what was never declared.
+  const undeclared = undeclaredPermissionJobs(doc);
+  if (undeclared.length > 0) {
+    throw new Error(
+      `${filePath} leaves ${undeclared.map((name) => `job "${name}"`).join(", ")} with no ` +
+        "permissions declaration, so those jobs run on the repository default token and the " +
+        "lane's true grants cannot be compared against the descriptor",
+    );
+  }
   const granted = laneDeclaredGrants(doc);
   const declared = requiredPermissions ?? {};
   const offenders = [];
