@@ -4,6 +4,66 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.6.1 - 2026-08-23
+
+### Security
+
+- **The shipped lanes no longer grant `issues: write`.** Every lane granted it —
+  eight occurrences across `examples/sd-review.yml`,
+  `examples/pr-agent-router.yml`,
+  `examples/pr-agent-on-demand-review-router.yml`,
+  `.github/workflows/sd-review.yml`, and
+  `.github/workflows/ai-review-router.yml` — and nothing needed it. In the router
+  lane the grant reached the third-party PR-Agent container, handing a pinned but
+  third-party image write access over every issue in the repository for no
+  functional reason. `SETUP-PR-AGENT.md` instructed consumers to grant it, so
+  every repository that followed the documented setup is over-granted until it
+  takes this release.
+
+  The belief rested on a mismatch between GitHub's REST *layout* and its
+  permission scopes. On a pull request, conversation comments, labels, reactions,
+  comment edits, and issue events are all `/repos/{owner}/{repo}/issues/{n}/…`
+  paths — because GitHub models pull requests as issues in the REST layout — but
+  they are governed by `pull-requests: write`, not by the `issues` scope. Reading
+  the path was never going to settle it. Probing it did: runs 32623601322 and
+  32623799937 exercised every one of those endpoints from jobs holding exactly
+  `contents: read` + `pull-requests: write`, and the resulting comment was
+  confirmed present on the pull request rather than silently dropped.
+
+  Two gates now keep the grant from drifting back. `assertDescriptorLaneGrants`
+  compares the setup descriptor's own lane's job-permission union against
+  `requiredPermissions` for set equality, fails in **both** directions, and names
+  which side drifted; `assertNoDeadIssuesGrant` sweeps every lane enumerated from
+  disk and refuses the `issues` scope outright. Both were proven by mutation
+  before being believed, not first observed passing.
+
+### Corrected
+
+- **`0.6.0` recorded the fleet reviewer's "the setup descriptor under-declares
+  `issues: write`" finding as a false positive. That was wrong.** The finding was
+  *directionally inverted*, not false. The reviewer saw a real asymmetry between
+  what the lanes grant and what the descriptor declares, and named the wrong side
+  of it: the descriptor was correct and the lanes over-granted. `0.6.0` also left
+  "which lane is right" open pending a credentialed PR-Agent run. That framing
+  was itself the mistake — the question was never what PR-Agent does, it was what
+  a token holding `contents: read` + `pull-requests: write` may reach, which is
+  answerable by probe with no container, no provider key, and no spend.
+
+### Upgrade notes
+
+Removing a permission is a narrowing change and there is no variable to set
+first, so an old lane with the new pin and a new lane with the old pin both work.
+Run the installer `update` as usual; it rewrites the lane blob and advances the
+pin.
+
+The fleet is installed `REVIEW_ROUTE_MODE=copilot` with
+`REVIEW_INDEPENDENT_FLOOR=copilot`, which makes `cheap` and `deep` unreachable,
+so the `pr-agent` job does not execute there and this change is inert for the
+fleet as configured. **It stops being inert the moment a consumer moves off
+`copilot`.** The permission boundary itself is settled by probe; what a
+credentialed run additionally confirms is PR-Agent's own end-to-end publishing
+behaviour under the reduced grant.
+
 ## 0.6.0 - 2026-08-22
 
 ### Security
@@ -104,6 +164,9 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   shares a job that has it. Settling which is right needs a live credentialed
   PR-Agent run, which `docs/RELEASE_CHECKLIST.md` §2 puts behind separate
   approval.
+
+  **Superseded by `0.6.1`.** This entry is left as written for the record; both
+  of its conclusions were wrong. See `0.6.1` → Corrected.
 
 ## 0.5.0 - 2026-08-22
 

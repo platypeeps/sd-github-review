@@ -480,7 +480,7 @@ function assertJobPermissions(doc, filePath, actionOwnerRepo, supportedOperation
   }
 }
 
-// A-020 upper bound: the descriptor's own lane must grant *exactly* what
+// A-023 upper bound: the descriptor's own lane must grant *exactly* what
 // `requiredPermissions` declares -- no more, no less.
 //
 // `assertJobPermissions` above is deliberately a lower bound, and its comment
@@ -539,7 +539,7 @@ export function assertDescriptorLaneGrants(doc, filePath, requiredPermissions) {
   }
 }
 
-// A-020 companion sweep. Enumerated from `laneDocuments()` so a lane added later
+// A-023 companion sweep. Enumerated from `laneDocuments()` so a lane added later
 // is covered without an edit here -- the same shape as the review-floor sweeps.
 // Separate from the equality gate above, which only sees the descriptor's lane:
 // this one reaches the router and generic examples, where the dead grant also
@@ -649,7 +649,7 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
     assertObject(workflow.jobs, workflowPath, "jobs");
     validateUsesReferences(workflow, workflowPath, {});
     assertJobPermissions(workflow, workflowPath, descriptor.actionOwnerRepo, supportedOperations);
-    // A-020: the descriptor names one lane by path; that lane's grants must
+    // A-023: the descriptor names one lane by path; that lane's grants must
     // equal requiredPermissions exactly. Resolved from the descriptor rather
     // than from a list here, so renaming the lane cannot silently skip the gate.
     if (path.relative(repositoryRoot, workflowPath) === setupConfig.workflow?.path) {

@@ -1357,7 +1357,7 @@ test("action.yml defaults agree with the runtime defaults they mirror", async ()
   );
 });
 
-// A-020. The integration path in validateMetadata cannot exercise the
+// A-023. The integration path in validateMetadata cannot exercise the
 // descriptor side of this gate: assertSetupContract runs first and pins
 // requiredPermissions to the operation-contract union, so any descriptor
 // mutation fails there before this gate is reached. That shadowing is fine --
