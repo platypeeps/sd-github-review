@@ -149,10 +149,16 @@ node scripts/install-consumer.mjs uninstall [options]
   `openrouter/moonshotai/kimi-k2.6` for `deep`. An update with omitted
   provider/model options retains the active manifest's recorded configuration;
   changing source defaults never silently migrates an existing consumer.
-- GitHub resources are `PR_AGENT_MODEL_PROVIDER`, `CHEAP_REVIEW_MODEL`,
-  `DEEP_REVIEW_MODEL`, `SD_REVIEW_CHEAP_BACKEND_V1`, `SD_REVIEW_DEEP_BACKEND_V1`,
-  `PR_AGENT_MODEL_API_KEY`, and the router's five review labels. Matching
-  pre-existing resources are unowned and preserved.
+- The managed GitHub resources are every name in `MANAGED_VARIABLE_NAMES`
+  (exported from `scripts/consumer-installer/codecs.mjs` as the frozen key set
+  of `CONFIG_VARIABLES`), plus `PR_AGENT_MODEL_API_KEY` and the router's five
+  review labels. Read the exported set rather than restating it here: this list
+  previously omitted `REVIEW_ROUTE_MODE` for an entire release. Note also that
+  `Object.keys(variableValues(config))` is *not* the same answer —
+  `variableValuesForSchema` drops names the given configuration leaves unset, so
+  a default configuration reports `REVIEW_ROUTE_MODE` as unmanaged when it is
+  merely unpopulated. Matching pre-existing resources are unowned and
+  preserved.
 - `CONFIG_VARIABLES` carries two kinds of entry, and both stay in that one
   table because `install`, `update`, `check` drift, and `uninstall` all read
   from it — a parallel list beside it drifts from it silently:
@@ -204,6 +210,32 @@ node scripts/install-consumer.mjs uninstall [options]
   `cheap`, `deep`, `copilot`, `none` — which is the same set the installed
   lane's own gate enforces. The two are bound by a test that extracts the lane's
   `case` pattern rather than restating the list, so neither side can drift alone.
+  A second test binds `ROUTE_MODES` to the action's own `ROUTES` by importing
+  both, because the durable lane now enforces the variable too: a mode the
+  installer writes but the action rejects would be refused on every dispatch
+  against that consumer.
+- **The durable lane enforces the variable as a maximum.** `examples/sd-review.yml`
+  passes it to the `route` operation as `route-policy`, and `selectProtocolRoute`
+  refuses an explicit request outside it before routing and before any receipt is
+  written. Three rules make this composable rather than contradictory, and each
+  has a test that fails when it is inverted:
+  - It bounds the **requested** route, never the resolved one. `auto` is always
+    permitted. `independent-review-floor` is a *minimum* applied to the resolved
+    automatic route; the policy is a *maximum* applied to the declared one.
+    Applying both to the same value makes them mutually unsatisfiable — a
+    `cheap`-mode consumer carrying the shipped `copilot` floor would refuse its
+    own default review.
+  - Membership, never `ROUTE_STRENGTH`. That ordering ranks assurance, not cost:
+    `deep` is the expensive route and `copilot` the strongest, so "anything
+    weaker than the policy" would permit paid `deep` under a `copilot` policy.
+  - It is wired **straight to `${{ vars.REVIEW_ROUTE_MODE }}`**, never through a
+    `workflow_dispatch` input, unlike every neighbouring policy line in that
+    file. The caller it constrains is a `workflow_dispatch` caller; an input
+    would let them supply their own policy. A test asserts the wiring, because
+    nothing else in the suite reads that file's `with:` block.
+  An absent or empty policy permits every route, so a consumer below schema 4 is
+  unaffected. An unrecognized value fails the dispatch: a typo must not silently
+  disable enforcement.
 - A fresh install **requires** `--route-mode`; there is no default. The lane
   refuses to guess a route because `auto` can select `cheap` or `deep` and bill
   `PR_AGENT_MODEL_API_KEY` on a route nobody chose, and an installer that

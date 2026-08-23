@@ -6,7 +6,7 @@ import {
   decodeReviewRequest,
   stableProtocolJson,
 } from "./protocol.js";
-import { ReceiptStore } from "./receipt.js";
+import { DEFAULT_STRANDED_RECEIPT_MINUTES, DURABLE_STATES, ReceiptStore } from "./receipt.js";
 import { selectProtocolRoute } from "./router.js";
 import { buildRiskContext } from "./risk-context.js";
 import { requestCopilotReviewer } from "./reviewer-dispatch.js";
@@ -184,7 +184,7 @@ function resultOutputs({ operation, result, adapter = "", changedLines = 0, sens
     "receipt-id": receipt?.receiptId ?? "",
     "logical-dispatch-id": receipt?.logicalDispatchId ?? "",
     "request-fingerprint": receipt?.requestFingerprint ?? "",
-    "durable-state": result.state,
+    "durable-state": durableState(result.state),
     "dispatch-status": verifiedReceipt?.dispatch.status ?? "",
     "dispatch-phase": verifiedReceipt?.dispatch.phase ?? "",
     "dispatch-allowed": String(result.dispatchAllowed === true),
@@ -203,6 +203,19 @@ function resultOutputs({ operation, result, adapter = "", changedLines = 0, sens
       : "",
     "adapter-request": adapter,
   };
+}
+
+// Enforces DURABLE_STATES on the way out, which is what keeps that set honest
+// rather than a list someone has to remember to update. Every routing test
+// passes through here.
+function durableState(state) {
+  if (!DURABLE_STATES.has(state)) {
+    throw new Error(
+      `durable-state "${state}" is not a declared durable state; add it to DURABLE_STATES `
+        + "and to the durable-state description in action.yml",
+    );
+  }
+  return state;
 }
 
 async function emitDurableResult(
@@ -343,6 +356,12 @@ function createStore({ client, now, receiptStoreFactory, env }) {
         bookkeepingPatterns: parseList(
           input("bookkeeping-paths", ".trellis/**,.obsidian-kb/**", env),
         ),
+        strandedAfterMinutes: integerInput(
+          "stranded-receipt-minutes",
+          DEFAULT_STRANDED_RECEIPT_MINUTES,
+          { minimum: 1 },
+          env,
+        ),
       });
 }
 
@@ -390,6 +409,11 @@ async function routeOperation({ request, client, store, env, now }) {
         input("independent-review-floor", "none", env),
         "independent-review-floor",
       ),
+      // Raw on purpose: the default is "" (no recorded policy), and
+      // normalizeMode would reject that on every dispatch from a consumer
+      // below manifest schema 4. decodeRoutingInputs maps "" to "no policy"
+      // and validates every other value.
+      routePolicy: input("route-policy", "", env),
       localConfidenceThreshold: integerInput(
         "local-confidence-threshold",
         80,
@@ -556,8 +580,44 @@ export async function runDurableAction({
     : normalizedOperation === "finalize"
       ? await finalizeOperation(context)
       : await queryOperation(context);
-  return emitDurableResult(
+  const emitted = await emitDurableResult(
     { operation: normalizedOperation, ...details },
     { outputWriter, summaryWriter, logger },
   );
+
+  // The gate lives here rather than in the shipped lanes for two reasons. The
+  // canonical durable workflow is required to contain no `run:` step at all
+  // (it holds checks:write), so it has nowhere to put a shell gate; and a gate
+  // written into YAML is one a consumer can quietly drop while still believing
+  // the lane is enforcing it. Emitting first means the outputs and the job
+  // summary are already written when the step goes red.
+  //
+  // Only `route` fails. A `query` exists to report the durable state and must
+  // stay usable for exactly that, and `finalize` failing here would mask the
+  // reconciliation it was invoked to record.
+  // A concurrent begin that lost the election is exempt. Its evidence names the
+  // authoritative check run, which means another dispatch is reviewing this
+  // exact head right now -- failing the loser would put a red mark on a pull
+  // request that is in fact being reviewed, which is the false alarm that gets
+  // a gate switched off. Everything else reaching here means no review is
+  // happening at this head and nothing else will say so.
+  const handledElsewhere = Number.isInteger(emitted.reconciliation?.authoritativeCheckId);
+  if (
+    normalizedOperation === "route"
+    && emitted.reconciliationRequired === true
+    && !handledElsewhere
+    && booleanInput("fail-on-reconciliation", true, env)
+  ) {
+    const receipt = emitted.receipt;
+    throw new Error(
+      "this exact head has a durable receipt that needs reconciliation, so no review was dispatched.\n"
+        + `  durable-state:       ${emitted.state}\n`
+        + `  receipt-id:          ${receipt?.receiptId ?? "(none)"}\n`
+        + `  logical-dispatch-id: ${receipt?.logicalDispatchId ?? "(none)"}\n`
+        + `  dispatch-phase:      ${receipt?.dispatch?.phase ?? "(none)"}\n`
+        + (emitted.error ? `  detail:              ${String(emitted.error).slice(0, 512)}\n` : "")
+        + "Set fail-on-reconciliation: false to report this on the outputs without failing the job.",
+    );
+  }
+  return emitted;
 }

@@ -8,6 +8,7 @@ import { promisify } from "node:util";
 import { parseDocument } from "yaml";
 import {
   assertPinFreshness,
+  assertPinnedInputsDeclared,
   parseReleaseTag,
   prohibitedPublishedMetadataReason,
   validateMetadata,
@@ -45,6 +46,7 @@ function contractActionYaml() {
   ].join("\n");
 }
 import { SUPPORTED_PROVIDERS } from "../scripts/consumer-installer.mjs";
+import { DEFAULT_STRANDED_RECEIPT_MINUTES, DURABLE_STATES } from "../src/receipt.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -773,6 +775,11 @@ const freshnessGit = (tags, commits, overrides = {}) => ({
   resolveTagCommit: async (_root, tag) => commits[tag],
   isAncestor: async () => true,
   resolvePathObject: async (_root, commit, targetPath) => `${commit}:${targetPath}`,
+  // These fixture roots are bare temp directories, not git repositories, so the
+  // real tracked-document scan would fail on the repository probe rather than
+  // on prose staleness. Empty by default; the prose tests below override it.
+  listDocuments: async () => [],
+  isCommit: async () => false,
   ...overrides,
 });
 
@@ -809,6 +816,131 @@ test("assertPinFreshness rejects a pin left on an older release", async () => {
     }),
     /actionReference is stale — pinned to a{40}, but the current release v0\.2\.0 is b{40}/u,
   );
+});
+
+// Carries a third-party step with its own `with:` block on purpose. Only the
+// first-party action's inputs are checkable against this repository's
+// action.yml; `fetch-depth` belongs to actions/checkout and must never be
+// reported. Without this step in the fixture, deleting the first-party filter
+// entirely still passed every test.
+const laneWith = (inputs) => `name: lane
+on:
+  workflow_dispatch:
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c
+        with:
+          fetch-depth: 0
+      - uses: platypeeps/sd-github-review@${"a".repeat(40)}
+        with:
+${inputs.map((key) => `          ${key}: value`).join("\n")}
+`;
+
+test("assertPinnedInputsDeclared rejects a lane input the pinned action never declared", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-inputs-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c");
+  await writeFile(
+    path.join(root, "examples", "durable.yml"),
+    laneWith(["operation", "route-policy"]),
+    "utf8",
+  );
+
+  // assertFirstPartyConsistency proves the lanes agree on a SHA and
+  // assertPinFreshness proves that SHA carries the release's action code.
+  // Neither reads the `with:` block, so a lane could pass route-policy to a
+  // release that declares no such input and every check stayed green — which is
+  // how a documented route policy became silently inert across four lanes.
+  await assert.rejects(
+    assertPinnedInputsDeclared({
+      repositoryRoot: root,
+      gitImpl: { readPinnedAction: async () => "inputs:\n  operation:\n    description: op\n" },
+    }),
+    /examples\/durable\.yml: route-policy/u,
+  );
+
+  await assert.rejects(
+    assertPinnedInputsDeclared({
+      repositoryRoot: root,
+      gitImpl: { readPinnedAction: async () => "inputs:\n  operation:\n    description: op\n" },
+    }),
+    (error) => !/fetch-depth/u.test(error.message),
+    "a third-party step's inputs are not this action's to declare",
+  );
+});
+
+test("assertPinnedInputsDeclared accepts a lane whose inputs the pinned action declares", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-inputs-ok-"));
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c");
+  await writeFile(
+    path.join(root, "examples", "durable.yml"),
+    laneWith(["operation", "route-policy"]),
+    "utf8",
+  );
+
+  const result = await assertPinnedInputsDeclared({
+    repositoryRoot: root,
+    gitImpl: {
+      readPinnedAction: async () =>
+        "inputs:\n  operation:\n    description: op\n  route-policy:\n    description: policy\n",
+    },
+  });
+  assert.equal(result.declaredCount, 2);
+});
+
+test("assertPinFreshness rejects a Markdown SHA left behind by a pin advance", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-prose-"));
+  const current = "b".repeat(40);
+  const previous = "a".repeat(40);
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: current,
+  });
+  await writeFile(
+    path.join(root, "SETUP.md"),
+    `Pinned to the current release commit,\n\`${previous}\`. Keep that exact pin.\n`,
+    "utf8",
+  );
+
+  // assertFirstPartyConsistency reads `uses:` out of parsed YAML and is blind to
+  // a SHA written into a sentence. Four published documents tell a consumer to
+  // keep an exact pin and then print one, and nothing advanced them with the
+  // YAML pins.
+  await assert.rejects(
+    assertPinFreshness({
+      repositoryRoot: root,
+      gitImpl: freshnessGit(["v0.1.0", "v0.2.0"], { "v0.1.0": previous, "v0.2.0": current }, {
+        listDocuments: async () => ["SETUP.md"],
+        isCommit: async (_root, sha) => sha === previous,
+      }),
+    }),
+    /SETUP\.md:2: a{40}/u,
+  );
+});
+
+test("assertPinFreshness ignores Markdown hex that is not a commit of this repository", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-fixture-hex-"));
+  const current = "b".repeat(40);
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: current,
+  });
+  await writeFile(
+    path.join(root, "DESIGN.md"),
+    `"headSha": "${"0".repeat(39)}1", "scopeDigest": "${"a".repeat(40)}"\n`,
+    "utf8",
+  );
+
+  // The protocol examples in DESIGN.md are 40 hex characters and always will be.
+  // Discriminating on the pattern instead of on `git rev-parse` would reject
+  // every fixture digest in the repository.
+  const result = await assertPinFreshness({
+    repositoryRoot: root,
+    gitImpl: freshnessGit(["v0.2.0"], { "v0.2.0": current }, {
+      listDocuments: async () => ["DESIGN.md"],
+      isCommit: async () => false,
+    }),
+  });
+  assert.equal(result.actionSha, current);
 });
 
 test("assertPinFreshness orders releases by semver precedence, not lexically", async () => {
@@ -948,6 +1080,55 @@ test("assertPinFreshness accepts a pin ahead of the tag while it is an ancestor 
   assert.equal(result.releaseTag, "v0.2.0");
 });
 
+test("assertPinFreshness compares a pre-tag pin against HEAD, not the previous release", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-pretag-"));
+  const candidate = "c".repeat(40);
+  const previousRelease = "b".repeat(40);
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: candidate,
+  });
+
+  // R-006. This is the pin-advance pull request: pins point at the candidate,
+  // the new tag does not exist yet, and the candidate's action code differs
+  // from the last release because that is what the release changes. Comparing
+  // against the previous tag here deadlocked every release that touches src/ --
+  // the one commit the procedure requires could never go green. 0.4.1 shipped
+  // only because it was action-code neutral, which made the comparison vacuous.
+  const result = await assertPinFreshness({
+    repositoryRoot: root,
+    gitImpl: freshnessGit(["v0.1.0", "v0.2.0"], { "v0.1.0": "a".repeat(40), "v0.2.0": previousRelease }, {
+      // Descendant of the release, contained in HEAD: the pre-tag window.
+      isAncestor: async (_root, _ancestor, descendant) => descendant === "HEAD",
+      // The candidate and HEAD agree; the previous release differs.
+      resolvePathObject: async (_root, commit, targetPath) =>
+        commit === previousRelease ? `old:${targetPath}` : `candidate:${targetPath}`,
+    }),
+  });
+  assert.equal(result.actionSha, candidate);
+});
+
+test("assertPinFreshness still rejects a pre-tag pin whose action code differs from HEAD", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-pretag-bad-"));
+  const strayPin = "c".repeat(40);
+  await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
+    descriptorSha: strayPin,
+  });
+
+  // Moving the comparison to HEAD must not make the window permissive: a pin
+  // reachable from HEAD but carrying different action code is exactly what the
+  // gate exists to refuse, and consumers would run code the release never ships.
+  await assert.rejects(
+    assertPinFreshness({
+      repositoryRoot: root,
+      gitImpl: freshnessGit(["v0.2.0"], { "v0.2.0": "b".repeat(40) }, {
+        isAncestor: async (_root, _ancestor, descendant) => descendant === "HEAD",
+        resolvePathObject: async (_root, commit, targetPath) => `${commit}:${targetPath}`,
+      }),
+    }),
+    /actionReference is stale — pinned to c{40}, but the candidate at HEAD and src differs/u,
+  );
+});
+
 test("assertPinFreshness rejects a pin that is on neither the release nor HEAD", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-orphan-"));
   await writeMetadataFixture(root, "actions/checkout@de0fac2e4500dabe0009e67214ff5f544fe5000c", {
@@ -1073,4 +1254,37 @@ test("assertPinFreshness rejects a tag that resolves to noncanonical commit evid
       `expected noncanonical rejection for ${JSON.stringify(noncanonical)}`,
     );
   }
+});
+
+// action.yml declares a default and the runtime declares another; they are two
+// literals in two files and nothing made them agree. The action.yml value is
+// what a consumer's lane actually sends, so a divergence means the documented
+// default and the effective one differ silently -- and for
+// stranded-receipt-minutes that is the difference between finding a stranded
+// receipt and never finding one. Derived from the runtime constants rather than
+// restated, so changing a default in one place fails here rather than drifting.
+test("action.yml defaults agree with the runtime defaults they mirror", async () => {
+  const root = path.resolve(import.meta.dirname, "..");
+  const action = parseDocument(await readFile(path.join(root, "action.yml"), "utf8")).toJS();
+
+  assert.equal(
+    action.inputs["stranded-receipt-minutes"].default,
+    String(DEFAULT_STRANDED_RECEIPT_MINUTES),
+    "the declared window must match the constant the store falls back to",
+  );
+  // The gate defaults on: a consumer that sets nothing must still be told when
+  // a receipt needs a human.
+  assert.equal(action.inputs["fail-on-reconciliation"].default, "true");
+
+  // The durable-state description enumerates the states a consumer may switch
+  // on. A hand-maintained prose list drifts -- this one already omitted
+  // "observed" -- so it is checked against the set the runtime enforces rather
+  // than read and trusted.
+  const described = action.outputs["durable-state"].description;
+  const missing = [...DURABLE_STATES].filter((state) => !described.includes(state));
+  assert.deepEqual(
+    missing,
+    [],
+    "these states can appear on durable-state but the output description never names them",
+  );
 });

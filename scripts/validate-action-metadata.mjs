@@ -224,6 +224,33 @@ function collectFirstPartyPins(document, filePath, actionOwnerRepo, pins) {
   }
 }
 
+// R-007: a shipped lane must not name a release tag.
+//
+// Nine lanes carried a `# v0.3.0` comment on the line above a `uses:` pin that
+// was v0.4.0's commit. Neither existing check could see it:
+// assertFirstPartyConsistency reads `uses:` *values* and never comment nodes,
+// and assertProseCommitReferences filters to Markdown. So the label drifted for
+// a full release cycle in the exact files consumers copy.
+//
+// The rule is the one these files already state: the SHA is the installation
+// reference and the tag is only for discovery. A lane naming a tag is therefore
+// always either redundant or wrong, and checking for absence needs no knowledge
+// of which tag would have been correct — which is what makes it drift-proof.
+function assertNoReleaseTagLabels(source, filePath) {
+  const named = [];
+  for (const [index, line] of source.split("\n").entries()) {
+    for (const [, tag] of line.matchAll(/\b(v[0-9]+\.[0-9]+\.[0-9]+)\b/gu)) {
+      named.push(`${filePath}:${index + 1}: ${tag}`);
+    }
+  }
+  if (named.length) {
+    throw new Error(
+      `shipped lane names a release tag; pin references must name only the SHA:\n  ${named.join("\n  ")}\n` +
+        "the tag is for discovery, the SHA is the installation reference",
+    );
+  }
+}
+
 async function readSetupDescriptor(repositoryRoot) {
   const descriptorPath = path.join(repositoryRoot, setupDescriptorPath);
   let descriptor;
@@ -490,7 +517,9 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
 
   for (const name of workflowNames) {
     const workflowPath = path.join(workflowDirectory, name);
-    const workflow = parseYaml(await readFile(workflowPath, "utf8"), workflowPath);
+    const workflowSource = await readFile(workflowPath, "utf8");
+    assertNoReleaseTagLabels(workflowSource, path.relative(repositoryRoot, workflowPath));
+    const workflow = parseYaml(workflowSource, workflowPath);
     assertObject(workflow, workflowPath, "document");
     assertObject(workflow.on, workflowPath, "on");
     assertObject(workflow.jobs, workflowPath, "jobs");
@@ -505,7 +534,9 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
     .sort();
   for (const name of exampleNames) {
     const examplePath = path.join(examplesDirectory, name);
-    const example = parseYaml(await readFile(examplePath, "utf8"), examplePath);
+    const exampleSource = await readFile(examplePath, "utf8");
+    assertNoReleaseTagLabels(exampleSource, path.relative(repositoryRoot, examplePath));
+    const example = parseYaml(exampleSource, examplePath);
     assertObject(example, examplePath, "document");
     assertObject(example.on, examplePath, "on");
     assertObject(example.jobs, examplePath, "jobs");
@@ -665,13 +696,15 @@ export async function assertPinFreshness({
   // pull request, whose CI runs before the new tag exists, or widen the window
   // enough to re-admit the stale pin they were meant to reject.
   if (actionSha !== latestCommit) {
+    // Which commit's action code the pin must reproduce. Post-tag that is the
+    // release; pre-tag it is HEAD. See the pre-tag branch below for why.
+    let referenceCommit = latestCommit;
+    let referenceLabel = `current release ${latest} is ${latestCommit}`;
     if (!(await isAncestor(repositoryRoot, actionSha, latestCommit))) {
       // The pre-tag window. On the pull request that advances the pins, the new
       // pin is newer than the last release and the new tag does not exist yet,
       // so the pin is a descendant of the current release rather than an
-      // ancestor. Accept it only while it is on the history being validated. The
-      // action-code comparison below still runs, so a descendant pin that
-      // changes behaviour is still refused.
+      // ancestor. Accept it only while it is on the history being validated.
       if (!(await isAncestor(repositoryRoot, actionSha, "HEAD"))) {
         throw new Error(
           `${descriptorPath}: actionReference ${actionSha} is not contained in the current ` +
@@ -679,20 +712,131 @@ export async function assertPinFreshness({
             "advance every first-party pin together",
         );
       }
+      // R-006: compare against HEAD, not the previous tag.
+      //
+      // This loop used to run against latestCommit in both windows, which
+      // deadlocked every release that changes action code — that is, every
+      // release except a pins-only one. The pin-advance pull request must move
+      // the pin to the candidate, and the candidate's `src` differs from the
+      // last release by construction, so the comparison could not succeed and
+      // CI could never go green on the one commit the release procedure
+      // requires. 0.4.1 shipped only because it was action-code neutral, which
+      // made this loop vacuous; 0.5.0 is not, and reproduced the deadlock.
+      //
+      // Reordering does not help: tagging the candidate first re-creates the
+      // v0.3.0/v0.4.0 lag that 0.4.1 exists to close.
+      //
+      // In this window the tree under validation *is* the release, so HEAD is
+      // the correct authority for "the code this release ships". The property
+      // the gate defends — consumers run the action code the release ships — is
+      // unchanged, and a descendant pin whose action code differs from the
+      // candidate still fails. The post-tag path is untouched, so a pin left on
+      // an older release still fails against the tag.
+      referenceCommit = "HEAD";
+      referenceLabel = "candidate at HEAD";
     }
     for (const targetPath of ACTION_CODE_PATHS) {
       const pinnedObject = await resolvePathObject(repositoryRoot, actionSha, targetPath);
-      const releasedObject = await resolvePathObject(repositoryRoot, latestCommit, targetPath);
+      const releasedObject = await resolvePathObject(repositoryRoot, referenceCommit, targetPath);
       if (pinnedObject !== releasedObject) {
         throw new Error(
           `${descriptorPath}: actionReference is stale — pinned to ${actionSha}, but the ` +
-            `current release ${latest} is ${latestCommit} and ${targetPath} differs ` +
+            `${referenceLabel} and ${targetPath} differs ` +
             `(${pinnedObject} vs ${releasedObject}); advance every first-party pin together`,
         );
       }
     }
   }
+  await assertProseCommitReferences({
+    repositoryRoot,
+    actionSha,
+    listDocuments: gitImpl?.listDocuments ?? defaultListDocuments,
+    isCommit: gitImpl?.isCommit ?? defaultIsCommit,
+  });
   return { releaseTag: latest, releaseCommit: latestCommit, actionSha };
+}
+
+// R-004: prose pins. assertFirstPartyConsistency reads `uses:` lines out of
+// parsed YAML, so it is blind to the same SHA written into a Markdown sentence
+// — and four published documents tell a consumer to "keep that exact pin"
+// followed by a literal 40-character SHA. Nothing advanced those with the
+// YAML pins, and nothing failed when they were left behind.
+//
+// The discriminator is `git cat-file -e <sha>^{commit}`, not a regex. This
+// repository's docs legitimately contain 40-hex tokens that are not commits:
+// DESIGN.md's protocol examples use `0000...0001` as a headSha and `aaaa...`
+// as a scope digest. Those resolve to no object and are correctly ignored,
+// while any real commit reference is either the current pin or stale by
+// construction. A pattern narrow enough to skip the fixtures would have to
+// guess at prose, and would drift the moment a doc reworded its sentence.
+//
+// `.trellis/` is excluded on purpose: archived task records are a historical
+// account of what was true at the time, not instructions to a consumer.
+// CHANGELOG.md is deliberately NOT excluded, even though it is also historical:
+// a changelog is where upgrade instructions live, so a full SHA printed there
+// is exactly as consumer-facing as one in a setup guide. Cite an old commit in
+// the abbreviated form — that is the conventional notation for a historical
+// reference, and the full 40-character form is the notation for a pin.
+async function assertProseCommitReferences({
+  repositoryRoot,
+  actionSha,
+  listDocuments,
+  isCommit,
+}) {
+  const documents = await listDocuments(repositoryRoot);
+  const stale = [];
+  for (const filePath of documents) {
+    const source = await readFile(path.join(repositoryRoot, filePath), "utf8");
+    const lines = source.split("\n");
+    for (const [index, line] of lines.entries()) {
+      for (const [sha] of line.matchAll(/\b[0-9a-f]{40}\b/gu)) {
+        if (sha === actionSha) continue;
+        if (!(await isCommit(repositoryRoot, sha))) continue;
+        stale.push(`${filePath}:${index + 1}: ${sha}`);
+      }
+    }
+  }
+  if (stale.length) {
+    throw new Error(
+      `prose commit reference is stale — the first-party pin is ${actionSha}, but ` +
+        `${stale.length} Markdown reference(s) name a different commit of this ` +
+        `repository:\n  ${stale.join("\n  ")}\n` +
+        "advance prose SHAs with the YAML pins, in the same commit",
+    );
+  }
+}
+
+// The published Markdown set. A seam rather than a direct call because the
+// twenty-odd assertPinFreshness fixtures write into bare temp directories that
+// are not git repositories at all; `git ls-files` there fails on the repository
+// probe rather than on anything this gate is about. Production reads the real
+// tracked set, so a document cannot escape the gate by being unlisted.
+async function defaultListDocuments(repositoryRoot) {
+  return (await trackedRepositoryPaths(repositoryRoot)).filter(
+    (filePath) => filePath.endsWith(".md") && !filePath.startsWith(".trellis/"),
+  );
+}
+
+// True only for a SHA that names a commit object in this repository.
+//
+// `rev-parse --verify --quiet` rather than `cat-file -e`: peeling an absent
+// object with `^{commit}` makes cat-file exit 128 with `fatal: Not a valid
+// object name`, which is indistinguishable from a genuinely broken repository.
+// `--quiet` is the documented "answer false instead of failing" form — it exits
+// 1 with no output — so a nonzero exit other than 1, or git missing entirely,
+// still propagates rather than reporting a clean document set.
+async function defaultIsCommit(repositoryRoot, sha) {
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["-C", repositoryRoot, "rev-parse", "--verify", "--quiet", `${sha}^{commit}`],
+      { encoding: "utf8" },
+    );
+    return stdout.trim().length === 40;
+  } catch (error) {
+    if (error?.code === 1) return false;
+    throw error;
+  }
 }
 
 // Opt-in release-hygiene gate for the operator at release time. It layers a
@@ -732,6 +876,94 @@ export async function validateReleaseConsistency({
   return { ...base, releaseTag, releaseChecked: true };
 }
 
+// R-005: a lane may only pass inputs the action *at its pin* declares.
+//
+// assertFirstPartyConsistency proves every lane agrees on one SHA, and
+// assertPinFreshness proves that SHA carries the release's action code. Neither
+// looks at the `with:` block, so a lane can pass an input the pinned action has
+// never heard of and every check stays green. That is not hypothetical: four
+// lanes wired `route-policy`, `stranded-receipt-minutes`, and
+// `fail-on-reconciliation` while pinned to a release declaring none of the
+// three, which made a documented route policy silently inert.
+//
+// Deliberately release-time only, called from the CLI's --release-tag branch
+// rather than from validateMetadata. During development the pin legitimately
+// lags: the lanes reference the action being built while still pinned to the
+// last release, and that window is exactly what the pin-advance-before-tag
+// ordering exists to close. Failing CI throughout development would make the
+// gate something to disable rather than something to satisfy. At the moment a
+// release is cut the pin has advanced, and then the check must hold.
+export async function assertPinnedInputsDeclared({
+  repositoryRoot = process.cwd(),
+  gitImpl,
+} = {}) {
+  const readPinnedAction = gitImpl?.readPinnedAction ?? defaultReadPinnedAction;
+  const { actionOwnerRepo, actionSha } = await readSetupDescriptor(repositoryRoot);
+
+  const pinnedAction = parseYaml(
+    await readPinnedAction(repositoryRoot, actionSha),
+    `${actionSha}:action.yml`,
+  );
+  const declared = new Set(Object.keys(pinnedAction?.inputs ?? {}));
+
+  const undeclared = [];
+  for (const [filePath, document] of await laneDocuments(repositoryRoot)) {
+    for (const job of Object.values(document?.jobs ?? {})) {
+      for (const step of job?.steps ?? []) {
+        if (typeof step?.uses !== "string") continue;
+        if (!referencesThisAction(step.uses, actionOwnerRepo)) continue;
+        for (const key of Object.keys(step.with ?? {})) {
+          if (!declared.has(key)) undeclared.push(`${filePath}: ${key}`);
+        }
+      }
+    }
+  }
+  if (undeclared.length) {
+    throw new Error(
+      `lane passes an input the pinned action does not declare — ${actionSha} declares ` +
+        `${declared.size} input(s), and these are not among them:\n  ${undeclared.join("\n  ")}\n` +
+        "advance every first-party pin to the release that declares them",
+    );
+  }
+  return { actionSha, declaredCount: declared.size };
+}
+
+// Every shipped lane, parsed once: the tracked workflows plus the examples.
+// Enumerated from the filesystem rather than listed, so a lane added later
+// reaches this gate without an edit here.
+async function laneDocuments(repositoryRoot) {
+  const documents = [];
+  for (const directory of [
+    path.join(repositoryRoot, ".github", "workflows"),
+    path.join(repositoryRoot, "examples"),
+  ]) {
+    let names;
+    try {
+      names = await readdir(directory);
+    } catch {
+      continue;
+    }
+    for (const name of names.sort()) {
+      if (!name.endsWith(".yml") && !name.endsWith(".yaml")) continue;
+      const filePath = path.join(directory, name);
+      documents.push([
+        path.relative(repositoryRoot, filePath),
+        parseYaml(await readFile(filePath, "utf8"), filePath),
+      ]);
+    }
+  }
+  return documents;
+}
+
+async function defaultReadPinnedAction(repositoryRoot, sha) {
+  const { stdout } = await execFileAsync(
+    "git",
+    ["-C", repositoryRoot, "show", `${sha}:action.yml`],
+    { encoding: "utf8", maxBuffer: 10 * 1024 * 1024 },
+  );
+  return stdout;
+}
+
 export function parseReleaseTag(argv, env) {
   const flagIndex = argv.indexOf("--release-tag");
   if (flagIndex !== -1) {
@@ -755,10 +987,12 @@ export function parseReleaseTag(argv, env) {
 async function runCli() {
   const releaseTag = parseReleaseTag(process.argv.slice(2), process.env);
   return releaseTag
-    ? validateReleaseConsistency({ releaseTag }).then((result) => {
+    ? validateReleaseConsistency({ releaseTag }).then(async (result) => {
+        const { declaredCount } = await assertPinnedInputsDeclared();
         console.log(
           `Validated release ${result.releaseTag}: action.yml, ${result.workflowCount} workflow(s), ` +
-            `${result.exampleCount} example(s), and ${result.trackedPathCount} tracked public path(s).`,
+            `${result.exampleCount} example(s), ${result.trackedPathCount} tracked public path(s), ` +
+            `and every lane input against the pinned action's ${declaredCount} declared input(s).`,
         );
       })
     : validateMetadata().then(async ({ workflowCount, exampleCount, trackedPathCount }) => {

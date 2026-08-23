@@ -52,10 +52,53 @@ inputs:
     default: |-
       .trellis/**
       .obsidian-kb/**
+  fail-on-reconciliation:
+    description: >-
+      Fail the route step when the exact head already carries a durable receipt
+      that needs reconciliation. Default true: such a receipt means no review
+      was dispatched, and reporting that only on an output leaves a green job
+      and a silently unreviewed pull request. The canonical durable workflow may
+      contain no run: step, so this cannot be gated in the lane itself. Set
+      false to report it on the outputs and in the job summary without failing.
+      Applies to route only -- query exists to report durable state, and
+      finalize would mask the reconciliation it was called to record.
+    required: false
+    default: "true"
+  stranded-receipt-minutes:
+    description: >-
+      How long a receipt may sit at dispatch phase "started" before it is
+      reported as stranded rather than in flight. A receipt is advanced out of
+      "started" by the job that dispatched it, so the safe value is that job's
+      maximum lifetime: past it, no job can still be running to finalize the
+      receipt and the pull request can never be reviewed again at that head.
+      The default 360 is GitHub's own job ceiling, which is what bounds a lane
+      declaring no timeout-minutes, and it therefore cannot report a false
+      strand. Lower it to match an explicit timeout-minutes to find stranded
+      receipts sooner; set it below the real review latency and healthy
+      in-flight reviews will be reported as stranded.
+    required: false
+    default: "360"
   independent-review-floor:
     description: "Minimum durable automatic route: none, cheap, deep, or copilot."
     required: false
     default: none
+  route-policy:
+    description: >-
+      Maximum route a caller may explicitly request: auto, cheap, deep, copilot,
+      or none. This is the repository's recorded REVIEW_ROUTE_MODE and is the
+      opposite bound from independent-review-floor, which sets the minimum. An
+      explicit request outside the policy is refused; auto is always permitted,
+      so the floor and risk rules still choose the automatic route. Empty means
+      no policy is recorded and every route is permitted.
+
+      Wire this from the repository variable only -- `${{ vars.REVIEW_ROUTE_MODE
+      }}` -- and never from a workflow_dispatch input. The policy exists to
+      bound what a dispatching caller may ask for, so letting that caller supply
+      it hands them their own bound and silently disables enforcement. The
+      neighbouring policy inputs on the shipped lane are deliberately wired the
+      other way, which is what makes a consistency-minded edit here dangerous.
+    required: false
+    default: ""
   local-confidence-threshold:
     description: "Minimum 0-100 exact-head local confidence allowed to reduce an automatic route."
     required: false
@@ -158,7 +201,12 @@ outputs:
   request-fingerprint:
     description: Canonical request intent fingerprint.
   durable-state:
-    description: Durable operation result state, including not-found or reconciliation-required.
+    description: >-
+      Durable operation result state: started, in-flight, acknowledged, observed,
+      skipped, failed, existing, not-found, or reconciliation-required. in-flight
+      means a dispatch could still be running; reconciliation-required means it
+      needs a human, and route fails on it unless fail-on-reconciliation is
+      false.
   dispatch-status:
     description: Durable receipt dispatch status.
   dispatch-phase:

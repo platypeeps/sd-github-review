@@ -98,7 +98,19 @@ test("canonical identity and request intent change only their owned digests", ()
   const base = requestByName.get("explicit cheap");
   const differentRoute = { ...clone(base), route: "deep" };
   const differentHead = { ...clone(base), headSha: "9999999999999999999999999999999999999999" };
-  const differentAttempt = { ...clone(base), attempt: 2 };
+  // A valid attempt-2 request must declare what it retries, so this carries a
+  // rerequestOf. rerequestOf is excluded from neither digest, but the property
+  // under test is that `attempt` alone moves both, and the prior-attempt fields
+  // here are constant against `base` by construction.
+  const differentAttempt = {
+    ...clone(base),
+    attempt: 2,
+    rerequestOf: {
+      priorReceiptId: "a".repeat(64),
+      priorLogicalDispatchId: deriveLogicalDispatchId(base),
+      priorAttempt: 1,
+    },
+  };
   const differentPolicy = { ...clone(base), policyReference: "stricter-policy" };
 
   assert.equal(deriveLogicalDispatchId(differentRoute), deriveLogicalDispatchId(base));
@@ -655,4 +667,197 @@ test("successor evidence must match a declared prior receipt and exact current h
     }),
     /currentHeadSha must match/u,
   );
+});
+
+// Route policy: the repository's recorded REVIEW_ROUTE_MODE as a *maximum* on
+// what a caller may explicitly request. The floor is the minimum; these are
+// opposite bounds and are deliberately evaluated against different things --
+// the floor against the resolved route, the policy against the requested one.
+function requestRouted(route) {
+  const base = clone(requestByName.get("explicit cheap"));
+  base.route = route;
+  return base;
+}
+
+test("route policy permits an explicit route that equals the recorded mode", () => {
+  for (const mode of ["cheap", "deep", "copilot", "none"]) {
+    const decision = selectProtocolRoute({
+      request: requestRouted(mode),
+      policy: { routePolicy: mode },
+    });
+    assert.equal(decision.route, mode, `policy ${mode} must permit an explicit ${mode}`);
+  }
+});
+
+test("route policy refuses an explicit route the repository did not declare", () => {
+  assert.throws(
+    () => selectProtocolRoute({
+      request: requestRouted("cheap"),
+      policy: { routePolicy: "copilot" },
+    }),
+    /route "cheap" is not permitted by this repository's review policy/u,
+  );
+});
+
+test("the refusal names the variable, its value, and the permitted route", () => {
+  try {
+    selectProtocolRoute({
+      request: requestRouted("deep"),
+      policy: { routePolicy: "copilot" },
+    });
+    assert.fail("expected the policy refusal to throw");
+  } catch (error) {
+    assert.match(error.message, /REVIEW_ROUTE_MODE = copilot/u);
+    // `auto` must be named. It is always permitted, so a message listing only
+    // the policy value tells the operator that fewer routes are open than
+    // really are.
+    assert.match(error.message, /permitted: auto, copilot/u);
+    assert.match(error.message, /--remote auto/u);
+    assert.match(error.message, /--remote copilot/u);
+  }
+});
+
+test("a none policy advises the automatic route rather than requesting no review", () => {
+  // Under `none` the old text's only suggestion was `--remote none` -- asking
+  // for no review, which is never what an operator who just requested one
+  // wants. `auto` is the actionable answer and was not mentioned at all.
+  try {
+    selectProtocolRoute({
+      request: requestRouted("copilot"),
+      policy: { routePolicy: "none" },
+    });
+    assert.fail("expected the policy refusal to throw");
+  } catch (error) {
+    assert.match(error.message, /permitted: auto, none/u);
+    assert.match(error.message, /--remote auto/u);
+    assert.doesNotMatch(error.message, /--remote none/u);
+  }
+});
+
+// `none` looks like it can never be worse than what the policy allows -- asking
+// for no review spends nothing. It is worse: under a copilot policy it evades
+// the independent review the consumer declared it wanted.
+test("route policy refuses an explicit none under a stricter policy", () => {
+  assert.throws(
+    () => selectProtocolRoute({
+      request: requestRouted("none"),
+      policy: { routePolicy: "copilot" },
+    }),
+    /route "none" is not permitted/u,
+  );
+});
+
+// The falsification for the load-bearing decision. Enforcing the policy against
+// the *resolved* route instead of the requested one passes every other test in
+// this file and breaks exactly this case: the consumer's own copilot floor
+// raises an automatic request above its own cheap policy, and the repository
+// refuses its own default review. This is the shape every fleet consumer has.
+test("an automatic request survives a policy its own floor outranks", () => {
+  const decision = selectProtocolRoute({
+    request: requestByName.get("automatic with exact-head local evidence"),
+    routingContext: { sensitiveFiles: ["src/security.js"], highRiskRoute: "deep" },
+    policy: { routePolicy: "cheap", independentReviewFloor: "copilot" },
+  });
+  assert.equal(decision.route, "copilot");
+  assert.equal(decision.floorApplied, "copilot");
+});
+
+test("auto is permitted under every recorded policy", () => {
+  for (const mode of ["auto", "cheap", "deep", "copilot", "none"]) {
+    const decision = selectProtocolRoute({
+      request: requestByName.get("automatic with exact-head local evidence"),
+      policy: { routePolicy: mode },
+    });
+    assert.ok(decision.route, `policy ${mode} must still route an automatic request`);
+  }
+});
+
+test("policy auto permits every explicit route", () => {
+  for (const mode of ["cheap", "deep", "copilot", "none"]) {
+    const decision = selectProtocolRoute({
+      request: requestRouted(mode),
+      policy: { routePolicy: "auto" },
+    });
+    assert.equal(decision.route, mode);
+  }
+});
+
+// A consumer below manifest schema 4 records no route mode, and an unset
+// GitHub variable expands to "". Both mean "no policy", not "deny everything".
+test("an absent or empty route policy permits every explicit route", () => {
+  for (const policy of [{}, { routePolicy: "" }, { routePolicy: undefined }]) {
+    for (const mode of ["cheap", "deep", "copilot", "none"]) {
+      const decision = selectProtocolRoute({ request: requestRouted(mode), policy });
+      assert.equal(decision.route, mode);
+    }
+  }
+});
+
+// An invalid value is not an absent one. A typo must fail the dispatch rather
+// than silently disabling enforcement on that consumer.
+test("an unrecognized route policy fails the dispatch", () => {
+  assert.throws(
+    () => selectProtocolRoute({
+      request: requestRouted("cheap"),
+      policy: { routePolicy: "copilto" },
+    }),
+    /policy\.routePolicy must be one of: auto, cheap, deep, copilot, none/u,
+  );
+});
+
+// Operators set REVIEW_ROUTE_MODE by hand in the GitHub UI. A value that looks
+// blank must behave like an unset one, and a value with stray padding must
+// still work, rather than failing every dispatch on that consumer.
+test("a whitespace-only route policy reads as no policy", () => {
+  const decision = selectProtocolRoute({
+    request: requestRouted("cheap"),
+    policy: { routePolicy: "   " },
+  });
+  assert.equal(decision.route, "cheap");
+});
+
+test("a padded route policy is honored rather than rejected", () => {
+  const decision = selectProtocolRoute({
+    request: requestRouted("copilot"),
+    policy: { routePolicy: "  copilot  " },
+  });
+  assert.equal(decision.route, "copilot");
+  assert.throws(
+    () => selectProtocolRoute({
+      request: requestRouted("cheap"),
+      policy: { routePolicy: "  copilot  " },
+    }),
+    /route "cheap" is not permitted/u,
+  );
+});
+
+test("a non-string route policy is refused as a string error", () => {
+  assert.throws(
+    () => selectProtocolRoute({
+      request: requestRouted("cheap"),
+      policy: { routePolicy: 3 },
+    }),
+    /policy\.routePolicy must be a string/u,
+  );
+});
+
+// A bare attempt bump used to be an authorization bypass: ReceiptStore's
+// #validateRerequest returns immediately when rerequestOf is absent, so
+// rerequest-authorized, prior-receipt identity, supportsRerequest, the policy
+// version check and the route/backend match were all skipped -- and because
+// attempt is part of the logical identity, the bump minted a fresh dispatch
+// instead of colliding with the stored receipt. review-request is a free-text
+// workflow_dispatch input, so this was reachable by anyone who could dispatch.
+test("a same-head retry must declare what it retries", () => {
+  const base = requestByName.get("explicit cheap");
+  assert.throws(
+    () => decodeReviewRequest({ ...clone(base), attempt: 2 }),
+    /request\.attempt above 1 requires request\.rerequestOf identifying the prior attempt/u,
+  );
+  assert.throws(
+    () => decodeReviewRequest({ ...clone(base), attempt: 7 }),
+    /request\.attempt above 1 requires request\.rerequestOf/u,
+  );
+  // attempt 1 is the ordinary first dispatch and must stay unencumbered.
+  assert.doesNotThrow(() => decodeReviewRequest({ ...clone(base), attempt: 1 }));
 });

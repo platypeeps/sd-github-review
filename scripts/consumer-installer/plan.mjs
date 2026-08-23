@@ -57,6 +57,17 @@ export function assertWorkflowCanBeManaged(command, local, templateSource) {
     // workflow unconditionally, so a pending workflow-hash mismatch is expected
     // interrupted state, not operator drift, and must resume rather than throw.
     local.manifest.state !== "pending" &&
+    // A-016: bytes equal to what the installer would write next are not
+    // operator drift — there is nothing to preserve, because the very next
+    // write reproduces them. Comparing against the recorded hash alone wedged
+    // any consumer whose managed files were advanced by a prior release while
+    // its manifest stayed behind: `update` refused, `uninstall` refused, and
+    // `adopt` refuses whenever a manifest exists, leaving hand-editing the
+    // manifest as the only recovery. sd-github-review itself reached that
+    // state. The no-manifest branch above and the `recorded === null`
+    // migration branch below already adopt identical bytes for exactly this
+    // reason; this is the third case, not a new rule.
+    local.workflow !== templateSource &&
     sha256(local.workflow) !== local.manifest.workflow.sha256
   ) {
     throw new Error(
@@ -107,6 +118,9 @@ export function assertDurableResourcesCanBeManaged(local, sources) {
       // Same A-013 reasoning as the workflow: a pending manifest is interrupted
       // state to resume, not operator drift to refuse.
       local.manifest.state !== "pending" &&
+      // Same A-016 reasoning as the workflow: content the installer is about to
+      // write is not drift to preserve.
+      content !== source &&
       sha256(content) !== recorded.sha256
     ) {
       throw new Error(

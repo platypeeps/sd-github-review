@@ -81,18 +81,71 @@ provisioning works; this one changes what is allowed on top of it.
 - `--route-mode auto` must keep permitting every route, since that is what it
   means.
 
-## Open questions
+## Open questions — all resolved
+
+Answered by the user on 2026-08-22 after `research/evidence.md`. Rationale for
+each is in `design.md`; recorded here so this section is not read as open.
 
 - **Where does the constraint live — the lane, the action, or the pack?**
-  The lane can gate before dispatch; the action can refuse in
-  `selectProtocolRoute`; the pack can refuse to send. Each has a different blast
-  radius, and only the action's applies to dispatches the pack did not make.
-- **Is a forbidden route an error or a downgrade?** Refusing is honest; silently
-  lowering to the permitted mode is friendlier and matches how the review floor
-  already behaves in the other direction. These are materially different
-  contracts and the choice belongs to the user, not to the implementer.
-- **Does this need a schema bump?** Probably not — schema 4 already records the
-  field. Confirm rather than assume.
+  → **The action only.** A new `route-policy` input on the `route` operation,
+  enforced in `selectProtocolRoute`. It is the only layer covering dispatches
+  the pack did not make. No pack release, no descriptor change.
+- **Is a forbidden route an error or a downgrade?** → **Refuse**, naming the
+  variable, its value, and the permitted routes.
+- **Does this need a schema bump?** → **No.** Confirmed: schema 4 already
+  records `routeMode` and nothing new is stored. A consumer at schema < 4
+  records no policy, and an absent policy permits everything — stated
+  deliberately, per the requirement above, with `check` already reporting the
+  migration that would give them one.
+
+One question the design surfaced that this PRD did not ask: **does the policy
+constrain the requested route or the resolved one?** → **the requested route.**
+Constraining the resolved route would let a consumer's own `independent-review-floor`
+raise an `auto` dispatch above its own policy and refuse it, breaking every
+default review on that consumer. See `design.md`.
+
+## Scope expansion — 2026-08-22, approved by the user
+
+Verifying the route-policy change against the fleet uncovered defects that
+each block the same rollout this task exists to unblock. The user approved
+widening rather than deferring: *"do what needs to be done to make the rollout
+great. We can wait a little longer."* Recorded here so the artifacts match the
+branch.
+
+Every item below was found by checking the original change's blast radius, not
+by broadening the search:
+
+- **A same-head retry could skip the whole rerequest authorization chain.**
+  `attempt: 2` with no `rerequestOf` bypassed `rerequest-authorized`, the
+  prior-receipt identity check, `supportsRerequest`, and the policy/route
+  match. Because `attempt` is part of the logical identity, it minted a fresh
+  dispatch rather than colliding. Reachable by anyone able to dispatch the
+  workflow. Now refused at decode.
+- **A recorded skip wedged its exact head.** A pull request routed while a
+  draft records `none`; marking it ready does not change the head SHA, and
+  `draft` reaches neither the fingerprint nor the identity, so the next
+  dispatch matched the stale skip forever.
+- **An interrupted `started` receipt was permanently `reconciliation-required`.**
+  Split into `in-flight` (younger than `stranded-receipt-minutes`, default 360
+  — GitHub's own job ceiling, derived not tuned) and stranded. `route` now
+  fails the step on a genuine reconciliation, since a receipt needing a human
+  means no review was dispatched and reporting that only on an output leaves a
+  green job and a silently unreviewed pull request.
+- **The route policy reached only two of four dispatching lanes.** The first
+  guard checked only lanes that already complied, so it was green. Replaced
+  with one that enumerates every lane that dispatches.
+- **A stale manifest wedged a consumer whose files already matched source.**
+  `update`, `uninstall`, and `adopt` all refused; hand-editing the manifest was
+  the only recovery. `sd-github-review` itself was in this state and would have
+  failed its own rollout cohort.
+- **The release could not be cut at all.** `assertPinFreshness` compared the
+  pin's action code against the previous tag in both windows, so the mandatory
+  pin-advance commit could never go green for any release that changes `src/`.
+  `0.4.1` shipped only because it was action-code neutral.
+- **Four drift paths that no gate could see**: prose SHAs in Markdown, release
+  tags named in lane comments, lane inputs the pinned action never declared,
+  and an unregistered historical template hash. Each is now enumerated from the
+  filesystem, git, or the release tags rather than restated.
 
 ## Non-goals
 

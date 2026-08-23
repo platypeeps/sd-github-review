@@ -57,9 +57,18 @@ preserving the consumer's existing provider and cheap/deep model values.
 It never puts the provider key in an argument, manifest, or log. It also
 supports `update`, read-only `check`, and guarded `uninstall`:
 
-> **`--route-mode` is required, and there is no default.** The event-driven
-> router lane reads the `REVIEW_ROUTE_MODE` repository variable to decide its
-> route. The installer creates and manages it — `check` reports it missing,
+> **`--route-mode` is required, and there is no default.** Both installed lanes
+> read the `REVIEW_ROUTE_MODE` repository variable, in different ways: the
+> event-driven router lane uses it to *choose* its route, and the durable lane
+> enforces it as a **maximum** on what a caller may explicitly request. On the
+> durable lane, `sd-review --remote deep` against a consumer installed
+> `--route-mode copilot` is refused, naming the variable — `auto` is always
+> permitted, so ordinary reviews are unaffected. This enforcement arrived with
+> the durable route policy; a consumer installed before it must run `update` to
+> take the new workflow template, and until it does, its durable lane will honor
+> an explicit off-policy route as it did previously.
+>
+> The installer creates and manages the variable — `check` reports it missing,
 > `uninstall` removes it — but it will not choose a value for you, because
 > choosing means `auto`, and `auto` can select `cheap` or `deep` and bill your
 > provider key on a route you did not pick. Pass `copilot` or `none` for an
@@ -109,8 +118,8 @@ failure recovery, and optional cleanup.
 For a provider-free evaluation, start with
 [`examples/pilot-router.yml`](examples/pilot-router.yml). It exercises routing
 and Copilot without checking out pull-request code or using LLM provider
-credentials. The checked-in example is pinned to the immutable `v0.3.0`
-release commit,
+credentials. The checked-in example is pinned to the immutable current release
+commit,
 `3e41f23415c4eb2c0e2292c9b53690a5eff94175`.
 
 Every checked-in first-party example uses that same released full SHA. When
@@ -164,7 +173,10 @@ head-bound receipt without dispatching. The additive `acknowledge` helper
 converts a bounded GitHub adapter-step outcome into that canonical
 acknowledgment without contacting GitHub or a model provider. If a side effect
 is uncertain, the receipt reports `reconciliation-required` and never
-authorizes a fallback.
+authorizes a fallback; `route` fails the step on it, since a receipt needing a
+human means no review was dispatched and reporting that only on an output
+leaves a green job and a silently unreviewed pull request. A dispatch that
+could still be running reports `in-flight` instead and does not fail.
 
 The example performs no checkout and runs no pull-request-controlled command.
 The setup descriptor distinguishes a truly absent declaration from missing,

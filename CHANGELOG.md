@@ -4,9 +4,180 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.5.0 - 2026-08-22
+
+### Security
+
+- **A same-head retry must now declare what it retries, closing a bypass of the
+  entire rerequest authorization chain.** `ReceiptStore#validateRerequest`
+  returns at its first line when `request.rerequestOf` is absent
+  (`src/receipt.js:420`), and the protocol tied `attempt` to `rerequestOf` only
+  when `rerequestOf` was present. So a request carrying `attempt: 2` and no
+  `rerequestOf` skipped the `rerequest-authorized` input, the prior-receipt
+  identity check, `supportsRerequest`, the policy-version match, and the
+  route/backend match — all of them.
+
+  Because `attempt` is part of the logical dispatch identity, the bare bump did
+  not collide with the stored receipt either: it minted a fresh dispatch and a
+  second durable check run, reading as a clean new review. `review-request` is a
+  free-text `workflow_dispatch` input, so this was reachable by anyone able to
+  dispatch the workflow, repeatedly, at a single head.
+
+  `decodeReviewRequest` now refuses `attempt > 1` without `rerequestOf`. No
+  fixture or flow used that shape; every `attempt: 2` in the suite already
+  carried a `rerequestOf`.
+
+  Impact was bounded in practice rather than by design: it required repository
+  write access, and the routes that bill a provider need a credential no fleet
+  consumer holds. It was still an authorization control that did not hold.
+
+### Added
+
+- **The durable lane now enforces the repository's recorded `REVIEW_ROUTE_MODE`.**
+  The installer has managed that variable since manifest schema 4, and
+  `examples/pr-agent-router.yml` gated on it, but the durable lane never read it:
+  `grep -n "REVIEW_ROUTE_MODE" examples/sd-review.yml` returned nothing. A
+  consumer installed `--route-mode copilot` would still route `cheap` when
+  dispatched `sd-review --remote cheap`, contradicting what the operator declared
+  at install time. Measured on a live scratch consumer during the 0.4.x pilot.
+
+  The `route` operation takes a new `route-policy` input, wired in
+  `examples/sd-review.yml` **directly to `${{ vars.REVIEW_ROUTE_MODE }}`** — not
+  through a `workflow_dispatch` input like its neighbours, because the caller the
+  policy constrains is a `workflow_dispatch` caller who could otherwise supply
+  their own policy. An explicit route outside the policy is refused, naming the
+  variable, its value, and the permitted route.
+
+  Two properties are worth stating because they are easy to get backwards:
+
+  - The policy bounds the **requested** route, never the resolved one. `auto` is
+    always permitted, so `independent-review-floor` (a *minimum*) and the route
+    policy (a *maximum*) compose instead of contradicting. Enforcing against the
+    resolved route would let a consumer's own `copilot` floor raise an `auto`
+    request above a `cheap` policy and refuse it — breaking every default review
+    on that consumer.
+  - Membership, not `ROUTE_STRENGTH` ordering. That ordering ranks assurance
+    (`none < cheap < deep < copilot`), not cost, so "anything weaker than the
+    policy" would permit the paid `deep` route under a `copilot` policy — exactly
+    the route a provider-free consumer holds no credential for.
+
+  An absent or empty policy permits every route, so consumers below manifest
+  schema 4 are unaffected. An unrecognized value fails the dispatch rather than
+  silently disabling enforcement.
+
+  **Consumers must run `update` to take the new template.** This lands on top of
+  the schema-5 backend-variable migration below; one `update` covers both.
 
 ### Fixed
+
+- **A consumer whose managed files were advanced by a release, but whose
+  manifest stayed behind, was wedged with no supported recovery.** The
+  modification guard compared a managed file only against the hash the manifest
+  recorded at install time, so a file byte-identical to the *current* template
+  still read as operator drift. `update` refused, `uninstall` refused, and
+  `adopt` refuses whenever a manifest exists — leaving hand-editing the manifest
+  as the only way out. `sd-github-review`'s own installation was in exactly this
+  state and would have failed its rollout cohort.
+
+  All three guards now also exempt content equal to current source, which is
+  what the no-manifest path and the pre-durable migration path already did.
+  Bytes the installer is about to write are not operator content: the next write
+  reproduces them, so nothing can be lost by adopting them. Content matching
+  neither the manifest nor the template is still refused, and a test asserts
+  that half specifically.
+
+- **Published documentation labelled the shipped pin as `v0.3.0` when it is
+  `v0.4.0`'s commit.** `3e41f23` is the commit `v0.4.0` points at; `v0.3.0` is
+  `744a9f1`. Five places in `README.md`, `SETUP-COPILOT.md`, and `SETUP-PR-AGENT.md` told a
+  consumer they were installing `v0.3.0`. One file disagreed with itself:
+  `SETUP-PR-AGENT.md` printed `--source-tag v0.4.0` beside the same SHA it
+  called `v0.3.0` two hundred lines later. The pin claims no longer name a tag
+  at all — the SHA is the installation reference and the tag is for discovery,
+  which is what the surrounding prose already said.
+
+- **The release procedure could not be executed at all for any release that
+  changes action code.** `assertPinFreshness` compared the pin's `src` and
+  `action.yml` against the *previous tag* in both windows. The pin-advance
+  commit — which the checklist requires before tagging — moves the pin to the
+  candidate, whose action code differs from the last release by construction,
+  so that commit could never go green and the release could not proceed.
+  `0.4.1` shipped only because it was action-code neutral, which made the
+  comparison vacuous; `0.5.0` is not, and reproduced the deadlock exactly.
+  In the pre-tag window the tree under validation *is* the release, so the
+  comparison now runs against `HEAD`. The post-tag path is untouched, and a
+  descendant pin whose action code differs from the candidate still fails.
+
+- **A shipped lane may no longer name a release tag.** Nine lanes carried a
+  `# v0.3.0` comment directly above a `uses:` pin holding v0.4.0's commit —
+  the same wrong-label defect as the published docs, in the files consumers
+  copy. Neither existing check could see it: `assertFirstPartyConsistency`
+  reads `uses:` values and never comment nodes, and the new prose gate filters
+  to Markdown. Checking that no tag is named at all needs no knowledge of which
+  tag would be right, which is what makes it drift-proof.
+
+- **`v0.4.0`'s workflow template was never registered for adoption.** `adopt`
+  matches a hand-copied workflow by exact bytes against
+  `HISTORICAL_TEMPLATE_HASHES` plus the current source, and v0.4.0's bytes were
+  in neither, so anyone who copied that release's template could not be adopted
+  and nothing failed to say so. The entry is added, and a test now derives the
+  expected set from the release tags so the next release cannot repeat it.
+
+- **The route-policy refusal under-reported what a caller may request.** It
+  named only the policy value, though `auto` is always permitted. Under a
+  `none` policy the sole suggestion was `--remote none` — asking for no review,
+  which is never what an operator who just requested one wants — while `auto`,
+  the actionable answer, went unmentioned. The message now reads
+  `permitted: auto, <policy>` and advises `--remote auto`.
+
+- **The release gate now verifies that a lane's inputs exist in the action it
+  pins.** `assertFirstPartyConsistency` proves every lane agrees on one SHA and
+  `assertPinFreshness` proves that SHA carries the release's action code, but
+  neither reads the `with:` block. Four lanes wired `route-policy` while pinned
+  to a release declaring no such input, so the policy was documented and
+  entirely inert with every check green. `SD_RELEASE_TAG=... node
+  scripts/validate-action-metadata.mjs` now refuses that. It is release-time
+  only by design: during development the pin lags on purpose, and failing every
+  CI run would make the gate something to switch off rather than satisfy.
+
+- **`validate:metadata` now gates prose pins, not only YAML ones.**
+  `assertFirstPartyConsistency` reads `uses:` lines out of parsed YAML, so the
+  four published documents that print a literal 40-character SHA beside "keep
+  that exact pin" were never checked against the current release. A pin advance
+  that missed them left consumers copying a stale commit out of the setup guide
+  while every automated check stayed green. The new check discriminates with
+  `git rev-parse --verify --quiet <sha>^{commit}` rather than a pattern,
+  because `DESIGN.md`'s protocol examples are legitimately 40 hex characters
+  (`0000...0001`, `aaaa...`) and resolve to no object.
+
+- **A pull request reviewed while it was a draft could never be reviewed again at
+  that head.** Routing a draft records route `none` ("draft pull requests are
+  disabled"). Marking it ready for review does not change its head SHA, and
+  `draft` is read from live GitHub state into the routing context rather than
+  into the request (`src/operations.js:377`), so it reaches neither
+  `fingerprintFields` nor `logicalDispatchId`. The next dispatch therefore
+  matched the stale skip, agreed on the fingerprint, and was answered "not
+  reviewed" for as long as that head stood. The durable lane is
+  `workflow_dispatch`-only, so both dispatches are a human deliberately asking
+  for a review, and the second silently got none.
+
+  A recorded skip is now superseded when the fresh decision is not itself a
+  skip. This is safe because a skip represents no dispatched work — nothing ran,
+  so nothing is duplicated — and `not-started` → `started` advances the phase
+  rather than regressing it. A bookkeeping `none` re-dispatched under unchanged
+  conditions still returns its existing receipt untouched.
+
+  Beyond `draft` this also covers `sensitive-paths`, `changed-line-threshold`,
+  and `review-drafts`, which reach the decision by the same routing-context path.
+
+- **The first-party lane had diverged from the template it ships.**
+  `.github/workflows/sd-review.yml` is installed from `examples/sd-review.yml`,
+  but the route-policy wiring landed only in the example, leaving this
+  repository the one consumer not enforcing the policy it distributes. Both
+  installed lanes are now held byte-identical to their source templates by test,
+  and every `vars.` reference in an installed template must be an
+  installer-managed name or carry a `|| 'literal'` fallback — the general form of
+  the `SD_REVIEW_*_BACKEND_V1` defect fixed below, whose original fix was
+  point-wise and so did not prevent the next occurrence.
 
 - **The consumer installer now provisions the two backend descriptors the durable
   lane reads, so an install produces a lane that serves every route it offers.**
@@ -43,6 +214,47 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **A durable receipt that needs a human now fails the `route` step instead of
+  reporting a green job.** Read this one before upgrading: a route step that
+  previously always succeeded can now go red.
+
+  `reconciliation-required` used to cover every receipt at dispatch phase
+  `started`, which conflated a dispatch running right now with one stranded by a
+  finalize that never landed. Because the flag was true for every ordinary
+  replay, nothing could gate on it without failing healthy reviews — so no
+  shipped lane gated on it at all, and a stranded receipt was silent
+  permanently: GitHub's REST API has no delete-check-run endpoint, and the
+  receipt outlives every job that could advance it, so the pull request could
+  never be reviewed again at that head.
+
+  Receipts at `started` now report a new `durable-state` value **`in-flight`**
+  while a job could still be running, and `reconciliation-required` only once
+  they are older than `stranded-receipt-minutes` or their dispatch is recorded
+  failed. A failed dispatch is exempt from the age test: it is known broken
+  rather than slow. `durable-state` consumers that switch on its value should
+  add the new case.
+
+  The gate lives in the Action, not in the workflow, for two reasons: the
+  canonical durable workflow may contain no `run:` step at all because it holds
+  `checks: write`, and a gate written into YAML is one a consumer can drop while
+  believing it still runs. Outputs and the job summary are written before the
+  failure, so durable state stays machine-readable on a red step. A concurrent
+  begin that lost its election is exempt — its evidence names the authoritative
+  check run, so another dispatch is reviewing that head and failing the loser
+  would be a false alarm.
+
+  Set `fail-on-reconciliation: false` to keep the previous reporting-only
+  behaviour. It applies to `route` only: `query` exists to report durable state,
+  and `finalize` would mask the reconciliation it was invoked to record.
+
+- **New inputs `stranded-receipt-minutes` and `fail-on-reconciliation`.**
+  `stranded-receipt-minutes` defaults to `360` because that is GitHub's maximum
+  job lifetime and the shipped lanes declare no `timeout-minutes` — a ceiling
+  derived from the platform rather than a tuning guess, so it cannot report a
+  false strand. Lower it to match an explicit `timeout-minutes` to find stranded
+  receipts sooner; set it below real review latency and healthy in-flight
+  reviews will be reported as stranded.
+
 - **Consumer manifest schema 4 → 5**, gated on a new `BACKEND_MIN_SCHEMA_VERSION`
   rather than on equality with `MANIFEST_SCHEMA_VERSION`, matching how
   `REVIEW_ROUTE_MODE` joined at 4. Manifests at schema 1 through 4 keep decoding
@@ -56,20 +268,27 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Known limitations
 
-- The durable lane still takes its route from the dispatched request and never
-  reads `REVIEW_ROUTE_MODE`, so installing with `--route-mode copilot` does not
-  prevent a `--remote cheap` dispatch from routing `cheap`. That is a separate
-  defect about which routes are *permitted*, tracked on its own, and deliberately
-  not folded in here — this change alters what is *provisioned*.
+- A receipt at dispatch phase `started` that carries no `dispatch.startedAt`
+  cannot be dated, and is reported stranded rather than in flight. The field is
+  optional in the protocol (`src/protocol.js:819`), so such a receipt decodes
+  normally. Failing closed is deliberate — nothing tracks an undatable receipt,
+  so treating it as in flight would recreate the permanent wedge the split
+  exists to end — but with the new route gate this now fails a job where it
+  previously set an output nothing read.
+- `independent-review-floor` remains caller-overridable on the durable lane. The
+  new `route-policy` bounds the *maximum* a caller may request; the floor is the
+  separate *minimum* and is still supplied as a `workflow_dispatch` input.
 
-## 0.4.1 - 2026-08-22
+### Also in this release: the pin-freshness fix prepared as 0.4.1
 
-**No runtime change.** The `src` tree and the `action.yml` blob are byte-identical
-to `0.4.0` (`98415e3` and `47a24a6` at both tags). Consumers already on `0.4.0`
-gain nothing by upgrading the action itself; the value is entirely in what the
-release *pins*.
+`0.4.1` was written and version-stamped but never tagged, and its headline claim
+— that `src` and `action.yml` are byte-identical to `0.4.0` — stopped being true
+the moment this release's runtime work landed on the same branch. Publishing it
+would have shipped a false statement about the very trees the release is about.
+No consumer can distinguish the two, because no `v0.4.1` tag ever existed, so
+its entries are folded in here rather than back-dated onto a tag.
 
-### Fixed
+#### Fixed
 
 - **A release tag can finally carry pins that point inside its own release.**
   `assertPinFreshness` required the descriptor's `actionReference` to equal the
@@ -91,7 +310,7 @@ release *pins*.
   deliberately: consumers run byte-identical code, so the lag is not observable to
   them.
 
-### Changed
+#### Changed
 
 - **Releases now advance every first-party pin *before* tagging, and the tag sits
   on the pin-advance commit** (`docs/RELEASE_CHECKLIST.md` section 5). That commit

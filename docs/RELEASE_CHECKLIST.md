@@ -107,8 +107,11 @@ failure that looks like a product defect but is a setup error:
   what makes changed-head reconciliation expressible at all.
 - Changed-head reconciliation needs a receipt still in dispatch phase
   `started` — routed but never finalized. `reconciliationRequired` is derived
-  from that phase, so finalizing an already-`observed` receipt correctly
-  returns `false` and is idempotent, not a reconciliation case.
+  from that phase *and its age*, so finalizing an already-`observed` receipt
+  correctly returns `false` and is idempotent, not a reconciliation case. A
+  `started` receipt younger than `stranded-receipt-minutes` reports `in-flight`
+  and `reconciliationRequired: false`; exercising this case in a pilot means
+  either waiting out the window or lowering the input for the run.
 - A mismatched `acknowledgment.logicalDispatchId` throws rather than reporting
   reconciliation. That *is* the no-fallback behavior; `reconciliation-required`
   is reserved for concurrent duplicate receipts. Derive the prior identity from
@@ -134,6 +137,17 @@ floor.
   installation reference.
 - [ ] Run `node scripts/validate-action-metadata.mjs` against a checkout of the
   new tag. It must exit 0.
+
+Run the release form of that gate — `SD_RELEASE_TAG=v<version> node
+scripts/validate-action-metadata.mjs` — on the pin-advance commit *before*
+tagging. It adds one check the ordinary form deliberately omits: every input a
+shipped lane passes to this action must be declared by the action **at the
+pin**. Ordinary runs skip it because the pin legitimately lags during
+development, when the lanes already reference inputs the last release never
+had; that lag is the whole reason pins advance before the tag. If this fails,
+the pin advance is incomplete and the release would ship lanes passing inputs
+nothing reads — which is how `route-policy` reached four lanes while pinned to
+a release declaring no such input, documented and completely inert.
 
 Pins are advanced **before** the tag, and the tag sits on the pin advance. The
 reverse order — tag the candidate, then advance pins onto it — is what shipped

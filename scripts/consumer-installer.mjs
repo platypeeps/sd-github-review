@@ -16,6 +16,7 @@ import {
   HELP,
   HISTORICAL_TEMPLATE_HASHES,
   MANAGED_RESOURCES,
+  MANAGED_VARIABLE_NAMES,
   MANIFEST_PATH,
   MANIFEST_SCHEMA_VERSION,
   PROVENANCE_MIN_SCHEMA_VERSION,
@@ -84,6 +85,7 @@ export {
   HELP,
   HISTORICAL_TEMPLATE_HASHES,
   MANAGED_RESOURCES,
+  MANAGED_VARIABLE_NAMES,
   MANIFEST_PATH,
   MANIFEST_SCHEMA_VERSION,
   ROUTE_MODES,
@@ -548,6 +550,11 @@ async function uninstall(options, dependencies) {
   const target = await resolveTarget(options, github);
   const guard = makePathGuard(target.root, dependencies.lstat);
   const local = await loadLocalState(guard, target.root);
+  // A-016: needed for the same reason the install/update guards need it — bytes
+  // identical to the shipped template are installer content, not operator
+  // content, whatever the manifest happens to record.
+  const sourceRoot = dependencies.sourceRoot ?? path.resolve(import.meta.dirname, "..");
+  const sources = await readManagedSources(sourceRoot);
   if (!local.manifest) {
     for (const [content, destination] of [
       [local.workflow, WORKFLOW_PATH],
@@ -570,6 +577,7 @@ async function uninstall(options, dependencies) {
   assertManifestRepository(local.manifest, target.repository);
   if (
     local.workflow !== null &&
+    local.workflow !== sources.workflow &&
     sha256(local.workflow) !== local.manifest.workflow.sha256
   ) {
     throw new Error(`${WORKFLOW_PATH} was modified; refusing to remove operator changes`);
@@ -577,7 +585,12 @@ async function uninstall(options, dependencies) {
   for (const { field, destination } of DURABLE_RESOURCES) {
     const recorded = local.manifest[field];
     const content = local[field];
-    if (recorded && content !== null && sha256(content) !== recorded.sha256) {
+    if (
+      recorded &&
+      content !== null &&
+      content !== sources[field] &&
+      sha256(content) !== recorded.sha256
+    ) {
       throw new Error(`${destination} was modified; refusing to remove operator changes`);
     }
   }

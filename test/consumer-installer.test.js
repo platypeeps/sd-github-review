@@ -27,6 +27,7 @@ import {
   MANAGED_RESOURCES,
   MANIFEST_PATH,
   MANIFEST_SCHEMA_VERSION,
+  MANAGED_VARIABLE_NAMES,
   ROUTE_MODES,
   ROUTING_LABELS,
   SECRET_NAME,
@@ -41,6 +42,7 @@ import {
   variableValues,
   variableValuesForSchema,
 } from "../scripts/consumer-installer.mjs";
+import { ROUTES as ACTION_ROUTES } from "../src/protocol.js";
 import { reviewLabelNames } from "../src/normalize.js";
 import * as installerModule from "../scripts/consumer-installer.mjs";
 
@@ -1705,6 +1707,41 @@ test("a fresh install writes the descriptor and the durable workflow beside the 
   assert.equal(manifest.durableWorkflow.source, DURABLE_TEMPLATE_PATH);
 });
 
+test("every superseded release's template hash is registered for adoption", () => {
+  // Enumerates the release tags from git rather than restating them. `adopt`
+  // matches a hand-copied workflow by exact bytes against HISTORICAL_TEMPLATE_HASHES
+  // plus the current source; a release whose template bytes appear in neither
+  // leaves everyone who copied that release un-adoptable, and nothing else
+  // fails. v0.4.0's entry was missing for its entire cycle.
+  const tags = execFileSync("git", ["tag", "--list", "v*"], { cwd: REPO_ROOT, encoding: "utf8" })
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => /^v[0-9]+\.[0-9]+\.[0-9]+$/u.test(line));
+  assert.ok(tags.length > 0, "expected at least one release tag");
+
+  const current = sha256Hex(readFileSync(path.join(REPO_ROOT, "examples", "pr-agent-router.yml"), "utf8"));
+  const registered = new Set(HISTORICAL_TEMPLATE_HASHES.map((entry) => entry.sha256));
+  const unadoptable = [];
+  for (const tag of tags) {
+    const released = sha256Hex(
+      execFileSync("git", ["show", `${tag}:examples/pr-agent-router.yml`], {
+        cwd: REPO_ROOT,
+        encoding: "utf8",
+      }),
+    );
+    // Bytes equal to the current template are matched dynamically, so they need
+    // no entry; anything else must be registered.
+    if (released === current || registered.has(released)) continue;
+    unadoptable.push(`${tag}: ${released}`);
+  }
+  assert.deepEqual(
+    unadoptable,
+    [],
+    "these releases' templates are un-adoptable — add each to HISTORICAL_TEMPLATE_HASHES:\n  " +
+      unadoptable.join("\n  "),
+  );
+});
+
 test("the installed durable workflow sits at the path the installed descriptor declares", async () => {
   // AC 2. Read both from the consumer after install and compare them to each
   // other; a literal on either side would pass while the two drifted together.
@@ -1782,6 +1819,36 @@ for (const { field, destination, sourceOption, freshBytes } of DURABLE_CASES) {
     );
     assert.equal(existsSync(path.join(target, destination)), true);
     assert.equal(existsSync(path.join(target, MANIFEST_PATH)), true);
+  });
+
+  test(`a stale manifest does not wedge ${destination} when its bytes match current source`, async () => {
+    // A-016, end to end. The file is exactly what the installer would write; only
+    // the manifest's recorded hash is behind, which is what a consumer looks like
+    // after a release advanced the template. Before the fix both update and
+    // uninstall refused here and `adopt` refuses whenever a manifest exists, so
+    // the only recovery was hand-editing the manifest. sd-github-review itself
+    // was in this state and would have failed its own rollout cohort.
+    const sourceRoot = await makeSource();
+    const target = await makeTarget();
+    const github = new FakeGitHub({ secrets: [SECRET_NAME] });
+    await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE }, { sourceRoot, github });
+
+    const manifestPath = path.join(target, MANIFEST_PATH);
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    const field = DURABLE_CASES.find((entry) => entry.destination === destination)?.field;
+    const block = field ? manifest[field] : manifest.workflow;
+    const current = await readFile(path.join(target, destination), "utf8");
+    block.sha256 = "0".repeat(64);
+    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+    await assert.doesNotReject(
+      runConsumerInstaller({ command: "update", target }, { sourceRoot, github }),
+    );
+    assert.equal(
+      await readFile(path.join(target, destination), "utf8"),
+      current,
+      "the adopted file is byte-identical after the recovering update",
+    );
   });
 
   test(`check reports a newer source for ${destination}`, async () => {
@@ -2408,5 +2475,161 @@ test("update to a PR-Agent mode refuses on an install that skipped the secret", 
   await assert.rejects(
     runConsumerInstaller({ command: "update", target, routeMode: "auto" }, { sourceRoot, github }),
     new RegExp(`${SECRET_NAME} is missing`),
+  );
+});
+
+// Route policy is the durable lane's half of REVIEW_ROUTE_MODE: the installer
+// writes the variable, and the action refuses an explicit route outside it. The
+// two guards below are the ones that fail when the wiring is right in spirit
+// and wrong in fact.
+function durableLaneRoutePolicyWiring() {
+  const source = readFileSync(path.join(REPO_ROOT, DURABLE_TEMPLATE_PATH), "utf8");
+  const line = source.split("\n").find((entry) => entry.trim().startsWith("route-policy:"));
+  assert.ok(line, `${DURABLE_TEMPLATE_PATH} must pass route-policy to the durable action`);
+  return line;
+}
+
+// The policy exists to constrain workflow_dispatch callers. Sourcing it from a
+// dispatch input would let the constrained caller supply their own policy, so
+// this must read the repository variable and nothing else. Every neighbouring
+// policy line in the file *is* an `inputs.` line, which is exactly why a
+// consistency-minded edit would silently disable enforcement.
+test("the durable lane reads route policy from the repository variable, not a dispatch input", () => {
+  const line = durableLaneRoutePolicyWiring();
+  assert.match(line, /\$\{\{\s*vars\.REVIEW_ROUTE_MODE\s*\}\}/u);
+  assert.ok(
+    !line.includes("inputs."),
+    `route-policy must not be caller-settable, got: ${line.trim()}`,
+  );
+});
+
+// The test above is pinned to one path, so it cannot see a *second* lane that
+// wires route-policy wrongly -- and adding a lane is exactly how this would
+// recur. This enumerates every shipped workflow instead of naming one. The
+// scan is deliberately over all of them, not only the ones that mention
+// route-policy today: a file joins the set by existing, not by being listed.
+function shippedWorkflowPaths() {
+  const paths = [];
+  for (const directory of ["examples", ".github/workflows"]) {
+    for (const entry of readdirSync(path.join(REPO_ROOT, directory))) {
+      if (entry.endsWith(".yml") || entry.endsWith(".yaml")) paths.push(`${directory}/${entry}`);
+    }
+  }
+  return paths;
+}
+
+// The test below only constrains lanes that already wire route-policy, so it
+// stays green for a lane that omits it entirely -- and two published on-demand
+// lanes did exactly that, dispatching reviews with no REVIEW_ROUTE_MODE
+// enforcement at all while the enforcement looked shipped. A lane joins this
+// set by dispatching a review, not by being named here.
+test("every shipped lane that dispatches a review enforces the repository route policy", () => {
+  const unenforced = [];
+  for (const relative of shippedWorkflowPaths()) {
+    const source = readFileSync(path.join(REPO_ROOT, relative), "utf8");
+    if (!/^\s+review-request:/mu.test(source)) continue;
+    if (!/^\s+route-policy:\s*\$\{\{\s*vars\.REVIEW_ROUTE_MODE\s*\}\}/mu.test(source)) {
+      unenforced.push(relative);
+    }
+  }
+  assert.deepEqual(
+    unenforced,
+    [],
+    "these lanes dispatch reviews without passing the repository's recorded "
+      + "REVIEW_ROUTE_MODE, so an explicit route outside the policy is permitted",
+  );
+});
+
+test("no shipped workflow lets a caller supply its own route policy", () => {
+  const offenders = [];
+  for (const relative of shippedWorkflowPaths()) {
+    const source = readFileSync(path.join(REPO_ROOT, relative), "utf8");
+    for (const line of source.split("\n")) {
+      if (!line.trim().startsWith("route-policy:")) continue;
+      // `inputs.` and `github.event.inputs.` are both caller-supplied on a
+      // workflow_dispatch lane; either one hands the constrained caller the
+      // constraint itself.
+      if (/inputs\./u.test(line)) offenders.push(`${relative}: ${line.trim()}`);
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    "route-policy bounds what a workflow_dispatch caller may request, so sourcing it "
+      + "from a dispatch input lets that caller lift its own bound",
+  );
+});
+
+// The installer's ROUTE_MODES and the action's ROUTES are two literals in two
+// trees. A mode added to the installer but not the action would be written into
+// a consumer's REVIEW_ROUTE_MODE and then refused on every dispatch against it.
+test("installer route modes stay identical to the action's accepted route set", () => {
+  assert.deepEqual(
+    [...ROUTE_MODES].sort(),
+    [...ACTION_ROUTES].sort(),
+    "ROUTE_MODES and src/protocol.js ROUTES accept different route sets",
+  );
+});
+
+// This repository dogfoods its own durable lane: .github/workflows/sd-review.yml
+// is an installer-managed copy of DURABLE_TEMPLATE_PATH, and the manifest records
+// the source hash, so `check` treats any difference as drift. Nothing asserted
+// that here, and the gap is not hypothetical -- adding route-policy to the
+// template left this repository as the one consumer not enforcing what it ships.
+// The same applies to the event-driven lane, so both are bound.
+for (const [source, installed] of [
+  [DURABLE_TEMPLATE_PATH, ".github/workflows/sd-review.yml"],
+  [TEMPLATE_PATH, ".github/workflows/ai-review-router.yml"],
+]) {
+  test(`${installed} stays byte-identical to ${source}`, () => {
+    assert.equal(
+      readFileSync(path.join(REPO_ROOT, installed), "utf8"),
+      readFileSync(path.join(REPO_ROOT, source), "utf8"),
+      `${installed} has drifted from ${source}; run update rather than editing it`,
+    );
+  });
+}
+
+// The generalization of the SD_REVIEW_*_BACKEND_V1 defect. That bug was a
+// template reading `${{ vars.X }}` that no installer table entry ever created;
+// an unset GitHub variable expands to "", so the lane installed clean, passed
+// `check`, and failed only at dispatch. The shipped fix was point-wise -- two
+// table entries -- so the next template to add a vars. reference reproduces it
+// exactly. This enumerates the references from the installed templates instead
+// of restating them, which is the only form that can catch a name nobody
+// thought to add here.
+function installedTemplateVariables() {
+  const found = new Map();
+  for (const source of [DURABLE_TEMPLATE_PATH, TEMPLATE_PATH]) {
+    const text = readFileSync(path.join(REPO_ROOT, source), "utf8");
+    for (const match of text.matchAll(/vars\.([A-Z][A-Z0-9_]*)/gu)) {
+      const name = match[1];
+      // A `vars.X || 'literal'` fallback makes an unset variable harmless, so
+      // those are exempt -- but record them, because an exempt variable is still
+      // invisible to `check` and cannot be configured through the installer.
+      const covered = new RegExp(`vars\\.${name}\\s*\\|\\|`, "u").test(text);
+      const prior = found.get(name);
+      found.set(name, { covered: (prior?.covered ?? true) && covered, source });
+    }
+  }
+  return found;
+}
+
+// Managed *names*, not the values a particular configuration produces.
+// `variableValues(DEFAULT_CONFIG)` drops REVIEW_ROUTE_MODE, because
+// DEFAULT_CONFIG leaves routeMode unset and variableValuesForSchema filters
+// undefined out -- an unpopulated variable, not an unmanaged one. That
+// distinction is the whole question here, so this reads the table directly.
+test("every variable the installed templates read is installer-managed or has a fallback", () => {
+  const managed = new Set(MANAGED_VARIABLE_NAMES);
+  const unmanaged = [];
+  for (const [name, { covered, source }] of installedTemplateVariables()) {
+    if (!managed.has(name) && !covered) unmanaged.push(`${name} (read by ${source})`);
+  }
+  assert.deepEqual(
+    unmanaged,
+    [],
+    "these variables are read by an installed lane but nothing creates them, so an "
+      + "install produces a lane that fails at dispatch and `check` cannot see it",
   );
 });

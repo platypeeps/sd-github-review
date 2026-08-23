@@ -55,6 +55,8 @@ import {
 import {
   assertManifestRepository,
   assertWorkflowCanBeManaged,
+  assertDurableResourcesCanBeManaged,
+  DURABLE_RESOURCES,
   createManifest,
   planResources,
   publicAction,
@@ -537,6 +539,67 @@ test("plan: assertWorkflowCanBeManaged rejects operator drift on an active insta
         { manifest: { state: "active", workflow: { sha256: sha256("original") } }, workflow: "edited" },
         "template",
       ),
+    /was modified after installation/u,
+  );
+});
+
+test("plan: a managed file already equal to current source is adopted, not called drift", () => {
+  // A-016. The manifest records the hash of what the installer wrote at install
+  // time. When a later release advances the template and the consumer's file is
+  // brought to that new content, the recorded hash is stale while the file is
+  // exactly what the installer would write next -- there is no operator content
+  // to preserve. Comparing against the recorded hash alone wedged the consumer:
+  // `update` refused, `uninstall` refused, and `adopt` refuses whenever a
+  // manifest exists, so hand-editing the manifest was the only way out.
+  // sd-github-review itself reached that state and would have failed its own
+  // rollout cohort.
+  assert.doesNotThrow(() =>
+    assertWorkflowCanBeManaged(
+      "update",
+      {
+        manifest: { state: "active", workflow: { sha256: sha256("older release") } },
+        workflow: "current template",
+      },
+      "current template",
+    ),
+  );
+
+  // The guard must still bite on content that matches neither the manifest nor
+  // the template -- that is the operator edit it exists to protect.
+  assert.throws(
+    () =>
+      assertWorkflowCanBeManaged(
+        "update",
+        {
+          manifest: { state: "active", workflow: { sha256: sha256("older release") } },
+          workflow: "operator edit",
+        },
+        "current template",
+      ),
+    /was modified after installation/u,
+  );
+});
+
+test("plan: the durable-resource guard adopts current-source bytes on the same terms", () => {
+  const manifestFor = (recordedContent) => ({
+    state: "active",
+    ...Object.fromEntries(
+      DURABLE_RESOURCES.map(({ field }) => [field, { sha256: sha256(recordedContent) }]),
+    ),
+  });
+  const localFor = (content) => ({
+    manifest: manifestFor("older release"),
+    ...Object.fromEntries(DURABLE_RESOURCES.map(({ field }) => [field, content])),
+  });
+  const sources = Object.fromEntries(
+    DURABLE_RESOURCES.map(({ field }) => [field, "current template"]),
+  );
+
+  assert.doesNotThrow(() =>
+    assertDurableResourcesCanBeManaged(localFor("current template"), sources),
+  );
+  assert.throws(
+    () => assertDurableResourcesCanBeManaged(localFor("operator edit"), sources),
     /was modified after installation/u,
   );
 });
