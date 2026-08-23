@@ -1,0 +1,171 @@
+# Implement — drop the dead `issues: write` grant
+
+Baseline: `0.6.0`, `main` at `b38c485`. Target: `0.6.1`.
+
+Ordered so the lanes are corrected before the gate that pins them, because the
+gate cannot be written against the current over-grant — see `design.md`.
+
+## Phase 0 — baseline
+
+- [ ] `npm run check:full` on a clean tree. Record the test count; every later
+      phase compares against it, not against zero failures.
+- [ ] Record the current permission facts by enumeration, so the later sweep has
+      something to be checked against:
+      `grep -rn 'issues: write' examples/ .github/workflows/` → expect 8.
+
+**Rollback point.** Nothing changed.
+
+## Phase 1 — remove the dead grant
+
+- [ ] Remove `issues: write` from every shipped lane. Enumerate from the
+      filesystem; do not work from the list in `prd.md`. Known at planning time:
+      `examples/sd-review.yml` (review, finalize), `examples/pr-agent-router.yml`
+      (top level), `examples/pr-agent-on-demand-review-router.yml` (two jobs),
+      `.github/workflows/sd-review.yml` (two jobs),
+      `.github/workflows/ai-review-router.yml` (top level).
+- [ ] `examples/sd-review.yml` and `.github/workflows/sd-review.yml` must stay
+      byte-identical. They are today (`371675e0…`); a test asserts it.
+- [ ] Rewrite the `pr-agent` job's isolation comment. It currently reads "no
+      `checks:write` and no `issues:write`, so the token handed to the
+      third-party container cannot write durable receipts" — after this change,
+      naming `issues: write` as part of the isolation is misleading, because no
+      job has it. The isolation that matters is `checks: write`. Say that.
+- [ ] `npm run validate:metadata`. `assertJobPermissions` is a lower bound over
+      jobs that run this action; if any of them genuinely needed `issues`, this
+      is where it surfaces, naming the job. **Expect it to pass** — if it fails,
+      stop: the premise is wrong and the finding must be re-examined, not
+      worked around by restoring the grant.
+- [ ] `npm run check:full`.
+
+**Rollback point.** Revert Phase 1; nothing outside this repository changed.
+
+## Phase 2 — the gate that keeps it from drifting back
+
+- [ ] Add the descriptor-anchored set-equality gate to
+      `scripts/validate-action-metadata.mjs`. Resolve the lane from the
+      descriptor's own `workflow.path` (`setupDescriptorPath`, read at line
+      255); do not list lanes. Reuse `permissionMap` and `grantedLevel` rather
+      than re-resolving `write-all`/inheritance a second way.
+- [ ] Failure message must name the offending scope **and its direction** —
+      lane-grants-but-descriptor-omits, or descriptor-declares-but-no-job-grants.
+      A message that only says "mismatch" makes the next drift a debugging task.
+- [ ] Add the all-lanes sweep: no shipped lane grants `issues: write`,
+      enumerated via `laneDocuments()`. Sweep, not a fixed list.
+- [ ] **Mutation proof, both directions, before believing either gate:**
+      - restore `issues: write` to one lane job → both gates fail;
+      - add a scope to `requiredPermissions` that no job grants → equality gate
+        fails;
+      - remove `checks: write` from the descriptor → equality gate fails.
+      Revert each. A gate first observed passing has proven nothing.
+- [ ] Unit tests at the gate's seam, following `R-008`'s shape in
+      `test/metadata.test.js`: assert the thrown message, and assert the fixture
+      genuinely carries the drift (`assert.notEqual(drifted, original)`) so a
+      mis-anchored fixture cannot make the test vacuous.
+- [ ] `npm run check:full`. Count strictly greater than Phase 0.
+
+## Phase 3 — the documentation that taught consumers to over-grant
+
+- [ ] `SETUP-PR-AGENT.md:333` — "`issues: write` and `pull-requests: write`
+      allow PR-Agent to publish its conversation comment". Replace with what
+      actually covers it, and say so specifically: on a pull request, both the
+      conversation-comment and label endpoints are covered by
+      `pull-requests: write`, even though both are `/issues/...` paths in the
+      REST API. That REST-path/permission-scope mismatch is the whole reason
+      this was believed, so name it rather than just deleting the sentence.
+- [ ] `SETUP-PR-AGENT.md:329` and `:359` — the permission blocks a reader
+      copies. These are the lines that actually cause the over-grant.
+- [ ] `DESIGN.md:447-449` — currently explains the lane/descriptor asymmetry as
+      intentional. The asymmetry is gone; the passage should now record why it
+      existed and what settled it, so the next reviewer does not re-file it.
+- [ ] Sweep for any other place that states the grant is required. Enumerate
+      with a repo-wide grep rather than trusting these three line numbers.
+- [ ] CHANGELOG entry. It must correct the record: `0.6.0`'s entry says the
+      fleet reviewer's `issues: write` finding was a false positive. It was
+      *directionally inverted*, not false — the reviewer saw a real asymmetry
+      and named the wrong side. Say that plainly rather than quietly reversing.
+
+## Phase 4 — release `0.6.1`
+
+Patch, not minor: no contract, schema, or input changes. Follow
+`docs/RELEASE_CHECKLIST.md` §5 ordering exactly, as `0.6.0` did.
+
+- [ ] Bump `package.json`; CHANGELOG; cut the pin-advance commit touching
+      neither `src/` nor `action.yml`; tag on the pin advance; never force-move
+      a published tag.
+- [ ] `npm run validate:release`; verify from a worktree at the tag, not `main`.
+- [ ] Publish the release.
+
+## Phase 5 — the credentialed confirmation, if approved
+
+**Reordered ahead of the fleet by the planning review.** The first draft rolled
+the narrowing change to nine consumers and *then* confirmed it. That is the
+wrong order for a change whose failure mode is "a job that needed the scope
+lost it": confirmation after rollout tells you which nine repositories to go
+fix. There is no ordering hazard forcing the reverse, unlike D2's variable.
+
+**Gated on owner approval under `docs/RELEASE_CHECKLIST.md` §2. Do not start
+this phase without it, and do not treat the permission probes as a substitute.**
+
+If approval is withheld, skip to Phase 6 and roll anyway, recording the
+criterion unmet and the residual explicitly. That is defensible here for one
+specific reason, which must be stated rather than assumed: the fleet is
+installed `REVIEW_ROUTE_MODE=copilot` with `REVIEW_INDEPENDENT_FLOOR=copilot`,
+so `cheap` and `deep` are unreachable and the `pr-agent` job cannot execute on
+any consumer. The change is inert for the fleet as configured. It stops being
+inert the moment any consumer moves off `copilot`, so the residual belongs in
+the CHANGELOG where an operator making that change will meet it.
+
+- [ ] Bring `platypeeps/sd-github-review-pilot` to the released lane. Its
+      `sd-review.yml` is currently pinned to `f6b5388d` in an older single-job
+      shape with a top-level `issues: write` and no isolated `pr-agent` job —
+      it cannot exercise the isolation as shipped.
+- [ ] Set the pilot's `REVIEW_ROUTE_MODE` and `REVIEW_INDEPENDENT_FLOOR` so
+      `cheap` is reachable. This is the step that makes spend possible; be
+      deliberate about it.
+- [ ] Confirm `ai-review-router.yml.disabled` stays disabled before opening the
+      smoke pull request, and afterwards verify it has no run newer than the
+      pilot's first. §2 calls that the check worth quoting.
+- [ ] Dispatch `route` with an explicit `route: "cheap"`. Observe whether
+      PR-Agent's conversation comment posts under the reduced grant.
+- [ ] Record the outcome against `prd.md`'s fourth criterion — met, or unmet
+      with the reason. Do not mark it met from the probes alone.
+
+## Phase 6 — fleet
+
+No variable to set first, so no ordering hazard — unlike D2. Canary first
+regardless.
+
+- [ ] Canary one consumer, verify, then `update` the remaining eight.
+- [ ] Expect the same consumer-local gates as last time: `docs/repomix-map.md`
+      staleness in `hoa-manager` and `mezmo_benchmark`, and the
+      `Tooling/generated scope:` line in the `hoa-manager` body. A body edit
+      does not clear the latter — `gh run rerun` replays the stored event
+      payload, so the branch needs a fresh push.
+- [ ] Expect the Copilot reviewer to raise the stderr `::error::` annotation
+      finding again on any consumer reading the guard step. It is false and was
+      settled on 2026-08-23 by probe run 32618129997; the evidence is in
+      `.trellis/tasks/archive/2026-08/08-22-fleet-reviewer-v050-defects/implement.md`.
+- [ ] After merge, verify from each default branch that all nine carry the new
+      lane blob and pin, and that none grants `issues: write`. Enumerate from
+      GitHub; do not restate the install run.
+
+## Validation commands
+
+```bash
+npm run check:full
+npm test
+npm run validate:metadata
+npm run validate:release      # Phase 4 only
+shasum -a256 contract/routed-review-setup-v1.json config/routed-review-setup-v1.json
+grep -rn 'issues: write' examples/ .github/workflows/    # expect no output after Phase 1
+```
+
+## Standing constraints
+
+- No provider credential reaches any consumer. Phases 0–5 involve none; the
+  credential exists only on the pilot repository and only as an Actions secret,
+  and Phase 6 is the only phase that can spend.
+- `checks: write` isolation between the receipt jobs and `pr-agent` is
+  load-bearing and unchanged. If any step of this work would give `pr-agent`
+  `checks: write`, stop — that is the isolation the whole durable design rests
+  on.

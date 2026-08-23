@@ -480,6 +480,85 @@ function assertJobPermissions(doc, filePath, actionOwnerRepo, supportedOperation
   }
 }
 
+// A-020 upper bound: the descriptor's own lane must grant *exactly* what
+// `requiredPermissions` declares -- no more, no less.
+//
+// `assertJobPermissions` above is deliberately a lower bound, and its comment
+// used to justify the missing upper bound as "jobs hold extra permissions for
+// comment/side-effect and non-Action steps". That justification was wrong. It
+// was believed because the conversation-comment and label endpoints are
+// `/issues/...` REST paths, so `issues: write` looked required; on a pull
+// request those paths are governed by `pull-requests: write`, because the
+// prefix reflects GitHub modelling pull requests as issues in the REST layout
+// rather than the scope that authorizes them. Every lane carried a dead
+// `issues: write`, and SETUP-PR-AGENT.md instructed operators to grant it to a
+// job that runs a third-party container. Probed and removed in 0.6.1.
+//
+// Scoped to the descriptor's own lane, resolved from its `workflow.path`, and
+// not to every lane: `requiredPermissions` documents what a consumer must
+// provision for *that* workflow. Folding the event-driven router and the
+// generic durable example into the union would force the descriptor to describe
+// workflows a consumer may never install.
+//
+// The `pr-agent` job is included, unlike in the lower-bound gate, and that is
+// the point: it is where an over-grant to a third-party container would live.
+function laneGrantUnion(doc) {
+  const workflowLevel = permissionMap(doc.permissions) ?? {};
+  const union = {};
+  for (const job of Object.values(doc.jobs ?? {})) {
+    const effective = permissionMap(job.permissions) ?? workflowLevel;
+    for (const [scope, level] of Object.entries(effective)) {
+      const rank = PERMISSION_LEVELS[level] ?? 0;
+      if (rank === 0) continue;
+      if (rank > (PERMISSION_LEVELS[union[scope]] ?? 0)) union[scope] = level;
+    }
+  }
+  return union;
+}
+
+export function assertDescriptorLaneGrants(doc, filePath, requiredPermissions) {
+  const granted = laneGrantUnion(doc);
+  const declared = requiredPermissions ?? {};
+  const offenders = [];
+  for (const scope of new Set([...Object.keys(granted), ...Object.keys(declared)])) {
+    if (granted[scope] === declared[scope]) continue;
+    offenders.push(
+      declared[scope] === undefined
+        ? `${scope}: lane grants ${granted[scope]} but the descriptor declares none`
+        : granted[scope] === undefined
+          ? `${scope}: the descriptor declares ${declared[scope]} but no job grants it`
+          : `${scope}: lane grants ${granted[scope]} but the descriptor declares ${declared[scope]}`,
+    );
+  }
+  if (offenders.length) {
+    throw new Error(
+      `${filePath}: lane permissions and the setup descriptor's requiredPermissions must match ` +
+        `exactly, because a consumer provisions permissions from the descriptor:\n  ` +
+        offenders.sort().join("\n  "),
+    );
+  }
+}
+
+// A-020 companion sweep. Enumerated from `laneDocuments()` so a lane added later
+// is covered without an edit here -- the same shape as the review-floor sweeps.
+// Separate from the equality gate above, which only sees the descriptor's lane:
+// this one reaches the router and generic examples, where the dead grant also
+// lived and where the docs told operators to add it.
+export function assertNoDeadIssuesGrant(lanes) {
+  const offenders = [];
+  for (const [filePath, doc] of lanes) {
+    const granted = laneGrantUnion(doc ?? {});
+    if (granted.issues !== undefined) offenders.push(`${filePath}: issues:${granted.issues}`);
+  }
+  if (offenders.length) {
+    throw new Error(
+      "no shipped lane may grant the issues scope -- nothing in this action or in PR-Agent " +
+        "needs it, and on a pull request pull-requests:write already covers the /issues/... " +
+        `REST paths:\n  ${offenders.join("\n  ")}`,
+    );
+  }
+}
+
 // R-008: GitHub evaluates `${{ }}` in action.yml when it *loads* the action,
 // including inside `description` prose -- a delimited example is evaluated, not
 // quoted. The contexts an action definition may reference are a strict subset of
@@ -569,8 +648,19 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
     assertObject(workflow.jobs, workflowPath, "jobs");
     validateUsesReferences(workflow, workflowPath, {});
     assertJobPermissions(workflow, workflowPath, descriptor.actionOwnerRepo, supportedOperations);
+    // A-020: the descriptor names one lane by path; that lane's grants must
+    // equal requiredPermissions exactly. Resolved from the descriptor rather
+    // than from a list here, so renaming the lane cannot silently skip the gate.
+    if (path.relative(repositoryRoot, workflowPath) === setupConfig.workflow?.path) {
+      assertDescriptorLaneGrants(
+        workflow,
+        path.relative(repositoryRoot, workflowPath),
+        setupConfig.requiredPermissions,
+      );
+    }
     collectFirstPartyPins(workflow, workflowPath, descriptor.actionOwnerRepo, firstPartyPins);
   }
+  assertNoDeadIssuesGrant(await laneDocuments(repositoryRoot));
 
   const examplesDirectory = path.join(repositoryRoot, "examples");
   const exampleNames = (await readdir(examplesDirectory))

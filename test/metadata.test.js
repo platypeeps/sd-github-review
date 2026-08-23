@@ -242,23 +242,24 @@ test("publishes pinned standalone and durable PR-Agent workflows", async () => {
 
   assert.deepEqual(standalone.workflow.permissions, {
     contents: "read",
-    issues: "write",
     "pull-requests": "write",
   });
   // A-004: the third-party reviewer runs in an isolated job whose token has no
-  // receipt authority. Workflow-level permissions are minimal; only the
-  // receipt-writing jobs (review, finalize) hold checks:write, and the reviewer
-  // job (pr-agent) holds neither checks:write nor issues:write.
+  // receipt authority. Workflow-level permissions are minimal, and only the
+  // receipt-writing jobs (review, finalize) hold checks:write.
+  //
+  // checks:write is the entire isolation boundary. The reviewer job also lacks
+  // issues:write, but so does every other job now -- no lane grants it at all,
+  // because on a pull request pull-requests:write already covers the
+  // /issues/... REST paths and the scope was dead everywhere it appeared.
   assert.deepEqual(durable.workflow.permissions, { contents: "read" });
   assert.deepEqual(durable.workflow.jobs.review.permissions, {
     contents: "read",
-    issues: "write",
     "pull-requests": "write",
     checks: "write",
   });
   assert.deepEqual(durable.workflow.jobs.finalize.permissions, {
     contents: "read",
-    issues: "write",
     "pull-requests": "write",
     checks: "write",
   });

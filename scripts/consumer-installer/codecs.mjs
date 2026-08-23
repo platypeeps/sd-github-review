@@ -364,6 +364,15 @@ export const HISTORICAL_TEMPLATE_HASHES = Object.freeze([
     tag: "v0.5.0",
     sha256: "f4d01261cdb568560b1a7c8f4ddd5e3f60fc5896092081a7fb03d1200a3d3c11",
   }),
+  // Superseded by 0.6.1, which removed `issues: write` from this template's
+  // top-level permissions. Unlike the two entries above, this supersession is a
+  // real content change rather than a pin advance: the grant was dead -- on a
+  // pull request `pull-requests: write` already covers the `/issues/...` REST
+  // paths -- so every manual install from v0.6.0 is over-granted until adopted.
+  Object.freeze({
+    tag: "v0.6.0",
+    sha256: "6943d577beb86057ee1129aff891aa448f16cfcdd08d4bc135eab5b22882340d",
+  }),
 ]);
 
 export function isObject(value) {
