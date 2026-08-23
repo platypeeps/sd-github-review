@@ -89,13 +89,26 @@ gate cannot be written against the current over-grant — see `design.md`.
 Patch, not minor: no contract, schema, or input changes. Follow
 `docs/RELEASE_CHECKLIST.md` §5 ordering exactly, as `0.6.0` did.
 
-- [ ] Bump `package.json`; CHANGELOG; cut the pin-advance commit touching
+- [x] Bump `package.json`; CHANGELOG; cut the pin-advance commit touching
       neither `src/` nor `action.yml`; tag on the pin advance; never force-move
       a published tag.
-- [ ] `npm run validate:release`; verify from a worktree at the tag, not `main`.
-- [ ] Publish the release.
+      Pin-advance commit `ee1a162` (PR `#139`). `v0.6.1` resolves to
+      `ee1a1628ab4402595a045b67ebe2f00a314e586a` — the pin advance, as required.
+      Tag was cut once and never moved.
+- [x] `npm run validate:release`; verify from a worktree at the tag, not `main`.
+      Verified from a worktree checked out at `v0.6.1`, not from `main`.
+- [x] Publish the release.
+      Published 2026-08-23T18:25:54Z, `isDraft: false`, target `main`.
 
 ## Phase 5 — the credentialed confirmation, if approved
+
+**Status as of 2026-08-23: not started. Owner approval has not been given, so
+the phase never opened.** Phase 6 proceeded without it, which this phase's own
+text authorizes: the fleet is installed `REVIEW_ROUTE_MODE=copilot` with
+`REVIEW_INDEPENDENT_FLOOR=copilot`, so `cheap` and `deep` are unreachable and
+the `pr-agent` job cannot execute on any consumer. `prd.md`'s fourth criterion
+is therefore **unmet, not waived**, and the residual is recorded in the
+CHANGELOG for whoever moves a consumer off `copilot`.
 
 **Reordered ahead of the fleet by the planning review.** The first draft rolled
 the narrowing change to nine consumers and *then* confirmed it. That is the
@@ -135,26 +148,68 @@ the CHANGELOG where an operator making that change will meet it.
 No variable to set first, so no ordering hazard — unlike D2. Canary first
 regardless.
 
-- [ ] **This repository's own install first.** It is an installer-managed
+- [x] **This repository's own install first.** It is an installer-managed
       consumer of itself, so the lane edits already put
       `.github/sd-github-review.json` out of convergence —
       `node scripts/install-consumer.mjs check` reports both workflows differing
       from their managed hashes. That cannot be fixed before the release,
       because the manifest records a released source commit and tag; it is the
       same post-release step `#135` was for `0.6.0`, not a defect in the change.
-- [ ] Canary one consumer, verify, then `update` the remaining eight.
-- [ ] Expect the same consumer-local gates as last time: `docs/repomix-map.md`
+      Done as `#140`, merged. This repository's own `sd-review.yml` now carries
+      the `6ba1eff` pin and zero `issues: write`.
+- [x] Canary one consumer, verify, then `update` the remaining eight.
+      Canary was `people-profiles#14`: CI green, Copilot clean, router logged
+      `Selected copilot for PR #14`, merged with zero grants on `main`. The
+      remaining eight were then updated and opened as pull requests. Four of
+      those are merged; four are held — see the final item of this phase.
+- [x] Expect the same consumer-local gates as last time: `docs/repomix-map.md`
       staleness in `hoa-manager` and `mezmo_benchmark`, and the
       `Tooling/generated scope:` line in the `hoa-manager` body. A body edit
       does not clear the latter — `gh run rerun` replays the stored event
       payload, so the branch needs a fresh push.
-- [ ] Expect the Copilot reviewer to raise the stderr `::error::` annotation
+      Both recurred as predicted. The `Tooling/generated scope:` line was
+      supplied in the `hoa-manager#286` body, and five of six consumer
+      templates turned out to enforce a scope declaration, not just
+      `hoa-manager`.
+- [x] Expect the Copilot reviewer to raise the stderr `::error::` annotation
       finding again on any consumer reading the guard step. It is false and was
       settled on 2026-08-23 by probe run 32618129997; the evidence is in
       `.trellis/tasks/archive/2026-08/08-22-fleet-reviewer-v050-defects/implement.md`.
+      Did not recur. Copilot returned no findings on `#140` or on the canary
+      `people-profiles#14`. The prediction was defensive and cost nothing.
 - [ ] After merge, verify from each default branch that all nine carry the new
       lane blob and pin, and that none grants `issues: write`. Enumerate from
       GitHub; do not restate the install run.
+      **Unmet — 5 of 9, blocked externally.** Enumerated from each default
+      branch's `.github/workflows/sd-review.yml` on 2026-08-23:
+
+      | repository | pin | `issues: write` |
+      | --- | --- | --- |
+      | `platypeeps/sd-github-review` | `6ba1eff` | 0 |
+      | `platypeeps/people-profiles` | `6ba1eff` | 0 |
+      | `platypeeps/loadsmith` | `6ba1eff` | 0 |
+      | `answerbook/mezmo_benchmark` | `6ba1eff` | 0 |
+      | `platypeeps/se-ai-command-pack` | `6ba1eff` | 0 |
+      | `platypeeps/hoa-manager` | `98eebf6d` | 2 |
+      | `platypeeps/rwbp-website` | `98eebf6d` | 2 |
+      | `platypeeps/rwbp-coordinator` | `98eebf6d` | 2 |
+      | `platypeeps/anomaly-metric-creator` | `98eebf6d` | 2 |
+
+      The four laggards hold open pull requests — `hoa-manager#286`,
+      `rwbp-website#266`, `rwbp-coordinator#258`,
+      `anomaly-metric-creator#403` — each failing only its Socket
+      supply-chain scan with `401 APIAccessDenied` against
+      `https://api.socket.dev/v0/organizations`. The cause is an expired
+      `SOCKET_SECURITY_API_KEY`, not this change: the same key succeeded at
+      04:22 for `0.6.0` and failed by 20:52 for `0.6.1`, and every non-Socket
+      job passes on all four. Diagnostic comments are posted on each. This box
+      closes when the key is refreshed, the four re-run green, and the four
+      merge.
+
+      Two `issues: write` grants found on the way are **out of scope and still
+      live**: `hoa-manager` `ci.yml:360` and `anomaly-metric-creator`
+      `ci.yml:662`, both in hand-maintained Socket scan jobs the installer does
+      not manage. They are not what the four counts above measure.
 
 ## Validation commands
 
