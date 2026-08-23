@@ -83,7 +83,7 @@ node scripts/install-consumer.mjs uninstall [options]
   confirmation (interactive `confirm` seam or `--yes`), honors `--dry-run`, and
   writes `pending` then `active` so a partial GitHub failure is resumable
   through the normal lifecycle.
-- The manifest schema is version `5` (`MANIFEST_SCHEMA_VERSION`), tool
+- The manifest schema is version `6` (`MANIFEST_SCHEMA_VERSION`), tool
   `sd-github-review`, and state `pending`, `active`, or `uninstalling`. It
   records repository, workflow and source SHA-256, source provenance
   (`source.commit`, `source.tag`, `source.released`), the `descriptor` and
@@ -91,22 +91,24 @@ node scripts/install-consumer.mjs uninstall [options]
   was copied from, and `sha256`), provider/models, and exact
   variable/secret/label ownership. Source and workflow hashes must match. Extra
   owned resources are forbidden.
-- The decoder admits schema 1 through 4, and validates by version rather than
+- The decoder admits schema 1 through 6, and validates by version rather than
   by equality with the current constant:
 
-  | Version | `workflow` + `source` | provenance (`commit`, `tag`, `released`) | `descriptor` + `durableWorkflow` | `REVIEW_ROUTE_MODE` | `SD_REVIEW_*_BACKEND_V1` |
-  | --- | --- | --- | --- | --- | --- |
-  | 1 | required | not present | not present | not present | not present |
-  | 2 | required | **required** | not present | not present | not present |
-  | 3 | required | required | required | not present | not present |
-  | 4 | required | required | required | **required** | not present |
-  | 5 | required | required | required | required | **required** |
+  | Version | `workflow` + `source` | provenance (`commit`, `tag`, `released`) | `descriptor` + `durableWorkflow` | `REVIEW_ROUTE_MODE` | `SD_REVIEW_*_BACKEND_V1` | `REVIEW_INDEPENDENT_FLOOR` |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | 1 | required | not present | not present | not present | not present | not present |
+  | 2 | required | **required** | not present | not present | not present | not present |
+  | 3 | required | required | required | not present | not present | not present |
+  | 4 | required | required | required | **required** | not present | not present |
+  | 5 | required | required | required | required | **required** | not present |
+  | 6 | required | required | required | required | required | **required** |
 
   Gating provenance validation on `schemaVersion === MANIFEST_SCHEMA_VERSION`
   is forbidden: it silently stops validating `source.commit`/`tag`/`released`
   on every schema-2 manifest in the fleet. A legacy schema-`1` manifest decodes
   as a pre-provenance install and a schema-`2` one as a pre-durable install;
-  a schema-`3` one as pre-route-mode and a schema-`4` one as pre-backend; each is
+  a schema-`3` one as pre-route-mode, a schema-`4` one as pre-backend, and a
+  schema-`5` one as pre-review-floor; each is
   read-only at its own version and `update` rewrites it to the current schema.
 
   A decode sweep over schemas 1..current **cannot** catch the equality form for
@@ -118,7 +120,7 @@ node scripts/install-consumer.mjs uninstall [options]
 
   The managed *variable set* is version-scoped for the same reason the field
   requirements are. `decodeManifest` checks variable names by exact set
-  equality, so reading a pre-schema-5 manifest against the current six-name set
+  equality, so reading a pre-schema-6 manifest against the current seven-name set
   would not report drift — it would throw, taking `check` out on every installed
   consumer before it could report the migration it needs. Resolve the expected
   set from the manifest's own `schemaVersion`
@@ -245,6 +247,34 @@ node scripts/install-consumer.mjs uninstall [options]
   then an existing repository variable (adopted **unowned**, so `uninstall`
   preserves it), then a refusal naming the flag. An existing variable holding an
   unsupported value is a refusal, not a silent overwrite.
+- `REVIEW_INDEPENDENT_FLOOR` is installer-managed from schema 6, and is the
+  opposite bound from `REVIEW_ROUTE_MODE`: the policy is the strongest route a
+  caller may explicitly request, the floor is the weakest route automatic
+  selection may land on. Its accepted values are `REVIEW_FLOORS` — `none`,
+  `cheap`, `deep`, `copilot` — the route modes **minus `auto`**, because
+  `resolvedRoute` in `src/router.js` throws on an unresolved floor, so an
+  installer-written `auto` would fail every dispatch. Bound to the durable
+  lane's own `case` gate by extraction, exactly as `ROUTE_MODES` is bound to the
+  event-driven lane's.
+- A fresh install **requires** `--review-floor`, for the same reason and with
+  the same resolution order as `--route-mode`. Both candidate defaults are
+  wrong in a way the operator would not see: `none` installs a lane whose own
+  comment claims `copilot` guarantees an independent review and which has no
+  floor at all, and `copilot` commits a repository to requesting Copilot on
+  every routed pull request without anyone choosing it.
+- **Two ways to unfloor a lane, and the variable wiring closes only one.**
+  Reintroducing an `independent-review-floor` `workflow_dispatch` input is the
+  loud way; omitting the `with:` key entirely is the quiet one. `input()` uses
+  `??`, so an unset variable arrives as a present-but-empty string and fails
+  `normalizeMode`, while an *absent* key reaches the action's `"none"` default
+  and says so nowhere. Both are pinned by tests that sweep every shipped lane
+  which dispatches a review — a lane joins that set by carrying a
+  `review-request:` key, not by being listed.
+- Through 0.5.0 the floor was wired from a `workflow_dispatch` input on both
+  durable lanes, which handed the caller the bound that exists to constrain
+  them. Do not reintroduce it for symmetry with the payload inputs beside it.
+  The `action.yml` note that called the neighbouring wiring "deliberate" was
+  wrong and has been corrected in place.
 - The installer's CLI surface is documented in three places, and a change to it
   sweeps all three: `HELP` in `codecs.mjs`, the README install call-out, and the
   runnable invocations in `SETUP-PR-AGENT.md`. The setup guide is the one that
@@ -254,9 +284,9 @@ node scripts/install-consumer.mjs uninstall [options]
   `install-consumer.mjs install`, not from this list. The documented half of
   that sweep is enforced rather than remembered: a test enumerates every tracked
   Markdown file outside `.trellis/`, rejoins shell line continuations, and fails
-  any `install` invocation missing `--route-mode` or naming a mode the installer
-  rejects. Extend that test when a later flag becomes required, so the rule
-  keeps failing rather than merely being written down.
+  any `install` invocation missing `--route-mode` or `--review-floor`, or naming
+  a value either one rejects. Extend that test when a later flag becomes
+  required, so the rule keeps failing rather than merely being written down.
 - The lane's fail-closed gate stays regardless. Installer management is a second
   line of defence — a consumer can always delete the variable after installing —
   so removing the gate because the installer now writes the value would trade a

@@ -18,12 +18,11 @@ on:
         required: false
         default: false
         type: boolean
-      independent-review-floor:
-        description: Minimum route allowed by repository review policy
-        required: false
-        default: none
-        type: choice
-        options: [none, cheap, deep, copilot]
+      # There is deliberately no `independent-review-floor` input here. The
+      # floor is the minimum automatic route, and the caller it constrains is a
+      # workflow_dispatch caller -- offering it on the dispatch form hands that
+      # caller its own minimum. It reads from REVIEW_INDEPENDENT_FLOOR below,
+      # exactly as route-policy reads from REVIEW_ROUTE_MODE.
 
 # Least privilege by default; each job widens only to what it needs. The
 # receipt-writing jobs (review, finalize) hold checks:write; the third-party
@@ -58,9 +57,9 @@ jobs:
           deep-backend: ${{ vars.SD_REVIEW_DEEP_BACKEND_V1 }}
           rerequest-authorized: ${{ inputs.rerequest-authorized }}
           allow-bookkeeping-none: ${{ vars.SD_REVIEW_ALLOW_BOOKKEEPING_NONE || 'false' }}
-          independent-review-floor: ${{ inputs.independent-review-floor }}
+          independent-review-floor: ${{ vars.REVIEW_INDEPENDENT_FLOOR }}
           # Read straight from the repository variable, NOT from a
-          # workflow_dispatch input like the line above. This is the maximum
+          # workflow_dispatch input -- as with the floor above. This is the maximum
           # route a caller may explicitly request, and the caller it constrains
           # is a workflow_dispatch caller -- routing it through `inputs.` would
           # let them set their own policy and defeat it entirely. Repository

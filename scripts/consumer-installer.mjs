@@ -20,6 +20,8 @@ import {
   MANIFEST_PATH,
   MANIFEST_SCHEMA_VERSION,
   PROVENANCE_MIN_SCHEMA_VERSION,
+  REVIEW_FLOORS,
+  REVIEW_FLOOR_MIN_SCHEMA_VERSION,
   ROUTE_MODES,
   ROUTE_MODE_MIN_SCHEMA_VERSION,
   ROUTING_LABELS,
@@ -35,6 +37,7 @@ import {
   parseGitHubRemote,
   recognizeTemplate,
   resolveConfiguration,
+  resolveReviewFloor,
   resolveRouteMode,
   routeModeNeedsProviderSecret,
   sameConfiguration,
@@ -88,6 +91,7 @@ export {
   MANAGED_VARIABLE_NAMES,
   MANIFEST_PATH,
   MANIFEST_SCHEMA_VERSION,
+  REVIEW_FLOORS,
   ROUTE_MODES,
   ROUTING_LABELS,
   SECRET_NAME,
@@ -224,6 +228,26 @@ function routeModeForRun(command, options, manifest, snapshot) {
   return resolved;
 }
 
+// The floor's equivalent of routeModeForRun, and a refusal for the same shape
+// of reason: the 0.6.0 durable lane reads REVIEW_INDEPENDENT_FLOOR and refuses
+// to dispatch without it, so an install that guessed one would either install a
+// lane that claims a guarantee it does not have (`none`) or commit the
+// repository to a route nobody chose (`copilot`).
+function reviewFloorForRun(command, options, manifest, snapshot) {
+  const resolved = resolveReviewFloor({
+    optionValue: options.reviewFloor,
+    manifestValue: manifest?.configuration.reviewFloor,
+    observedValue: snapshot.variables.get("REVIEW_INDEPENDENT_FLOOR"),
+  });
+  if (resolved === undefined) {
+    throw new Error(
+      `${command} requires --review-floor (one of ${REVIEW_FLOORS.join(", ")}); ` +
+        "the durable review lane refuses to dispatch without REVIEW_INDEPENDENT_FLOOR, and the installer will not choose a repository's minimum review for it",
+    );
+  }
+  return resolved;
+}
+
 async function installOrUpdate(command, options, dependencies) {
   const sourceRoot = dependencies.sourceRoot ?? path.resolve(import.meta.dirname, "..");
   const sources = await readManagedSources(sourceRoot);
@@ -244,7 +268,11 @@ async function installOrUpdate(command, options, dependencies) {
   assertWorkflowCanBeManaged(command, local, templateSource);
   assertDurableResourcesCanBeManaged(local, sources);
   const routeMode = routeModeForRun(command, options, local.manifest, target.snapshot);
-  const configuration = resolveConfiguration({ ...options, routeMode }, local.manifest);
+  const reviewFloor = reviewFloorForRun(command, options, local.manifest, target.snapshot);
+  const configuration = resolveConfiguration(
+    { ...options, routeMode, reviewFloor },
+    local.manifest,
+  );
   const setSecretRequested = options.secretMode === "interactive" || options.secretMode === "stdin";
   const { actions, resources } = planResources(
     configuration,
@@ -344,10 +372,11 @@ async function adoptInstallation(options, dependencies) {
   assertDurableResourcesCanBeManaged(local, sources);
   const refreshWorkflow = recognized.label !== "current source";
   // adopt passes a null manifest by design — an adopted install has no recorded
-  // configuration to retain — so its route mode comes from the flag or from the
-  // variable the manual installer already set.
+  // configuration to retain — so its route mode and review floor come from the
+  // flags or from the variables the manual installer already set.
   const routeMode = routeModeForRun("adopt", options, null, target.snapshot);
-  const configuration = resolveConfiguration({ ...options, routeMode }, null);
+  const reviewFloor = reviewFloorForRun("adopt", options, null, target.snapshot);
+  const configuration = resolveConfiguration({ ...options, routeMode, reviewFloor }, null);
   const setSecretRequested = options.secretMode === "interactive" || options.secretMode === "stdin";
   const { actions, resources } = planResources(
     configuration,
@@ -488,6 +517,10 @@ async function checkInstallation(options, dependencies) {
       issues.push(
         "manifest predates durable backend management; run update to record SD_REVIEW_CHEAP_BACKEND_V1 and SD_REVIEW_DEEP_BACKEND_V1",
       );
+    } else if (local.manifest.schemaVersion < REVIEW_FLOOR_MIN_SCHEMA_VERSION) {
+      issues.push(
+        "manifest predates review-floor management; run update with --review-floor to record REVIEW_INDEPENDENT_FLOOR, which the 0.6.0 durable lane refuses to dispatch without",
+      );
     }
     if (release && local.manifest.schemaVersion >= PROVENANCE_MIN_SCHEMA_VERSION) {
       if (local.manifest.source.commit !== release.commit) {
@@ -512,7 +545,20 @@ async function checkInstallation(options, dependencies) {
     (local.manifest?.schemaVersion >= ROUTE_MODE_MIN_SCHEMA_VERSION
       ? local.manifest.configuration.routeMode
       : undefined);
-  const configuration = resolveConfiguration({ ...options, routeMode: checkRouteMode }, local.manifest);
+  // Same rule one tier up, and the same reason not to read the repository's own
+  // variable here: a pre-schema-6 consumer that already carries
+  // REVIEW_INDEPENDENT_FLOOR by hand would otherwise report a configuration
+  // mismatch on top of the migration issue it already reports, which reads as
+  // two problems where there is one.
+  const checkReviewFloor =
+    options.reviewFloor ??
+    (local.manifest?.schemaVersion >= REVIEW_FLOOR_MIN_SCHEMA_VERSION
+      ? local.manifest.configuration.reviewFloor
+      : undefined);
+  const configuration = resolveConfiguration(
+    { ...options, routeMode: checkRouteMode, reviewFloor: checkReviewFloor },
+    local.manifest,
+  );
   if (local.manifest && !sameConfiguration(local.manifest.configuration, configuration)) {
     issues.push("manifest configuration does not match the requested configuration");
   }

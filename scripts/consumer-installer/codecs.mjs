@@ -121,6 +121,21 @@ const SUPPORTED_PROVIDER_SET = new Set(SUPPORTED_PROVIDERS);
 // apart in one direction only.
 export const ROUTE_MODES = Object.freeze(["auto", "cheap", "deep", "copilot", "none"]);
 const ROUTE_MODE_SET = new Set(ROUTE_MODES);
+// The accepted values of REVIEW_INDEPENDENT_FLOOR, and the same
+// not-independent set as ROUTE_MODES above: the installed durable lane gates on
+// exactly these in its own `case` statement (examples/sd-review.yml), and a
+// test extracts that pattern and asserts set equality.
+//
+// `auto` is absent, and that is the whole difference between the two lists.
+// REVIEW_ROUTE_MODE is a ceiling on what a caller may explicitly ask for, and
+// `auto` names "no explicit request", so it belongs there. A floor is the
+// minimum route automatic selection may land on; there is no such thing as an
+// automatic minimum of "decide automatically". The action agrees, and it is
+// not merely convention there: `resolvedRoute` (src/router.js) throws
+// "policy.independentReviewFloor must be a resolved route" on `auto`, so a
+// floor this installer wrote as `auto` would fail every routed review.
+export const REVIEW_FLOORS = Object.freeze(["none", "cheap", "deep", "copilot"]);
+const REVIEW_FLOOR_SET = new Set(REVIEW_FLOORS);
 // The route modes that reach no PR-Agent provider and so do not need
 // PR_AGENT_MODEL_API_KEY present to install. Both installed lanes bind the
 // secret only inside `vars.PR_AGENT_MODEL_PROVIDER == '<name>'` guards that
@@ -193,7 +208,8 @@ function backendDescriptor({ model, costTier, qualityTier }) {
 // The set is version-scoped, because names joined over time: a manifest written
 // before REVIEW_ROUTE_MODE joined at schema 4 records three variables, one
 // written before the two backend descriptors joined at schema 5 records four,
-// and both must keep decoding.
+// one written before REVIEW_INDEPENDENT_FLOOR joined at schema 6 records six,
+// and all of them must keep decoding.
 const LEGACY_CONFIG_VARIABLES = Object.freeze({
   PR_AGENT_MODEL_PROVIDER: Object.freeze({ field: "provider" }),
   CHEAP_REVIEW_MODEL: Object.freeze({ field: "cheapModel" }),
@@ -203,7 +219,7 @@ const ROUTE_MODE_CONFIG_VARIABLES = Object.freeze({
   ...LEGACY_CONFIG_VARIABLES,
   REVIEW_ROUTE_MODE: Object.freeze({ field: "routeMode" }),
 });
-const CONFIG_VARIABLES = Object.freeze({
+const BACKEND_CONFIG_VARIABLES = Object.freeze({
   ...ROUTE_MODE_CONFIG_VARIABLES,
   SD_REVIEW_CHEAP_BACKEND_V1: Object.freeze({
     model: "cheapModel",
@@ -224,6 +240,23 @@ const CONFIG_VARIABLES = Object.freeze({
       }),
   }),
 });
+// The current tier. REVIEW_INDEPENDENT_FLOOR joined at schema 6, when the
+// durable lane stopped taking its floor from a workflow_dispatch input: the
+// lane now reads this variable, and a lane that reads a variable nothing
+// creates is a lane that fails at dispatch with nothing watching it. Bringing
+// it under management is what makes `check` able to see it and `uninstall`
+// able to remove it.
+//
+// CONFIG_VARIABLES always names the current tier -- downstream,
+// MANAGED_VARIABLE_NAMES and variableValues() read it as "everything managed
+// now". A new tier renames the previous top constant after its own schema
+// gate and keeps this name on the newest set; it never adds a constant beside
+// this one, which would leave the new variable unmanaged everywhere the plain
+// name is read.
+const CONFIG_VARIABLES = Object.freeze({
+  ...BACKEND_CONFIG_VARIABLES,
+  REVIEW_INDEPENDENT_FLOOR: Object.freeze({ field: "reviewFloor" }),
+});
 export const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const REPOSITORY_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u;
 const LIFECYCLE_STATES = new Set(["pending", "active", "uninstalling"]);
@@ -233,20 +266,26 @@ const MAX_MODEL_LENGTH = 256;
 // (commit, tag, released) on the source template, then 2 -> 3 to record the two
 // resources the durable lane adds: the setup discovery descriptor and the
 // durable workflow, then 3 -> 4 to bring REVIEW_ROUTE_MODE under management,
-// then 4 -> 5 to bring the two durable backend descriptors under management.
+// then 4 -> 5 to bring the two durable backend descriptors under management,
+// then 5 -> 6 to bring REVIEW_INDEPENDENT_FLOOR under management.
 // Distinct from the action contract descriptor's own schemaVersion in
 // config/routed-review-setup-v1.json.
 //
-// Required fields per version, so the decoder can be read against the matrix:
+// Required fields per version, so the decoder can be read against the matrix.
+// Columns after the first are abbreviated: SOURCE is workflow + source, PROV is
+// provenance, DURABLE is descriptor + durableWorkflow, MODE is
+// REVIEW_ROUTE_MODE, BACKENDS is the pair of SD_REVIEW_*_BACKEND_V1, FLOOR is
+// REVIEW_INDEPENDENT_FLOOR.
 //
-//   | version | workflow + source | provenance | descriptor + durableWorkflow | REVIEW_ROUTE_MODE | SD_REVIEW_*_BACKEND_V1 |
-//   | 1       | required          | absent     | absent                       | absent            | absent                 |
-//   | 2       | required          | required   | absent                       | absent            | absent                 |
-//   | 3       | required          | required   | required                     | absent            | absent                 |
-//   | 4       | required          | required   | required                     | required          | absent                 |
-//   | 5       | required          | required   | required                     | required          | required               |
-export const MANIFEST_SCHEMA_VERSION = 5;
-const SUPPORTED_MANIFEST_SCHEMA_VERSIONS = new Set([1, 2, 3, 4, 5]);
+//   | version | SOURCE   | PROV     | DURABLE  | MODE     | BACKENDS | FLOOR    |
+//   | 1       | required | absent   | absent   | absent   | absent   | absent   |
+//   | 2       | required | required | absent   | absent   | absent   | absent   |
+//   | 3       | required | required | required | absent   | absent   | absent   |
+//   | 4       | required | required | required | required | absent   | absent   |
+//   | 5       | required | required | required | required | required | absent   |
+//   | 6       | required | required | required | required | required | required |
+export const MANIFEST_SCHEMA_VERSION = 6;
+const SUPPORTED_MANIFEST_SCHEMA_VERSIONS = new Set([1, 2, 3, 4, 5, 6]);
 // Provenance became mandatory at schema 2 and stays mandatory afterwards.
 // Gating it on `=== MANIFEST_SCHEMA_VERSION` would silently stop validating
 // source.commit/tag/released on every schema-2 manifest the fleet is running.
@@ -261,12 +300,19 @@ export const ROUTE_MODE_MIN_SCHEMA_VERSION = 4;
 // The two durable backend descriptors became mandatory at schema 5. Same rule
 // again: gate on the version the requirement was introduced at.
 export const BACKEND_MIN_SCHEMA_VERSION = 5;
+// REVIEW_INDEPENDENT_FLOOR ownership became mandatory at schema 6. Same rule a
+// fourth time. This tier matters more than the ones above it because the lane
+// it feeds fails closed: a schema-5 manifest decodes fine, but the 0.6.0 lane
+// it points at will not dispatch until `update` writes the variable, which is
+// exactly what the ladder message in `check` exists to say.
+export const REVIEW_FLOOR_MIN_SCHEMA_VERSION = 6;
 
 // The managed variable set a manifest at the given schema version is expected to
 // record. Callers reading a manifest must use this rather than CONFIG_VARIABLES
-// directly, or every pre-schema-5 manifest in the fleet fails to decode.
+// directly, or every pre-current-schema manifest in the fleet fails to decode.
 function configVariablesForSchema(schemaVersion) {
-  if (schemaVersion >= BACKEND_MIN_SCHEMA_VERSION) return CONFIG_VARIABLES;
+  if (schemaVersion >= REVIEW_FLOOR_MIN_SCHEMA_VERSION) return CONFIG_VARIABLES;
+  if (schemaVersion >= BACKEND_MIN_SCHEMA_VERSION) return BACKEND_CONFIG_VARIABLES;
   if (schemaVersion >= ROUTE_MODE_MIN_SCHEMA_VERSION) return ROUTE_MODE_CONFIG_VARIABLES;
   return LEGACY_CONFIG_VARIABLES;
 }
@@ -331,10 +377,19 @@ export function sameRepository(left, right) {
   return left.toLowerCase() === right.toLowerCase();
 }
 
-// `requireRouteMode` is the schema-4 tier expressed as an argument. A manifest
-// below that tier carries no route mode and must still validate; a manifest at
-// or above it, and every install/update/adopt run, must carry one.
-export function validateConfiguration(configuration, { requireRouteMode = false } = {}) {
+// `requireRouteMode` and `requireReviewFloor` are the schema-4 and schema-6
+// tiers expressed as arguments. A manifest below a tier carries no such value
+// and must still validate; a manifest at or above it, and every
+// install/update/adopt run, must carry one.
+//
+// They are separate arguments rather than one "current tier" flag because they
+// are separate tiers: a schema-5 manifest must be held to the first and not the
+// second, and collapsing them would reject every schema-5 manifest in the fleet
+// the moment schema 6 shipped.
+export function validateConfiguration(
+  configuration,
+  { requireRouteMode = false, requireReviewFloor = false } = {},
+) {
   const provider = configuration.provider;
   if (!SUPPORTED_PROVIDER_SET.has(provider)) {
     throw new Error(
@@ -355,6 +410,11 @@ export function validateConfiguration(configuration, { requireRouteMode = false 
       throw new Error(`${field} must use the ${provider}/<model-id> form`);
     }
   }
+  const base = {
+    provider,
+    cheapModel: configuration.cheapModel,
+    deepModel: configuration.deepModel,
+  };
   const routeMode = configuration.routeMode;
   if (routeMode === undefined) {
     if (requireRouteMode) {
@@ -362,21 +422,29 @@ export function validateConfiguration(configuration, { requireRouteMode = false 
         `route mode is required; pass --route-mode with one of: ${ROUTE_MODES.join(", ")}`,
       );
     }
-    return {
-      provider,
-      cheapModel: configuration.cheapModel,
-      deepModel: configuration.deepModel,
-    };
+    // A configuration with no route mode cannot carry a floor either: the floor
+    // tier is strictly above the route-mode tier, so reaching here means the
+    // manifest predates both. Returning early rather than falling through keeps
+    // that ordering a property of the code and not of the caller.
+    return base;
   }
   if (!ROUTE_MODE_SET.has(routeMode)) {
     throw new Error(`route mode must be one of: ${ROUTE_MODES.join(", ")}`);
   }
-  return {
-    provider,
-    cheapModel: configuration.cheapModel,
-    deepModel: configuration.deepModel,
-    routeMode,
-  };
+  const withRouteMode = { ...base, routeMode };
+  const reviewFloor = configuration.reviewFloor;
+  if (reviewFloor === undefined) {
+    if (requireReviewFloor) {
+      throw new Error(
+        `review floor is required; pass --review-floor with one of: ${REVIEW_FLOORS.join(", ")}`,
+      );
+    }
+    return withRouteMode;
+  }
+  if (!REVIEW_FLOOR_SET.has(reviewFloor)) {
+    throw new Error(`review floor must be one of: ${REVIEW_FLOORS.join(", ")}`);
+  }
+  return { ...withRouteMode, reviewFloor };
 }
 
 // Where a route mode comes from, in precedence order: the operator's explicit
@@ -398,6 +466,35 @@ export function resolveRouteMode({ optionValue, manifestValue, observedValue }) 
     if (!ROUTE_MODE_SET.has(observedValue)) {
       throw new Error(
         `GitHub variable REVIEW_ROUTE_MODE holds an unsupported value; set it to one of ${ROUTE_MODES.join(", ")} or pass --route-mode`,
+      );
+    }
+    return observedValue;
+  }
+  return undefined;
+}
+
+// The floor's equivalent of resolveRouteMode, with the same precedence and the
+// same "undefined is the caller's problem" contract.
+//
+// There is deliberately no default here, for the same reason --route-mode has
+// none. A floor is a security bound, and the two candidate defaults are both
+// wrong in a way the operator would not see: `none` installs a lane whose own
+// comment claims it guarantees an independent review and which does not, and
+// `copilot` silently commits a repository to requesting Copilot on every
+// routed pull request. Making it explicit costs one flag per install and is
+// the only way the recorded value reflects a decision someone made.
+export function resolveReviewFloor({ optionValue, manifestValue, observedValue }) {
+  if (optionValue !== undefined) {
+    if (!REVIEW_FLOOR_SET.has(optionValue)) {
+      throw new Error(`--review-floor must be one of: ${REVIEW_FLOORS.join(", ")}`);
+    }
+    return optionValue;
+  }
+  if (manifestValue !== undefined) return manifestValue;
+  if (observedValue !== undefined) {
+    if (!REVIEW_FLOOR_SET.has(observedValue)) {
+      throw new Error(
+        `GitHub variable REVIEW_INDEPENDENT_FLOOR holds an unsupported value; set it to one of ${REVIEW_FLOORS.join(", ")} or pass --review-floor`,
       );
     }
     return observedValue;
@@ -486,6 +583,7 @@ export function decodeManifest(source, filePath = MANIFEST_PATH) {
   // surfaces the migration and `update` rewrites it to the current schema.
   value.configuration = validateConfiguration(value.configuration ?? {}, {
     requireRouteMode: value.schemaVersion >= ROUTE_MODE_MIN_SCHEMA_VERSION,
+    requireReviewFloor: value.schemaVersion >= REVIEW_FLOOR_MIN_SCHEMA_VERSION,
   });
   if (!isObject(value.resources) || !isObject(value.resources.variables)) {
     throw new Error(`${filePath}: resource ownership is malformed`);
@@ -627,6 +725,7 @@ export function resolveConfiguration(options, existingManifest) {
     cheapModel: options.cheapModel ?? existing.cheapModel,
     deepModel: options.deepModel ?? existing.deepModel,
     routeMode: options.routeMode ?? existing.routeMode,
+    reviewFloor: options.reviewFloor ?? existing.reviewFloor,
   });
 }
 
@@ -711,6 +810,14 @@ Install/update/check configuration:
                          installer will not guess one on its behalf. An update
                          keeps the recorded mode, and an existing repository
                          variable is adopted unowned.
+  --review-floor MODE    none, cheap, deep, or copilot. The minimum route the
+                         durable lane's automatic selection may land on, and
+                         the opposite bound from --route-mode. Required on a
+                         fresh install for the same reason and with the same
+                         precedence: the lane refuses to dispatch without
+                         REVIEW_INDEPENDENT_FLOOR, an update keeps the recorded
+                         floor, and an existing repository variable is adopted
+                         unowned. No 'auto' -- a floor is a resolved route.
 
 Install/update/adopt secret input:
   --set-secret           Prompt through gh secret set
@@ -743,6 +850,7 @@ export function parseArguments(argv) {
     ["--cheap-model", "cheapModel"],
     ["--deep-model", "deepModel"],
     ["--route-mode", "routeMode"],
+    ["--review-floor", "reviewFloor"],
     ["--source-tag", "sourceTag"],
     ["--source-commit", "sourceCommit"],
   ]);
@@ -774,7 +882,11 @@ export function parseArguments(argv) {
   }
   if (
     command === "uninstall" &&
-    (options.provider || options.cheapModel || options.deepModel || options.routeMode)
+    (options.provider ||
+      options.cheapModel ||
+      options.deepModel ||
+      options.routeMode ||
+      options.reviewFloor)
   ) {
     throw new Error("uninstall does not accept provider, model, or route options");
   }

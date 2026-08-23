@@ -61,42 +61,42 @@ changed.
 
 ## Phase 2 — D2, the lane and the action
 
-- [ ] `examples/sd-review.yml`: delete the `independent-review-floor`
+- [x] `examples/sd-review.yml`: delete the `independent-review-floor`
       `workflow_dispatch` input, including its `options` list.
-- [ ] Add the fail-closed guard step to the `review` job, `case`-ing over
+- [x] Add the fail-closed guard step to the `review` job, `case`-ing over
       `none|cheap|deep|copilot`, `""` → error naming
       `REVIEW_INDEPENDENT_FLOOR`, `*` → error showing the received value. Copy
       the shape of the `REVIEW_ROUTE_MODE` guard in
       `examples/pr-agent-router.yml`; do not invent a second idiom.
-- [ ] Wire `independent-review-floor: ${{ vars.REVIEW_INDEPENDENT_FLOOR }}`.
-- [ ] Rewrite the comment above it. The current text is accurate about the pack
+- [x] Wire `independent-review-floor: ${{ vars.REVIEW_INDEPENDENT_FLOOR }}`.
+- [x] Rewrite the comment above it. The current text is accurate about the pack
       and false about a human dispatching from the Actions UI, which is how the
       defect survived review. Say which caller it constrains.
-- [ ] `action.yml`: rewrite the tail of the `route-policy` description. It
+- [x] `action.yml`: rewrite the tail of the `route-policy` description. It
       currently warns that "the neighbouring policy inputs on the shipped lane
       are deliberately wired the other way" — after this change that sentence
       describes the defect as intentional. Name both inputs as variable-wired.
-- [ ] **Do not** add a `${{ … }}` expression to any `action.yml` description
+- [x] **Do not** add a `${{ … }}` expression to any `action.yml` description
       while editing it. `R-008` will catch it, but the reason is worth holding:
       that is the exact edit that made `0.5.0` unloadable for every consumer.
-- [ ] Test that the lane guard's accepted set equals the installer's accepted
+- [x] Test that the lane guard's accepted set equals the installer's accepted
       floor set, extracting the `case` arms from the lane the way the existing
       `ROUTE_MODES` test does. Two expressions of one set.
-- [ ] Test that a dispatch input cannot lower the floor — assert the lane
+- [x] Test that a dispatch input cannot lower the floor — assert the lane
       declares no `independent-review-floor` input at all. Asserting the wiring
       string alone would pass against a lane that kept the input and ignored it.
-- [ ] Test that the lane **passes the `independent-review-floor` key at all**.
+- [x] Test that the lane **passes the `independent-review-floor` key at all**.
       This is the one genuine fail-open in the design: `input()` uses `??`
       (`src/operations.js:30`), so an empty variable throws in `normalizeMode`
       and fails closed, but an *absent* key reaches the `"none"` fallback and
       silently unfloors the lane. A future edit reasoning "the variable is unset
       everywhere, drop the line" would do exactly that. Assert the key is
       present and wired to the variable, not merely that no input exists.
-- [ ] Do **not** justify the guard step as preventing a silent `none`. It does
+- [x] Do **not** justify the guard step as preventing a silent `none`. It does
       not; the decoder already throws on an empty value. The guard's value is
       failing at the lane with an error naming the variable, and symmetry with
       the `REVIEW_ROUTE_MODE` guard. `design.md` records the corrected analysis.
-- [ ] `npm run check:full`.
+- [x] `npm run check:full`.
 
 **Rollback point.** Revert Phase 2; Phase 1 stands on its own.
 
@@ -104,24 +104,42 @@ changed.
 
 Mirror `REVIEW_ROUTE_MODE`'s arrival at schema 4 step for step.
 
-- [ ] `codecs.mjs`: manifest schema `5 → 6`; add `6` to
+- [x] `codecs.mjs`: manifest schema `5 → 6`; add `6` to
       `SUPPORTED_MANIFEST_SCHEMA_VERSIONS`; add the `| 6 |` row to the matrix
       comment.
-- [ ] `export const REVIEW_FLOOR_MIN_SCHEMA_VERSION = 6`. Gate on the version
+- [x] `export const REVIEW_FLOOR_MIN_SCHEMA_VERSION = 6`. Gate on the version
       the requirement was introduced at — never `=== MANIFEST_SCHEMA_VERSION`,
       which narrows an existing tier instead of adding one. The comment on
       `ROUTE_MODE_MIN_SCHEMA_VERSION` says why.
-- [ ] Add `FLOOR_CONFIG_VARIABLES`, spreading `CONFIG_VARIABLES` and adding
-      `REVIEW_INDEPENDENT_FLOOR: { field: "reviewFloor" }`. Keep the layering:
-      manifests written before the variable joined must keep decoding.
-- [ ] `consumer-installer.mjs`: add the `check` drift row (mirror line 216) and
+- [x] Add the new variable tier. **Deviation, deliberate:** the plan said to add
+      `FLOOR_CONFIG_VARIABLES` spreading `CONFIG_VARIABLES`, which would have
+      left the floor out of `MANAGED_VARIABLE_NAMES`, `variableValues`, and
+      `CONFIGURATION_FIELDS` — all three read `CONFIG_VARIABLES` as "everything
+      managed now", so the variable would have been unmanaged everywhere that
+      matters while looking added. The existing convention is the opposite: the
+      previous top constant is renamed for its own tier and `CONFIG_VARIABLES`
+      keeps naming the newest set. So `CONFIG_VARIABLES` became
+      `BACKEND_CONFIG_VARIABLES` and the new `CONFIG_VARIABLES` spreads it and
+      adds `REVIEW_INDEPENDENT_FLOOR: { field: "reviewFloor" }`. The layering is
+      unchanged: `configVariablesForSchema` gained one branch.
+- [x] `consumer-installer.mjs`: add the `check` drift row (mirror line 216) and
       the schema-ladder upgrade message (mirror lines 474–490).
-- [ ] Decide and record the install-time default. `--route-mode` has no default
+- [x] Decide and record the install-time default. `--route-mode` has no default
       and must be chosen explicitly; the floor should behave the same way rather
       than acquiring a silent one.
-- [ ] Decode tests for a schema-5 manifest (must keep decoding) and a schema-6
-      one missing the variable (must be rejected).
-- [ ] `npm run check:full`.
+- [x] Decode tests for a schema-5 manifest (must keep decoding) and a schema-6
+      one missing the variable (must be rejected). Four cases, because there are
+      four ways a schema-6 manifest can be wrong: variable dropped, configuration
+      field dropped, the two disagreeing, and the tier below still decoding with
+      no floor at all.
+- [x] **Added beyond the plan.** Operator documentation, which the plan did not
+      list and the installer spec explicitly warns is the piece that gets
+      missed. `--review-floor` is now required, so every runnable
+      `install-consumer.mjs install` in `README.md` and `SETUP-PR-AGENT.md`
+      fails without it. The existing documented-invocation test only enforced
+      `--route-mode`; it has a `--review-floor` twin now, so this cannot recur
+      silently for the next required flag either.
+- [x] `npm run check:full`.
 
 **Review gate.** Phases 2 and 3 merge together — the lane fails closed against a
 variable only Phase 3 can write, so neither is complete alone.

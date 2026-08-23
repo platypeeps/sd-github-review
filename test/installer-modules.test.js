@@ -26,6 +26,7 @@ import {
   parseGitHubRemote,
   recognizeTemplate,
   resolveConfiguration,
+  REVIEW_FLOOR_MIN_SCHEMA_VERSION,
   ROUTE_MODE_MIN_SCHEMA_VERSION,
   resolveOverride,
   sameConfiguration,
@@ -84,6 +85,10 @@ function manifestBody(schemaVersion, overrides = {}) {
   // from a configuration field of their own, so the tier scoping for them lives
   // entirely in variableValuesForSchema rather than here.
   if (schemaVersion >= ROUTE_MODE_MIN_SCHEMA_VERSION) configuration.routeMode = "copilot";
+  // REVIEW_INDEPENDENT_FLOOR joined at schema 6, one tier above route mode, and
+  // is scoped the same way: below that tier the manifest records no floor and
+  // must still decode.
+  if (schemaVersion >= REVIEW_FLOOR_MIN_SCHEMA_VERSION) configuration.reviewFloor = "copilot";
   const body = {
     schemaVersion,
     tool: "sd-github-review",
@@ -133,7 +138,7 @@ test("codecs: the synthesized backend descriptors satisfy the action's decoder",
   // consumer takes — table -> JSON string in `vars.*` -> JSON.parse in the
   // action -> decodeBackend — rather than against the object the table builds,
   // so a value that only survives in memory cannot pass.
-  const configuration = { ...DEFAULT_CONFIG, routeMode: "copilot" };
+  const configuration = { ...DEFAULT_CONFIG, routeMode: "copilot", reviewFloor: "copilot" };
   const values = variableValues(configuration);
   for (const [name, modelField, costTier, qualityTier] of [
     ["SD_REVIEW_CHEAP_BACKEND_V1", "cheapModel", "low", "standard"],
@@ -164,6 +169,7 @@ test("codecs: a backend descriptor follows the configured model, not the default
     cheapModel: "anthropic/claude-haiku-4-5",
     deepModel: "anthropic/claude-opus-4-1",
     routeMode: "cheap",
+    reviewFloor: "cheap",
   };
   const values = variableValues(configuration);
   assert.equal(JSON.parse(values.SD_REVIEW_CHEAP_BACKEND_V1).model, "anthropic/claude-haiku-4-5");
@@ -233,6 +239,55 @@ test("codecs: every supported schema decodes at the current schema version", () 
   );
 });
 
+test("codecs: a schema-6 manifest must carry the review floor a schema-5 one may omit", () => {
+  // Both directions of the tier the floor arrived at. The lane installed by
+  // 0.6.0 refuses to dispatch without REVIEW_INDEPENDENT_FLOOR, so a manifest
+  // claiming schema 6 while recording no floor describes an installation that
+  // cannot review anything -- and `check` reads the manifest, so a decoder that
+  // accepted it would report that consumer healthy.
+  const floorTier = manifestBody(REVIEW_FLOOR_MIN_SCHEMA_VERSION);
+  assert.equal(
+    decodeManifest(JSON.stringify(floorTier)).configuration.reviewFloor,
+    "copilot",
+  );
+
+  // Dropping the variable alone: the managed set is compared by exact equality
+  // against the tier the manifest declares.
+  const missingVariable = manifestBody(REVIEW_FLOOR_MIN_SCHEMA_VERSION);
+  delete missingVariable.resources.variables.REVIEW_INDEPENDENT_FLOOR;
+  assert.throws(
+    () => decodeManifest(JSON.stringify(missingVariable)),
+    /variable ownership must contain only managed variables/u,
+  );
+
+  // Dropping the configuration field alone: caught by the tier gate rather than
+  // by the variable set, which is why both are asserted instead of one standing
+  // in for the other.
+  const missingField = manifestBody(REVIEW_FLOOR_MIN_SCHEMA_VERSION);
+  delete missingField.configuration.reviewFloor;
+  assert.throws(
+    () => decodeManifest(JSON.stringify(missingField)),
+    /review floor is required/u,
+  );
+
+  // A recorded variable that disagrees with the recorded configuration is the
+  // drift `check` exists to surface, so it must not survive decoding either.
+  const disagreeing = manifestBody(REVIEW_FLOOR_MIN_SCHEMA_VERSION);
+  disagreeing.resources.variables.REVIEW_INDEPENDENT_FLOOR.value = "none";
+  assert.throws(
+    () => decodeManifest(JSON.stringify(disagreeing)),
+    /variable REVIEW_INDEPENDENT_FLOOR must match the recorded configuration/u,
+  );
+
+  // And the tier below it still decodes with no floor at all. This is the
+  // fleet's actual state at the moment 0.6.0 ships, so a gate written as
+  // `=== MANIFEST_SCHEMA_VERSION` would reject every installed consumer.
+  const belowTier = manifestBody(REVIEW_FLOOR_MIN_SCHEMA_VERSION - 1);
+  const decodedBelow = decodeManifest(JSON.stringify(belowTier));
+  assert.equal(decodedBelow.configuration.reviewFloor, undefined);
+  assert.equal("REVIEW_INDEPENDENT_FLOOR" in decodedBelow.resources.variables, false);
+});
+
 test("codecs: the managed variable tiers are monotone, not pinned to the current version", () => {
   // The gate this locks is `>= BACKEND_MIN_SCHEMA_VERSION`, not
   // `=== MANIFEST_SCHEMA_VERSION`. Today those two are indistinguishable —
@@ -243,7 +298,7 @@ test("codecs: the managed variable tiers are monotone, not pinned to the current
   //
   // Probing one version above the current one is what separates them: an
   // introduced-at gate keeps returning the tier, an equality gate stops.
-  const configuration = { ...DEFAULT_CONFIG, routeMode: "copilot" };
+  const configuration = { ...DEFAULT_CONFIG, routeMode: "copilot", reviewFloor: "copilot" };
   const current = Object.keys(variableValuesForSchema(configuration, MANIFEST_SCHEMA_VERSION));
   const beyond = Object.keys(variableValuesForSchema(configuration, MANIFEST_SCHEMA_VERSION + 1));
   assert.deepEqual(beyond.sort(), current.sort());
@@ -422,7 +477,7 @@ test("codecs: recognizeTemplate matches the current template and allow-listed hi
 });
 
 test("codecs: decodeManifest round-trips a schema-3 manifest and rejects a foreign label", () => {
-  const configuration = { ...DEFAULT_CONFIG, routeMode: "copilot" };
+  const configuration = { ...DEFAULT_CONFIG, routeMode: "copilot", reviewFloor: "copilot" };
   const manifest = createManifest({
     state: "active",
     repository: "acme/consumer",
@@ -766,7 +821,7 @@ test("persistence: the guard rejects a path escaping the canonical root", async 
 test("persistence: loadLocalState decodes an existing managed manifest", async () => {
   const root = await makeTarget();
   const guard = makePathGuard(root);
-  const configuration = { ...DEFAULT_CONFIG, routeMode: "copilot" };
+  const configuration = { ...DEFAULT_CONFIG, routeMode: "copilot", reviewFloor: "copilot" };
   const manifest = createManifest({
     state: "active",
     repository: "acme/consumer",

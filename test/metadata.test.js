@@ -380,19 +380,40 @@ test("publishes pinned standalone and durable PR-Agent workflows", async () => {
   assert.equal(genericDurableRoute.with["high-risk-route"], undefined);
   const durableInputs = durable.workflow.on.workflow_dispatch.inputs;
   const genericDurableInputs = genericDurable.workflow.on.workflow_dispatch.inputs;
-  for (const control of ["rerequest-authorized", "independent-review-floor"]) {
+  for (const control of ["rerequest-authorized"]) {
     assert.deepEqual(durableInputs[control], genericDurableInputs[control]);
     assert.equal(durableRoute.with[control], `\${{ inputs.${control} }}`);
     assert.equal(genericDurableRoute.with[control], `\${{ inputs.${control} }}`);
   }
   assert.equal(durableInputs["rerequest-authorized"].type, "boolean");
   assert.equal(durableInputs["rerequest-authorized"].default, false);
-  assert.equal(durableInputs["independent-review-floor"].type, "choice");
-  assert.equal(durableInputs["independent-review-floor"].default, "none");
-  assert.deepEqual(
-    durableInputs["independent-review-floor"].options,
-    ["none", "cheap", "deep", "copilot"],
-  );
+  // independent-review-floor is deliberately NOT in the loop above. Through
+  // 0.5.0 it was a workflow_dispatch input on both lanes, which handed the
+  // caller the floor that exists to bound them: anyone who could dispatch could
+  // select `none` and skip independent review on a lane whose own comment
+  // claims copilot guarantees one. It now reads a repository variable, which a
+  // dispatch form cannot set.
+  //
+  // Two assertions, because there are two ways to unfloor the lane and the
+  // wiring closes only one. Reintroducing the input is the loud way; dropping
+  // the `with:` key entirely is the quiet one -- `input()` uses `??`, so an
+  // absent key reaches the action's `"none"` default while an unset variable
+  // arrives as "" and fails normalizeMode.
+  for (const [lane, inputs, route] of [
+    ["durable", durableInputs, durableRoute],
+    ["generic durable", genericDurableInputs, genericDurableRoute],
+  ]) {
+    assert.equal(
+      inputs["independent-review-floor"],
+      undefined,
+      `the ${lane} lane must not let a dispatch caller supply its own review floor`,
+    );
+    assert.equal(
+      route.with["independent-review-floor"],
+      "${{ vars.REVIEW_INDEPENDENT_FLOOR }}",
+      `the ${lane} lane must still pass a floor; omitting the key reaches the action's "none" default`,
+    );
+  }
   assert.match(preflight.run, /REVIEW_BACKEND_ID.*pr-agent/su);
   assert.ok(preflight.run.includes('-z "$REVIEW_MODEL"'));
   assert.equal(acknowledge.with.operation, "acknowledge");
@@ -440,8 +461,8 @@ test("publishes consistent read-only setup discovery and a no-checkout durable w
     false,
   );
   assert.equal(
-    workflow.on.workflow_dispatch.inputs["independent-review-floor"].default,
-    "none",
+    workflow.on.workflow_dispatch.inputs["independent-review-floor"],
+    undefined,
   );
 
   const steps = Object.values(workflow.jobs).flatMap((job) => job.steps ?? []);
@@ -452,7 +473,7 @@ test("publishes consistent read-only setup discovery and a no-checkout durable w
   );
   assert.equal(
     route.with["independent-review-floor"],
-    "${{ inputs.independent-review-floor }}",
+    "${{ vars.REVIEW_INDEPENDENT_FLOOR }}",
   );
   assert.equal(steps.some((step) => step.uses?.startsWith("actions/checkout@")), false);
   assert.equal(steps.some((step) => typeof step.run === "string"), false);

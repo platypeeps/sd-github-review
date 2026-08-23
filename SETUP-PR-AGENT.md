@@ -55,8 +55,8 @@ Preview and install the default OpenRouter configuration, which uses
 Qwen3-Coder 30B A3B for `cheap` reviews and Kimi K2.6 for `deep` reviews:
 
 ```sh
-node scripts/install-consumer.mjs install --target /path/to/consumer --route-mode copilot --set-secret --dry-run
-node scripts/install-consumer.mjs install --target /path/to/consumer --route-mode copilot --set-secret
+node scripts/install-consumer.mjs install --target /path/to/consumer --route-mode copilot --review-floor copilot --set-secret --dry-run
+node scripts/install-consumer.mjs install --target /path/to/consumer --route-mode copilot --review-floor copilot --set-secret
 ```
 
 `--route-mode` is required on a fresh install and has no default. It sets the
@@ -72,12 +72,32 @@ needed again to change the route. If the variable was already set by hand before
 installing, the installer adopts that value and marks it unowned, so `uninstall`
 preserves it.
 
+`--review-floor` is required on a fresh install for the same reasons and behaves
+the same way. It sets the managed `REVIEW_INDEPENDENT_FLOOR` repository
+variable, and its accepted values are `none`, `cheap`, `deep`, and `copilot` —
+the route modes minus `auto`, because a floor is a resolved route rather than a
+decision to route automatically.
+
+The two are opposite bounds on the same decision. `REVIEW_ROUTE_MODE` is the
+strongest route a caller may explicitly request; `REVIEW_INDEPENDENT_FLOOR` is
+the weakest route automatic selection may land on. Set the floor to `copilot`
+for a guaranteed independent review on every routed pull request with no
+PR-Agent spend, or to `none` for no floor at all.
+
+The durable `sd-review.yml` lane refuses to dispatch when
+`REVIEW_INDEPENDENT_FLOOR` is unset, so on an existing installation set the
+variable **before** advancing the lane. Both bounds read repository variables
+rather than `workflow_dispatch` inputs, and that is not a style choice: the
+caller each one constrains is the dispatching caller, and a dispatch form cannot
+set a repository variable. Through 0.5.0 the floor was wired from a dispatch
+input, which let anyone who could dispatch select `none`.
+
 `--set-secret` delegates the hidden provider-key prompt to `gh secret set`.
 For non-interactive automation, pass the key only through standard input:
 
 ```sh
 printf '%s' "$PR_AGENT_KEY" | node scripts/install-consumer.mjs install \
-  --target /path/to/consumer --route-mode copilot --secret-stdin
+  --target /path/to/consumer --route-mode copilot --review-floor copilot --secret-stdin
 ```
 
 Do not place the key directly on the command line. The installer never stores
@@ -90,6 +110,7 @@ provider-prefixed form enforced by the workflow:
 ```sh
 node scripts/install-consumer.mjs install --target /path/to/consumer \
   --route-mode auto \
+  --review-floor cheap \
   --provider gemini \
   --cheap-model gemini/replace-with-cheap-model-id \
   --deep-model gemini/replace-with-deep-model-id \
@@ -139,6 +160,7 @@ cannot verify archive bytes against a commit offline:
 ```sh
 node scripts/install-consumer.mjs install --target /path/to/consumer \
   --route-mode copilot \
+  --review-floor copilot \
   --source-tag v0.4.0 --source-commit 61a4492056cec240b785bdea5ebad574f389bb54 \
   --set-secret
 ```

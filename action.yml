@@ -79,7 +79,26 @@ inputs:
     required: false
     default: "360"
   independent-review-floor:
-    description: "Minimum durable automatic route: none, cheap, deep, or copilot."
+    description: >-
+      Minimum durable automatic route: none, cheap, deep, or copilot. This is
+      the opposite bound from route-policy, which sets the maximum a caller may
+      explicitly request.
+
+      Wire this from a repository variable only -- an expression whose body is
+      `vars.REVIEW_INDEPENDENT_FLOOR` -- and never from a workflow_dispatch
+      input. The body is spelled without its surrounding expression delimiters
+      on purpose; see route-policy below for why a delimited example here breaks
+      the action's load. A floor bounds what a dispatching caller may end up
+      with, so letting that caller supply it hands them their own bound. The
+      shipped lanes wired this from `inputs.` through 0.5.0, which let anyone who
+      could dispatch select `none` and skip independent review entirely.
+
+      The default is `none`, which is no floor at all. That is the safe default
+      only because it is never silently reached: an unset variable renders as
+      the empty string, which is a present-but-empty input, so it fails
+      normalizeMode rather than falling back here. This default applies when a
+      lane omits the input entirely -- so a lane that means to have a floor must
+      pass the key, not merely define the variable.
     required: false
     default: none
   route-policy:
@@ -99,9 +118,15 @@ inputs:
       a delimited example here makes the action fail to load for every consumer.
       See the shipped lanes for the delimited form. The policy exists to
       bound what a dispatching caller may ask for, so letting that caller supply
-      it hands them their own bound and silently disables enforcement. The
-      neighbouring policy inputs on the shipped lane are deliberately wired the
-      other way, which is what makes a consistency-minded edit here dangerous.
+      it hands them their own bound and silently disables enforcement.
+
+      independent-review-floor above is the opposite bound and is wired the same
+      way, from REVIEW_INDEPENDENT_FLOOR. Both are repository variables because
+      both bound the workflow_dispatch caller. Through 0.5.0 this note said the
+      neighbouring policy inputs were "deliberately wired the other way" -- they
+      were wired the other way, but not deliberately: the floor came from a
+      dispatch input and could be lowered to none by anyone who could dispatch.
+      Neither should ever be sourced from `inputs.`.
     required: false
     default: ""
   local-confidence-threshold:

@@ -37,13 +37,14 @@ for deep reviews—then install it and enter the provider key through GitHub
 CLI's secret prompt:
 
 ```sh
-node scripts/install-consumer.mjs install --target /path/to/consumer --route-mode copilot --set-secret --dry-run
-node scripts/install-consumer.mjs install --target /path/to/consumer --route-mode copilot --set-secret
+node scripts/install-consumer.mjs install --target /path/to/consumer --route-mode copilot --review-floor copilot --set-secret --dry-run
+node scripts/install-consumer.mjs install --target /path/to/consumer --route-mode copilot --review-floor copilot --set-secret
 ```
 
 The command copies three reviewed files — the event-driven router workflow, the
 durable `sd-review.yml` lane, and the setup discovery descriptor it declares —
-creates the routing variables (including `REVIEW_ROUTE_MODE`) and missing
+creates the routing variables (including `REVIEW_ROUTE_MODE` and
+`REVIEW_INDEPENDENT_FLOOR`) and missing
 labels, and records ownership of all three in a consumer-side
 sd-github-review.json manifest under the repository's
 GitHub metadata directory. The manifest also

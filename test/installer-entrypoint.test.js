@@ -28,12 +28,13 @@ const MANAGED_SECRET = "PR_AGENT_MODEL_API_KEY";
 async function freshInstall(ghOptions = {}) {
   const target = await makeGitTarget();
   const fakeGh = await makeFakeGh({ secrets: [MANAGED_SECRET], ...ghOptions });
-  // --route-mode is required on a fresh install: the lane refuses to guess a
-  // route because `auto` can bill the provider key, and the installer refuses
-  // on the same grounds.
+  // --route-mode and --review-floor are both required on a fresh install: the
+  // lane refuses to guess a route because `auto` can bill the provider key, and
+  // it refuses to dispatch at all without a floor. The installer refuses on the
+  // same grounds rather than choosing either bound for the repository.
   const result = runEntrypoint(
     INSTALLER,
-    ["install", "--target", target, "--route-mode", "copilot", "--json"],
+    ["install", "--target", target, "--route-mode", "copilot", "--review-floor", "copilot", "--json"],
     {
       env: installerEnv(fakeGh),
       extraPath: [fakeGh.binDir],
@@ -67,7 +68,7 @@ test("installer install emits a human report without --json", async () => {
   const fakeGh = await makeFakeGh({ secrets: [MANAGED_SECRET] });
   const { status, stdout, stderr } = runEntrypoint(
     INSTALLER,
-    ["install", "--target", target, "--route-mode", "copilot"],
+    ["install", "--target", target, "--route-mode", "copilot", "--review-floor", "copilot"],
     { env: installerEnv(fakeGh), extraPath: [fakeGh.binDir] },
   );
   assert.equal(status, 0, stderr);
@@ -147,7 +148,7 @@ test("installer redacts the secret when a gh secret command fails", async () => 
   const fakeGh = await makeFakeGh({ failOn: ["secret", "set"] });
   const { status, stdout, stderr } = runEntrypoint(
     INSTALLER,
-    ["install", "--target", target, "--route-mode", "copilot", "--secret-stdin", "--json"],
+    ["install", "--target", target, "--route-mode", "copilot", "--review-floor", "copilot", "--secret-stdin", "--json"],
     { env: installerEnv(fakeGh), extraPath: [fakeGh.binDir], input: `${secret}\n` },
   );
   const combined = `${stdout}${stderr}`;
