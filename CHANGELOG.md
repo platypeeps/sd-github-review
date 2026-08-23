@@ -4,6 +4,107 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.6.0 - 2026-08-22
+
+### Security
+
+- **The independent review floor is no longer settable by the caller it
+  constrains.** `route-policy` was hardened in `0.5.0` against a dispatching
+  caller supplying their own bound. `independent-review-floor` is the opposite
+  bound on the same decision — the policy is the strongest route a caller may
+  explicitly *request*, the floor is the weakest route automatic selection may
+  land on — and it was still wired from a `workflow_dispatch` input on both
+  durable lanes. Anyone with write access could dispatch
+  `independent-review-floor: none` and skip independent review entirely, on a
+  lane whose own comment claims `copilot` "guarantees an independent review on
+  every routed pull request".
+
+  The lane comment was accurate about the command pack, which dispatches only
+  `operation`, `review-request`, and `rerequest-authorized`. It was not accurate
+  about a human dispatching from the Actions UI, and that gap is how the defect
+  survived review.
+
+  The floor now reads `${{ vars.REVIEW_INDEPENDENT_FLOOR }}` and the dispatch
+  input is gone. A repository variable cannot be set from a dispatch form; that
+  asymmetry is what makes either value a bound at all.
+
+  Found by the reviewer this project ships, reviewing its own v0.5.0 install
+  pull requests across the consumer fleet.
+
+- **`action.yml` no longer describes the defect as deliberate.** The
+  `route-policy` description warned that "the neighbouring policy inputs on the
+  shipped lane are deliberately wired the other way". They were wired the other
+  way, but not deliberately. The note is corrected in place rather than deleted,
+  because the corrected version is the one a future consistency-minded edit
+  needs to read.
+
+### Breaking
+
+- **`REVIEW_INDEPENDENT_FLOOR` is required by the durable lane.** The lane
+  refuses to dispatch without it, with an error naming the variable. Set it on
+  every consumer **before** advancing the lane: the `0.5.0` lane does not read
+  it, so writing it early is inert, while the reverse order has no safe window.
+
+  Accepted values are `none`, `cheap`, `deep`, and `copilot` — the route modes
+  minus `auto`, because a floor is a resolved route. `copilot` guarantees an
+  independent review on every routed pull request with no PR-Agent spend.
+
+- **`--review-floor` is required on a fresh install** and has no default, for
+  the same reason `--route-mode` has none. Both candidate defaults are wrong in
+  a way the operator would not see: `none` installs a lane with no floor that
+  claims to have one, and `copilot` commits a repository to requesting Copilot
+  on every routed pull request without anyone choosing it. An `update` keeps
+  what the manifest records; a value already set by hand is adopted **unowned**,
+  so `uninstall` preserves it.
+
+- **Consumer manifest schema 5 → 6.** `REVIEW_INDEPENDENT_FLOOR` joins the
+  managed variable set, mirroring `REVIEW_ROUTE_MODE`'s arrival at schema 4:
+  `install` writes it, the manifest records ownership, `check` reports it
+  missing or drifted, and `uninstall` removes what it owns. Every earlier schema
+  keeps decoding, and `check` names the migration rather than failing on it.
+
+### Added
+
+- Two sweeps over every shipped lane that dispatches a review, because there are
+  two ways to unfloor a lane and the variable wiring closes only one.
+  Reintroducing the input is the loud way; dropping the `with:` key entirely is
+  the quiet one — `input()` uses `??`, so an unset variable arrives as a
+  present-but-empty string and fails `normalizeMode`, while an *absent* key
+  reaches the action's `"none"` default and says so nowhere. A lane joins both
+  sweeps by carrying a `review-request:` key, not by being listed.
+- A set-equality binding between `REVIEW_FLOORS` and the durable lane's own
+  `case` gate, extracted from the lane rather than restated, exactly as
+  `ROUTE_MODES` is bound to the event-driven lane's gate.
+- A documented-invocation gate for `--review-floor`, twinning the existing
+  `--route-mode` one. A required flag added without updating the setup guide
+  ships runnable commands that fail, and that guide is the piece the installer
+  spec already warns gets missed.
+
+### Upgrade
+
+1. Set `REVIEW_INDEPENDENT_FLOOR` on the consumer repository. This is inert to
+   the `0.5.0` lane, so it is safe to do first, and it must be done first.
+2. Run `install-consumer.mjs update --review-floor <value>` from a checkout at
+   this release. That advances the lane and the pin together and migrates the
+   manifest to schema 6.
+3. `check` before and after. Before the update it reports the schema-6
+   migration; after it should report nothing.
+
+### Withdrawn
+
+- The fleet reviewer's "the setup descriptor under-declares `issues: write`"
+  finding, reported independently on three consumer pull requests, is a false
+  positive. The action makes no `/issues` request at all, `assertSetupContract`
+  already refuses to let the descriptor declare the permission, and
+  `DESIGN.md` documents the job-versus-contract mismatch as intentional. The
+  lanes' grant belongs to PR-Agent, not to this action.
+
+  What remains underneath it is narrower and still open: the durable lane
+  isolates PR-Agent in a job holding no `issues: write`, while the router lane
+  shares a job that has it. Settling which is right needs a live credentialed
+  PR-Agent run, which `docs/RELEASE_CHECKLIST.md` §2 puts behind separate
+  approval.
+
 ## 0.5.0 - 2026-08-22
 
 ### Security
