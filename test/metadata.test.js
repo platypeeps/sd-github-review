@@ -9,6 +9,7 @@ import { parseDocument } from "yaml";
 import {
   GITHUB_PERMISSION_SCOPES,
   assertDescriptorLaneGrants,
+  laneGrantUnion,
   assertNoDeadIssuesGrant,
   assertPinFreshness,
   assertNoActionExpressions,
@@ -1686,15 +1687,11 @@ test("a workflow-level issues grant is caught even when every job overrides it",
     },
   };
   // The union genuinely does not see it -- otherwise this test would pass for
-  // the wrong reason and prove nothing about the direct workflow-level check.
-  // `assertDescriptorLaneGrants` is the union's observable surface: it accepts
-  // this lane against a descriptor that declares no `issues` at all.
-  assert.doesNotThrow(() =>
-    assertDescriptorLaneGrants(overridden, "u.yml", {
-      contents: "read",
-      "pull-requests": "write",
-    }),
-  );
+  // the wrong reason and prove nothing about the direct workflow-level check
+  // that the sweep still needs. Asserted against the union itself, because the
+  // descriptor gate no longer reads the bare union: it folds the workflow-level
+  // block in first, and so is not a witness for what the union alone sees.
+  assert.equal(laneGrantUnion(overridden).issues, undefined);
   assert.throws(
     () => assertNoDeadIssuesGrant([["u.yml", overridden]]),
     /u\.yml: workflow-level issues:write/u,
@@ -1707,6 +1704,46 @@ test("a workflow-level issues grant is caught even when every job overrides it",
         ["v.yml", { permissions: "write-all", jobs: { j: { permissions: { contents: "read" } } } }],
       ]),
     /v\.yml: workflow-level write-all, which covers issues:write/u,
+  );
+});
+
+test("a workflow-level grant every job overrides is caught for scopes the sweep never looks at", () => {
+  // The sweep's dedicated workflow-level check covers `issues` only. Every other
+  // scope depends on the descriptor equality gate, which read the job union and
+  // so was blind to the same shape: a top-level grant no current job inherits,
+  // but that any job added later would.
+  const overridden = {
+    permissions: { contents: "read", packages: "write" },
+    jobs: {
+      review: { permissions: { contents: "read", "pull-requests": "write" } },
+      "pr-agent": { permissions: { contents: "read" } },
+    },
+  };
+  // Non-vacuity: the union alone does not see the grant, so the assertion below
+  // can only be satisfied by the workflow-level fold.
+  assert.equal(laneGrantUnion(overridden).packages, undefined);
+  assert.throws(
+    () =>
+      assertDescriptorLaneGrants(overridden, "u.yml", {
+        contents: "read",
+        "pull-requests": "write",
+      }),
+    /u\.yml.*packages/su,
+  );
+
+  // The equality gate still accepts a lane whose workflow-level block is a
+  // subset of what its jobs declare -- the shape every shipped lane has. The
+  // fold takes the higher of the two per scope, so a workflow-level `read` must
+  // not pull a job's `write` back down and fail the comparison.
+  assert.doesNotThrow(() =>
+    assertDescriptorLaneGrants(
+      {
+        permissions: { contents: "read", "pull-requests": "read" },
+        jobs: { review: { permissions: { contents: "read", "pull-requests": "write" } } },
+      },
+      "u.yml",
+      { contents: "read", "pull-requests": "write" },
+    ),
   );
 });
 

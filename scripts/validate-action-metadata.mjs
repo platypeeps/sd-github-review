@@ -514,7 +514,7 @@ function assertJobPermissions(doc, filePath, actionOwnerRepo, supportedOperation
 //
 // The `pr-agent` job is included, unlike in the lower-bound gate, and that is
 // the point: it is where an over-grant to a third-party container would live.
-function laneGrantUnion(doc) {
+export function laneGrantUnion(doc) {
   const workflowLevel = permissionMap(doc.permissions) ?? {};
   const union = Object.create(null);
   for (const job of Object.values(doc.jobs ?? {})) {
@@ -538,8 +538,28 @@ function blanketGrant(granted) {
   return granted.__all === undefined ? null : granted.__all;
 }
 
+// Everything the lane grants anywhere: what its jobs effectively hold, plus the
+// workflow-level declaration itself. The two differ exactly when every current
+// job overrides `permissions`, which makes the workflow-level block invisible to
+// `laneGrantUnion` -- yet it is still written down, and any job added later
+// inherits it. The sweep already covers that shape for `issues`; the descriptor
+// equality gate needs it for every scope, or a top-level `packages: write` would
+// sit in a lane the descriptor never declares with nothing to catch it.
+function laneDeclaredGrants(doc) {
+  const union = laneGrantUnion(doc);
+  const workflowLevel = permissionMap(doc?.permissions) ?? {};
+  const combined = Object.create(null);
+  for (const [scope, level] of Object.entries(union)) combined[scope] = level;
+  for (const [scope, level] of Object.entries(workflowLevel)) {
+    const rank = permissionRank(level);
+    if (rank === 0) continue;
+    if (rank > permissionRank(combined[scope])) combined[scope] = level;
+  }
+  return combined;
+}
+
 export function assertDescriptorLaneGrants(doc, filePath, requiredPermissions) {
-  const granted = laneGrantUnion(doc);
+  const granted = laneDeclaredGrants(doc);
   const declared = requiredPermissions ?? {};
   const offenders = [];
   const blanket = blanketGrant(granted);

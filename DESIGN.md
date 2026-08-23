@@ -465,9 +465,12 @@ Durable mode exposes a sensitive-file count but never emits the paths.
   reading them as one overstates the coverage:
 
   - `assertDescriptorLaneGrants` applies to **the descriptor's own lane only**,
-    resolved from its `workflow.path`. That lane's job-permission union must
-    equal `requiredPermissions` exactly; the gate fails in both directions and
-    names which side drifted. It is scoped there because `requiredPermissions`
+    resolved from its `workflow.path`. Everything that lane grants anywhere —
+    its jobs' effective permissions *and* its workflow-level block — must equal
+    `requiredPermissions` exactly; the gate fails in both directions and names
+    which side drifted. The workflow-level block counts even when every current
+    job overrides it and so never inherits it: the grant is still written down,
+    and the next job added to the lane picks it up. It is scoped there because `requiredPermissions`
     documents what a consumer provisions for *that* workflow, and folding the
     router and generic examples in would force the descriptor to describe
     workflows a consumer may never install.
