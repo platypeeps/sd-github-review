@@ -559,6 +559,20 @@ function laneDeclaredGrants(doc) {
 }
 
 export function assertDescriptorLaneGrants(doc, filePath, requiredPermissions) {
+  // Fail closed before comparing anything. A level this module cannot read
+  // ranks 0 and vanishes, so `{ packages: "wirte" }` would compare equal to a
+  // descriptor that declares no `packages` at all -- the same fail-open the
+  // sweep already refuses. `validateMetadata` happens to reach the sweep after
+  // this gate, so today the typo is caught either way; that is an ordering
+  // accident, not a property of this gate, and it does not hold for a caller
+  // using the gate on its own.
+  const malformed = invalidPermissionDeclaration(doc);
+  if (malformed !== null) {
+    throw new Error(
+      `${filePath} declares permissions this validator cannot read, so its grants cannot be ` +
+        `compared against the descriptor: ${malformed}`,
+    );
+  }
   const granted = laneDeclaredGrants(doc);
   const declared = requiredPermissions ?? {};
   const offenders = [];

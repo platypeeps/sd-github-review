@@ -1535,7 +1535,7 @@ test("a permission level inherited from Object.prototype is not a valid level", 
   assert.ok("toString" in PERMISSION_LEVELS, "the prototype chain is the hazard being guarded");
   assert.ok(!Object.hasOwn(PERMISSION_LEVELS, "toString"));
 
-  for (const inherited of ["toString", "constructor", "valueOf", "hasOwnProperty"]) {
+  for (const inherited of ["toString", "constructor", "valueOf", "hasOwnProperty", "__proto__"]) {
     assert.throws(
       () =>
         assertNoDeadIssuesGrant([
@@ -1553,9 +1553,21 @@ test("a permission level inherited from Object.prototype is not a valid level", 
   // which is what makes the null-prototype handling load-bearing for real lanes.
   const protoScope = { ["__proto__"]: "write" };
   assert.ok(Object.hasOwn(protoScope, "__proto__"), "the fixture must carry an own __proto__");
+  const protoLane = { permissions: protoScope, jobs: { j: {} } };
+
+  // Asserted against the union directly rather than through a gate's message.
+  // The gate now rejects this lane as malformed before comparing grants, and
+  // that check reads the raw document -- so it would fire even if the map had
+  // swallowed the key, which is exactly what this assertion exists to rule out.
+  const union = laneGrantUnion(protoLane);
+  assert.ok(Object.hasOwn(union, "__proto__"), "a __proto__ scope must be stored, not swallowed");
+  assert.equal(union.__proto__, "write");
+
+  // And the gate refuses it: `__proto__` is not a scope GitHub defines, so a
+  // lane declaring one cannot be compared against the descriptor at all.
   assert.throws(
-    () => assertDescriptorLaneGrants({ permissions: protoScope, jobs: { j: {} } }, "s.yml", {}),
-    /__proto__: lane grants write but the descriptor declares none/u,
+    () => assertDescriptorLaneGrants(protoLane, "s.yml", {}),
+    /s\.yml declares permissions this validator cannot read/u,
   );
 });
 
