@@ -326,14 +326,20 @@ and
    ```yaml
    permissions:
      contents: read
-     issues: write
      pull-requests: write
    ```
 
-   `issues: write` and `pull-requests: write` allow PR-Agent to publish its
-   conversation comment and allow the router to request Copilot when that
-   route is selected explicitly. The workflow does not need contents write
-   access.
+   `pull-requests: write` alone covers both channels: PR-Agent's conversation
+   comment and its labels, and the router's Copilot request when that route is
+   selected explicitly. `issues: write` is **not** required and should not be
+   granted. It is easy to believe otherwise, because on a pull request the
+   comment and label endpoints are `/repos/{owner}/{repo}/issues/{number}/…`
+   paths — but that `/issues/` prefix reflects GitHub modelling pull requests as
+   issues in the REST *layout*, not the permission scope that authorizes them.
+   When the target is a pull request, `pull-requests: write` is what governs
+   those paths. Granting `issues: write` here hands the third-party PR-Agent
+   container write access over every issue in the repository for no functional
+   reason. The workflow does not need contents write access.
 5. Add the shared manual-routing labels described in
    [`README.md`](README.md#2-configure-shared-routing-controls).
 6. Adjust the action's `sensitive-paths`, thresholds, command trust settings,
@@ -356,8 +362,10 @@ repository's `issue_comment` workflow without checking out contributor code.
    later approved release.
 3. Configure `PR_AGENT_MODEL_PROVIDER` and `PR_AGENT_MODEL_API_KEY` as
    described above.
-4. Keep `contents: read`, `issues: write`, `pull-requests: write`, and
-   `checks: write`. Check Run write access stores the exact-head receipt.
+4. Keep `contents: read`, `pull-requests: write`, and `checks: write`. Check Run
+   write access stores the exact-head receipt. Do not add `issues: write`; see
+   [Manual event-driven workflow installation](#manual-event-driven-workflow-installation)
+   for why the `/issues/…` REST paths do not need it.
 5. Create `SD_REVIEW_CHEAP_BACKEND_V1` and
    `SD_REVIEW_DEEP_BACKEND_V1` under **Actions → Variables**. Each value is a
    compact canonical backend JSON object. Start from this shape and set the

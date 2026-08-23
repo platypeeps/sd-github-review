@@ -447,21 +447,54 @@ function permissionMap(permissions) {
     if (permissions === "read-all") return { __all: "read" };
     return {}; // "none" or anything else grants nothing scoped
   }
-  const out = {};
+  // Null-prototype: a workflow is untrusted YAML, and a scope literally named
+  // `__proto__` would otherwise be swallowed by assignment rather than stored.
+  const out = Object.create(null);
   for (const [scope, level] of Object.entries(permissions)) out[scope] = level;
   return out;
 }
 
+// Own-property lookup, not `PERMISSION_LEVELS[level]`. `PERMISSION_LEVELS` is a
+// frozen object literal, so it still inherits from `Object.prototype`: a level
+// of `toString` reads back as a *function*, which `?? 0` does not replace and
+// which turns every downstream comparison into NaN -- silently false. The level
+// comes from a workflow file, so it is exactly the kind of value that must not
+// be looked up through a prototype chain.
+function permissionRank(level) {
+  if (typeof level !== "string") return 0; // `hasOwn` would coerce a non-string key
+  return Object.hasOwn(PERMISSION_LEVELS, level) ? PERMISSION_LEVELS[level] : 0;
+}
+
 function grantedLevel(effective, scope) {
-  const levels = [effective.__all, effective[scope]]
-    .map((level) => PERMISSION_LEVELS[level] ?? 0);
+  const levels = [effective.__all, effective[scope]].map(permissionRank);
   return Math.max(...levels, 0);
 }
 
+// Every lane's declaration must be readable before any gate reasons about it.
+// This runs first in the production path because `assertJobPermissions` is the
+// first gate to touch permissions, and it reads levels it has not validated:
+// a malformed level reaches its own message interpolation, and a job that is
+// not a mapping reaches `job.permissions` directly. Placing the check only in
+// `assertDescriptorLaneGrants` left both live for every lane, and left
+// non-descriptor lanes with no readability check at all until the sweep.
+export function assertReadablePermissions(doc, filePath) {
+  const malformed = invalidPermissionDeclaration(doc);
+  if (malformed !== null) {
+    throw new Error(
+      `${filePath} declares permissions this validator cannot read: ${malformed}`,
+    );
+  }
+}
+
 // A-010 lower-bound: every job that runs this Action must grant at least the
-// union of its operations' contract permissions. No upper bound — jobs hold
-// extra permissions for comment/side-effect and non-Action steps. Jobs with no
-// step invoking this Action (isolated adapter containers) are out of scope.
+// union of its operations' contract permissions. No upper bound here — a job
+// may need scopes for steps that are not this Action. That is the only
+// justification: an extra scope must be traceable to a specific non-Action step
+// that needs it. This comment used to say "comment/side-effect", which is what
+// made a dead `issues: write` look justified for years; see the A-023 note below
+// for how that reasoning failed. The upper bound lives in A-023, not here.
+// Jobs with no step invoking this Action (isolated adapter containers) are out
+// of scope.
 function assertJobPermissions(doc, filePath, actionOwnerRepo, supportedOperations) {
   const workflowLevel = permissionMap(doc.permissions);
   for (const [jobName, job] of Object.entries(doc.jobs ?? {})) {
@@ -470,13 +503,399 @@ function assertJobPermissions(doc, filePath, actionOwnerRepo, supportedOperation
     const required = unionPermissions([...operations]);
     const effective = permissionMap(job.permissions) ?? workflowLevel ?? {};
     for (const [scope, level] of Object.entries(required)) {
-      if (grantedLevel(effective, scope) < PERMISSION_LEVELS[level]) {
+      if (grantedLevel(effective, scope) < permissionRank(level)) {
+        // The granted value is unvalidated at this point, so a non-string must
+        // not be interpolated raw -- a mapping with a non-callable `toString`
+        // throws while building the message. Strings pass through unchanged so
+        // the diagnostic reads as it always has.
+        const held = effective.__all ?? effective[scope] ?? "none";
         throw new Error(
           `${filePath}: job "${jobName}" runs [${[...operations].join(", ")}] needing ` +
-            `${scope}:${level} but grants ${scope}:${effective.__all ?? effective[scope] ?? "none"}`,
+            `${scope}:${level} but grants ` +
+            `${scope}:${typeof held === "string" ? held : describeLevel(held)}`,
         );
       }
     }
+  }
+}
+
+// A-023 upper bound: the descriptor's own lane must grant *exactly* what
+// `requiredPermissions` declares -- no more, no less.
+//
+// `assertJobPermissions` above is deliberately a lower bound, and its comment
+// used to justify the missing upper bound as "jobs hold extra permissions for
+// comment/side-effect and non-Action steps". That justification was wrong. It
+// was believed because the conversation-comment and label endpoints are
+// `/issues/...` REST paths, so `issues: write` looked required; on a pull
+// request those paths are governed by `pull-requests: write`, because the
+// prefix reflects GitHub modelling pull requests as issues in the REST layout
+// rather than the scope that authorizes them. The five PR-Agent workflow copies
+// each carried a dead `issues: write` -- the other shipped examples never did --
+// and SETUP-PR-AGENT.md instructed operators to grant it to a job that runs a
+// third-party container. Probed and removed in 0.6.1.
+//
+// Scoped to the descriptor's own lane, resolved from its `workflow.path`, and
+// not to every lane: `requiredPermissions` documents what a consumer must
+// provision for *that* workflow. Folding the event-driven router and the
+// generic durable example into the union would force the descriptor to describe
+// workflows a consumer may never install.
+//
+// The `pr-agent` job is included, unlike in the lower-bound gate, and that is
+// the point: it is where an over-grant to a third-party container would live.
+export function laneGrantUnion(doc) {
+  const workflowLevel = permissionMap(doc.permissions) ?? {};
+  const union = Object.create(null);
+  for (const job of Object.values(doc.jobs ?? {})) {
+    // `job?.` rather than `job.`: this is exported and callable on a document
+    // no gate has screened, and a malformed job must not crash the union before
+    // `invalidPermissionDeclaration` gets the chance to name it.
+    const effective = permissionMap(job?.permissions) ?? workflowLevel;
+    for (const [scope, level] of Object.entries(effective)) {
+      const rank = permissionRank(level);
+      if (rank === 0) continue;
+      if (rank > permissionRank(union[scope])) union[scope] = level;
+    }
+  }
+  return union;
+}
+
+// `permissionMap` collapses the `write-all`/`read-all` shorthand to a single
+// `__all` key rather than enumerating scopes, so a blanket grant is real but
+// noncanonical evidence: `granted.issues` stays undefined while the token in
+// fact holds `issues: write`. Neither gate may compare that key by name --
+// both route it through `grantedLevel`, which is the one place that knows
+// `__all` covers every scope.
+function blanketGrant(granted) {
+  return granted.__all === undefined ? null : granted.__all;
+}
+
+// Everything the lane grants anywhere: what its jobs effectively hold, plus the
+// workflow-level declaration itself. The two differ exactly when every current
+// job overrides `permissions`, which makes the workflow-level block invisible to
+// `laneGrantUnion` -- yet it is still written down, and any job added later
+// inherits it. The sweep already covers that shape for `issues`; the descriptor
+// equality gate needs it for every scope, or a top-level `packages: write` would
+// sit in a lane the descriptor never declares with nothing to catch it.
+function laneDeclaredGrants(doc) {
+  const union = laneGrantUnion(doc);
+  const workflowLevel = permissionMap(doc?.permissions) ?? {};
+  const combined = Object.create(null);
+  for (const [scope, level] of Object.entries(union)) combined[scope] = level;
+  for (const [scope, level] of Object.entries(workflowLevel)) {
+    const rank = permissionRank(level);
+    if (rank === 0) continue;
+    if (rank > permissionRank(combined[scope])) combined[scope] = level;
+  }
+  return combined;
+}
+
+export function assertDescriptorLaneGrants(doc, filePath, requiredPermissions) {
+  // Fail closed before comparing anything. A level this module cannot read
+  // ranks 0 and vanishes, so `{ packages: "wirte" }` would compare equal to a
+  // descriptor that declares no `packages` at all -- the same fail-open the
+  // sweep already refuses. `validateMetadata` happens to reach the sweep after
+  // this gate, so today the typo is caught either way; that is an ordering
+  // accident, not a property of this gate, and it does not hold for a caller
+  // using the gate on its own.
+  const malformed = invalidPermissionDeclaration(doc);
+  if (malformed !== null) {
+    throw new Error(
+      `${filePath} declares permissions this validator cannot read, so its grants cannot be ` +
+        `compared against the descriptor: ${malformed}`,
+    );
+  }
+  // Unreadable and *unwritten* are separate holes, and the check above only
+  // closes the first. `invalidPermissionDeclaration` treats `undefined` as
+  // inheritance by design, so a lane with no workflow-level block where one job
+  // declares every required scope and another declares nothing produces a union
+  // that matches the descriptor exactly -- while the second job silently runs on
+  // the repository default token, whose scopes this lane does not control and
+  // cannot enumerate. An equality gate cannot compare what was never declared.
+  const undeclared = undeclaredPermissionJobs(doc);
+  if (undeclared.length > 0) {
+    throw new Error(
+      `${filePath} leaves ${undeclared.map((name) => `job "${name}"`).join(", ")} with no ` +
+        "permissions declaration, so those jobs run on the repository default token and the " +
+        "lane's true grants cannot be compared against the descriptor",
+    );
+  }
+  const granted = laneDeclaredGrants(doc);
+  const declared = requiredPermissions ?? {};
+  const offenders = [];
+  const blanket = blanketGrant(granted);
+  if (blanket !== null) {
+    offenders.push(
+      `the lane grants ${blanket}-all, a blanket grant over every scope, which can never ` +
+        "equal an enumerated descriptor -- name the scopes the jobs actually need",
+    );
+  }
+  for (const scope of new Set([...Object.keys(granted), ...Object.keys(declared)])) {
+    if (scope === "__all") continue;
+    // Own-property reads: `declared` comes from the descriptor JSON with an
+    // ordinary prototype, so a scope named `__proto__` that it does *not*
+    // declare reads back as `Object.prototype` rather than undefined -- which
+    // both garbles the message and, if the lane's value matched, would skip the
+    // offender entirely.
+    const grantedLevelForScope = Object.hasOwn(granted, scope) ? granted[scope] : undefined;
+    const declaredLevelForScope = Object.hasOwn(declared, scope) ? declared[scope] : undefined;
+    if (grantedLevelForScope === declaredLevelForScope) continue;
+    offenders.push(
+      declaredLevelForScope === undefined
+        ? `${scope}: lane grants ${grantedLevelForScope} but the descriptor declares none`
+        : grantedLevelForScope === undefined
+          ? `${scope}: the descriptor declares ${declaredLevelForScope} but no job grants it`
+          : `${scope}: lane grants ${grantedLevelForScope} but the descriptor declares ` +
+            `${declaredLevelForScope}`,
+    );
+  }
+  if (offenders.length) {
+    throw new Error(
+      `${filePath}: lane permissions and the setup descriptor's requiredPermissions must match ` +
+        `exactly, because a consumer provisions permissions from the descriptor:\n  ` +
+        offenders.sort().join("\n  "),
+    );
+  }
+}
+
+// A-023 companion sweep. Enumerated from `laneDocuments()` so a lane added later
+// is covered without an edit here -- the same shape as the review-floor sweeps.
+// Separate from the equality gate above, which only sees the descriptor's lane:
+// this one reaches the router and generic examples, where the dead grant also
+// lived and where the docs told operators to add it.
+// A job with no `permissions:` anywhere above it does not run with an empty
+// token. GitHub falls back to the repository or organization default
+// `GITHUB_TOKEN` permissions, which the lane does not control and which may
+// well include `issues: write`. Reading that as "grants nothing" is the sweep's
+// worst failure mode: it reports clean on precisely the lane whose scopes are
+// unknown. Fail closed instead -- every shipped lane declares permissions at
+// the workflow level today, so this costs nothing until someone omits one.
+function undeclaredPermissionJobs(doc) {
+  if (permissionMap(doc.permissions) !== null) return [];
+  return Object.entries(doc.jobs ?? {})
+    .filter(([, job]) => permissionMap(job?.permissions) === null)
+    .map(([jobName]) => jobName);
+}
+
+// The only scalars GitHub accepts. `permissionMap` maps every other string to
+// an empty grant, which is the same fail-open shape as the absent case above:
+// a lane whose declaration cannot be understood is reported as granting
+// nothing. Nobody knows what such a lane's token holds, so it must not pass.
+const PERMISSION_SCALARS = new Set(["read-all", "write-all"]);
+
+// GitHub's `permissions` scopes, from its workflow-syntax documentation. Listed
+// rather than shape-matched so a typo cannot pass as a scope: an unrecognized
+// key ranks 0 and vanishes, which is how `{ __proto__: none }` and
+// `{ frobnicate: none }` both read as clean grants. Includes no entry for the
+// `__all` sentinel this module uses for the read-all/write-all shorthand, so a
+// lane declaring `__all` directly cannot ride into a blanket grant.
+//
+// Each scope maps to the levels GitHub accepts *for that scope*, because the
+// level set is not uniform: `models` takes no `write` and `id-token` takes no
+// `read`. A global none/read/write check accepts declarations GitHub's parser
+// rejects, which is the same fail-open this gate exists to close.
+//
+// Probe-verified on 2026-08-23, all 15 scopes against all 3 levels, by
+// dispatching a workflow whose `permissions:` block held one pair at a time and
+// reading the parser's verdict. 43 pairs accepted; exactly two rejected:
+//   models   write -> 422: failed to parse workflow: Unexpected value 'write'
+//   id-token read  -> 422: failed to parse workflow: Unexpected value 'read'
+// A control (`models: read`) was accepted in the same run, so a rejection is a
+// syntax verdict rather than a dispatch failure. An earlier attempt at this
+// probe was inconclusive because newly committed workflows had not registered;
+// reusing an already-registered workflow filename and varying its contents on a
+// branch avoids that lag.
+//
+// What the probe does not establish is completeness -- that GitHub defines no
+// scope missing from these keys. Being wrong in that direction rejects a valid
+// lane, which surfaces as an error naming the scope and is a one-line edit in
+// the same commit that added it, because every document this sweep reads is a
+// first-party lane in this repository. `GITHUB_PERMISSION_LEVELS` is versioned
+// repository data, the same shape as HISTORICAL_TEMPLATE_HASHES.
+//
+// Holds no entry for the `__all` sentinel this module uses for the
+// read-all/write-all shorthand, so a lane declaring `__all` directly cannot
+// ride into a blanket grant.
+const ALL_PERMISSION_LEVELS = ["none", "read", "write"];
+const GITHUB_PERMISSION_LEVELS = new Map([
+  ["actions", ALL_PERMISSION_LEVELS],
+  ["attestations", ALL_PERMISSION_LEVELS],
+  ["checks", ALL_PERMISSION_LEVELS],
+  ["contents", ALL_PERMISSION_LEVELS],
+  ["deployments", ALL_PERMISSION_LEVELS],
+  ["discussions", ALL_PERMISSION_LEVELS],
+  ["id-token", ["none", "write"]],
+  ["issues", ALL_PERMISSION_LEVELS],
+  ["models", ["none", "read"]],
+  ["packages", ALL_PERMISSION_LEVELS],
+  ["pages", ALL_PERMISSION_LEVELS],
+  ["pull-requests", ALL_PERMISSION_LEVELS],
+  ["repository-projects", ALL_PERMISSION_LEVELS],
+  ["security-events", ALL_PERMISSION_LEVELS],
+  ["statuses", ALL_PERMISSION_LEVELS],
+]);
+const GITHUB_PERMISSION_SCOPES = new Set(GITHUB_PERMISSION_LEVELS.keys());
+
+// Never interpolate an unvalidated level into the message directly. The value
+// comes from untrusted YAML, and `${level}` on a mapping calls its `toString`:
+// `{ issues: { toString: null } }` parses fine, satisfies the non-string branch,
+// and then throws `Cannot convert object to primitive value` -- a raw TypeError
+// instead of the file-and-scope diagnostic this gate exists to produce. A gate
+// that crashes while reporting a malformed lane has still failed to report it.
+function describeLevel(level) {
+  if (typeof level === "string") return `"${level}"`;
+  try {
+    const serialized = JSON.stringify(level);
+    return serialized === undefined ? Object.prototype.toString.call(level) : serialized;
+  } catch {
+    // Circular, or a throwing getter/`toJSON`. The type is still worth naming.
+    return Object.prototype.toString.call(level);
+  }
+}
+
+function invalidPermissionDeclaration(doc) {
+  // Establish that each job *is* a mapping before reading `permissions` off it.
+  // `job?.permissions` yields `undefined` for a string or a list, which every
+  // downstream check reads as inheritance -- so `jobs: { bad: "not-a-job" }`
+  // borrowed the workflow-level grant and validated clean against a job GitHub
+  // rejects outright. A `null` job was worse than fail-open: it reached
+  // `job.permissions` in `laneGrantUnion` and threw a raw TypeError instead of
+  // a validator error naming the file.
+  for (const [name, job] of Object.entries(doc.jobs ?? {})) {
+    if (job === null || typeof job !== "object" || Array.isArray(job)) {
+      return `job "${name}" is not a mapping, so its permissions cannot be read`;
+    }
+  }
+  const declarations = [
+    ["the workflow", doc.permissions],
+    ...Object.entries(doc.jobs ?? {}).map(([name, job]) => [`job "${name}"`, job?.permissions]),
+  ];
+  for (const [where, value] of declarations) {
+    // `undefined` is an absent key -- inherit, handled by the caller. `null` is
+    // a *present* key with no value (`permissions:` on its own line), which
+    // GitHub rejects outright: "Unexpected value ''". Treating the two alike
+    // would let a malformed declaration through as though it inherited.
+    if (value === undefined) continue;
+    if (value === null) {
+      return (
+        `${where} has a bare permissions key with no value, which GitHub does not accept ` +
+        "-- it must be read-all, write-all, or a map of scopes, with {} meaning none"
+      );
+    }
+    if (typeof value === "string") {
+      if (!PERMISSION_SCALARS.has(value)) {
+        return (
+          `${where} sets permissions to the scalar "${value}", which GitHub does not accept ` +
+          "-- the only valid scalars are read-all and write-all, and {} means none"
+        );
+      }
+      continue;
+    }
+    if (typeof value !== "object" || Array.isArray(value)) {
+      return (
+        `${where} sets permissions to ${Array.isArray(value) ? "a list" : typeof value}, ` +
+        "which GitHub does not accept -- it must be a scalar or a map of scopes"
+      );
+    }
+    // Map entries need the same treatment as the scalar above, and for the same
+    // reason: `laneGrantUnion` ranks an unrecognized level through
+    // `permissionRank` and drops it, so `issues: wirte` passes
+    // the sweep as though it granted nothing while GitHub would reject the
+    // workflow outright. A typo must not be the way past this gate.
+    for (const [scope, level] of Object.entries(value)) {
+      // Keys, not only values. A scope name GitHub does not accept ranks
+      // through `permissionRank` like any other and then vanishes at rank 0, so
+      // `{ __proto__: none }` read as clean. Verified against the API:
+      //   422: failed to parse workflow: (Line: 5, Col: 3): Unexpected value '__proto__'
+      //
+      // An allow-list rather than a shape check. A shape check would let
+      // `{ frobnicate: none }` through, and the first draft of this gate did.
+      // The usual argument against a hardcoded list -- GitHub adds scopes and a
+      // stale copy rejects a valid lane -- does not apply here: every document
+      // this sweep reads is a first-party lane in this repository. Adding a new
+      // scope to one means editing this list in the same commit, guided by an
+      // error that names the scope. `GITHUB_PERMISSION_SCOPES` is versioned
+      // repository data, the same shape as HISTORICAL_TEMPLATE_HASHES.
+      if (!GITHUB_PERMISSION_SCOPES.has(scope)) {
+        return (
+          `${where} names a permission scope "${scope}", which GitHub does not define ` +
+          "-- if GitHub has added it, add it to GITHUB_PERMISSION_SCOPES in this file"
+        );
+      }
+      // `typeof` first: `Object.hasOwn` coerces its key, so `issues: [none]`
+      // would stringify to "none" and be accepted, then rank 0 and vanish.
+      //
+      // Checked against this scope's own level set, not a global one. GitHub
+      // rejects `models: write` and `id-token: read` at parse time, and a lane
+      // holding either is as unrunnable as one naming a scope that does not
+      // exist -- so this gate must not report it clean.
+      const allowed = GITHUB_PERMISSION_LEVELS.get(scope);
+      if (typeof level !== "string" || !allowed.includes(level)) {
+        return (
+          `${where} sets ${scope} to ${describeLevel(level)}, which GitHub does not accept -- ` +
+          `${scope} must be ${allowed.join(", ")}`
+        );
+      }
+    }
+  }
+  return null;
+}
+
+export { GITHUB_PERMISSION_SCOPES, GITHUB_PERMISSION_LEVELS };
+
+export function assertNoDeadIssuesGrant(lanes) {
+  const offenders = [];
+  for (const [filePath, doc] of lanes) {
+    const invalid = invalidPermissionDeclaration(doc ?? {});
+    if (invalid !== null) {
+      offenders.push(`${filePath}: ${invalid}`);
+      continue;
+    }
+    const undeclared = undeclaredPermissionJobs(doc ?? {});
+    if (undeclared.length) {
+      offenders.push(
+        `${filePath}: job(s) ${undeclared.join(", ")} declare no permissions and neither does ` +
+          "the workflow, so the token falls back to the repository default, which this lane " +
+          "does not control and may include issues:write",
+      );
+      continue;
+    }
+    const granted = laneGrantUnion(doc ?? {});
+    // Through `grantedLevel`, not `granted.issues`: a `write-all` lane grants
+    // the scope without ever naming it.
+    if (grantedLevel(granted, "issues") > 0) {
+      const blanket = blanketGrant(granted);
+      offenders.push(
+        granted.issues !== undefined
+          ? `${filePath}: issues:${granted.issues}`
+          : `${filePath}: ${blanket}-all, which covers issues:${blanket}`,
+      );
+      continue;
+    }
+    // Two places, not one. `laneGrantUnion` reaches the workflow-level block
+    // only for jobs that inherit it, so a lane whose every current job declares
+    // its own permissions hides a top-level `issues: write` -- a grant that is
+    // still written down and that any job added later inherits. This gate
+    // refuses the scope outright, so the workflow-level declaration is checked
+    // directly too. Reported distinctly, because "no job holds it but the lane
+    // still grants it" is the fact worth naming.
+    const workflowLevel = permissionMap((doc ?? {}).permissions) ?? {};
+    if (grantedLevel(workflowLevel, "issues") === 0) continue;
+    const blanket = blanketGrant(workflowLevel);
+    offenders.push(
+      workflowLevel.issues !== undefined
+        ? `${filePath}: workflow-level issues:${workflowLevel.issues}, which no current job ` +
+            "inherits but any job added later would"
+        : `${filePath}: workflow-level ${blanket}-all, which covers issues:${blanket} and which ` +
+            "no current job inherits but any job added later would",
+    );
+  }
+  if (offenders.length) {
+    throw new Error(
+      "every shipped lane must declare its permissions, and none may grant the issues scope " +
+        "-- nothing in this action or in PR-Agent needs it, and on a pull request " +
+        "pull-requests:write already covers the /issues/... REST paths:\n  " +
+        offenders.join("\n  "),
+    );
   }
 }
 
@@ -550,6 +969,7 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
   assertSetupContract(setupConfig, setupDescriptorPath);
   const supportedOperations = setupConfig.supportedOperations;
   const firstPartyPins = [];
+  let descriptorLaneSeen = false;
 
   const workflowDirectory = path.join(repositoryRoot, ".github", "workflows");
   const workflowNames = (await readdir(workflowDirectory))
@@ -568,9 +988,48 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
     assertObject(workflow.on, workflowPath, "on");
     assertObject(workflow.jobs, workflowPath, "jobs");
     validateUsesReferences(workflow, workflowPath, {});
+    assertReadablePermissions(workflow, workflowPath);
     assertJobPermissions(workflow, workflowPath, descriptor.actionOwnerRepo, supportedOperations);
+    // A-023: the descriptor names one lane by path; that lane's grants must
+    // equal requiredPermissions exactly. Resolved from the descriptor rather
+    // than from a list here, so renaming the lane cannot silently skip the gate.
+    // Normalized: `path.relative` uses the host separator, but the descriptor
+    // stores repository-format `/` paths. Comparing them raw would never match
+    // on Windows, and the guard below would then reject every valid checkout
+    // with "matched nothing" -- the gate failing loudly for the wrong reason.
+    const relativeWorkflowPath = normalizeRepositoryPath(
+      path.relative(repositoryRoot, workflowPath),
+    );
+    if (relativeWorkflowPath === setupConfig.workflow?.path) {
+      descriptorLaneSeen = true;
+      assertDescriptorLaneGrants(
+        workflow,
+        relativeWorkflowPath,
+        setupConfig.requiredPermissions,
+      );
+    }
     collectFirstPartyPins(workflow, workflowPath, descriptor.actionOwnerRepo, firstPartyPins);
   }
+  // A path-matched gate that matches nothing does not fail -- it vanishes. If
+  // the lane is renamed without updating the descriptor, or the field is
+  // dropped entirely, the permission equality check above stops running and
+  // every run stays green. Both shapes fail here, unconditionally: an earlier
+  // draft exempted a descriptor declaring no lane at all so synthetic fixtures
+  // could omit the field, which made deleting the field the cheapest way to
+  // disable the gate. Fixtures declare a lane instead.
+  if (typeof setupConfig.workflow?.path !== "string" || setupConfig.workflow.path === "") {
+    throw new Error(
+      `${setupDescriptorPath}: workflow.path must be a nonempty string naming the lane the ` +
+        "permission gate anchors on; without it the gate silently does not run",
+    );
+  }
+  if (!descriptorLaneSeen) {
+    throw new Error(
+      `${setupDescriptorPath}: workflow.path is "${setupConfig.workflow.path}" but no tracked ` +
+        "workflow sits there, so the lane permission gate matched nothing and silently did not run",
+    );
+  }
+  assertNoDeadIssuesGrant(await laneDocuments(repositoryRoot));
 
   const examplesDirectory = path.join(repositoryRoot, "examples");
   const exampleNames = (await readdir(examplesDirectory))
@@ -585,6 +1044,7 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
     assertObject(example.on, examplePath, "on");
     assertObject(example.jobs, examplePath, "jobs");
     validateUsesReferences(example, examplePath, { allowActionPlaceholder: true });
+    assertReadablePermissions(example, examplePath);
     assertJobPermissions(example, examplePath, descriptor.actionOwnerRepo, supportedOperations);
     collectFirstPartyPins(example, examplePath, descriptor.actionOwnerRepo, firstPartyPins);
   }

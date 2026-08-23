@@ -7,6 +7,11 @@ import test from "node:test";
 import { promisify } from "node:util";
 import { parseDocument } from "yaml";
 import {
+  GITHUB_PERMISSION_SCOPES,
+  GITHUB_PERMISSION_LEVELS,
+  assertDescriptorLaneGrants,
+  laneGrantUnion,
+  assertNoDeadIssuesGrant,
   assertPinFreshness,
   assertNoActionExpressions,
   assertPinnedInputsDeclared,
@@ -16,6 +21,7 @@ import {
   validateReleaseConsistency,
 } from "../scripts/validate-action-metadata.mjs";
 import {
+  PERMISSION_LEVELS,
   contractInputNames,
   contractOutputNames,
 } from "../src/operation-contract.js";
@@ -61,6 +67,10 @@ async function writeMetadataFixture(root, actionReference, options = {}) {
     version = "0.0.0",
     writeDescriptor = true,
     writePackage = true,
+    // The lane the A-023 permission gate anchors on. Fixtures must declare one:
+    // the validator refuses a descriptor without it rather than skipping the
+    // gate, so `null` here drives that rejection path.
+    workflowPath = ".github/workflows/ci.yml",
   } = options;
   await mkdir(path.join(root, ".github", "workflows"), { recursive: true });
   await mkdir(path.join(root, "examples"), { recursive: true });
@@ -75,6 +85,7 @@ async function writeMetadataFixture(root, actionReference, options = {}) {
           contractMajor,
           supportedContractMajors,
           actionReference: `platypeeps/sd-github-review@${descriptorSha}`,
+          ...(workflowPath === null ? {} : { workflow: { path: workflowPath } }),
           supportedOperations: ["route", "finalize", "query"],
           requiredPermissions: {
             contents: "read",
@@ -242,23 +253,24 @@ test("publishes pinned standalone and durable PR-Agent workflows", async () => {
 
   assert.deepEqual(standalone.workflow.permissions, {
     contents: "read",
-    issues: "write",
     "pull-requests": "write",
   });
   // A-004: the third-party reviewer runs in an isolated job whose token has no
-  // receipt authority. Workflow-level permissions are minimal; only the
-  // receipt-writing jobs (review, finalize) hold checks:write, and the reviewer
-  // job (pr-agent) holds neither checks:write nor issues:write.
+  // receipt authority. Workflow-level permissions are minimal, and only the
+  // receipt-writing jobs (review, finalize) hold checks:write.
+  //
+  // checks:write is the entire isolation boundary. The reviewer job also lacks
+  // issues:write, but so does every other job now -- no lane grants it at all,
+  // because on a pull request pull-requests:write already covers the
+  // /issues/... REST paths and the scope was dead everywhere it appeared.
   assert.deepEqual(durable.workflow.permissions, { contents: "read" });
   assert.deepEqual(durable.workflow.jobs.review.permissions, {
     contents: "read",
-    issues: "write",
     "pull-requests": "write",
     checks: "write",
   });
   assert.deepEqual(durable.workflow.jobs.finalize.permissions, {
     contents: "read",
-    issues: "write",
     "pull-requests": "write",
     checks: "write",
   });
@@ -1352,4 +1364,666 @@ test("action.yml defaults agree with the runtime defaults they mirror", async ()
     [],
     "these states can appear on durable-state but the output description never names them",
   );
+});
+
+// A-023. The integration path in validateMetadata cannot exercise the
+// descriptor side of this gate: assertSetupContract runs first and pins
+// requiredPermissions to the operation-contract union, so any descriptor
+// mutation fails there before this gate is reached. That shadowing is fine --
+// it means descriptor drift is caught twice over -- but it means the only place
+// this branch can be proven is here, at the seam.
+test("the lane permission gate fails in both directions", () => {
+  const lane = {
+    permissions: { contents: "read" },
+    jobs: {
+      review: { permissions: { contents: "read", "pull-requests": "write", checks: "write" } },
+      "pr-agent": { permissions: { contents: "read", "pull-requests": "write" } },
+    },
+  };
+  const declared = { contents: "read", "pull-requests": "write", checks: "write" };
+  assert.doesNotThrow(() => assertDescriptorLaneGrants(lane, "lane.yml", declared));
+
+  // Lane grants more than the descriptor declares -- the shape this task fixed.
+  const overGranting = structuredClone(lane);
+  overGranting.jobs.review.permissions.issues = "write";
+  assert.notDeepEqual(overGranting.jobs.review.permissions, lane.jobs.review.permissions);
+  assert.throws(
+    () => assertDescriptorLaneGrants(overGranting, "lane.yml", declared),
+    /issues: lane grants write but the descriptor declares none/u,
+  );
+
+  // Descriptor declares a scope no job grants -- a consumer provisioning from
+  // it would hand out a scope the lane never uses.
+  const overDeclaring = { ...declared, packages: "write" };
+  assert.notDeepEqual(overDeclaring, declared);
+  assert.throws(
+    () => assertDescriptorLaneGrants(lane, "lane.yml", overDeclaring),
+    /packages: the descriptor declares write but no job grants it/u,
+  );
+
+  // Same scope, different level, is drift too -- not only presence/absence.
+  const weaker = { ...declared, checks: "read" };
+  assert.notDeepEqual(weaker, declared);
+  assert.throws(
+    () => assertDescriptorLaneGrants(lane, "lane.yml", weaker),
+    /checks: lane grants write but the descriptor declares read/u,
+  );
+});
+
+test("a job inheriting workflow-level permissions is counted in the lane union", () => {
+  // The over-grant this task removed could return via inheritance rather than
+  // on the job, which would read as an empty job permissions block.
+  const inheriting = {
+    permissions: { contents: "read", issues: "write", "pull-requests": "write" },
+    jobs: { review: {} },
+  };
+  assert.throws(
+    () => assertDescriptorLaneGrants(inheriting, "lane.yml", { contents: "read" }),
+    /issues: lane grants write but the descriptor declares none/u,
+  );
+});
+
+test("no shipped lane may grant the issues scope", () => {
+  const clean = [["a.yml", { jobs: { j: { permissions: { "pull-requests": "write" } } } }]];
+  assert.doesNotThrow(() => assertNoDeadIssuesGrant(clean));
+
+  const dirty = structuredClone(clean);
+  dirty.push(["b.yml", { permissions: { issues: "write" }, jobs: { j: {} } }]);
+  assert.notDeepEqual(dirty, clean);
+  assert.throws(() => assertNoDeadIssuesGrant(dirty), /b\.yml: issues:write/u);
+});
+
+// The shorthand is the case where the grant is real but the evidence is not
+// canonical: `permissionMap` collapses `write-all` to a single `__all` key, so
+// a gate comparing `granted.issues` by name sees nothing while the token holds
+// the scope. Both gates must resolve it, not match on the literal.
+test("a write-all lane is caught even though it never names the issues scope", () => {
+  const blanket = [["c.yml", { permissions: "write-all", jobs: { j: {} } }]];
+  assert.equal(blanket[0][1].permissions, "write-all");
+  assert.throws(
+    () => assertNoDeadIssuesGrant(blanket),
+    /c\.yml: write-all, which covers issues:write/u,
+  );
+
+  // read-all grants the scope too, at a lower level; no lane may hold either.
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["d.yml", { permissions: "read-all", jobs: { j: {} } }]]),
+    /d\.yml: read-all, which covers issues:read/u,
+  );
+
+  // `permissions: {}` is the blanket "no scopes" form, and grants nothing.
+  assert.doesNotThrow(() =>
+    assertNoDeadIssuesGrant([["e.yml", { permissions: {}, jobs: { j: {} } }]]),
+  );
+});
+
+test("a permissions scalar GitHub does not accept is rejected, not read as empty", () => {
+  // `permissions: none` looks like it means "no scopes" and is not valid
+  // workflow syntax -- `read-all`, `write-all`, or a map are the only forms.
+  // `permissionMap` maps every unrecognized scalar to an empty grant, which is
+  // the same fail-open shape as an absent declaration: a lane nobody can read
+  // is reported as granting nothing.
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["j.yml", { permissions: "none", jobs: { j: {} } }]]),
+    /j\.yml: the workflow sets permissions to the scalar "none", which GitHub does not accept/u,
+  );
+
+  // Also on a job, where the workflow-level declaration would otherwise cover.
+  assert.throws(
+    () =>
+      assertNoDeadIssuesGrant([
+        ["k.yml", { permissions: { contents: "read" }, jobs: { j: { permissions: "all" } } }],
+      ]),
+    /k\.yml: job "j" sets permissions to the scalar "all"/u,
+  );
+
+  // The two valid scalars are still read as scalars, not rejected as malformed:
+  // read-all grants issues:read, so it fails for the right reason.
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["l.yml", { permissions: "read-all", jobs: { j: {} } }]]),
+    /l\.yml: read-all, which covers issues:read/u,
+  );
+});
+
+test("a permissions map entry GitHub does not accept is rejected, not dropped", () => {
+  // Same fail-open shape one level down, and the easiest of all to reach by
+  // accident: `laneGrantUnion` ranks a level through `PERMISSION_LEVELS[level]
+  // ?? 0` and drops anything unrecognized, so a typo grants nothing as far as
+  // the sweep is concerned while GitHub rejects the workflow outright. A typo
+  // must not be the way past this gate.
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["m.yml", { permissions: { issues: "wirte" }, jobs: { j: {} } }]]),
+    /m\.yml: the workflow sets issues to "wirte", which GitHub does not accept/u,
+  );
+
+  // The correctly spelled version is caught by the sweep proper, which is the
+  // point: the two failures are distinguishable, not one swallowing the other.
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["n.yml", { permissions: { issues: "write" }, jobs: { j: {} } }]]),
+    /n\.yml: issues:write/u,
+  );
+
+  // `none` is valid in a map even though it is not a valid scalar, and grants
+  // nothing -- so it must pass where the bare scalar form fails.
+  assert.doesNotThrow(() =>
+    assertNoDeadIssuesGrant([["o.yml", { permissions: { issues: "none" }, jobs: { j: {} } }]]),
+  );
+
+  // A job-level map is checked too, not only the workflow-level one.
+  assert.throws(
+    () =>
+      assertNoDeadIssuesGrant([
+        ["p.yml", { jobs: { j: { permissions: { contents: true } } } }],
+      ]),
+    /p\.yml: job "j" sets contents to true,/u,
+  );
+
+  // A list is neither a scalar nor a map, and must not read as empty either.
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["q.yml", { permissions: ["contents"], jobs: { j: {} } }]]),
+    /q\.yml: the workflow sets permissions to a list/u,
+  );
+});
+
+test("a permission level inherited from Object.prototype is not a valid level", () => {
+  // `PERMISSION_LEVELS` is a frozen object literal, so it still inherits from
+  // `Object.prototype`. A membership test with `in` therefore accepts
+  // `toString`, and the lookup then returns a *function*, which `?? 0` does not
+  // replace -- every downstream comparison becomes NaN and is silently false.
+  // The level comes from a workflow file, so it must never be resolved through
+  // a prototype chain.
+  assert.ok("toString" in PERMISSION_LEVELS, "the prototype chain is the hazard being guarded");
+  assert.ok(!Object.hasOwn(PERMISSION_LEVELS, "toString"));
+
+  for (const inherited of ["toString", "constructor", "valueOf", "hasOwnProperty", "__proto__"]) {
+    assert.throws(
+      () =>
+        assertNoDeadIssuesGrant([
+          ["r.yml", { permissions: { issues: inherited }, jobs: { j: {} } }],
+        ]),
+      new RegExp(`r\\.yml: the workflow sets issues to "${inherited}"`, "u"),
+      `an inherited level "${inherited}" must be rejected, not ranked`,
+    );
+  }
+
+  // A scope named `__proto__` must be stored, not swallowed by assignment.
+  // Built with a computed key on purpose: `{ __proto__: "write" }` is the
+  // prototype-setter form and creates no own property at all, so a literal here
+  // would make this test vacuous. The YAML parser does produce an own property,
+  // which is what makes the null-prototype handling load-bearing for real lanes.
+  const protoScope = { ["__proto__"]: "write" };
+  assert.ok(Object.hasOwn(protoScope, "__proto__"), "the fixture must carry an own __proto__");
+  const protoLane = { permissions: protoScope, jobs: { j: {} } };
+
+  // Asserted against the union directly rather than through a gate's message.
+  // The gate now rejects this lane as malformed before comparing grants, and
+  // that check reads the raw document -- so it would fire even if the map had
+  // swallowed the key, which is exactly what this assertion exists to rule out.
+  const union = laneGrantUnion(protoLane);
+  assert.ok(Object.hasOwn(union, "__proto__"), "a __proto__ scope must be stored, not swallowed");
+  assert.equal(union.__proto__, "write");
+
+  // And the gate refuses it: `__proto__` is not a scope GitHub defines, so a
+  // lane declaring one cannot be compared against the descriptor at all.
+  assert.throws(
+    () => assertDescriptorLaneGrants(protoLane, "s.yml", {}),
+    /s\.yml declares permissions this validator cannot read/u,
+  );
+});
+
+test("a non-string permission level is rejected rather than coerced into a valid one", () => {
+  // `Object.hasOwn` coerces its property key, so `issues: [none]` stringifies to
+  // "none" and would be accepted, then rank 0 and vanish from the union -- a
+  // GitHub-invalid lane reported as clean. Ninth variant of the same shape.
+  assert.ok(Object.hasOwn(PERMISSION_LEVELS, ["none"]), "key coercion is the hazard being guarded");
+
+  for (const level of [["none"], ["write"], 1, true, null]) {
+    assert.throws(
+      () =>
+        assertNoDeadIssuesGrant([["t.yml", { permissions: { issues: level }, jobs: { j: {} } }]]),
+      /t\.yml: the workflow sets issues to/u,
+      `a non-string level ${JSON.stringify(level)} must be rejected, not coerced`,
+    );
+  }
+});
+
+test("a permission scope name GitHub does not define is rejected, not ranked away", () => {
+  // Keys, not only values. An unknown scope name ranks like any other and then
+  // vanishes at rank 0, so the lane read as clean. Verified against the API:
+  //   422: failed to parse workflow: (Line: 5, Col: 3): Unexpected value '__proto__'
+  // Computed key: `{ __proto__: "none" }` is the prototype-setter form and
+  // creates no own property, which would make this assertion vacuous.
+  const unknownScope = { ["__proto__"]: "none", contents: "read" };
+  assert.ok(Object.hasOwn(unknownScope, "__proto__"), "the fixture must carry an own __proto__");
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["z.yml", { permissions: unknownScope, jobs: { j: {} } }]]),
+    /z\.yml: the workflow names a permission scope "__proto__"/u,
+  );
+
+  // `__all` is this module's internal sentinel for the read-all/write-all
+  // shorthand. A lane declaring it directly would otherwise be read as a
+  // blanket grant it never asked for -- the sentinel colliding with user data.
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["aa.yml", { permissions: { __all: "write" }, jobs: { j: {} } }]]),
+    /aa\.yml: the workflow names a permission scope "__all"/u,
+  );
+
+  // A scope-shaped typo is the case a shape check let through, and the reason
+  // this is an allow-list instead.
+  assert.throws(
+    () =>
+      assertNoDeadIssuesGrant([["ac.yml", { permissions: { frobnicate: "none" }, jobs: { j: {} } }]]),
+    /ac\.yml: the workflow names a permission scope "frobnicate"/u,
+  );
+
+  // Real hyphenated scopes must keep working -- the allow-list must not become
+  // a fail-shut on the scopes the shipped lanes actually use.
+  assert.doesNotThrow(() =>
+    assertNoDeadIssuesGrant([
+      [
+        "ab.yml",
+        {
+          permissions: { "pull-requests": "write", contents: "read", "id-token": "write" },
+          jobs: { j: {} },
+        },
+      ],
+    ]),
+  );
+});
+
+test("every scope the shipped lanes declare is in the allow-list", async () => {
+  // The allow-list's real risk is being wrong in the exclusive direction: a
+  // missing scope turns a valid lane into a release-blocking failure. Derived
+  // from disk rather than restated, so adding a scope to a lane without adding
+  // it here fails here first, naming it.
+  const root = path.resolve(import.meta.dirname, "..");
+  const declared = new Set();
+  for (const directory of [".github/workflows", "examples"]) {
+    const entries = await readdir(path.join(root, directory));
+    for (const name of entries.filter((entry) => /\.ya?ml$/u.test(entry))) {
+      const doc = parseDocument(
+        await readFile(path.join(root, directory, name), "utf8"),
+      ).toJS();
+      const blocks = [doc?.permissions, ...Object.values(doc?.jobs ?? {}).map((job) => job?.permissions)];
+      for (const block of blocks) {
+        if (!block || typeof block !== "object") continue;
+        for (const [scope, level] of Object.entries(block)) declared.add(`${scope}:${level}`);
+      }
+    }
+  }
+  assert.ok(declared.size > 0, "the sweep must have found real lanes to read");
+  const unknown = [...declared].filter((pair) => {
+    const [scope, level] = pair.split(":");
+    return !GITHUB_PERMISSION_SCOPES.has(scope) || !GITHUB_PERMISSION_LEVELS.get(scope).includes(level);
+  });
+  assert.deepEqual(
+    unknown,
+    [],
+    "these scope:level pairs are used by shipped lanes but missing from GITHUB_PERMISSION_LEVELS",
+  );
+});
+
+test("a scope's level set is the one GitHub accepts for that scope", () => {
+  // The level set is not uniform across scopes, so a global none/read/write
+  // check passes declarations GitHub's parser rejects outright. Both
+  // exceptions were probed rather than read off the docs, one pair per
+  // dispatch, with a control accepted in the same run:
+  //   models   write -> 422: failed to parse workflow: Unexpected value 'write'
+  //   id-token read  -> 422: failed to parse workflow: Unexpected value 'read'
+  const lane = (permissions) => ({ jobs: { j: { permissions } } });
+
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["u.yml", lane({ contents: "read", models: "write" })]]),
+    /models must be none, read/u,
+  );
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["u.yml", lane({ contents: "read", "id-token": "read" })]]),
+    /id-token must be none, write/u,
+  );
+
+  // The complement, so the fix cannot degenerate into rejecting these scopes
+  // outright: each one's supported level still passes.
+  assert.doesNotThrow(() =>
+    assertNoDeadIssuesGrant([["u.yml", lane({ contents: "read", models: "read" })]]),
+  );
+  assert.doesNotThrow(() =>
+    assertNoDeadIssuesGrant([["u.yml", lane({ contents: "read", "id-token": "write" })]]),
+  );
+
+  // And every other scope keeps all three levels -- 43 of the 45 probed pairs
+  // were accepted, so a per-scope map must not narrow the common case.
+  for (const level of ["none", "read", "write"]) {
+    assert.doesNotThrow(() =>
+      assertNoDeadIssuesGrant([["u.yml", lane({ contents: "read", packages: level })]]),
+    );
+  }
+});
+
+test("a bare permissions key is rejected, not read as inheritance", () => {
+  // `permissions:` alone on a line parses to null, not to an absent key. The
+  // validator treated the two alike, so a malformed declaration passed as
+  // though it inherited. GitHub rejects it outright, verified against the API
+  // rather than argued from the docs:
+  //   422: failed to parse workflow: (Line: 4, Col: 13): Unexpected value ''
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["w.yml", { permissions: null, jobs: { j: {} } }]]),
+    /w\.yml: the workflow has a bare permissions key with no value/u,
+  );
+
+  // On a job, where a valid workflow-level block would otherwise mask it.
+  assert.throws(
+    () =>
+      assertNoDeadIssuesGrant([
+        ["x.yml", { permissions: { contents: "read" }, jobs: { j: { permissions: null } } }],
+      ]),
+    /x\.yml: job "j" has a bare permissions key with no value/u,
+  );
+
+  // An absent key is still inheritance, and still covered by the workflow-level
+  // declaration -- the two must stay distinguishable.
+  assert.doesNotThrow(() =>
+    assertNoDeadIssuesGrant([["y.yml", { permissions: { contents: "read" }, jobs: { j: {} } }]]),
+  );
+});
+
+test("a workflow-level issues grant is caught even when every job overrides it", () => {
+  // `laneGrantUnion` consults the workflow-level block only for jobs that
+  // inherit it, so a lane whose every current job declares its own permissions
+  // hid a top-level grant -- one that is still written down, and that any job
+  // added later inherits.
+  const overridden = {
+    permissions: { contents: "read", issues: "write" },
+    jobs: {
+      review: { permissions: { contents: "read", "pull-requests": "write" } },
+      "pr-agent": { permissions: { contents: "read" } },
+    },
+  };
+  // The union genuinely does not see it -- otherwise this test would pass for
+  // the wrong reason and prove nothing about the direct workflow-level check
+  // that the sweep still needs. Asserted against the union itself, because the
+  // descriptor gate no longer reads the bare union: it folds the workflow-level
+  // block in first, and so is not a witness for what the union alone sees.
+  assert.equal(laneGrantUnion(overridden).issues, undefined);
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["u.yml", overridden]]),
+    /u\.yml: workflow-level issues:write/u,
+  );
+
+  // The blanket shorthand at the workflow level is caught the same way.
+  assert.throws(
+    () =>
+      assertNoDeadIssuesGrant([
+        ["v.yml", { permissions: "write-all", jobs: { j: { permissions: { contents: "read" } } } }],
+      ]),
+    /v\.yml: workflow-level write-all, which covers issues:write/u,
+  );
+});
+
+test("a workflow-level grant every job overrides is caught for scopes the sweep never looks at", () => {
+  // The sweep's dedicated workflow-level check covers `issues` only. Every other
+  // scope depends on the descriptor equality gate, which reads the job union and
+  // so was blind to the same shape: a top-level grant no current job inherits,
+  // but that any job added later would.
+  const overridden = {
+    permissions: { contents: "read", packages: "write" },
+    jobs: {
+      review: { permissions: { contents: "read", "pull-requests": "write" } },
+      "pr-agent": { permissions: { contents: "read" } },
+    },
+  };
+  // Non-vacuity: the union alone does not see the grant, so the assertion below
+  // can only be satisfied by the workflow-level fold.
+  assert.equal(laneGrantUnion(overridden).packages, undefined);
+  assert.throws(
+    () =>
+      assertDescriptorLaneGrants(overridden, "u.yml", {
+        contents: "read",
+        "pull-requests": "write",
+      }),
+    /u\.yml.*packages/su,
+  );
+
+  // The equality gate still accepts a lane whose workflow-level block is a
+  // subset of what its jobs declare -- the shape every shipped lane has. The
+  // fold takes the higher of the two per scope, so a workflow-level `read` must
+  // not pull a job's `write` back down and fail the comparison.
+  assert.doesNotThrow(() =>
+    assertDescriptorLaneGrants(
+      {
+        permissions: { contents: "read", "pull-requests": "read" },
+        jobs: { review: { permissions: { contents: "read", "pull-requests": "write" } } },
+      },
+      "u.yml",
+      { contents: "read", "pull-requests": "write" },
+    ),
+  );
+});
+
+test("a mapping-valued level is reported, not crashed on", () => {
+  // The message used to interpolate the raw level. `${level}` on a mapping calls
+  // its `toString`, so `{ issues: { toString: null } }` -- valid YAML, and it
+  // reaches the non-string branch correctly -- threw `Cannot convert object to
+  // primitive value` instead of naming the file and scope. A gate that crashes
+  // while reporting a malformed lane has still failed to report it.
+  const circular = {};
+  circular.self = circular;
+  const hostile = [
+    [{ toString: null }, /sets issues to \{"toString":null\}/u],
+    [["none"], /sets issues to \["none"\]/u],
+    [42, /sets issues to 42,/u],
+    [circular, /sets issues to \[object Object\]/u],
+    [{ toJSON() { throw new Error("boom"); } }, /sets issues to \[object Object\]/u],
+  ];
+  for (const [level, expected] of hostile) {
+    let thrown;
+    try {
+      assertNoDeadIssuesGrant([["u.yml", { permissions: { issues: level }, jobs: { j: {} } }]]);
+    } catch (error) {
+      thrown = error;
+    }
+    assert.ok(thrown, "a non-string level must be rejected");
+    assert.ok(!(thrown instanceof TypeError), `a level of ${typeof level} must not crash the gate`);
+    assert.match(thrown.message, expected);
+  }
+});
+
+test("a job that is not a mapping is rejected, not read as inheritance", () => {
+  // `job?.permissions` establishes nothing about `job` itself. A string or a
+  // list yields undefined, which every downstream check reads as inheritance,
+  // so the malformed job silently borrowed the workflow-level grant and
+  // validated clean against a job GitHub rejects outright.
+  for (const bad of ["not-a-job", ["steps"], 42]) {
+    const doc = { permissions: { contents: "read" }, jobs: { bad } };
+    assert.throws(
+      () => assertDescriptorLaneGrants(doc, "u.yml", { contents: "read" }),
+      /u\.yml declares permissions this validator cannot read.*job "bad" is not a mapping/su,
+      `a job value of ${JSON.stringify(bad)} must be rejected`,
+    );
+    assert.throws(() => assertNoDeadIssuesGrant([["u.yml", doc]]), /job "bad" is not a mapping/u);
+  }
+
+  // A null job was worse than fail-open: it reached `job.permissions` and threw
+  // a raw TypeError rather than a validator error naming the file. Asserted as
+  // a non-TypeError so a regression cannot pass by crashing.
+  const nullJob = { permissions: { contents: "read" }, jobs: { bad: null } };
+  let thrown;
+  try {
+    assertDescriptorLaneGrants(nullJob, "u.yml", { contents: "read" });
+  } catch (error) {
+    thrown = error;
+  }
+  assert.ok(thrown, "a null job must be rejected");
+  assert.ok(!(thrown instanceof TypeError), "a malformed job must not crash the validator");
+  assert.match(thrown.message, /job "bad" is not a mapping/u);
+
+  // laneGrantUnion is exported and callable on an unscreened document, so it
+  // must survive the same input rather than crashing before a gate can name it.
+  assert.doesNotThrow(() => laneGrantUnion(nullJob));
+});
+
+test("the equality gate refuses a lane whose jobs never declared permissions", () => {
+  // Unreadable and unwritten are separate holes. `invalidPermissionDeclaration`
+  // treats an absent block as inheritance by design, so a lane with no
+  // workflow-level permissions where one job declares every required scope and
+  // another declares nothing produces a union matching the descriptor exactly --
+  // while the second job runs on the repository default token, whose scopes the
+  // lane neither controls nor can enumerate.
+  const doc = {
+    jobs: {
+      review: { permissions: { contents: "read", "pull-requests": "write" } },
+      stray: {},
+    },
+  };
+  // Non-vacuity: the union really does match, so nothing but the undeclared
+  // check can reject this lane.
+  assert.deepEqual({ ...laneGrantUnion(doc) }, { contents: "read", "pull-requests": "write" });
+  assert.throws(
+    () => assertDescriptorLaneGrants(doc, "u.yml", { contents: "read", "pull-requests": "write" }),
+    /u\.yml leaves job "stray" with no permissions declaration/u,
+  );
+
+  // A job inheriting a workflow-level block is declared, not undeclared -- the
+  // check must not reject the shape every shipped lane uses.
+  assert.doesNotThrow(() =>
+    assertDescriptorLaneGrants(
+      { permissions: { contents: "read", "pull-requests": "write" }, jobs: { j: {} } },
+      "u.yml",
+      { contents: "read", "pull-requests": "write" },
+    ),
+  );
+});
+
+test("a lane declaring no permissions at all fails closed rather than reading as clean", () => {
+  // Absent is not empty. With no `permissions:` on the workflow or the job,
+  // GitHub applies the repository/organization default GITHUB_TOKEN scopes,
+  // which the lane does not control and which may include issues:write. The
+  // sweep must not report clean on the one lane whose scopes are unknown.
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["f.yml", { jobs: { review: {}, finalize: {} } }]]),
+    /f\.yml: job\(s\) review, finalize declare no permissions/u,
+  );
+
+  // A workflow-level declaration covers jobs that omit their own.
+  assert.doesNotThrow(() =>
+    assertNoDeadIssuesGrant([["g.yml", { permissions: { contents: "read" }, jobs: { j: {} } }]]),
+  );
+
+  // So does a per-job declaration with nothing at the workflow level.
+  assert.doesNotThrow(() =>
+    assertNoDeadIssuesGrant([
+      ["h.yml", { jobs: { j: { permissions: { contents: "read" } } } }],
+    ]),
+  );
+
+  // An explicit empty block is a real declaration of no scopes, unlike absence.
+  assert.doesNotThrow(() => assertNoDeadIssuesGrant([["i.yml", { permissions: {}, jobs: { j: {} } }]]));
+
+  // The equality gate must reject a blanket grant outright rather than compare
+  // `__all` against a scope the descriptor could never declare.
+  assert.throws(
+    () =>
+      assertDescriptorLaneGrants({ permissions: "write-all", jobs: { j: {} } }, "c.yml", {
+        contents: "read",
+      }),
+    /the lane grants write-all, a blanket grant over every scope/u,
+  );
+});
+
+// The three tests above call the gates directly. That proves the gates, not
+// that `validateMetadata` still calls them: deleting either call site would
+// leave a clean repository green and every seam test passing. These three cover
+// the production wiring instead, through a fixture repository.
+test("validateMetadata rejects a descriptor that names no lane, rather than skipping the gate", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-a023-nolane-"));
+  await writeMetadataFixture(root, A010_VALID_PIN, { workflowPath: null });
+  await assert.rejects(validateMetadata(root), /workflow\.path must be a nonempty string/u);
+});
+
+test("validateMetadata rejects a descriptor whose lane does not exist", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-a023-badlane-"));
+  await writeMetadataFixture(root, A010_VALID_PIN, {
+    workflowPath: ".github/workflows/renamed.yml",
+  });
+  await assert.rejects(validateMetadata(root), /matched nothing and silently did not run/u);
+});
+
+test("validateMetadata runs the equality gate on the descriptor's own lane", async () => {
+  // The sweep and the path guards are covered below and above, but deleting the
+  // `assertDescriptorLaneGrants` call site would leave every one of those green:
+  // the sweep only rejects the `issues` scope, so drift in any other scope has
+  // no second failure path. This mutates the matched lane in a scope the sweep
+  // does not look at, so only the equality gate can catch it.
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-a023-matched-"));
+  await writeMetadataFixture(root, A010_VALID_PIN);
+  const lanePath = path.join(root, ".github", "workflows", "ci.yml");
+  const clean = await readFile(lanePath, "utf8");
+  const drifted = clean.replace("  contents: read", "  contents: read\n  packages: write");
+  assert.notEqual(drifted, clean);
+  await writeFile(lanePath, drifted, "utf8");
+  await assert.rejects(
+    validateMetadata(root),
+    /packages: lane grants write but the descriptor declares none/u,
+  );
+});
+
+test("validateMetadata rejects an unreadable declaration before any gate reads it", async () => {
+  // Ordering, proven through the production path rather than at the seam. The
+  // readability check used to live only in `assertDescriptorLaneGrants`, which
+  // `validateMetadata` reaches *after* `assertJobPermissions` -- so a malformed
+  // level in an action job hit the lower bound first, where it was interpolated
+  // into an error message unvalidated. The lane below is the descriptor's own,
+  // and its `contents` grant is one the route job needs, so A-010 is guaranteed
+  // to look at it.
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-a023-unreadable-"));
+  await writeMetadataFixture(root, A010_VALID_PIN);
+  const lanePath = path.join(root, ".github", "workflows", "ci.yml");
+  const clean = await readFile(lanePath, "utf8");
+  const drifted = clean.replace("  contents: read\n", "  contents:\n    toString: null\n");
+  assert.notEqual(drifted, clean);
+  await writeFile(lanePath, drifted, "utf8");
+  await assert.rejects(validateMetadata(root), (error) => {
+    // Not a TypeError: the old ordering crashed inside A-010's message rather
+    // than reporting the lane, and a crash must not read as a rejection.
+    assert.ok(!(error instanceof TypeError), "a malformed level must not crash the validator");
+    assert.match(error.message, /declares permissions this validator cannot read/u);
+    assert.match(error.message, /sets contents to \{"toString":null\}/u);
+    return true;
+  });
+});
+
+test("validateMetadata sweeps every lane for the dead issues grant, not only the descriptor's", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-a023-sweep-"));
+  await writeMetadataFixture(root, A010_VALID_PIN);
+  // Deliberately not the descriptor's lane: an over-grant there would trip the
+  // equality gate first, which would leave the sweep's wiring unproven.
+  await writeExampleFixture(root, A010_VALID_PIN);
+  const examplePath = path.join(root, "examples", "fixture.yml");
+  const clean = await readFile(examplePath, "utf8");
+  // No clean-baseline assertion here: the fixture root is not a git repository,
+  // so a full pass would fail later on the tracked-public-path check. The
+  // notEqual below is what keeps this from passing vacuously -- it proves the
+  // grant is actually present in the document the sweep reads.
+  const drifted = clean.replace("  contents: read", "  contents: read\n  issues: write");
+  assert.notEqual(drifted, clean);
+  await writeFile(examplePath, drifted, "utf8");
+  await assert.rejects(
+    validateMetadata(root),
+    /none may grant the issues scope[\s\S]*fixture\.yml: issues:write/u,
+  );
+});
+
+test("the shipped descriptor declares the lane the permission gate anchors on", async () => {
+  // `validateMetadata` rejects a descriptor with no `workflow.path`, and rejects
+  // one whose path matches no lane on disk -- both proven above. Those guards
+  // only help if the shipped descriptor actually names an existing lane, so
+  // this asserts the production side: a gate anchored on a path nobody declares
+  // would silently not run, which is exactly the failure the guards exist to
+  // prevent.
+  const root = path.resolve(import.meta.dirname, "..");
+  const descriptor = JSON.parse(
+    await readFile(path.join(root, "contract", "routed-review-setup-v1.json"), "utf8"),
+  );
+  assert.equal(typeof descriptor.workflow?.path, "string");
+  assert.ok(descriptor.workflow.path.length > 0);
+  await readFile(path.join(root, descriptor.workflow.path), "utf8");
 });

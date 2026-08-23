@@ -494,6 +494,104 @@ const trackedPaths = await gitLsFiles(repositoryRoot);
 const failures = trackedPaths.filter(prohibitedPublishedMetadataReason);
 ```
 
+## Scenario: Gate Workflow Permission Grants
+
+### 1. Scope / Trigger
+
+Use this contract when changing a shipped lane's `permissions:` block, the
+descriptor's `requiredPermissions`, or the metadata gates that compare them.
+A lane is any workflow under `.github/workflows/` or `examples/`.
+
+### 2. Signatures
+
+- `assertDescriptorLaneGrants(doc, filePath, requiredPermissions) -> void`
+- `assertNoDeadIssuesGrant(lanes) -> void`
+- `laneGrantUnion(doc) -> Record<string, string>`
+- CLI: `npm run validate:metadata`
+
+### 3. Contracts
+
+- `assertJobPermissions` is a deliberate **lower** bound: a job may hold scopes
+  for steps that are not this action. A-023 supplies the missing **upper**
+  bound, in two gates that guarantee different things. Do not describe them as
+  one gate; that overstates the coverage.
+- `assertDescriptorLaneGrants` covers **the descriptor's own lane only**,
+  resolved from `workflow.path`. Everything that lane grants anywhere -- its
+  jobs' effective permissions folded with its workflow-level block, higher
+  level per scope -- must equal `requiredPermissions` exactly, failing in both
+  directions. The workflow-level block counts even when every current job
+  overrides it: the grant is still written down, and the next job added
+  inherits it.
+- `assertNoDeadIssuesGrant` sweeps **every** lane on disk, but for the `issues`
+  scope only. Other lanes may legitimately hold scopes the descriptor does not
+  declare.
+- No lane may grant `issues` at any level. On a pull request,
+  `pull-requests: write` governs the `/repos/{owner}/{repo}/issues/...`
+  endpoints; the `/issues/` prefix is REST layout, not the permission scope.
+- Both gates fail closed on a declaration they cannot read. An input the
+  validator cannot parse must never score as granting nothing -- that reports
+  clean on exactly the lane whose scopes are unknown. Reject, do not ignore:
+  an absent `permissions:` block (the token falls back to the repository
+  default, which the lane does not control), a bare `permissions:` key, an
+  unrecognized scalar, a non-map value, an unknown scope name, a non-string
+  level, and a level reachable only through the prototype chain.
+- Validate scope names against `GITHUB_PERMISSION_SCOPES` and each scope's
+  level against the set GitHub accepts *for that scope*. The level set is not
+  uniform: `models` takes no `write`, `id-token` takes no `read`. A global
+  none/read/write check accepts declarations GitHub's parser rejects.
+- Membership and level sets are settled by probe against GitHub's workflow
+  parser, not from memory or documentation alone. Record the probe evidence
+  next to the constant.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required behavior |
+| --- | --- |
+| Descriptor lane grants a scope the descriptor omits | Fail and name the lane, scope, and direction |
+| Descriptor omits a scope the lane grants | Fail and name the direction |
+| Lane grants `read-all` / `write-all` | Fail as a blanket grant over every scope |
+| Any lane grants `issues` at any level | Fail and name the lane |
+| Workflow-level `issues` grant no current job inherits | Fail, reported distinctly from the job union |
+| Neither workflow nor job declares `permissions:` | Fail closed on the repository default |
+| Bare `permissions:` key, unknown scope, or unknown level | Fail as a malformed declaration |
+| Descriptor `workflow.path` matches no lane on disk | Fail; a gate that silently did not run is not a pass |
+
+### 5. Good/Base/Bad Cases
+
+- Good: a lane's job union equals `requiredPermissions`, and its workflow-level
+  block is a subset of that union.
+- Base: a non-descriptor example lane holds a scope the descriptor omits, and
+  passes because only `issues` is swept there.
+- Bad: a top-level `packages: write` that every current job overrides passes
+  because the gate read the job union alone.
+
+### 6. Tests Required
+
+- Assert both directions of the equality gate, not just the extra-grant one.
+- Cover each malformed-input shape as its own case: absent block, bare key,
+  unrecognized scalar, unrecognized level, non-string level,
+  prototype-inherited level, unknown scope name, and `__proto__` as both a
+  scope name and a level.
+- Derive the shipped-lane scope expectations from disk rather than restating
+  them, so a new lane cannot drift past the test.
+- Prove each gate non-vacuous by mutation: the assertion must fail when the
+  gate is reverted. When a fix makes an existing non-vacuity witness obsolete,
+  replace the witness -- a test that starts passing for a new reason proves
+  nothing about the branch it was written for.
+
+### 7. Wrong vs Correct
+
+```js
+// Wrong: an unreadable declaration scores as granting nothing, so the lane
+// whose scopes are unknown is the one that reports clean.
+const rank = PERMISSION_LEVELS[level] ?? 0;
+
+// Correct: reject what cannot be read, and read own properties only --
+// `in` walks the prototype chain and `Object.hasOwn` coerces its key.
+if (typeof level !== "string") return 0;
+return Object.hasOwn(PERMISSION_LEVELS, level) ? PERMISSION_LEVELS[level] : 0;
+```
+
 ## Scenario: Compile A Routed Review Configuration
 
 ### 1. Scope / Trigger

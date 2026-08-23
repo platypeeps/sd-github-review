@@ -443,12 +443,48 @@ Durable mode exposes a sensitive-file count but never emits the paths.
   `pull-requests: write` only when Copilot requests are enabled); `route` needs
   `contents: read`, `pull-requests: write`, and `checks: write`; `finalize` and
   `query` need `contents: read` and `checks: write`/`checks: read`; `acknowledge`
-  needs no token or permission. A job may hold extra permissions its other steps
-  require — the durable receipt jobs carry `issues: write` for the PR-comment
-  side-effect channel, which is job-level and distinct from the receipt
-  operations' contract set, not a claim that `route`/`finalize` need `issues`.
-  `validate:metadata` enforces this as a lower bound and never re-merges the
-  A-004-isolated adapter-container job.
+  needs no token or permission. A job may in principle hold extra permissions its
+  other steps require, which is why `assertJobPermissions` is a lower bound and
+  never re-merges the A-004-isolated adapter-container job.
+
+  Until `0.6.1` the five PR-Agent workflow copies used that latitude to grant
+  `issues: write` -- the other shipped examples never did --
+  and this document described the resulting lane-versus-descriptor asymmetry as
+  intentional: the PR-comment side-effect channel was said to need the scope even
+  though no contract operation does. **That was wrong, and the record is kept
+  here so the question is not re-opened from first principles.** On a pull
+  request, `pull-requests: write` governs the `/repos/{owner}/{repo}/issues/…`
+  endpoints — conversation comments, labels, reactions, comment edits, issue
+  events. The `/issues/` prefix is REST *layout*, reflecting that GitHub models
+  pull requests as issues; it is not the permission scope. This was settled by
+  direct probe on 2026-08-23 (runs 32623601322 and 32623799937), from jobs
+  holding exactly `contents: read` + `pull-requests: write`, with the resulting
+  comment confirmed present on the pull request rather than silently dropped.
+
+  So the asymmetry was a dead grant, not a design. Two gates hold it closed
+  (A-023), and they guarantee different things — the difference matters, because
+  reading them as one overstates the coverage:
+
+  - `assertDescriptorLaneGrants` applies to **the descriptor's own lane only**,
+    resolved from its `workflow.path`. Everything that lane grants anywhere —
+    its jobs' effective permissions *and* its workflow-level block — must equal
+    `requiredPermissions` exactly; the gate fails in both directions and names
+    which side drifted. The workflow-level block counts even when every current
+    job overrides it and so never inherits it: the grant is still written down,
+    and the next job added to the lane picks it up. It is scoped there because `requiredPermissions`
+    documents what a consumer provisions for *that* workflow, and folding the
+    router and generic examples in would force the descriptor to describe
+    workflows a consumer may never install.
+  - `assertNoDeadIssuesGrant` sweeps **every** lane enumerated from disk, but
+    only for the `issues` scope. The other lanes may still hold permissions the
+    descriptor does not declare, for the reason `assertJobPermissions` is a
+    lower bound: a job may need scopes for steps that are not this action.
+
+  Both fail closed on a declaration they cannot read — an absent
+  `permissions:` block (the token falls back to the repository default, which
+  the lane does not control), an unrecognized scalar, or an unrecognized map
+  level. Each of those otherwise resolves to "grants nothing", which reports
+  clean on exactly the lane whose scopes are unknown.
 - `github-token` is not globally required in `action.yml`; it is unused by
   `acknowledge` and enforced at runtime for `route`, `finalize`, and `query`
   (which build a GitHub client) with a bounded explicit error when absent.

@@ -1243,3 +1243,45 @@ Fleet rollout lane: reinstalled the thin sd-ai-command-pack payload at 0.71.45, 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 80: Drop the dead issues: write grant from every shipped lane
+<!-- trellis-session: v=2 fp=68dea8553a16ff70 -->
+
+**Date**: 2026-08-23
+**Task**: Drop the dead issues: write grant from every shipped lane
+**Branch**: `fix/drop-dead-issues-write`
+
+### Summary
+
+Removed the dead issues: write grant from all five shipped lanes, added the A-023 gates that keep it from drifting back, and corrected the documentation and the 0.6.0 changelog entry that taught the belief. Sixteen review passes followed, which is where most of the work went: nineteen real defects, all in the gates and the documentation rather than in the removal.
+
+### Main Changes
+
+- issues: write removed from eight occurrences across five lanes. On a pull request the /repos/{owner}/{repo}/issues/... endpoints are governed by pull-requests: write; the /issues/ prefix is REST layout, not the permission scope. Settled by probe (runs 32623601322, 32623799937), not by reading the path.
+- Two gates guaranteeing different things: assertDescriptorLaneGrants is an exact-equality upper bound on the descriptor's own lane, assertNoDeadIssuesGrant sweeps every lane for the issues scope only. Recorded separately in DESIGN.md and the new quality-guidelines.md scenario, because reading them as one gate overstates the coverage.
+- Scope names and per-scope level sets validated against a probed map. All 15 scopes against all 3 levels: 43 accepted, models write and id-token read rejected by GitHub's parser.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ce00104` | fix(metadata): fold workflow-level grants into the descriptor equality gate |
+| `da6abea` | fix(metadata): validate each permission scope against its own level set |
+
+### Testing
+
+- [OK] npm run check:full - 744 tests, 744 pass, 0 fail
+- [OK] npm run validate:metadata - action.yml, 3 workflows, 7 examples, 1154 tracked paths
+- [OK] every gate mutation-proven; M21-M34 this session, each failing its test alone
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Merge PR #138 once da6abea has a clean review pass
+- Phase 4: release 0.6.1 per docs/RELEASE_CHECKLIST.md section 5 (pin advance, validate, tag)
+- Phase 5: credentialed adapter pilot at a reachable route
+- Phase 6: refresh this repo's own installer manifest, then canary and roll the fleet
