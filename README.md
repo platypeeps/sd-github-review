@@ -120,7 +120,7 @@ For a provider-free evaluation, start with
 and Copilot without checking out pull-request code or using LLM provider
 credentials. The checked-in example is pinned to the immutable current release
 commit,
-`3e41f23415c4eb2c0e2292c9b53690a5eff94175`.
+`626cade1034999ae0e1939114e4d156bbeb54ee9`.
 
 Every checked-in first-party example uses that same released full SHA. When
 upgrading, replace all first-party Action references with the reviewed full SHA

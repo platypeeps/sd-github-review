@@ -37,7 +37,7 @@ jobs:
       - name: Route or query the exact-head review
         id: review
         # Current release; upgrade every first-party reference together.
-        uses: platypeeps/sd-github-review@3e41f23415c4eb2c0e2292c9b53690a5eff94175
+        uses: platypeeps/sd-github-review@626cade1034999ae0e1939114e4d156bbeb54ee9
         with:
           github-token: ${{ github.token }}
           operation: ${{ inputs.operation }}
@@ -70,7 +70,7 @@ jobs:
 
       - name: Finalize the external receipt
         if: steps.review.outputs.adapter-request != '' && always()
-        uses: platypeeps/sd-github-review@3e41f23415c4eb2c0e2292c9b53690a5eff94175
+        uses: platypeeps/sd-github-review@626cade1034999ae0e1939114e4d156bbeb54ee9
         with:
           github-token: ${{ github.token }}
           operation: finalize
