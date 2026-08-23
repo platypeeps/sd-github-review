@@ -3,7 +3,7 @@
   "name": "durable-lane-route-mode",
   "title": "Make the durable lane honor the repository's managed route policy",
   "description": "REVIEW_ROUTE_MODE is installer-managed but examples/sd-review.yml never reads it, so --route-mode does not constrain what a dispatch may select",
-  "status": "in_progress",
+  "status": "completed",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -11,7 +11,7 @@
   "creator": "sdelmas",
   "assignee": "sdelmas",
   "createdAt": "2026-08-22",
-  "completedAt": null,
+  "completedAt": "2026-08-22",
   "branch": "feat/durable-lane-route-policy",
   "base_branch": "main",
   "worktree_path": null,
@@ -22,5 +22,9 @@
   "parent": null,
   "relatedFiles": [],
   "notes": "",
-  "meta": {}
+  "meta": {
+    "status": "completed",
+    "completedAt": "2026-08-22",
+    "pr_url": "https://github.com/platypeeps/sd-github-review/pull/124"
+  }
 }

@@ -122,6 +122,31 @@ A dry run from the tagged checkout against `platypeeps/rwbp-coordinator` produce
 with **no `set-secret` action**, confirming the merged secret-gate fix behaves as intended under
 `--route-mode copilot`.
 
+## Outcome, superseded — `v0.5.0`
+
+`v0.4.0` above is left as written because it happened. The rollout did not install from it.
+The pin-lag decision recorded above was taken the second way and then some: rather than accept
+consumers running older action code, `08-22-durable-lane-route-mode` landed on top and the
+release was re-cut as **`v0.5.0`**, tagged 2026-08-22 at `0e58e76`, with the pin advanced to
+`61a4492`. Every one of the nine consumers now pins `61a4492` — enumerated from each default
+branch, not inferred — so acceptance criterion 4 of `08-08-fleet-rollout-smoke` is satisfied
+for the first time.
+
+Cutting `0.5.0` also caught a release-stopping defect that no earlier gate could have seen.
+`action.yml` carried a `${{ vars.REVIEW_ROUTE_MODE }}` example inside an input *description*.
+GitHub evaluates expressions in `action.yml` when it loads the action, and an action definition
+may not reference the `vars` context, so the action failed to load for every consumer at once.
+It was invisible until the pin advanced, because the self-hosted `route` lane exercises the
+action *at its pin* — which until then was the previous release. Fixed in #124 and gated by
+`R-008` in `scripts/validate-action-metadata.mjs`, which now rejects expression delimiters
+anywhere outside `runs:`.
+
+Fleet state at close, verified against each repository's default branch rather than restated
+from the install run: 9/9 carry `config/routed-review-setup-v1.json` (blob `a6267fc`),
+`.github/workflows/sd-review.yml` (blob `b3c5c15`), and `.github/workflows/ai-review-router.yml`
+(blob `a302eb0`), all pinned to `61a4492`. All eight install pull requests are merged. No
+provider credential was distributed to any consumer.
+
 ## Notes
 
 2026-08-22: Queued while `08-08-fleet-rollout-smoke` was paused. The rollout's own preconditions

@@ -3,7 +3,7 @@
   "name": "release-for-fleet-rollout",
   "title": "Survey main since v0.3.0 and cut the release the fleet rollout needs",
   "description": "main is 179 commits past v0.3.0; the fleet rollout requires an exact v<version> tag on a clean template tree for resolveSourceRelease to record released:true. Survey what tagging would ship, decide the version, and cut it.",
-  "status": "planning",
+  "status": "completed",
   "dev_type": null,
   "scope": null,
   "package": null,
@@ -11,7 +11,7 @@
   "creator": "sdelmas",
   "assignee": "sdelmas",
   "createdAt": "2026-08-22",
-  "completedAt": null,
+  "completedAt": "2026-08-22",
   "branch": null,
   "base_branch": "main",
   "worktree_path": null,
@@ -22,6 +22,9 @@
   "parent": null,
   "relatedFiles": [],
   "notes": "2026-08-22: Queued, not started. Blocked on PR #113 merging. Blocks 08-08-fleet-rollout-smoke, whose only remaining blocker is release provenance: resolveSourceRelease records released:true solely for an exact v<version> tag on a clean template tree, so installing from an untagged commit would stamp an unpublished SHA into nine consumer manifests. v0.3.0 (744a9f1) predates the installer fix and main is 179 commits past it, so neither is usable. The survey of that range has not been done.",
-  "meta": {},
+  "meta": {
+    "status": "completed",
+    "completedAt": "2026-08-22"
+  },
   "blockedOn": "08-22-installer-secret-gate-mode-aware"
 }
