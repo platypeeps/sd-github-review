@@ -356,6 +356,14 @@ export const HISTORICAL_TEMPLATE_HASHES = Object.freeze([
     tag: "v0.4.0",
     sha256: "eba0bb9e767b2302ea13c3dc999d977470721eee6ace71b9585a7da7305a28f7",
   }),
+  // Superseded by the 0.6.0 pin advance. The 0.5.0 template differs from
+  // v0.4.0's only by its pin, which is exactly the change that supersedes it:
+  // `adopt` matches exact bytes, so a one-line pin difference is as
+  // un-adoptable as a rewrite.
+  Object.freeze({
+    tag: "v0.5.0",
+    sha256: "f4d01261cdb568560b1a7c8f4ddd5e3f60fc5896092081a7fb03d1200a3d3c11",
+  }),
 ]);
 
 export function isObject(value) {
