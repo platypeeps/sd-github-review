@@ -608,7 +608,17 @@ function invalidPermissionDeclaration(doc) {
     ...Object.entries(doc.jobs ?? {}).map(([name, job]) => [`job "${name}"`, job?.permissions]),
   ];
   for (const [where, value] of declarations) {
-    if (value === undefined || value === null) continue;
+    // `undefined` is an absent key -- inherit, handled by the caller. `null` is
+    // a *present* key with no value (`permissions:` on its own line), which
+    // GitHub rejects outright: "Unexpected value ''". Treating the two alike
+    // would let a malformed declaration through as though it inherited.
+    if (value === undefined) continue;
+    if (value === null) {
+      return (
+        `${where} has a bare permissions key with no value, which GitHub does not accept ` +
+        "-- it must be read-all, write-all, or a map of scopes, with {} meaning none"
+      );
+    }
     if (typeof value === "string") {
       if (!PERMISSION_SCALARS.has(value)) {
         return (

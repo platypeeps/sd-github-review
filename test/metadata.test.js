@@ -1572,6 +1572,33 @@ test("a non-string permission level is rejected rather than coerced into a valid
   }
 });
 
+test("a bare permissions key is rejected, not read as inheritance", () => {
+  // `permissions:` alone on a line parses to null, not to an absent key. The
+  // validator treated the two alike, so a malformed declaration passed as
+  // though it inherited. GitHub rejects it outright, verified against the API
+  // rather than argued from the docs:
+  //   422: failed to parse workflow: (Line: 4, Col: 13): Unexpected value ''
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["w.yml", { permissions: null, jobs: { j: {} } }]]),
+    /w\.yml: the workflow has a bare permissions key with no value/u,
+  );
+
+  // On a job, where a valid workflow-level block would otherwise mask it.
+  assert.throws(
+    () =>
+      assertNoDeadIssuesGrant([
+        ["x.yml", { permissions: { contents: "read" }, jobs: { j: { permissions: null } } }],
+      ]),
+    /x\.yml: job "j" has a bare permissions key with no value/u,
+  );
+
+  // An absent key is still inheritance, and still covered by the workflow-level
+  // declaration -- the two must stay distinguishable.
+  assert.doesNotThrow(() =>
+    assertNoDeadIssuesGrant([["y.yml", { permissions: { contents: "read" }, jobs: { j: {} } }]]),
+  );
+});
+
 test("a workflow-level issues grant is caught even when every job overrides it", () => {
   // `laneGrantUnion` consults the workflow-level block only for jobs that
   // inherit it, so a lane whose every current job declares its own permissions
