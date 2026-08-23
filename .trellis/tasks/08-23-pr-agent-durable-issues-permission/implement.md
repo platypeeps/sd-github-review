@@ -7,9 +7,9 @@ gate cannot be written against the current over-grant — see `design.md`.
 
 ## Phase 0 — baseline
 
-- [ ] `npm run check:full` on a clean tree. Record the test count; every later
+- [x] `npm run check:full` on a clean tree. Record the test count; every later
       phase compares against it, not against zero failures.
-- [ ] Record the current permission facts by enumeration, so the later sweep has
+- [x] Record the current permission facts by enumeration, so the later sweep has
       something to be checked against:
       `grep -rn 'issues: write' examples/ .github/workflows/` → expect 8.
 
@@ -17,69 +17,69 @@ gate cannot be written against the current over-grant — see `design.md`.
 
 ## Phase 1 — remove the dead grant
 
-- [ ] Remove `issues: write` from every shipped lane. Enumerate from the
+- [x] Remove `issues: write` from every shipped lane. Enumerate from the
       filesystem; do not work from the list in `prd.md`. Known at planning time:
       `examples/sd-review.yml` (review, finalize), `examples/pr-agent-router.yml`
       (top level), `examples/pr-agent-on-demand-review-router.yml` (two jobs),
       `.github/workflows/sd-review.yml` (two jobs),
       `.github/workflows/ai-review-router.yml` (top level).
-- [ ] `examples/sd-review.yml` and `.github/workflows/sd-review.yml` must stay
+- [x] `examples/sd-review.yml` and `.github/workflows/sd-review.yml` must stay
       byte-identical. They are today (`371675e0…`); a test asserts it.
-- [ ] Rewrite the `pr-agent` job's isolation comment. It currently reads "no
+- [x] Rewrite the `pr-agent` job's isolation comment. It currently reads "no
       `checks:write` and no `issues:write`, so the token handed to the
       third-party container cannot write durable receipts" — after this change,
       naming `issues: write` as part of the isolation is misleading, because no
       job has it. The isolation that matters is `checks: write`. Say that.
-- [ ] `npm run validate:metadata`. `assertJobPermissions` is a lower bound over
+- [x] `npm run validate:metadata`. `assertJobPermissions` is a lower bound over
       jobs that run this action; if any of them genuinely needed `issues`, this
       is where it surfaces, naming the job. **Expect it to pass** — if it fails,
       stop: the premise is wrong and the finding must be re-examined, not
       worked around by restoring the grant.
-- [ ] `npm run check:full`.
+- [x] `npm run check:full`.
 
 **Rollback point.** Revert Phase 1; nothing outside this repository changed.
 
 ## Phase 2 — the gate that keeps it from drifting back
 
-- [ ] Add the descriptor-anchored set-equality gate to
+- [x] Add the descriptor-anchored set-equality gate to
       `scripts/validate-action-metadata.mjs`. Resolve the lane from the
       descriptor's own `workflow.path` (`setupDescriptorPath`, read at line
       255); do not list lanes. Reuse `permissionMap` and `grantedLevel` rather
       than re-resolving `write-all`/inheritance a second way.
-- [ ] Failure message must name the offending scope **and its direction** —
+- [x] Failure message must name the offending scope **and its direction** —
       lane-grants-but-descriptor-omits, or descriptor-declares-but-no-job-grants.
       A message that only says "mismatch" makes the next drift a debugging task.
-- [ ] Add the all-lanes sweep: no shipped lane grants `issues: write`,
+- [x] Add the all-lanes sweep: no shipped lane grants `issues: write`,
       enumerated via `laneDocuments()`. Sweep, not a fixed list.
-- [ ] **Mutation proof, both directions, before believing either gate:**
+- [x] **Mutation proof, both directions, before believing either gate:**
       - restore `issues: write` to one lane job → both gates fail;
       - add a scope to `requiredPermissions` that no job grants → equality gate
         fails;
       - remove `checks: write` from the descriptor → equality gate fails.
       Revert each. A gate first observed passing has proven nothing.
-- [ ] Unit tests at the gate's seam, following `R-008`'s shape in
+- [x] Unit tests at the gate's seam, following `R-008`'s shape in
       `test/metadata.test.js`: assert the thrown message, and assert the fixture
       genuinely carries the drift (`assert.notEqual(drifted, original)`) so a
       mis-anchored fixture cannot make the test vacuous.
-- [ ] `npm run check:full`. Count strictly greater than Phase 0.
+- [x] `npm run check:full`. Count strictly greater than Phase 0.
 
 ## Phase 3 — the documentation that taught consumers to over-grant
 
-- [ ] `SETUP-PR-AGENT.md:333` — "`issues: write` and `pull-requests: write`
+- [x] `SETUP-PR-AGENT.md:333` — "`issues: write` and `pull-requests: write`
       allow PR-Agent to publish its conversation comment". Replace with what
       actually covers it, and say so specifically: on a pull request, both the
       conversation-comment and label endpoints are covered by
       `pull-requests: write`, even though both are `/issues/...` paths in the
       REST API. That REST-path/permission-scope mismatch is the whole reason
       this was believed, so name it rather than just deleting the sentence.
-- [ ] `SETUP-PR-AGENT.md:329` and `:359` — the permission blocks a reader
+- [x] `SETUP-PR-AGENT.md:329` and `:359` — the permission blocks a reader
       copies. These are the lines that actually cause the over-grant.
-- [ ] `DESIGN.md:447-449` — currently explains the lane/descriptor asymmetry as
+- [x] `DESIGN.md:447-449` — currently explains the lane/descriptor asymmetry as
       intentional. The asymmetry is gone; the passage should now record why it
       existed and what settled it, so the next reviewer does not re-file it.
-- [ ] Sweep for any other place that states the grant is required. Enumerate
+- [x] Sweep for any other place that states the grant is required. Enumerate
       with a repo-wide grep rather than trusting these three line numbers.
-- [ ] CHANGELOG entry. It must correct the record: `0.6.0`'s entry says the
+- [x] CHANGELOG entry. It must correct the record: `0.6.0`'s entry says the
       fleet reviewer's `issues: write` finding was a false positive. It was
       *directionally inverted*, not false — the reviewer saw a real asymmetry
       and named the wrong side. Say that plainly rather than quietly reversing.
