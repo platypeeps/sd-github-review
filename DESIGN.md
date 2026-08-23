@@ -460,12 +460,27 @@ Durable mode exposes a sensitive-file count but never emits the paths.
   holding exactly `contents: read` + `pull-requests: write`, with the resulting
   comment confirmed present on the pull request rather than silently dropped.
 
-  So the asymmetry was a dead grant, not a design. Every shipped lane now grants
-  only what the descriptor declares, and two gates hold it there (A-023):
-  `assertDescriptorLaneGrants` compares the descriptor's own lane's job-permission
-  union against `requiredPermissions` for **set equality**, failing in both
-  directions and naming which one drifted; `assertNoDeadIssuesGrant` sweeps every
-  lane enumerated from disk and refuses the `issues` scope outright.
+  So the asymmetry was a dead grant, not a design. Two gates hold it closed
+  (A-023), and they guarantee different things — the difference matters, because
+  reading them as one overstates the coverage:
+
+  - `assertDescriptorLaneGrants` applies to **the descriptor's own lane only**,
+    resolved from its `workflow.path`. That lane's job-permission union must
+    equal `requiredPermissions` exactly; the gate fails in both directions and
+    names which side drifted. It is scoped there because `requiredPermissions`
+    documents what a consumer provisions for *that* workflow, and folding the
+    router and generic examples in would force the descriptor to describe
+    workflows a consumer may never install.
+  - `assertNoDeadIssuesGrant` sweeps **every** lane enumerated from disk, but
+    only for the `issues` scope. The other lanes may still hold permissions the
+    descriptor does not declare, for the reason `assertJobPermissions` is a
+    lower bound: a job may need scopes for steps that are not this action.
+
+  Both fail closed on a declaration they cannot read — an absent
+  `permissions:` block (the token falls back to the repository default, which
+  the lane does not control), an unrecognized scalar, or an unrecognized map
+  level. Each of those otherwise resolves to "grants nothing", which reports
+  clean on exactly the lane whose scopes are unknown.
 - `github-token` is not globally required in `action.yml`; it is unused by
   `acknowledge` and enforced at runtime for `route`, `finalize`, and `query`
   (which build a GitHub client) with a bounded explicit error when absent.

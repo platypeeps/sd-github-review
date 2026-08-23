@@ -582,14 +582,40 @@ function undeclaredPermissionJobs(doc) {
 // nothing. Nobody knows what such a lane's token holds, so it must not pass.
 const PERMISSION_SCALARS = new Set(["read-all", "write-all"]);
 
-function invalidPermissionScalar(doc) {
+function invalidPermissionDeclaration(doc) {
   const declarations = [
     ["the workflow", doc.permissions],
     ...Object.entries(doc.jobs ?? {}).map(([name, job]) => [`job "${name}"`, job?.permissions]),
   ];
   for (const [where, value] of declarations) {
-    if (typeof value === "string" && !PERMISSION_SCALARS.has(value)) {
-      return `${where} sets permissions to the scalar "${value}"`;
+    if (value === undefined || value === null) continue;
+    if (typeof value === "string") {
+      if (!PERMISSION_SCALARS.has(value)) {
+        return (
+          `${where} sets permissions to the scalar "${value}", which GitHub does not accept ` +
+          "-- the only valid scalars are read-all and write-all, and {} means none"
+        );
+      }
+      continue;
+    }
+    if (typeof value !== "object" || Array.isArray(value)) {
+      return (
+        `${where} sets permissions to ${Array.isArray(value) ? "a list" : typeof value}, ` +
+        "which GitHub does not accept -- it must be a scalar or a map of scopes"
+      );
+    }
+    // Map entries need the same treatment as the scalar above, and for the same
+    // reason: `laneGrantUnion` ranks an unrecognized level through
+    // `PERMISSION_LEVELS[level] ?? 0` and drops it, so `issues: wirte` passes
+    // the sweep as though it granted nothing while GitHub would reject the
+    // workflow outright. A typo must not be the way past this gate.
+    for (const [scope, level] of Object.entries(value)) {
+      if (!(level in PERMISSION_LEVELS)) {
+        return (
+          `${where} sets ${scope} to "${level}", which GitHub does not accept -- a map entry ` +
+          "must be none, read, or write"
+        );
+      }
     }
   }
   return null;
@@ -598,12 +624,9 @@ function invalidPermissionScalar(doc) {
 export function assertNoDeadIssuesGrant(lanes) {
   const offenders = [];
   for (const [filePath, doc] of lanes) {
-    const invalid = invalidPermissionScalar(doc ?? {});
+    const invalid = invalidPermissionDeclaration(doc ?? {});
     if (invalid !== null) {
-      offenders.push(
-        `${filePath}: ${invalid}, which GitHub does not accept -- the valid forms are ` +
-          "read-all, write-all, or a map of scopes, with {} meaning none",
-      );
+      offenders.push(`${filePath}: ${invalid}`);
       continue;
     }
     const undeclared = undeclaredPermissionJobs(doc ?? {});

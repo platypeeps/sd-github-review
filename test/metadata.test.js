@@ -1481,6 +1481,46 @@ test("a permissions scalar GitHub does not accept is rejected, not read as empty
   );
 });
 
+test("a permissions map entry GitHub does not accept is rejected, not dropped", () => {
+  // Same fail-open shape one level down, and the easiest of all to reach by
+  // accident: `laneGrantUnion` ranks a level through `PERMISSION_LEVELS[level]
+  // ?? 0` and drops anything unrecognized, so a typo grants nothing as far as
+  // the sweep is concerned while GitHub rejects the workflow outright. A typo
+  // must not be the way past this gate.
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["m.yml", { permissions: { issues: "wirte" }, jobs: { j: {} } }]]),
+    /m\.yml: the workflow sets issues to "wirte", which GitHub does not accept/u,
+  );
+
+  // The correctly spelled version is caught by the sweep proper, which is the
+  // point: the two failures are distinguishable, not one swallowing the other.
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["n.yml", { permissions: { issues: "write" }, jobs: { j: {} } }]]),
+    /n\.yml: issues:write/u,
+  );
+
+  // `none` is valid in a map even though it is not a valid scalar, and grants
+  // nothing -- so it must pass where the bare scalar form fails.
+  assert.doesNotThrow(() =>
+    assertNoDeadIssuesGrant([["o.yml", { permissions: { issues: "none" }, jobs: { j: {} } }]]),
+  );
+
+  // A job-level map is checked too, not only the workflow-level one.
+  assert.throws(
+    () =>
+      assertNoDeadIssuesGrant([
+        ["p.yml", { jobs: { j: { permissions: { contents: true } } } }],
+      ]),
+    /p\.yml: job "j" sets contents to "true"/u,
+  );
+
+  // A list is neither a scalar nor a map, and must not read as empty either.
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["q.yml", { permissions: ["contents"], jobs: { j: {} } }]]),
+    /q\.yml: the workflow sets permissions to a list/u,
+  );
+});
+
 test("a lane declaring no permissions at all fails closed rather than reading as clean", () => {
   // Absent is not empty. With no `permissions:` on the workflow or the job,
   // GitHub applies the repository/organization default GITHUB_TOKEN scopes,
