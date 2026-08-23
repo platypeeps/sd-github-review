@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 79
-- **Last Active**: 2026-08-21
+- **Total Sessions**: 80
+- **Last Active**: 2026-08-23
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1245 | Active |
+| `journal-2.md` | ~1287 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 80 | 2026-08-23 | Drop the dead issues: write grant from every shipped lane | `ce00104`, `da6abea` | `fix/drop-dead-issues-write` |
 | 79 | 2026-08-21 | Refresh sd-ai-command-pack to 0.71.45 | `0377dd69826faba91d1767f62163f09b1fc31ddd` | `chore/pack-refresh-0.71.45` |
 | 78 | 2026-08-20 | Refresh sd-ai-command-pack to 0.71.38 | `70eda9333f8b879cd63f0019c6c2a841e635c758` | `chore/pack-refresh-0.71.38` |
 | 77 | 2026-08-19 | Refresh sd-ai-command-pack to 0.71.33 | `b3cd54d4769b6dcbc7ae9b0cc8b70dcd43549dca` | `chore/pack-refresh-0.71.33` |
