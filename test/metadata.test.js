@@ -7,6 +7,8 @@ import test from "node:test";
 import { promisify } from "node:util";
 import { parseDocument } from "yaml";
 import {
+  assertDescriptorLaneGrants,
+  assertNoDeadIssuesGrant,
   assertPinFreshness,
   assertNoActionExpressions,
   assertPinnedInputsDeclared,
@@ -1353,4 +1355,85 @@ test("action.yml defaults agree with the runtime defaults they mirror", async ()
     [],
     "these states can appear on durable-state but the output description never names them",
   );
+});
+
+// A-020. The integration path in validateMetadata cannot exercise the
+// descriptor side of this gate: assertSetupContract runs first and pins
+// requiredPermissions to the operation-contract union, so any descriptor
+// mutation fails there before this gate is reached. That shadowing is fine --
+// it means descriptor drift is caught twice over -- but it means the only place
+// this branch can be proven is here, at the seam.
+test("the lane permission gate fails in both directions", () => {
+  const lane = {
+    permissions: { contents: "read" },
+    jobs: {
+      review: { permissions: { contents: "read", "pull-requests": "write", checks: "write" } },
+      "pr-agent": { permissions: { contents: "read", "pull-requests": "write" } },
+    },
+  };
+  const declared = { contents: "read", "pull-requests": "write", checks: "write" };
+  assert.doesNotThrow(() => assertDescriptorLaneGrants(lane, "lane.yml", declared));
+
+  // Lane grants more than the descriptor declares -- the shape this task fixed.
+  const overGranting = structuredClone(lane);
+  overGranting.jobs.review.permissions.issues = "write";
+  assert.notDeepEqual(overGranting.jobs.review.permissions, lane.jobs.review.permissions);
+  assert.throws(
+    () => assertDescriptorLaneGrants(overGranting, "lane.yml", declared),
+    /issues: lane grants write but the descriptor declares none/u,
+  );
+
+  // Descriptor declares a scope no job grants -- a consumer provisioning from
+  // it would hand out a scope the lane never uses.
+  const overDeclaring = { ...declared, packages: "write" };
+  assert.notDeepEqual(overDeclaring, declared);
+  assert.throws(
+    () => assertDescriptorLaneGrants(lane, "lane.yml", overDeclaring),
+    /packages: the descriptor declares write but no job grants it/u,
+  );
+
+  // Same scope, different level, is drift too -- not only presence/absence.
+  const weaker = { ...declared, checks: "read" };
+  assert.notDeepEqual(weaker, declared);
+  assert.throws(
+    () => assertDescriptorLaneGrants(lane, "lane.yml", weaker),
+    /checks: lane grants write but the descriptor declares read/u,
+  );
+});
+
+test("a job inheriting workflow-level permissions is counted in the lane union", () => {
+  // The over-grant this task removed could return via inheritance rather than
+  // on the job, which would read as an empty job permissions block.
+  const inheriting = {
+    permissions: { contents: "read", issues: "write", "pull-requests": "write" },
+    jobs: { review: {} },
+  };
+  assert.throws(
+    () => assertDescriptorLaneGrants(inheriting, "lane.yml", { contents: "read" }),
+    /issues: lane grants write but the descriptor declares none/u,
+  );
+});
+
+test("no shipped lane may grant the issues scope", () => {
+  const clean = [["a.yml", { jobs: { j: { permissions: { "pull-requests": "write" } } } }]];
+  assert.doesNotThrow(() => assertNoDeadIssuesGrant(clean));
+
+  const dirty = structuredClone(clean);
+  dirty.push(["b.yml", { permissions: { issues: "write" }, jobs: { j: {} } }]);
+  assert.notDeepEqual(dirty, clean);
+  assert.throws(() => assertNoDeadIssuesGrant(dirty), /b\.yml: issues:write/u);
+});
+
+test("the shipped descriptor declares the lane the permission gate anchors on", async () => {
+  // The gate above is scoped to a declared-but-unmatched path so synthetic
+  // fixtures may omit `workflow.path`. That tolerance is only safe while the
+  // real descriptor declares one -- otherwise the gate would silently not run
+  // in production, which is exactly the failure the guard exists to prevent.
+  const root = path.resolve(import.meta.dirname, "..");
+  const descriptor = JSON.parse(
+    await readFile(path.join(root, "contract", "routed-review-setup-v1.json"), "utf8"),
+  );
+  assert.equal(typeof descriptor.workflow?.path, "string");
+  assert.ok(descriptor.workflow.path.length > 0);
+  await readFile(path.join(root, descriptor.workflow.path), "utf8");
 });

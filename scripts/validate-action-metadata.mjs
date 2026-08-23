@@ -629,6 +629,7 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
   assertSetupContract(setupConfig, setupDescriptorPath);
   const supportedOperations = setupConfig.supportedOperations;
   const firstPartyPins = [];
+  let descriptorLaneSeen = false;
 
   const workflowDirectory = path.join(repositoryRoot, ".github", "workflows");
   const workflowNames = (await readdir(workflowDirectory))
@@ -652,6 +653,7 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
     // equal requiredPermissions exactly. Resolved from the descriptor rather
     // than from a list here, so renaming the lane cannot silently skip the gate.
     if (path.relative(repositoryRoot, workflowPath) === setupConfig.workflow?.path) {
+      descriptorLaneSeen = true;
       assertDescriptorLaneGrants(
         workflow,
         path.relative(repositoryRoot, workflowPath),
@@ -659,6 +661,20 @@ export async function validateMetadata(repositoryRoot = process.cwd()) {
       );
     }
     collectFirstPartyPins(workflow, workflowPath, descriptor.actionOwnerRepo, firstPartyPins);
+  }
+  // A path-matched gate that matches nothing does not fail -- it vanishes. If
+  // the lane is ever renamed without updating the descriptor, the permission
+  // equality check above would stop running and every run would stay green.
+  //
+  // Scoped to a declared-but-unmatched path. A descriptor that declares no lane
+  // at all is a different shape -- synthetic fixtures trim it -- and is covered
+  // by a test asserting the *shipped* descriptor declares one, which is where
+  // the omission would actually matter.
+  if (typeof setupConfig.workflow?.path === "string" && !descriptorLaneSeen) {
+    throw new Error(
+      `${setupDescriptorPath}: workflow.path is "${setupConfig.workflow?.path}" but no tracked ` +
+        "workflow sits there, so the lane permission gate matched nothing and silently did not run",
+    );
   }
   assertNoDeadIssuesGrant(await laneDocuments(repositoryRoot));
 
