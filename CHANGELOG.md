@@ -31,11 +31,22 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   confirmed present on the pull request rather than silently dropped.
 
   Two gates now keep the grant from drifting back. `assertDescriptorLaneGrants`
-  compares the setup descriptor's own lane's job-permission union against
+  compares everything the setup descriptor's own lane grants -- its jobs'
+  effective permissions folded with its workflow-level block -- against
   `requiredPermissions` for set equality, fails in **both** directions, and names
   which side drifted; `assertNoDeadIssuesGrant` sweeps every lane enumerated from
   disk and refuses the `issues` scope outright. Both were proven by mutation
   before being believed, not first observed passing.
+
+  Both also fail closed on a declaration they cannot read, which is the general
+  form of the defect this release corrects: an input the validator could not
+  parse used to score as granting nothing, so the lane whose scopes were unknown
+  was the one that reported clean. Absent, bare, and malformed `permissions:`
+  blocks are now rejected rather than ignored, scope names are checked against
+  the set GitHub defines, and each scope's level is checked against the set
+  GitHub accepts *for that scope* -- `models` takes no `write` and `id-token`
+  takes no `read`, both settled by probing GitHub's workflow parser across all
+  15 scopes and 3 levels rather than read off the documentation.
 
 ### Corrected
 

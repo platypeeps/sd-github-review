@@ -8,6 +8,7 @@ import { promisify } from "node:util";
 import { parseDocument } from "yaml";
 import {
   GITHUB_PERMISSION_SCOPES,
+  GITHUB_PERMISSION_LEVELS,
   assertDescriptorLaneGrants,
   laneGrantUnion,
   assertNoDeadIssuesGrant,
@@ -1634,17 +1635,56 @@ test("every scope the shipped lanes declare is in the allow-list", async () => {
       const blocks = [doc?.permissions, ...Object.values(doc?.jobs ?? {}).map((job) => job?.permissions)];
       for (const block of blocks) {
         if (!block || typeof block !== "object") continue;
-        for (const scope of Object.keys(block)) declared.add(scope);
+        for (const [scope, level] of Object.entries(block)) declared.add(`${scope}:${level}`);
       }
     }
   }
   assert.ok(declared.size > 0, "the sweep must have found real lanes to read");
-  const unknown = [...declared].filter((scope) => !GITHUB_PERMISSION_SCOPES.has(scope));
+  const unknown = [...declared].filter((pair) => {
+    const [scope, level] = pair.split(":");
+    return !GITHUB_PERMISSION_SCOPES.has(scope) || !GITHUB_PERMISSION_LEVELS.get(scope).includes(level);
+  });
   assert.deepEqual(
     unknown,
     [],
-    "these scopes are used by shipped lanes but missing from GITHUB_PERMISSION_SCOPES",
+    "these scope:level pairs are used by shipped lanes but missing from GITHUB_PERMISSION_LEVELS",
   );
+});
+
+test("a scope's level set is the one GitHub accepts for that scope", () => {
+  // The level set is not uniform across scopes, so a global none/read/write
+  // check passes declarations GitHub's parser rejects outright. Both
+  // exceptions were probed rather than read off the docs, one pair per
+  // dispatch, with a control accepted in the same run:
+  //   models   write -> 422: failed to parse workflow: Unexpected value 'write'
+  //   id-token read  -> 422: failed to parse workflow: Unexpected value 'read'
+  const lane = (permissions) => ({ jobs: { j: { permissions } } });
+
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["u.yml", lane({ contents: "read", models: "write" })]]),
+    /models must be none, read/u,
+  );
+  assert.throws(
+    () => assertNoDeadIssuesGrant([["u.yml", lane({ contents: "read", "id-token": "read" })]]),
+    /id-token must be none, write/u,
+  );
+
+  // The complement, so the fix cannot degenerate into rejecting these scopes
+  // outright: each one's supported level still passes.
+  assert.doesNotThrow(() =>
+    assertNoDeadIssuesGrant([["u.yml", lane({ contents: "read", models: "read" })]]),
+  );
+  assert.doesNotThrow(() =>
+    assertNoDeadIssuesGrant([["u.yml", lane({ contents: "read", "id-token": "write" })]]),
+  );
+
+  // And every other scope keeps all three levels -- 43 of the 45 probed pairs
+  // were accepted, so a per-scope map must not narrow the common case.
+  for (const level of ["none", "read", "write"]) {
+    assert.doesNotThrow(() =>
+      assertNoDeadIssuesGrant([["u.yml", lane({ contents: "read", packages: level })]]),
+    );
+  }
 });
 
 test("a bare permissions key is rejected, not read as inheritance", () => {

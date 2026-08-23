@@ -629,29 +629,51 @@ const PERMISSION_SCALARS = new Set(["read-all", "write-all"]);
 // `__all` sentinel this module uses for the read-all/write-all shorthand, so a
 // lane declaring `__all` directly cannot ride into a blanket grant.
 //
-// Not probe-verified as a set: the pilot repository stopped registering new
-// workflows partway through checking it, and a 404 from an unregistered
-// workflow is indexing lag rather than a syntax verdict. Being wrong here in
-// the inclusive direction is inert -- it accepts a lane GitHub would reject
-// anyway. Being wrong in the exclusive direction is the real cost, and a test
-// derives the scopes the shipped lanes actually use from disk to catch it.
-const GITHUB_PERMISSION_SCOPES = new Set([
-  "actions",
-  "attestations",
-  "checks",
-  "contents",
-  "deployments",
-  "discussions",
-  "id-token",
-  "issues",
-  "models",
-  "packages",
-  "pages",
-  "pull-requests",
-  "repository-projects",
-  "security-events",
-  "statuses",
+// Each scope maps to the levels GitHub accepts *for that scope*, because the
+// level set is not uniform: `models` takes no `write` and `id-token` takes no
+// `read`. A global none/read/write check accepts declarations GitHub's parser
+// rejects, which is the same fail-open this gate exists to close.
+//
+// Probe-verified on 2026-08-23, all 15 scopes against all 3 levels, by
+// dispatching a workflow whose `permissions:` block held one pair at a time and
+// reading the parser's verdict. 43 pairs accepted; exactly two rejected:
+//   models   write -> 422: failed to parse workflow: Unexpected value 'write'
+//   id-token read  -> 422: failed to parse workflow: Unexpected value 'read'
+// A control (`models: read`) was accepted in the same run, so a rejection is a
+// syntax verdict rather than a dispatch failure. An earlier attempt at this
+// probe was inconclusive because newly committed workflows had not registered;
+// reusing an already-registered workflow filename and varying its contents on a
+// branch avoids that lag.
+//
+// What the probe does not establish is completeness -- that GitHub defines no
+// scope missing from these keys. Being wrong in that direction rejects a valid
+// lane, which surfaces as an error naming the scope and is a one-line edit in
+// the same commit that added it, because every document this sweep reads is a
+// first-party lane in this repository. `GITHUB_PERMISSION_LEVELS` is versioned
+// repository data, the same shape as HISTORICAL_TEMPLATE_HASHES.
+//
+// Holds no entry for the `__all` sentinel this module uses for the
+// read-all/write-all shorthand, so a lane declaring `__all` directly cannot
+// ride into a blanket grant.
+const ALL_PERMISSION_LEVELS = ["none", "read", "write"];
+const GITHUB_PERMISSION_LEVELS = new Map([
+  ["actions", ALL_PERMISSION_LEVELS],
+  ["attestations", ALL_PERMISSION_LEVELS],
+  ["checks", ALL_PERMISSION_LEVELS],
+  ["contents", ALL_PERMISSION_LEVELS],
+  ["deployments", ALL_PERMISSION_LEVELS],
+  ["discussions", ALL_PERMISSION_LEVELS],
+  ["id-token", ["none", "write"]],
+  ["issues", ALL_PERMISSION_LEVELS],
+  ["models", ["none", "read"]],
+  ["packages", ALL_PERMISSION_LEVELS],
+  ["pages", ALL_PERMISSION_LEVELS],
+  ["pull-requests", ALL_PERMISSION_LEVELS],
+  ["repository-projects", ALL_PERMISSION_LEVELS],
+  ["security-events", ALL_PERMISSION_LEVELS],
+  ["statuses", ALL_PERMISSION_LEVELS],
 ]);
+const GITHUB_PERMISSION_SCOPES = new Set(GITHUB_PERMISSION_LEVELS.keys());
 
 function invalidPermissionDeclaration(doc) {
   const declarations = [
@@ -712,10 +734,16 @@ function invalidPermissionDeclaration(doc) {
       }
       // `typeof` first: `Object.hasOwn` coerces its key, so `issues: [none]`
       // would stringify to "none" and be accepted, then rank 0 and vanish.
-      if (typeof level !== "string" || !Object.hasOwn(PERMISSION_LEVELS, level)) {
+      //
+      // Checked against this scope's own level set, not a global one. GitHub
+      // rejects `models: write` and `id-token: read` at parse time, and a lane
+      // holding either is as unrunnable as one naming a scope that does not
+      // exist -- so this gate must not report it clean.
+      const allowed = GITHUB_PERMISSION_LEVELS.get(scope);
+      if (typeof level !== "string" || !allowed.includes(level)) {
         return (
-          `${where} sets ${scope} to "${level}", which GitHub does not accept -- a map entry ` +
-          "must be none, read, or write"
+          `${where} sets ${scope} to "${level}", which GitHub does not accept -- ` +
+          `${scope} must be ${allowed.join(", ")}`
         );
       }
     }
@@ -723,7 +751,7 @@ function invalidPermissionDeclaration(doc) {
   return null;
 }
 
-export { GITHUB_PERMISSION_SCOPES };
+export { GITHUB_PERMISSION_SCOPES, GITHUB_PERMISSION_LEVELS };
 
 export function assertNoDeadIssuesGrant(lanes) {
   const offenders = [];
