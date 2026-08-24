@@ -161,9 +161,17 @@ cannot verify archive bytes against a commit offline:
 node scripts/install-consumer.mjs install --target /path/to/consumer \
   --route-mode copilot \
   --review-floor copilot \
-  --source-tag v0.6.1 --source-commit 6ba1eff049962faded1c289f666ef56b58c61b4d \
+  --source-tag vX.Y.Z --source-commit <the commit that tag resolves to> \
   --set-secret
 ```
+
+Substitute the release you are installing. `git rev-parse vX.Y.Z^{commit}`
+against a clone prints the commit that tag resolves to, and the release page
+names the same value; the tag and the commit must be a pair git agrees on, or
+the recorded provenance is a fiction. This example deliberately does not name a
+specific release: a hardcoded pair here has to be hand-edited in every pin
+advance, and cannot be checked at the moment it is written, because the tag does
+not exist until the commit carrying it is tagged.
 
 `SD_SOURCE_TAG` and `SD_SOURCE_COMMIT` are equivalent environment inputs. These
 overrides apply only to `install` and `update`. Recorded provenance is an

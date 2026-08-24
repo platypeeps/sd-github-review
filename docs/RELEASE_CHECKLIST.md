@@ -131,6 +131,13 @@ floor.
 - [ ] Advance every first-party pin to the approved candidate SHA, in one commit
   so mutual consistency is never observed split, and merge it. That commit must
   touch neither `src/` nor `action.yml`.
+- [ ] Advancing prose pins is part of that commit, but **never write a release
+  tag beside a SHA** while doing it. At that moment the tag does not exist and
+  the commit cannot know its own SHA, so the only pair an author can write is a
+  false one: the tag will name this commit and the SHA will name its parent.
+  `SETUP-PR-AGENT.md` shipped exactly that in `0.4.0` and again in `0.6.1`.
+  `assertReleasePairReferences` now refuses it; name the tag and the SHA in
+  separate blocks, or use a placeholder.
 - [ ] Create the annotated version tag **on the pin-advance commit**, not on the
   candidate, and publish a GitHub release with routing, permission, and
   consumer-adapter notes. The tag is for discovery; the SHA is the immutable

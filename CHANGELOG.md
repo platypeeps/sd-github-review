@@ -4,6 +4,46 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+- **Published setup prose paired a release tag with a commit git does not
+  agree with, and nothing checked the pair.** `SETUP-PR-AGENT.md`'s `.git`-less
+  install example printed `--source-tag v0.6.1` beside `6ba1eff` — but `v0.6.1`
+  resolves to `ee1a162`, and `6ba1eff` is only its ancestor. The installer's own
+  manifest records `ee1a162` for that release, so the document contradicted the
+  tool it documents, and an operator following it recorded provenance the
+  installer would never produce.
+
+  The pair is induced by the release procedure, not by carelessness, and reading
+  it as carelessness is what let it recur. `docs/RELEASE_CHECKLIST.md` requires
+  the pin advance to be committed before the tag is cut, and the tag is then cut
+  on that commit — so an author editing that line sits inside the commit about
+  to be tagged, where the tag does not yet exist and a commit cannot contain its
+  own SHA. The only SHA available to write is the previous one. `0.4.0` shipped
+  the identical defect (`--source-tag v0.4.0` beside a SHA the same file called
+  `v0.3.0`, corrected in `0.4.1`); that fix reworded the instance and left the
+  class open, and `0.6.1` reproduced it exactly.
+
+  Two existing gates surrounded the defect without catching it, and their
+  composition made it worse: `assertProseCommitReferences` requires a prose SHA
+  to equal the current pin, and `assertNoReleaseTagLabels` bans a tag beside a
+  pin but runs only over YAML lanes. Correcting the example to the honest commit
+  would therefore have *failed* validation — the false pair was green and the
+  true pair unshippable.
+
+  `assertReleasePairReferences` now refuses a release tag and a literal commit of
+  this repository appearing in the same Markdown block. It checks for absence of
+  the conjunction rather than verifying it, because verification needs the tag to
+  resolve and it cannot at the moment the line is authored; a release-time-only
+  check would leave the pin-advance commit green, which is how this shipped
+  twice. The rule is block-scoped, not line-scoped: every other flag in that
+  example already sits on its own backslash continuation, so a per-line rule
+  would be switched off by an ordinary reflow while still reporting green. The
+  example now uses a placeholder, the checklist says not to write such a pair,
+  and the real pin is still published — and still gated — where it always was.
+
 ## 0.6.1 - 2026-08-23
 
 ### Security
