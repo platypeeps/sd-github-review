@@ -11,7 +11,7 @@ acceptance criteria are now met with test evidence.
 The sixth, replaying PR #70, is **unmet and was attempted**. It is blocked on
 provider tooling — prism returns clean without reviewing any range, and the
 Kimi code models spend their whole output budget on reasoning — not on the gate
-this task is about. Full measurements in "Replay attempt" below.
+this task is about. Full measurements in "Replay" below.
 
 The header this replaces was written 2026-08-09 and quoted a gate that no longer
 exists. Requirements 1, 2 and 4 have since been met upstream; **requirement 3 —
@@ -200,16 +200,18 @@ is recorded **unmet** — not inferred from the five that pass.
       — both corrected in `templates/.agents/skills/sd-review/SKILL.md` in PR #536.
 - [ ] The three-round PR #70 sequence, replayed against the new gate, terminates without a
       human round-extension decision.
-      — **UNMET. Attempted 2026-08-24 and blocked on provider tooling, not on the
-      gate.** See "Replay attempt" below.
+      — **UNMET. Replayed 2026-08-24. The ceiling works on live provider output —
+      30 of 35 prism findings released as advisory, the 5 `high` ones still
+      blocking — but the receipt is `blocked`, so a caller still needs a
+      disposition per finding or a round-extension.** The provider defects that
+      blocked the first attempt are fixed; the convergence question is now
+      answerable and unanswered. See "Replay" below.
 
-## Replay attempt, 2026-08-24 — blocked on provider tooling, not on the gate
+## Replay, 2026-08-24 — run, and the four provider defects it exposed
 
-The gate half is done and adopted: `.sd-ai-command-pack/review.json` now sets
-`policy.localAdvisorySeverityCeiling: "medium"`, and a `--plan-only` run against
-PR #70's exact range carries `localAdvisorySeverityCeiling: "medium"` into the
-plan with a policy digest of its own. So the ceiling reaches receipt identity.
-What could not be produced is a receipt with real findings in it.
+**The replay ran.** The ceiling releases, the floor holds, and the receipt says
+so. What it took to get there was four fixes in `prism`, none of them in this
+repository or in the pack.
 
 Replay target, reconstructed rather than assumed: PR #70's merge commit is
 `9a6cdb99`, whose parents give base `c3ec5f64` and head `2880186`. That range is
@@ -217,61 +219,132 @@ Replay target, reconstructed rather than assumed: PR #70's merge commit is
 is **byte-identical** to today's, so the severity mapping under test is the one
 the original rounds ran under.
 
-Three runs, three distinct provider failures. None of them is the gate.
+`.sd-ai-command-pack/review.json` sets `policy.localAdvisorySeverityCeiling:
+"medium"`, and the plan carries it: `localAdvisorySeverityCeiling: "medium"` with
+`policyDigest: b8c4553b…`. So the ceiling reaches receipt identity.
 
-| run | prism | gito |
-| --- | --- | --- |
-| `kimi-k2.7-code` | `unavailable`, exit 4, 120s — `context deadline exceeded ... awaiting headers` | `failed`, exit 124, 600s timeout |
-| `kimi-k2.7-code-highspeed` | `unavailable`, exit 4, 45s — `chunk 0: empty text content in API response` | `failed`, exit 124, still on the slow model |
-| prism alone on `anthropic` | `clean` in 2s on a 110 KB diff | not run |
+### What the gate did, on real findings
 
-Each receipt came back `eligible-with-limitations` / `local-review-limited` —
-the degraded green that proves nothing, which is exactly why this is recorded
-unmet rather than passed.
+Two runs against the same range, `--local-policy optional --fix none --no-reuse`:
 
-**Cause 1 — the Kimi code models exhaust their output budget on reasoning.**
-Measured directly against Moonshot with a 40 KB slice of this very diff:
+| run | provider | findings | advisory | outstanding | `remoteGate` |
+| --- | --- | --- | --- | --- | --- |
+| `replay-fixed-r1` | gito | 5 (1 low, 2 medium, 2 high) | 3 | 2 | `blocked` / `actionable-local-findings` |
+| `replay-fixed-r2` | prism | 35 (2 low, 28 medium, 5 high) | 30 | 5 | `blocked` / `actionable-local-findings` |
 
-```
-kimi-k2.7-code            finish_reason: length  content_len: 0  reasoning_len: 9060
-kimi-k2.7-code-highspeed  finish_reason: length  content_len: 0  reasoning_len: 9316
-```
+Both times the outstanding count is exactly the set of `high` findings and
+nothing else. The ceiling released every `low` and `medium` without a hand
+disposition of any of them; the `high` ones still block. That is the mechanism
+this task asked for, observed end to end on provider output rather than on a
+synthetic fixture. prism exited 0 in 84.8s.
 
-Zero answer, all thinking. Raising the budget fixes it — at `max_tokens: 16000`
-the highspeed model finishes with `finish_reason: stop` and 747 characters of
-content, having spent 8857 completion tokens. prism hardcodes `MaxTokens: 8192`
-(`internal/review/engine.go:120`, and three more sites), which lands just under
-what one chunk needs. That is the whole of `empty text content in API response`.
+### Correction: prism was not returning clean without reviewing
 
-This corrects a claim recorded in the machine-local provider notes: Moonshot was
-chosen over MiniMax because it keeps thinking in `reasoning_content` rather than
-inlining it into `content`. True, and not sufficient — separation does not help
-when the budget is gone before the answer starts.
+An earlier revision of this section, and commit `1a9335a` which carried it,
+recorded **"prism's range and commit modes return clean without reviewing"** as
+cause 3 and called it the blocker. That characterization is wrong and is
+withdrawn.
 
-**Cause 2 — `GITO_ENV_FILE` does not redirect gito's model.** The wrapper sources
-the override, but gito re-reads `~/.gito/.env` itself with
-`load_dotenv(override=True)`, so the real file wins. The highspeed run's own log
-proves it: `Can't resolve tiktoken encoding for 'kimi-k2.7-code'` while the
-override said `kimi-k2.7-code-highspeed`. Changing gito's model requires editing
-`~/.gito/.env`, which was left alone.
+A logging HTTP proxy in front of the provider captured what prism actually sent:
+one well-formed request carrying the entire 110054-character diff. Replaying that
+exact prompt by hand returned `[]` — 2 characters of text, 4 output tokens, 3.2
+seconds. prism transmitted correctly and reported what it received. **The model
+returned an empty array on a whole-diff prompt.** The same prompt shape over a
+single 14 KB file returned 8 findings.
 
-**Cause 3 — prism's range and commit modes return clean without reviewing.**
-Reproduced on a cold cache (`prism cache clear`) in two repositories and in both
-modes: `Findings: 0` in about 2 seconds on a 110 KB diff, `gitMs: 0`. The git
-side is fine — the exact command prism builds,
-`git diff c3ec5f64...2880186 -U3 --`, yields 109997 bytes by hand. The provider
-side is fine too: `prism review snippet` on a five-line file with an
-`exec(input())` returns a correct 100%-confidence security finding in 9.6s on
-anthropic and 16.9s on Moonshot. Only the diff-mode path collapses. Not
-diagnosed further; it is a defect in `~/repos/ai/prism`, outside this repository
-and outside the pack.
+So the observable — `Findings: 0` in about 2 seconds — was real, and the
+mechanism behind it was not the one recorded. It was the whole-diff prompt
+degenerating, which is downstream of the first defect below.
 
-**What this does and does not establish.** The ceiling is adopted, reaches the
-plan, and changes the policy digest. Whether three rounds against PR #70 now
-terminate without a human `review.round-extension` is still unknown, and stays
-unknown until a provider can produce findings on a real diff. Cause 3 is the
-blocker: fixing the Kimi budget and gito's model would still leave prism
-returning clean on any range.
+### The four defects, all silent
+
+Each one leaves the review exiting zero with a finding count printed, so nothing
+tells the caller what was skipped. Fixed in `~/repos/ai/prism` on
+`fix/chunking-rules-maxtokens`, commit `1bad8d6`; `go test ./...` passes.
+
+1. **Chunking could never split.** `reviewPipeline` passed `cfg.MaxDiffBytes` to
+   `SplitIntoChunks`, but `MaxDiffBytes` has already truncated the diff by the
+   time chunking runs, so `maxBytes >= len(diff)` by construction and every diff
+   became exactly one chunk. `SplitIntoChunks` was unreachable in practice. Chunk
+   size is now its own setting, `chunkMaxBytes`, default 20000. On this range: 1
+   request before, 7 after. This is what was producing the degenerate `[]`.
+2. **`.prism/rules.json` was never loaded.** `LoadRules("")` returned nil and
+   nothing defaulted the path, so the repository's `focus` categories,
+   `severityOverrides` and `review-recurrence-prevention` required rule reached
+   the model only when a caller passed `--rules` explicitly. **The pack never
+   does** — there is no `rules` reference anywhere in
+   `templates/scripts/sd-ai-command-pack-review-local.py`. So this repository's
+   entire review policy has been inert for every pack-driven prism review, here
+   and in every other consumer, for as long as the thin install has existed.
+   `LoadRules` now falls back to `.prism/rules.json` when it exists.
+
+   This also withdraws the rationale in commit `bc793bb`, which justified the
+   `medium` ceiling by "this repository's own `.prism/rules.json`
+   `severityOverrides`". Those overrides had never been applied to anything. The
+   ceiling choice stands on its own — `high` is not a permitted ceiling value, so
+   `medium` is the widest release the pack allows — and the overrides only start
+   mattering now that the rules load.
+3. **`MaxTokens` was hardcoded to 8192** at five call sites. Reasoning models
+   spend the budget thinking before answering, so an exhausted budget yields an
+   empty completion rather than a short one. Measured directly against Moonshot
+   on a 40 KB slice of this diff:
+
+   ```
+   kimi-k2.7-code            finish_reason: length  content_len: 0  reasoning_len: 9060
+   kimi-k2.7-code-highspeed  finish_reason: length  content_len: 0  reasoning_len: 9316
+   ```
+
+   Zero answer, all thinking — the whole of `empty text content in API
+   response`. At `max_tokens: 16000` the highspeed model finishes with
+   `finish_reason: stop`. Now `cfg.MaxTokens`, default 8192.
+4. **Provider HTTP timeouts were hardcoded.** Same root cause: with a reasoning
+   model the answer arrives in one late burst after thinking completes, so a
+   fixed 120s deadline expires on a request that is still healthy — `context
+   deadline exceeded ... awaiting headers`. Overridable with
+   `PRISM_REQUEST_TIMEOUT_SECONDS`; per-provider defaults unchanged.
+
+Also added: a stderr warning when `--max-diff-bytes` truncates. The existing
+marker is in-band and addressed to the model; a caller reading `Findings: 0` had
+no way to tell a clean review from one that never saw most of the change.
+
+### Two more, outside prism
+
+**`GITO_ENV_FILE` does not redirect gito's model.** The wrapper sources the
+override, but gito re-reads `~/.gito/.env` itself with `load_dotenv(override=True)`,
+so the real file wins. The first replay's own log proves it: `Can't resolve
+tiktoken encoding for 'kimi-k2.7-code'` while the override said
+`kimi-k2.7-code-highspeed`. Changing gito's model required editing
+`~/.gito/.env` directly, which is what unblocked the gito run above.
+
+**The receipt's per-finding `disposition` does not record the ceiling.**
+`_disposition_counts` counts advisory findings but never writes back, so
+`receipt.disposition.advisory` reads 30 while all 35 entries in
+`receipt.findings[]` still carry `"disposition": "outstanding"`. A consumer
+filtering per-finding gets the pre-ceiling answer and disagrees with the
+aggregate the gate actually used. Upstream follow-up, recorded alongside 4b.3 and
+4b.4 in `08-24-local-gate-advisory-severity/implement.md`.
+
+### What this establishes, and what it does not
+
+Established: the ceiling is adopted, reaches the plan, changes the policy digest,
+and releases sub-ceiling findings from real provider output while `high` findings
+still block. Criterion 3's floor holds on live data, not only on the fixture.
+
+Not established, and the reason criterion 6 stays unmet: the replay **blocks**.
+Five `high` prism findings and two `high` gito findings are outstanding, so a
+caller reaching this point still needs either a disposition per finding or a
+human `review.round-extension` — the same exit the original three rounds needed.
+Whether those `high` findings are real defects has not been checked against the
+checkout, and until it is, "the gate blocks correctly" and "the gate cannot
+terminate" are indistinguishable from the receipt alone.
+
+Nor is this a faithful replay of the 2026-08-09 sequence. Defect 2 means the
+original three rounds ran with **no rules loaded at all**, and defect 1 means they
+ran as a single whole-diff prompt. Today's run loads the rules and sends seven
+chunks, which is why it produces 35 findings where round 1 produced 9. The gate
+under test is the new one; the provider under it is also new. The convergence
+question — does round 2 share findings with round 1 — needs a second round at a
+new head to answer, and has not been run.
 
 ## Notes
 
