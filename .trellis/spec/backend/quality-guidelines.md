@@ -494,6 +494,108 @@ const trackedPaths = await gitLsFiles(repositoryRoot);
 const failures = trackedPaths.filter(prohibitedPublishedMetadataReason);
 ```
 
+## Scenario: Gate Published Tag/Commit Pairs
+
+### 1. Scope / Trigger
+
+Use this contract when adding or changing a published document that names a
+release tag, a first-party pin, or an installer provenance example — and when
+adding any gate whose subject is authored inside the pin-advance commit.
+
+### 2. Signatures
+
+- `assertReleasePairReferences({ repositoryRoot, listDocuments, isCommit,
+  resolveTag }) -> Promise<void>`
+- Seams: `listDocuments(root) -> string[]`, `isCommit(root, sha) -> boolean`,
+  `resolveTag(root, tag) -> string|null` (`null` = tag does not exist)
+- Runs inside `assertPinFreshness`, so both `npm run validate:metadata` and the
+  `SD_RELEASE_TAG` release form execute it.
+
+### 3. Contracts
+
+- Fail when one Markdown **block** contains both a literal `v<semver>` and a
+  40-hex token that `isCommit` confirms is a commit of this repository.
+- A block is a fenced code block, or a paragraph delimited by blank lines.
+  **Never a line** — see the Design Decision below.
+- Either half alone passes: a bare tag documents a flag; a bare pin remains
+  `assertProseCommitReferences`' subject.
+- `.trellis/` is excluded (archived task records quote historical pairs);
+  `CHANGELOG.md` is **not** — cite historical commits abbreviated.
+- Fail in the pre-tag window too, reporting `(no such tag yet)`.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required behavior |
+| --- | --- |
+| Tag and confirmed commit in one block | Fail; name file, block range, tag, resolved commit, paired commit |
+| Same pair split across lines of one block | Fail identically |
+| Tag alone, or pin alone | Accept |
+| Tag beside 40-hex that is not a commit | Accept (protocol fixtures are 40-hex) |
+| Tag does not resolve | Fail, reporting `(no such tag yet)` |
+| Tag and pin in separate blocks of one file | Accept |
+
+### 5. Good/Base/Bad Cases
+
+- Good: `--source-tag vX.Y.Z --source-commit <the commit that tag resolves to>`.
+- Base: a setup guide prints the literal pin with no tag beside it.
+- Bad: `--source-tag v0.6.1 --source-commit 6ba1eff…` — shipped in `0.4.0` and
+  again in `0.6.1`; `v0.6.1` resolves to `ee1a162` and `6ba1eff` is its ancestor.
+
+### 6. Tests Required
+
+- Reject a pair in one block; assert the block range appears.
+- Reject the same pair **split across two lines** — the case a line rule passes.
+- Accept a lone tag (else the gate forbids documenting `--source-tag`).
+- Accept a lone pin; accept a tag beside non-commit 40-hex.
+- Reject in the pre-tag window; assert `no such tag yet`.
+- Run every assertion against a deliberately broken implementation first.
+
+### 7. Wrong vs Correct
+
+```js
+// Wrong: verify the pair. Unsatisfiable where the defect is authored -- inside
+// the pin-advance commit the tag does not exist yet, so this can only pass
+// after tagging, leaving that commit green.
+if ((await resolveTag(root, tag)) !== sha) throw new Error("stale pair");
+
+// Correct: refuse the conjunction. Decidable with no tag in existence.
+if (tags.length && shas.length) throw new Error("tag beside literal commit");
+```
+
+### Design Decision: Block-Scoped, Not Line-Scoped
+
+**Context**: `SETUP-PR-AGENT.md` paired a tag and a pin on one line, which makes
+a per-line rule look sufficient.
+
+**Decision**: Scope to the block. Every other flag in that example already sits
+on its own backslash continuation, so splitting the two flags apart is the
+natural next formatting edit — and under a per-line rule it silently disables
+the gate while still reporting green. **A gate a routine reflow turns off is
+worse than no gate, because it also reports success.** When choosing a rule's
+unit, pick the one a plausible edit cannot slip between.
+
+### Common Mistake: Gating A Defect The Procedure Induces
+
+**Symptom**: A published tag/commit pair is wrong at nearly every release, and
+each fix rewords the instance.
+
+**Cause**: `docs/RELEASE_CHECKLIST.md` requires the pin advance to be committed
+before the tag is cut, with the tag on that commit. An author editing the line
+is inside the commit about to be tagged: the tag does not exist and a commit
+cannot contain its own SHA, so the only writable SHA is the previous one.
+
+**Fix**: Gate the class, and correct the instruction in the same change.
+
+**Prevention**: When a defect recurs, ask what the procedure *forces* an author
+to write. A gate that fires where the procedure gives no correct option trains
+people to route around it.
+
+> **Warning**: Gates can conflict. `assertProseCommitReferences` requires a
+> prose SHA to equal the current pin, so correcting this example to the honest
+> commit would have *failed* validation — the false pair was green and the true
+> pair unshippable. Before adding a gate, check whether an existing one already
+> forbids the correct output.
+
 ## Scenario: Gate Workflow Permission Grants
 
 ### 1. Scope / Trigger
