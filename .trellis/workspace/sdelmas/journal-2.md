@@ -1285,3 +1285,26 @@ Removed the dead issues: write grant from all five shipped lanes, added the A-02
 - Phase 4: release 0.6.1 per docs/RELEASE_CHECKLIST.md section 5 (pin advance, validate, tag)
 - Phase 5: credentialed adapter pilot at a reachable route
 - Phase 6: refresh this repo's own installer manifest, then canary and roll the fleet
+
+
+## Session 81: Gate the published release tag/commit pair, and close the 0.6.1 fleet rollout
+<!-- trellis-session: v=2 fp=df276d8e89f3c462 -->
+
+**Date**: 2026-08-23
+**Task**: Gate the published release tag/commit pair, and close the 0.6.1 fleet rollout
+**Branch**: `main`
+
+### Summary
+
+Found that SETUP-PR-AGENT.md published --source-tag v0.6.1 beside 6ba1eff while v0.6.1 resolves to ee1a162, contradicting the installer's own manifest. Root cause is structural: the checklist requires the pin advance to be committed before the tag is cut, so an author editing that line sits inside the commit about to be tagged, where the tag does not exist and a commit cannot contain its own SHA. 0.4.0 shipped the identical defect and was fixed by instance. Added assertReleasePairReferences, refusing a release tag and a literal commit of this repository in the same Markdown block: absence of the conjunction rather than verification, because verification is undecidable in the window where the line is authored; block-scoped rather than line-scoped, because a backslash-continuation reflow disables a per-line rule while still reporting green. Proven by three mutations plus an end-to-end pre-tag check. Also resolved a conflict where assertProseCommitReferences made the honest pair unshippable while the false one passed. Separately closed the 0.6.1 fleet rollout at 9 of 9 and corrected a wrong diagnosis: the Socket 401s were transient, not an expired key -- a plain retry fixed them and the secrets are untouched since June. Removed the two unmanaged issues: write grants from hoa-manager and anomaly-metric-creator ci.yml.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `81cfc14` | feat(release): gate the tag/commit pair published in setup prose (#143) |
+| `b330a7b` | docs(spec): capture the published tag/commit pair contract (#144) |
+
+### Status
+
+[OK] **Completed**
