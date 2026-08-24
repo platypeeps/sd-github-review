@@ -13,6 +13,7 @@ import {
   laneGrantUnion,
   assertNoDeadIssuesGrant,
   assertPinFreshness,
+  assertReleasePairReferences,
   assertNoActionExpressions,
   assertPinnedInputsDeclared,
   parseReleaseTag,
@@ -2026,4 +2027,97 @@ test("the shipped descriptor declares the lane the permission gate anchors on", 
   assert.equal(typeof descriptor.workflow?.path, "string");
   assert.ok(descriptor.workflow.path.length > 0);
   await readFile(path.join(root, descriptor.workflow.path), "utf8");
+});
+
+// --- R-005: published tag/commit pairs -------------------------------------
+//
+// Every assertion below was run against a deliberately broken implementation
+// before being trusted. The line-scoped mutation (splitting the block rule back
+// to per-line) passes the first case and fails the second, which is the whole
+// reason the second exists.
+
+const PAIR_COMMIT = "6".repeat(40);
+
+async function pairFixture(body) {
+  const root = await mkdtemp(path.join(os.tmpdir(), "sd-review-pair-"));
+  await writeFile(path.join(root, "DOC.md"), body, "utf8");
+  return root;
+}
+
+function pairSeams({ isCommit, resolveTag } = {}) {
+  return {
+    listDocuments: async () => ["DOC.md"],
+    isCommit: isCommit ?? (async (_root, sha) => sha === PAIR_COMMIT),
+    resolveTag: resolveTag ?? (async () => "e".repeat(40)),
+  };
+}
+
+test("assertReleasePairReferences rejects a tag beside a literal commit", async () => {
+  const root = await pairFixture(
+    "```sh\n  --source-tag v0.6.1 --source-commit " + PAIR_COMMIT + " \\\n```\n",
+  );
+  await assert.rejects(
+    assertReleasePairReferences({ repositoryRoot: root, ...pairSeams() }),
+    /DOC\.md:1-3: publishes a release tag beside a literal commit/u,
+  );
+});
+
+test("assertReleasePairReferences rejects a pair split across lines in one block", async () => {
+  // The evasion a line-scoped rule permits. Every other flag in the real
+  // example already sits on its own continuation line, so this reflow is the
+  // most likely future edit -- and under a per-line rule it silently turns the
+  // gate off while leaving the false pair published.
+  const root = await pairFixture(
+    "```sh\n  --source-tag v0.6.1 \\\n  --source-commit " + PAIR_COMMIT + " \\\n```\n",
+  );
+  await assert.rejects(
+    assertReleasePairReferences({ repositoryRoot: root, ...pairSeams() }),
+    /v0\.6\.1/u,
+  );
+});
+
+test("assertReleasePairReferences allows a release tag with no commit beside it", async () => {
+  // If this fails the gate forbids documenting --source-tag at all, which is
+  // the over-reach the design rejected.
+  const root = await pairFixture("Pass `--source-tag vX.Y.Z` for a .git-less artifact.\n");
+  await assertReleasePairReferences({ repositoryRoot: root, ...pairSeams() });
+});
+
+test("assertReleasePairReferences allows a bare pin with no tag beside it", async () => {
+  // Still assertProseCommitReferences' job, not this gate's.
+  const root = await pairFixture("Keep that exact pin: `" + PAIR_COMMIT + "`.\n");
+  await assertReleasePairReferences({ repositoryRoot: root, ...pairSeams() });
+});
+
+test("assertReleasePairReferences ignores 40-hex that is not a commit of this repository", async () => {
+  // DESIGN.md's protocol fixtures are 40 hex and always will be. A pattern-only
+  // rule flags them; the git discriminator is what separates a pin from a digest.
+  const root = await pairFixture(
+    "v0.6.1 uses scopeDigest `" + "a".repeat(40) + "` in the protocol example.\n",
+  );
+  await assertReleasePairReferences({
+    repositoryRoot: root,
+    ...pairSeams({ isCommit: async () => false }),
+  });
+});
+
+test("assertReleasePairReferences separates blocks, so tag and pin may coexist in one file", async () => {
+  // The escape hatch the failure message advertises has to actually work.
+  const root = await pairFixture(
+    "Pass `--source-tag vX.Y.Z`.\n\nKeep that exact pin: `" + PAIR_COMMIT + "`.\n",
+  );
+  await assertReleasePairReferences({ repositoryRoot: root, ...pairSeams() });
+});
+
+test("assertReleasePairReferences still fails in the pre-tag window and says so", async () => {
+  // The window where the defect is authored: the tag does not exist yet, so the
+  // pair cannot be verified. "Cannot check yet" must not read as "passed".
+  const root = await pairFixture("v9.9.9 at `" + PAIR_COMMIT + "`\n");
+  await assert.rejects(
+    assertReleasePairReferences({
+      repositoryRoot: root,
+      ...pairSeams({ resolveTag: async () => null }),
+    }),
+    /no such tag yet/u,
+  );
 });

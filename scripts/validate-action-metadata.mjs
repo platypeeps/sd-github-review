@@ -1257,6 +1257,12 @@ export async function assertPinFreshness({
     listDocuments: gitImpl?.listDocuments ?? defaultListDocuments,
     isCommit: gitImpl?.isCommit ?? defaultIsCommit,
   });
+  await assertReleasePairReferences({
+    repositoryRoot,
+    listDocuments: gitImpl?.listDocuments ?? defaultListDocuments,
+    isCommit: gitImpl?.isCommit ?? defaultIsCommit,
+    resolveTag: gitImpl?.resolveTag ?? defaultResolveTag,
+  });
   return { releaseTag: latest, releaseCommit: latestCommit, actionSha };
 }
 
@@ -1307,6 +1313,144 @@ async function assertProseCommitReferences({
         `repository:\n  ${stale.join("\n  ")}\n` +
         "advance prose SHAs with the YAML pins, in the same commit",
     );
+  }
+}
+
+// R-005: published tag/commit pairs. assertProseCommitReferences proves a prose
+// SHA equals the current pin, and assertNoReleaseTagLabels proves a lane names no
+// tag -- but neither reads a tag and a SHA *together*, and a pair is the thing
+// that can be false while both halves look fine.
+//
+// SETUP-PR-AGENT.md published `--source-tag v0.6.1 --source-commit 6ba1eff...`
+// while v0.6.1 resolved to ee1a162; 6ba1eff was merely an ancestor. The
+// installer's own manifest recorded ee1a162 for that release, so the document
+// contradicted the tool it documents. 0.4.0 shipped the same class once before
+// (a `--source-tag v0.4.0` beside a SHA the same file called v0.3.0) and was
+// corrected by rewording, which is why this is a gate and not another rewording.
+//
+// The pair is induced by the release procedure rather than by carelessness. The
+// checklist requires the pin advance to be committed before the tag is cut, so
+// an author editing that line sits inside the commit about to be tagged: the tag
+// does not exist yet and a commit cannot contain its own SHA. The only SHA
+// available to write is the previous one. Every release reproduces this.
+//
+// The rule is absence of the *conjunction*, not verification of it. Verification
+// needs the tag to resolve, which it cannot at the moment the line is authored --
+// a release-time-only check would leave the pin-advance commit green, which is
+// exactly how 0.4.0 shipped. Absence is decidable in that window.
+//
+// Scoped to the block, never the line. The defect currently sits on one line,
+// which makes a line rule look sufficient; it is not. The example is a
+// backslash-continued shell command whose every other flag already occupies its
+// own line, so splitting the two flags apart is the natural next edit and would
+// silently disable a line-scoped gate while leaving the false pair published. A
+// gate a routine reflow turns off is worse than none, because it still reports
+// green.
+function markdownBlocks(source) {
+  const lines = source.split("\n");
+  const blocks = [];
+  let current = null;
+  let fence = null;
+  const push = () => {
+    if (current) blocks.push(current);
+    current = null;
+  };
+  for (const [index, line] of lines.entries()) {
+    const fenceMatch = /^\s*(`{3,}|~{3,})/u.exec(line);
+    if (fence !== null) {
+      current.lines.push(line);
+      if (fenceMatch && line.trim().startsWith(fence)) {
+        push();
+        fence = null;
+      }
+      continue;
+    }
+    if (fenceMatch) {
+      push();
+      fence = fenceMatch[1];
+      current = { start: index + 1, lines: [line] };
+      continue;
+    }
+    if (line.trim() === "") {
+      push();
+      continue;
+    }
+    if (!current) current = { start: index + 1, lines: [] };
+    current.lines.push(line);
+  }
+  push();
+  return blocks.map((block) => ({
+    start: block.start,
+    end: block.start + block.lines.length - 1,
+    text: block.lines.join("\n"),
+  }));
+}
+
+export async function assertReleasePairReferences({
+  repositoryRoot,
+  listDocuments,
+  isCommit,
+  resolveTag,
+}) {
+  const documents = await listDocuments(repositoryRoot);
+  const offenders = [];
+  for (const filePath of documents) {
+    const source = await readFile(path.join(repositoryRoot, filePath), "utf8");
+    for (const block of markdownBlocks(source)) {
+      const tags = [
+        ...new Set([...block.text.matchAll(/\b(v[0-9]+\.[0-9]+\.[0-9]+)\b/gu)].map((m) => m[1])),
+      ];
+      if (!tags.length) continue;
+      // Same discriminator assertProseCommitReferences uses: a 40-hex token is
+      // only a pin if it names a commit of this repository. DESIGN.md's protocol
+      // fixtures are 40-hex and are correctly ignored.
+      const shas = [];
+      for (const [sha] of block.text.matchAll(/\b[0-9a-f]{40}\b/gu)) {
+        if (await isCommit(repositoryRoot, sha)) shas.push(sha);
+      }
+      if (!shas.length) continue;
+      for (const tag of tags) {
+        const resolved = await resolveTag(repositoryRoot, tag);
+        for (const sha of new Set(shas)) {
+          offenders.push({ filePath, block, tag, resolved, sha });
+        }
+      }
+    }
+  }
+  if (!offenders.length) return;
+  const detail = offenders
+    .map(({ filePath, block, tag, resolved, sha }) => {
+      const where = resolved ? `resolves to ${resolved}` : "no such tag yet";
+      return (
+        `${filePath}:${block.start}-${block.end}: publishes a release tag beside a literal commit\n` +
+        `    tag:    ${tag}  (${where})\n` +
+        `    commit: ${sha}`
+      );
+    })
+    .join("\n  ");
+  throw new Error(
+    `published documentation pairs a release tag with a literal commit:\n  ${detail}\n` +
+      "a published example must not hardcode one release's identity — the pair has to be " +
+      "hand-maintained in every pin advance, cannot be verified when it is written, and has " +
+      "been wrong before; use a placeholder, or name the tag and the SHA in separate blocks",
+  );
+}
+
+// Resolve a release tag to its commit, or null when no such tag exists. Null is
+// the pre-tag window and is not an error: the gate still fails there, because an
+// unverifiable pair is precisely what it refuses.
+async function defaultResolveTag(repositoryRoot, tag) {
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["-C", repositoryRoot, "rev-parse", "--verify", "--quiet", `${tag}^{commit}`],
+      { encoding: "utf8" },
+    );
+    const resolved = stdout.trim();
+    return resolved.length === 40 ? resolved : null;
+  } catch (error) {
+    if (error?.code === 1) return null;
+    throw error;
   }
 }
 
