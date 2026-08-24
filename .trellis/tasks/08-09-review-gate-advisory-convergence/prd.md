@@ -1,9 +1,17 @@
 # Local review gate cannot converge under advisory-mode prism findings
 
-## STILL BLOCKED — but on half of what it was
+## The gate shipped; the replay that would prove it is blocked elsewhere
 
-**Re-checked 2026-08-24. Nothing has moved since 2026-08-20, and the evidence
-below says why no future pack refresh alone will move it either.**
+**Rewritten 2026-08-24, replacing a header that said "STILL BLOCKED ... no
+future pack refresh alone will move it".** A pack refresh did move it. The
+missing requirement 3 — severity usable in the gate decision — shipped upstream
+in 0.71.47 (PR #536), is adopted here at `medium`, and five of the six
+acceptance criteria are now met with test evidence.
+
+The sixth, replaying PR #70, is **unmet and was attempted**. It is blocked on
+provider tooling — prism returns clean without reviewing any range, and the
+Kimi code models spend their whole output budget on reasoning — not on the gate
+this task is about. Full measurements in "Replay attempt" below.
 
 The header this replaces was written 2026-08-09 and quoted a gate that no longer
 exists. Requirements 1, 2 and 4 have since been met upstream; **requirement 3 —
@@ -167,16 +175,103 @@ The available exits are all wrong:
 
 ## Acceptance criteria
 
-- [ ] A finding verified and refuted against the checkout can be dispositioned through a
+**Reconciled 2026-08-24 against sd-ai-command-pack 0.71.47 (PR #536, merged
+`7b5262f3`), which is where the gate this task was parked on actually lives.**
+Five of six are met with test evidence upstream. The sixth is the replay, and it
+is recorded **unmet** — not inferred from the five that pass.
+
+- [x] A finding verified and refuted against the checkout can be dispositioned through a
       documented `sd-review` control, with the reason recorded in the receipt.
-- [ ] The typed result distinguishes "no findings" from "findings dispositioned", and
+      — `--local-disposition '<id>=rebutted'`; `tests/test_review_stage.py`
+      `test_rebutted_local_finding_clears_the_gate_but_stays_visible`.
+- [x] The typed result distinguishes "no findings" from "findings dispositioned", and
       `remoteGate` reflects the difference.
-- [ ] A synthetic `high correctness` finding still blocks with no disposition supplied — asserted
+      — `_remote_gate` reports `local-stage-terminal`, `local-findings-dispositioned`
+      and `local-advisory-released`, strongest claim first; asserted by
+      `test_disposition_reason_outranks_advisory_release`.
+- [x] A synthetic `high correctness` finding still blocks with no disposition supplied — asserted
       by a test, not by inspection.
-- [ ] `sd-review`'s public control list documents whatever control this adds, and documents
+      — `test_advisory_ceiling_does_not_release_a_high_finding`, plus
+      `test_advisory_predicate_keeps_a_floor_a_wider_vocabulary_cannot_lower`
+      which pins the floor directly, since at the permitted ceilings the
+      end-to-end test passes even with the floor deleted.
+- [x] `sd-review`'s public control list documents whatever control this adds, and documents
       `--attempt-id`, which exists in the CLI but not in the skill.
+      — both corrected in `templates/.agents/skills/sd-review/SKILL.md` in PR #536.
 - [ ] The three-round PR #70 sequence, replayed against the new gate, terminates without a
       human round-extension decision.
+      — **UNMET. Attempted 2026-08-24 and blocked on provider tooling, not on the
+      gate.** See "Replay attempt" below.
+
+## Replay attempt, 2026-08-24 — blocked on provider tooling, not on the gate
+
+The gate half is done and adopted: `.sd-ai-command-pack/review.json` now sets
+`policy.localAdvisorySeverityCeiling: "medium"`, and a `--plan-only` run against
+PR #70's exact range carries `localAdvisorySeverityCeiling: "medium"` into the
+plan with a policy digest of its own. So the ceiling reaches receipt identity.
+What could not be produced is a receipt with real findings in it.
+
+Replay target, reconstructed rather than assumed: PR #70's merge commit is
+`9a6cdb99`, whose parents give base `c3ec5f64` and head `2880186`. That range is
+23 files and 1407 insertions, and the historical `.prism/rules.json` at that head
+is **byte-identical** to today's, so the severity mapping under test is the one
+the original rounds ran under.
+
+Three runs, three distinct provider failures. None of them is the gate.
+
+| run | prism | gito |
+| --- | --- | --- |
+| `kimi-k2.7-code` | `unavailable`, exit 4, 120s — `context deadline exceeded ... awaiting headers` | `failed`, exit 124, 600s timeout |
+| `kimi-k2.7-code-highspeed` | `unavailable`, exit 4, 45s — `chunk 0: empty text content in API response` | `failed`, exit 124, still on the slow model |
+| prism alone on `anthropic` | `clean` in 2s on a 110 KB diff | not run |
+
+Each receipt came back `eligible-with-limitations` / `local-review-limited` —
+the degraded green that proves nothing, which is exactly why this is recorded
+unmet rather than passed.
+
+**Cause 1 — the Kimi code models exhaust their output budget on reasoning.**
+Measured directly against Moonshot with a 40 KB slice of this very diff:
+
+```
+kimi-k2.7-code            finish_reason: length  content_len: 0  reasoning_len: 9060
+kimi-k2.7-code-highspeed  finish_reason: length  content_len: 0  reasoning_len: 9316
+```
+
+Zero answer, all thinking. Raising the budget fixes it — at `max_tokens: 16000`
+the highspeed model finishes with `finish_reason: stop` and 747 characters of
+content, having spent 8857 completion tokens. prism hardcodes `MaxTokens: 8192`
+(`internal/review/engine.go:120`, and three more sites), which lands just under
+what one chunk needs. That is the whole of `empty text content in API response`.
+
+This corrects a claim recorded in the machine-local provider notes: Moonshot was
+chosen over MiniMax because it keeps thinking in `reasoning_content` rather than
+inlining it into `content`. True, and not sufficient — separation does not help
+when the budget is gone before the answer starts.
+
+**Cause 2 — `GITO_ENV_FILE` does not redirect gito's model.** The wrapper sources
+the override, but gito re-reads `~/.gito/.env` itself with
+`load_dotenv(override=True)`, so the real file wins. The highspeed run's own log
+proves it: `Can't resolve tiktoken encoding for 'kimi-k2.7-code'` while the
+override said `kimi-k2.7-code-highspeed`. Changing gito's model requires editing
+`~/.gito/.env`, which was left alone.
+
+**Cause 3 — prism's range and commit modes return clean without reviewing.**
+Reproduced on a cold cache (`prism cache clear`) in two repositories and in both
+modes: `Findings: 0` in about 2 seconds on a 110 KB diff, `gitMs: 0`. The git
+side is fine — the exact command prism builds,
+`git diff c3ec5f64...2880186 -U3 --`, yields 109997 bytes by hand. The provider
+side is fine too: `prism review snippet` on a five-line file with an
+`exec(input())` returns a correct 100%-confidence security finding in 9.6s on
+anthropic and 16.9s on Moonshot. Only the diff-mode path collapses. Not
+diagnosed further; it is a defect in `~/repos/ai/prism`, outside this repository
+and outside the pack.
+
+**What this does and does not establish.** The ceiling is adopted, reaches the
+plan, and changes the policy digest. Whether three rounds against PR #70 now
+terminate without a human `review.round-extension` is still unknown, and stays
+unknown until a provider can produce findings on a real diff. Cause 3 is the
+blocker: fixing the Kimi budget and gito's model would still leave prism
+returning clean on any range.
 
 ## Notes
 
@@ -274,8 +369,15 @@ is meant to remove.
 
 ### Additional acceptance criterion
 
-- [ ] A finding whose cited path and line do not contain the described code can
+- [x] A finding whose cited path and line do not contain the described code can
       be dispositioned on that ground specifically, distinctly from a finding
       that is real but low-severity — asserted by a test that supplies a `high`
       severity finding with a bad citation and shows it does not block, while a
       `high` finding with a good citation still does.
+      — `--local-disposition '<id>=miscited@<path>:<line>'`, a ground distinct
+      from `rebutted`. Both halves are in one test,
+      `tests/test_review_stage.py::test_miscited_releases_a_high_finding_that_otherwise_blocks`:
+      the same `high` finding blocks with no disposition and clears with the
+      miscitation, so the release cannot be confused with the gate being weak.
+      Severity and miscitation are separate axes — `test_one_advisory_finding_does_not_release_a_blocking_sibling`
+      shows the ceiling is per-finding, not a whole-receipt verdict.
