@@ -367,8 +367,20 @@ prism-chunked: 23 files, 147018 diff bytes, 9 chunks of at most 20000
 exit 0, 56.0s, 37 findings
 ```
 
-One chunk before, nine after. And the rules reach the model: all 37 findings
-carry categories drawn from `focus` and nothing outside it.
+One chunk before, nine after.
+
+**Correction, 2026-08-24.** This section previously claimed the rules reached
+the model, on the grounds that all 37 findings carried categories drawn from
+`focus` and nothing outside it. That is not evidence of anything.
+`internal/review/prompt.go:28` hardcodes the identical eight categories into
+every prompt prism builds — `bug, security, performance, correctness, style,
+maintainability, testing, docs` — and this repository's `focus` array is that
+same list. Every finding prism has ever produced satisfies the test, rules file
+or no rules file. `BuildRulesPromptSection` (`internal/review/rules.go:52`) does
+render `focus` and `required` into the prompt when a rules file loads, so the
+plumbing exists; what is missing is any observation that distinguishes the two
+cases. The chunking numbers above are unaffected — those come from the
+provider's own diagnostic line, not from the finding set.
 
 Two of the four defects have no workaround. An earlier run of the same provider
 against Moonshot lost 6 of 9 chunks to prism's hardcoded 120s client deadline
