@@ -200,12 +200,14 @@ is recorded **unmet** — not inferred from the five that pass.
       — both corrected in `templates/.agents/skills/sd-review/SKILL.md` in PR #536.
 - [ ] The three-round PR #70 sequence, replayed against the new gate, terminates without a
       human round-extension decision.
-      — **UNMET. Replayed 2026-08-24. The ceiling works on live provider output —
-      30 of 35 prism findings released as advisory, the 5 `high` ones still
-      blocking — but the receipt is `blocked`, so a caller still needs a
-      disposition per finding or a round-extension.** The provider defects that
-      blocked the first attempt are fixed; the convergence question is now
-      answerable and unanswered. See "Replay" below.
+      — **UNMET, and now for a precise reason. Replayed twice on 2026-08-24.**
+      The ceiling works: 30 of 37 findings released as advisory once
+      `severityOverrides` stopped overwriting severity with a category lookup.
+      All seven survivors were verified against the checkout and **none is a
+      defect in the change**; four were dispositioned as `rebutted` or
+      `miscited`, leaving `outstanding: 3` and `remoteGate: blocked`. The three
+      are accurate and deliberate, so no existing ground fits them. See "Second
+      replay" below and the additional requirement it records.
 
 ## Replay, 2026-08-24 — run, and the four provider defects it exposed
 
@@ -345,6 +347,118 @@ chunks, which is why it produces 35 findings where round 1 produced 9. The gate
 under test is the new one; the provider under it is also new. The convergence
 question — does round 2 share findings with round 1 — needs a second round at a
 new head to answer, and has not been run.
+
+## Second replay, 2026-08-24 — the workaround, the severity measurement, and the answer
+
+Everything below ran against PR #70's range (`c3ec5f64...2880186`) with
+`PRISM_BIN` pointed at the **unpatched** prism binary — confirmed stock by its
+rejection of `chunkMaxBytes` — so none of it depends on the patches in
+`~/repos/ai/prism`.
+
+### The provider defects have a repo-side workaround
+
+`scripts/prism-chunked-review.py` does the chunking on the caller's side and
+passes `--rules`, wired in through the pack's own `argv` adapter in
+`.sd-ai-command-pack/review.json` — the one path `pack.install-audit` allows. No
+pack change, no patched binary:
+
+```
+prism-chunked: 23 files, 147018 diff bytes, 9 chunks of at most 20000
+exit 0, 56.0s, 37 findings
+```
+
+One chunk before, nine after. And the rules reach the model: all 37 findings
+carry categories drawn from `focus` and nothing outside it.
+
+Two of the four defects have no workaround. An earlier run of the same provider
+against Moonshot lost 6 of 9 chunks to prism's hardcoded 120s client deadline
+and came back `unavailable` with 3 findings. Neither that nor the hardcoded
+`MaxTokens: 8192` is reachable from the caller — both are avoided by provider
+choice, not fixed. **The workaround is the argv provider plus a non-reasoning
+provider; the argv provider alone is not sufficient.**
+
+### `severityOverrides` was destroying the axis this task depends on
+
+Requirement 3 asks for severity or category to be usable in the gate decision.
+Measured, they were the same axis, and the configured one could not release
+anything.
+
+Two runs, identical in every respect but the rules file. The finding sets are
+**identical** — same 37 findings, same paths, same summaries, zero difference
+either way — so only the severity rating varies:
+
+| | high | medium | low | advisory | outstanding |
+| --- | --- | --- | --- | --- | --- |
+| with `severityOverrides` | 19 | 15 | 3 | 18 | 19 |
+| without | 7 | 25 | 5 | 30 | 7 |
+
+With the map, `high` was exactly `correctness 14 + security 3 + bug 2 = 19`, and
+advisory was exactly `docs 4 + maintainability 7 + testing 4 + style 3 = 18`.
+Both sides exact. Severity carried no per-finding information at all — it was a
+lookup on category, and `.prism/rules.json` pinned `bug`, `correctness` and
+`security` to `high` regardless of what the finding said. A `medium` ceiling
+under that map is not a severity ceiling; it is a category filter that can never
+release a `correctness` observation however trivial.
+
+Removing the map, severity varies within categories and the ceiling releases 30
+of 37. This is the opposite of the "narrowing the rules would suppress signal"
+note recorded further down: the map was not adding signal, it was overwriting
+the model's own judgement with a constant. `severityOverrides` has been removed
+from `.prism/rules.json`; `focus` and the four required checks are untouched.
+
+### The seven survivors, verified against the checkout
+
+Every remaining `high` finding was read against its cited path and line at
+`2880186`. **None is a defect in the change.**
+
+| citation | verdict |
+| --- | --- |
+| `examples/sd-review.yml:70` — token grants write to a third-party container | accurate, and deliberate; :67-69 is an inline comment explaining the isolation |
+| `examples/sd-review.yml:109` — empty API key vars for non-selected providers | accurate, trivial impact |
+| `examples/sd-review.yml:148` — image digest may not match | **refuted** — pinned `@sha256:cae31b…`; a digest pin *is* the identity |
+| `scripts/consumer-installer.mjs:185` — `JSON.stringify` key-order sensitivity | accurate mechanism; consequence is one redundant idempotent rewrite. Cited :185, code is :182 |
+| `scripts/consumer-installer.mjs:232` — manifest mutated via spread | **refuted** — `{...pendingManifest}` builds a new object, and `createManifest` fully resolves at :220-226. Cited :232, code is :228 |
+| `scripts/consumer-installer.mjs:252` — partial write corrupts state | **refuted** — the pending→active protocol *is* the recovery mechanism |
+| `test/installer-modules.test.js:192` — name-extraction regex | **miscited** — the regex is at :211-212; :192 is `early.descriptor = {...}` |
+
+The third refutation is the important one. That exact claim was raised and
+refuted on 2026-08-09 — it is quoted in the "Observed on PR #70" section above as
+one of the two that "claimed a real defect were refuted by the code". Fifteen
+days and a different provider configuration later it came back verbatim. **A
+rebuttal at one head does not survive to the next run.** That is the PRD's
+"necessary but not sufficient" thesis, measured rather than reasoned.
+
+### Applying the dispositions: the gate still does not converge
+
+Four of the seven are dispositionable with today's vocabulary — three `rebutted`
+and one `miscited`. Applied against the same receipt (`run: reused`, no provider
+re-invocation):
+
+```
+"advisory": 30, "dispositioned": 4, "outstanding": 3
+remoteGate: {"state": "blocked", "reason": "actionable-local-findings"}
+```
+
+**Three findings block, and none of them can be dispositioned without lying.**
+`sd-review.yml:70` is *true*: the token does grant write access to a third-party
+container. It is a deliberate, documented decision — the surrounding comment
+narrows the grant specifically so the container cannot write durable receipts.
+Calling that `rebutted` would be exactly the false classification claim
+requirement 1 forbids. The same applies to `:109` and to the `JSON.stringify`
+observation: accurate, understood, and not worth a code change.
+
+So the remaining gap is not severity, and not miscitation. Both of those now
+work. It is that the vocabulary has a ground for *"this finding is wrong"* and a
+ground for *"this finding is pointed at the wrong place"*, and no ground for
+**"this finding is right, and the answer is still no."**
+
+### Additional requirement, measured 2026-08-24
+
+- An accurate finding that the repository accepts — a deliberate design
+  decision, or an observation whose consequence is not worth a change — must be
+  dispositionable on that ground, distinctly from `rebutted`. Without it, three
+  of seven verified-correct findings block a merge with no exit but a human
+  round-extension, which is the failure this task exists to remove.
 
 ## Notes
 

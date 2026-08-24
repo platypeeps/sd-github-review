@@ -144,8 +144,12 @@ def review_group(
         "--context-lines",
         str(context),
     ]
-    if (repo / RULES_PATH).is_file():
-        argv += ["--rules", RULES_PATH]
+    rules = os.environ.get("PRISM_CHUNK_RULES") or RULES_PATH
+    # Relative paths resolve against the repository, which is this process's cwd
+    # for the child as well; an absolute override lets a caller test an
+    # alternate policy without editing the repository's own rules file.
+    if (repo / rules).is_file():
+        argv += ["--rules", rules]
     result = subprocess.run(
         argv,
         cwd=repo,
