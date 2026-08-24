@@ -9,7 +9,7 @@
       ],
       "dataHandling": "private-network",
       "qualityTier": "standard",
-      "enabled": true,
+      "enabled": false,
       "id": "prism",
       "adapter": "prism",
       "argv": [],
@@ -20,6 +20,34 @@
         "0": "clean",
         "1": "findings",
         "3": "unavailable",
+        "4": "unavailable"
+      }
+    },
+    {
+      "scopes": [
+        "worktree",
+        "branch_delta",
+        "codebase"
+      ],
+      "dataHandling": "private-network",
+      "qualityTier": "standard",
+      "enabled": true,
+      "id": "prism-chunked",
+      "adapter": "argv",
+      "argv": [
+        "{repo}/scripts/prism-chunked-review.py",
+        "{repo}",
+        "{base}",
+        "{head}",
+        "{artifact}"
+      ],
+      "costTier": "low",
+      "timeoutSeconds": 1800,
+      "version": "repo-v1",
+      "outcomeByExitCode": {
+        "0": "clean",
+        "1": "findings",
+        "2": "failed",
         "4": "unavailable"
       }
     },
