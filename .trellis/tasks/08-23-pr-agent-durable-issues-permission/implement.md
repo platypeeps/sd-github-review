@@ -177,11 +177,11 @@ regardless.
       `.trellis/tasks/archive/2026-08/08-22-fleet-reviewer-v050-defects/implement.md`.
       Did not recur. Copilot returned no findings on `#140` or on the canary
       `people-profiles#14`. The prediction was defensive and cost nothing.
-- [ ] After merge, verify from each default branch that all nine carry the new
+- [x] After merge, verify from each default branch that all nine carry the new
       lane blob and pin, and that none grants `issues: write`. Enumerate from
       GitHub; do not restate the install run.
-      **Unmet — 5 of 9, blocked externally.** Enumerated from each default
-      branch's `.github/workflows/sd-review.yml` on 2026-08-23:
+      **Met — 9 of 9.** Enumerated from each default branch's
+      `.github/workflows/sd-review.yml` after the final merges on 2026-08-24:
 
       | repository | pin | `issues: write` |
       | --- | --- | --- |
@@ -190,26 +190,37 @@ regardless.
       | `platypeeps/loadsmith` | `6ba1eff` | 0 |
       | `answerbook/mezmo_benchmark` | `6ba1eff` | 0 |
       | `platypeeps/se-ai-command-pack` | `6ba1eff` | 0 |
-      | `platypeeps/hoa-manager` | `98eebf6d` | 2 |
-      | `platypeeps/rwbp-website` | `98eebf6d` | 2 |
-      | `platypeeps/rwbp-coordinator` | `98eebf6d` | 2 |
-      | `platypeeps/anomaly-metric-creator` | `98eebf6d` | 2 |
+      | `platypeeps/hoa-manager` | `6ba1eff` | 0 |
+      | `platypeeps/rwbp-website` | `6ba1eff` | 0 |
+      | `platypeeps/rwbp-coordinator` | `6ba1eff` | 0 |
+      | `platypeeps/anomaly-metric-creator` | `6ba1eff` | 0 |
 
-      The four laggards hold open pull requests — `hoa-manager#286`,
-      `rwbp-website#266`, `rwbp-coordinator#258`,
-      `anomaly-metric-creator#403` — each failing only its Socket
-      supply-chain scan with `401 APIAccessDenied` against
-      `https://api.socket.dev/v0/organizations`. The cause is an expired
-      `SOCKET_SECURITY_API_KEY`, not this change: the same key succeeded at
-      04:22 for `0.6.0` and failed by 20:52 for `0.6.1`, and every non-Socket
-      job passes on all four. Diagnostic comments are posted on each. This box
-      closes when the key is refreshed, the four re-run green, and the four
-      merge.
+      The four laggards — `hoa-manager#286`, `rwbp-website#266`,
+      `rwbp-coordinator#258`, `anomaly-metric-creator#403` — merged at
+      2026-08-24T00:55-00:56Z once their Socket scans passed.
+
+      **The Socket diagnosis recorded here earlier was wrong, and the
+      correction matters more than the fix.** This box previously read "the
+      cause is an expired `SOCKET_SECURITY_API_KEY`" and said it would close
+      when the key was refreshed. No key was refreshed. Re-running the failed
+      jobs unchanged turned all four green, and the secrets' GitHub metadata
+      still reports `updated_at=2026-06-16` on every one of the four
+      repositories -- never rotated since creation. The `401 APIAccessDenied`
+      was a transient fault on Socket's side.
+
+      The reasoning that produced the wrong call is worth keeping: the key
+      demonstrably worked at 04:22 and failed by 20:52 with no workflow change
+      between, which does imply something changed outside the repository -- but
+      "expired credential" and "provider outage" both fit that evidence, and
+      only the first was considered. The cheap discriminator was a retry, and it
+      was available from the start. Prefer it before diagnosing credential
+      expiry from an authentication error next time.
 
       Two `issues: write` grants found on the way are **out of scope and still
       live**: `hoa-manager` `ci.yml:360` and `anomaly-metric-creator`
       `ci.yml:662`, both in hand-maintained Socket scan jobs the installer does
-      not manage. They are not what the four counts above measure.
+      not manage. Re-verified present after the merges. The table above measures
+      the installer-managed lane only, so "0" there is not a claim about these.
 
 ## Validation commands
 
