@@ -3,6 +3,14 @@
 **Task:** `08-09-review-gate-advisory-convergence`
 **Design:** [`design.md`](design.md) · **Research:** [`research/2026-08-20-research.md`](research/2026-08-20-research.md)
 
+> **Version note, 2026-08-24.** Every `0.71.33` below still reads correctly as the
+> pre-change baseline: the repository is now on `0.71.45`, but
+> `sd-ai-command-pack-review-local.py` is byte-identical across all 13 cached
+> releases `0.71.1`–`0.71.33` and to the copy in force at `~/.agents/bin/`, so no
+> observation, line number, or "already met" verdict in this plan changed. Only
+> the rollback target moved: `provenance.json` now pins `0.71.45`, so reverting a
+> bad refresh restores that, not `0.71.33`.
+
 ---
 
 ## The shape of this plan

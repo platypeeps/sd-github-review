@@ -3,6 +3,14 @@
 **Task:** `08-09-review-gate-advisory-convergence`
 **Date:** 2026-08-20
 **Pack baseline verified against:** `sd-ai-command-pack` 0.71.33, thin install
+**Baseline re-verified 2026-08-24:** repository is now on `0.71.45`, but
+`sd-ai-command-pack-review-local.py` is byte-identical across every cached
+release from `0.71.1` through `0.71.33` and to the copy in force at
+`~/.agents/bin/` (`9efca3af9030d4af01a58762569fdd2345a26d2d23cb771ba4e98dd313200ead`).
+Nothing in this design's evidence moved; only the pinned version number did.
+The rollback note in §8 still names 0.71.33 as the reverted-to version — that is
+now `0.71.45`, and the same one-line `localAdvisoryFamilies: []` rollback applies
+unchanged.
 **Research:** [`research/2026-08-20-research.md`](research/2026-08-20-research.md)
 
 ---

@@ -1,16 +1,97 @@
 # Local review gate cannot converge under advisory-mode prism findings
 
-## BLOCKED — the fix belongs upstream
+## STILL BLOCKED — but on half of what it was
 
-**2026-08-09.** `_remote_gate` lives in `~/.agents/bin/sd-ai-command-pack-review-local.py`, which is
-vendored from `sd-ai-command-pack` — its entire history here is `chore: refresh
-sd-ai-command-pack to 0.54.0`. The deterministic `pack.install-audit` gate blocks any local edit
-to a pack path, and its allowlist covers only `.sd-ai-command-pack/*.json`. Same boundary, same
-evidence, and same unblock as `08-09-review-coordinator-stale-check`: explicit approval for an
-upstream pull request, then a pack refresh.
+**Re-checked 2026-08-24. Nothing has moved since 2026-08-20, and the evidence
+below says why no future pack refresh alone will move it either.**
 
-`.prism/rules.json` is repo-owned (history: `Initial commit`), so any rules-side adjustment could
-land here — but it cannot fix a gate that blocks on any finding regardless of rule configuration.
+The header this replaces was written 2026-08-09 and quoted a gate that no longer
+exists. Requirements 1, 2 and 4 have since been met upstream; **requirement 3 —
+severity or category usable in the gate decision — has not**, and neither has
+the miscitation ground added after PR #99. Those two are the whole remaining
+task.
+
+### What shipped
+
+`_remote_gate` no longer blocks on the presence of findings. The version this
+PRD originally quoted:
+
+```python
+if outstanding or outcome == "findings":
+```
+
+is now, at `~/.agents/bin/sd-ai-command-pack-review-local.py:1956`:
+
+```python
+if outstanding or (outcome == "findings" and not findings_present):
+```
+
+carrying the comment *"the count of findings left outstanding is what decides:
+rebutted ones do not gate."* The control is
+`--local-disposition <stable-id>=rebutted` (line 2237), applied by
+`_apply_local_dispositions`, which errors rather than no-ops on an id matching
+no finding at the current head — a stale id from an earlier head cannot open the
+gate. Both it and `--attempt-id` are documented in
+`~/.agents/skills/sd-review/SKILL.md`, closing the documentation criterion.
+
+### What has not, and the reason it will not arrive on its own
+
+`LOCAL_DISPOSITION_VALUES = frozenset({"rebutted"})` — one value, no grounds, no
+reason field. The gate reads `outstanding`, `family_gate`, and `outcome`; it
+reads neither severity nor category. So a `high` finding with a bad citation and
+a `low style` observation are still the same object to it, which is exactly the
+gap PR #99 identified.
+
+**The pack refreshes are not delivering this, and the file proves it.**
+`sd-ai-command-pack-review-local.py` is byte-identical
+(`9efca3af9030d4af01a58762569fdd2345a26d2d23cb771ba4e98dd313200ead`) across every
+cached release from `0.71.1` through `0.71.33`, and identical again to the copy
+in force at `~/.agents/bin/`. Three refreshes landed in this repository during
+August — `0.71.33`, `0.71.38`, `0.71.45` — and none of them touched this file.
+Waiting for the next refresh is therefore not a plan; the unblock needs the
+upstream change itself to be made.
+
+### Where the code actually lives now
+
+**This repository no longer vendors the script.** Commit `9a4787a`
+(`chore: convert to a thin sd-ai-command-pack install`) removed it;
+`.sd-ai-command-pack/provenance.json` records `"mode": "thin"` at `0.71.45`, and
+`installed-targets.txt` lists 31 targets, none of them a review script.
+
+`task.json` has not caught up: three of its four `relatedFiles` are dangling —
+both `scripts/sd-ai-command-pack-review*.py` paths and
+`.claude/skills/sd-review/SKILL.md`, leaving only `.prism/rules.json`. Its
+preserved `blockedOn` note also cites `:900-905` as the gate's severity
+limitation, which is `_parse_family_finding` feeding the separate `familyGate`
+arm, not the provider-finding path — right conclusion, wrong line.
+`design.md` §9 and `implement.md` step 0.1 already record both corrections and
+carry the fix; they are not themselves stale. Read any surviving `scripts/`
+citation against `~/.agents/bin/` — the content is byte-identical, so the line
+numbers still resolve.
+
+The original boundary is unchanged and still decides the outcome: the
+deterministic `pack.install-audit` gate blocks any local edit to a pack path, and
+its allowlist covers only `.sd-ai-command-pack/*.json`. Same unblock as
+`08-09-review-coordinator-stale-check` — explicit approval for an upstream pull
+request, then a pack refresh.
+
+`.prism/rules.json` is repo-owned (history: `Initial commit`), so any rules-side
+adjustment could land here — but it cannot fix a gate that blocks on any finding
+regardless of rule configuration.
+
+### One claim this task makes that is now worth retesting
+
+The PRD's thesis is that per-finding rebuttal is *necessary but not sufficient*,
+because each new head emits a disjoint finding set. That was measured before a
+rebuttal channel existed. With one, a caller can terminate at a single head by
+rebutting its set rather than fixing and re-running into a fresh one — which
+would make the six-round PR #99 sequence a two-round one and would satisfy the
+final acceptance criterion without any further upstream work.
+
+**This is reasoning, not measurement. It has not been run.** It is recorded here
+because it decides how much of this task is left: if it holds, only the
+miscitation ground and the severity gate remain as quality improvements rather
+than as the difference between converging and not.
 
 ## Goal
 
@@ -18,6 +99,11 @@ Let `sd-review` terminate on its own when the configured local providers return 
 rather than defects, without weakening the gate for real findings.
 
 ## Problem
+
+**Historical, as observed 2026-08-09.** This is the gate that produced the PR #70
+and PR #99 evidence below; it is not the gate in force today. See the header for
+what replaced it and what did not. Kept in present tense because the measurements
+that follow were taken against it.
 
 `_remote_gate` in `~/.agents/bin/sd-ai-command-pack-review-local.py:1857` blocks on **any** finding:
 
@@ -107,9 +193,17 @@ essentially — from the false-positive angle: a provider that misread quoted
 source inside a Markdown PRD, and a hallucinated typo finding, neither of which
 had any exit.
 
-Upstream PR #402 has since shipped `_local_outstanding`, a rebuttal gate. This
-repository is on `0.64.3` and predates it, so the gate observed here is the
-pre-#402 one.
+Upstream PR #402 has since shipped `_local_outstanding`, a rebuttal gate. At the
+time this was written the repository was on `0.64.3` and predated it, so the gate
+observed here is the pre-#402 one.
+
+**Superseded 2026-08-24.** The repository is now on `0.71.45` and the rebuttal
+gate is in force — see the header. Note the symbol did not survive under that
+name: there is no `_local_outstanding` in the shipped file. The mechanism landed
+as an `outstanding` count computed in `_redispose_receipt` and read by
+`_remote_gate`. Grepping for the upstream symbol will report the fix as absent
+when it is present, which is why the header verifies against the gate expression
+itself.
 
 This repository's evidence was appended to that task rather than duplicated:
 platypeeps/sd-ai-command-pack#406. What it adds is a failure mode the upstream
