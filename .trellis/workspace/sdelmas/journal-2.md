@@ -1308,3 +1308,45 @@ Found that SETUP-PR-AGENT.md published --source-tag v0.6.1 beside 6ba1eff while 
 ### Status
 
 [OK] **Completed**
+
+
+## Session 82: Close the issues: write task with its fourth criterion unmet, and clear the stale pilot pull requests
+<!-- trellis-session: v=2 fp=fc16d92be0a559ad -->
+
+**Date**: 2026-08-24
+**Task**: Close the issues: write task with its fourth criterion unmet, and clear the stale pilot pull requests
+**Branch**: `main`
+
+### Summary
+
+Reviewed what was still open after the 0.6.1 work and closed the two things that could be closed without spend. 08-23-pr-agent-durable-issues-permission was left in_progress waiting on a decision with no forcing date, so it was archived instead: four of its five acceptance criteria were ticked with evidence run this session, and the fourth was recorded UNMET rather than waived and carried forward parked to 08-23-pr-agent-reduced-grant-live-confirmation. The distinction that matters is that the permission probes settle what a token holding contents:read + pull-requests:write permits, not what PR-Agent's container does under it; the criterion must never be marked met from the probes. It is inert while all nine consumers run REVIEW_ROUTE_MODE=copilot with REVIEW_INDEPENDENT_FLOOR=copilot, which is why the unpark trigger is any consumer moving off copilot. Also closed the four stale sd-github-review-pilot pull requests (#1, #3, #7, #8), which exercised v0.1.0-v0.4.1 scenarios against a lane the pilot no longer runs -- it is still pinned to f6b5388d in a pre-isolation single-job shape. Held 0.6.2: cutting a release for the R-005 prose gate alone would drag a nine-repo pin rollout behind it for a gate that only validates this repository's own published prose.
+
+### Main Changes
+
+- Archived 08-23-pr-agent-durable-issues-permission; criteria 1, 2, 3, 5 ticked with evidence, criterion 4 recorded UNMET with a pointer to the parked successor
+- Created 08-23-pr-agent-reduced-grant-live-confirmation, parked with meta recording the approval gate and the unpark trigger
+- Closed platypeeps/sd-github-review-pilot #1, #3, #7, #8 as stale, each with a comment naming the f6b5388d pre-isolation pin as the reason; branches left in place
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `862b410` | chore(task): archive 08-23-pr-agent-durable-issues-permission |
+| `6a09704` | chore(task): park the live PR-Agent reduced-grant confirmation |
+
+### Testing
+
+- [OK] npm test -- 751 pass, 0 fail
+- [OK] npm run validate:metadata -- validated action.yml, 3 workflows, 7 examples, 1160 tracked public paths at v0.6.1
+- [OK] grep -rn 'issues: *write' examples/ .github/workflows/ -- only explanatory comments, no grant lines
+- [OK] gh pr list -R platypeeps/sd-github-review-pilot --state open -- []
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Hold 0.6.2 until a substantive change justifies the nine-repo pin rollout that follows a release
+- Unpark 08-23-pr-agent-reduced-grant-live-confirmation if any consumer moves off REVIEW_ROUTE_MODE=copilot
+- A-018 remains the only open audit finding; its owner task 07-25-deliver-routed-review-configuration has not moved since July
