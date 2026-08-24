@@ -527,6 +527,54 @@ identical diff.
 So criterion 6 stays unmet. Convergence that depends on which model is
 configured is not the property this task is asking for.
 
+### Settled configuration: `anthropic/claude-sonnet-4.6` via OpenRouter
+
+Qwen was replaced after benchmarking eight non-reasoning models on one 8 KB diff
+at `max_tokens: 8192`, scoring the two things the Qwen run failed — does the
+model rate anything `high`, and does it catch `GITHUB__USER_TOKEN` reaching a
+third-party container:
+
+```
+anthropic/claude-sonnet-4.6   $3.00/$15.00   ~6s    high=2,2     caught 1 of 2
+qwen/qwen3-coder-plus         $0.65/$3.25    2.7s   high=1,1,1   caught 3 of 3
+amazon/nova-pro-v1            $0.80/$3.20    1.2s   high=1       missed
+openai/gpt-4.1                $2.00/$8.00    2.8s   high=0       missed
+moonshotai/kimi-k2-0905       $0.60/$2.50    6-15s  high=0       caught
+mistralai/mistral-medium-3.1  $0.40/$2.00    4.3s   high=0       caught
+qwen/qwen3-max                $0.78/$3.90    2.6s   high=0       missed
+Qwen3-Coder-480B (previous)   $0.30/$1.00    2.4s   high=0       caught
+```
+
+Zero-`high` is a model property, not an artifact of the prompt: sonnet returns
+two `high` findings on the identical prompt where six others return none. Cost
+is not the deciding factor at this volume — a full 147 KB branch review is about
+40k input and 5k output tokens, roughly $0.20 on sonnet against $0.04 on the
+cheapest option. Sonnet is reasoning-capable but does not reason unless asked;
+both probes returned `finish_reason: stop` with zero reasoning tokens, so it
+stays inside stock prism's hardcoded 8192-token cap.
+
+Full replay on the stock binary, nine chunks, 50.2s, exit 0:
+
+```
+27 findings -> 16 low, 9 medium, 2 high
+advisory 25, outstanding 2, remoteGate blocked / actionable-local-findings
+```
+
+Both `high` findings are security, and both follow the pattern already
+established. `examples/sd-review.yml:115` — "all provider API keys injected
+unconditionally" — is accurate in form and trivial in impact: the env vars are
+always present, with `|| ''` supplying empty values for non-selected providers.
+`examples/sd-review.yml:152` — "pinned by digest but image name uses mutable tag
+pattern" — is **refuted**: the line reads `pragent/pr-agent@sha256:cae31b…` and
+carries no tag at all.
+
+**This is the cleaner statement of the same result.** With a provider that does
+engage the floor, the gate blocks — and the findings it blocks on are, once
+verified, one trivially-accurate observation and one false claim. Neither is a
+defect in the change. So the gap is not provider calibration and not the
+ceiling: it is still the missing disposition ground recorded above. Two capable
+providers, two different finding sets, same structural outcome.
+
 ## Notes
 
 Related but distinct from `08-09-review-coordinator-stale-check`, which is about a *stale* check
