@@ -383,9 +383,21 @@ Requirement 3 asks for severity or category to be usable in the gate decision.
 Measured, they were the same axis, and the configured one could not release
 anything.
 
-Two runs, identical in every respect but the rules file. The finding sets are
-**identical** — same 37 findings, same paths, same summaries, zero difference
-either way — so only the severity rating varies:
+**Corrected 2026-08-24, same day.** This was first written as "two runs
+identical but for the rules file", which is wrong about the mechanism. The
+second run completed in 0.6s — a prism cache replay, not nine fresh model
+calls — and the severities differ because `ApplySeverityOverrides`
+(`internal/review/rules.go:82`, applied at `engine.go:166` and `:396`) is a
+**client-side post-process** that rewrites each finding's severity from its
+category *after* the model answers. The cache key does not include the rules
+file, which is why the replay hit at all.
+
+That makes the conclusion stronger, not weaker: severity under this rules file
+was not merely *observed* to equal category, it is a deterministic overwrite in
+code. The rules text also asks the model for the same mapping
+(`BuildRulesPromptSection`), but the model's own rating never survives the
+overwrite. The counts below are one model run with the rewrite applied and not
+applied:
 
 | | high | medium | low | advisory | outstanding |
 | --- | --- | --- | --- | --- | --- |
@@ -400,8 +412,8 @@ lookup on category, and `.prism/rules.json` pinned `bug`, `correctness` and
 under that map is not a severity ceiling; it is a category filter that can never
 release a `correctness` observation however trivial.
 
-Removing the map, severity varies within categories and the ceiling releases 30
-of 37. This is the opposite of the "narrowing the rules would suppress signal"
+Removing the map, the model's own rating survives, severity varies within
+categories, and the ceiling releases 30 of 37. This is the opposite of the "narrowing the rules would suppress signal"
 note recorded further down: the map was not adding signal, it was overwriting
 the model's own judgement with a constant. `severityOverrides` has been removed
 from `.prism/rules.json`; `focus` and the four required checks are untouched.
@@ -459,6 +471,61 @@ ground for *"this finding is pointed at the wrong place"*, and no ground for
   dispositionable on that ground, distinctly from `rebutted`. Without it, three
   of seven verified-correct findings block a merge with no exit but a human
   round-extension, which is the failure this task exists to remove.
+
+## Provider switch, 2026-08-24 — and why it does not close criterion 6
+
+The prism patches have been retired. `~/repos/ai/prism/prism` is the stock
+binary again (it rejects `chunkMaxBytes`), and both providers moved off the
+Kimi reasoning models, which is what the patches' `MaxTokens` and timeout fixes
+existed to accommodate.
+
+Moonshot lists no non-reasoning model — `kimi-k2.6` (HTTP 400),
+`kimi-k2.7-code`, `kimi-k2.7-code-highspeed`, `kimi-k3`. DeepInfra does.
+Probed at `max_tokens: 8192`, stock prism's hardcoded cap, on a 5 KB diff:
+
+```
+Qwen/Qwen3-Coder-480B-A35B-Instruct-Turbo   3.9s  finish=stop  content=188  reasoning=0
+Qwen/Qwen3-235B-A22B-Instruct-2507          9.7s  finish=stop  content=253  reasoning=0
+Qwen/Qwen3-Next-80B-A3B-Instruct            0.6s  finish=stop  content=146  reasoning=0
+kimi-k2.7-code                                 —  finish=length content=  0  reasoning=9060
+```
+
+Both `~/.prism/.env` and `~/.gito/.env` now point at
+`Qwen/Qwen3-Coder-480B-A35B-Instruct-Turbo` on DeepInfra. gito's
+`MAX_CONCURRENT_TASKS` went from 4 to 12 — gito issues one request per changed
+file and its own default is 40, so 4 was running a 23-file branch as six serial
+waves. gito on a one-commit range now completes in 12.8s; on Kimi it hit the
+600s timeout.
+
+### The gate converges, and that is not good news
+
+Full replay, stock binary, chunked provider, no `severityOverrides`:
+
+| provider | findings | high | advisory | outstanding | gate |
+| --- | --- | --- | --- | --- | --- |
+| anthropic `claude-sonnet-4-6` | 37 | 7 | 30 | 7 | blocked |
+| deepinfra `Qwen3-Coder-480B` | 35 | **0** | 35 | 0 | **eligible** |
+
+19.2s, all nine chunks clean. The receipt reaches `eligible` with no
+disposition, no round-extension, and no human decision — which is literally
+what the final acceptance criterion asks for.
+
+**It should not be counted.** Qwen rated nothing `high` at all. The gate did not
+converge because the ceiling correctly released observations; it converged
+because the provider never engages the floor. A model that never says `high`
+turns a severity ceiling into a rubber stamp, and criterion 3 — a `high`
+correctness finding must still block — would pass upstream on a fixture while
+being unreachable in practice here.
+
+The two providers also barely agree: **4 of roughly 34 finding locations
+overlap**, and where anthropic raised three `high` security findings — including
+`GITHUB__USER_TOKEN` being handed to a third-party container — Qwen raised one,
+at `medium`. That is this task's non-convergence thesis appearing on a third
+axis: not just across rounds and across heads, but across providers on an
+identical diff.
+
+So criterion 6 stays unmet. Convergence that depends on which model is
+configured is not the property this task is asking for.
 
 ## Notes
 
