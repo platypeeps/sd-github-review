@@ -117,13 +117,19 @@ bind. This is a grant that does not grant anything needed.
 
 ## Acceptance criteria
 
-- [ ] No shipped lane grants `issues: write`, verified by a repo-wide sweep that
+- [x] No shipped lane grants `issues: write`, verified by a repo-wide sweep that
       enumerates lanes from disk.
-- [ ] A gate fails when a lane requests a permission the descriptor omits, and
+      `grep -rn 'issues: *write' examples/ .github/workflows/` returns only
+      explanatory comments, no grant lines (2026-08-23).
+- [x] A gate fails when a lane requests a permission the descriptor omits, and
       when the descriptor declares one no lane requests. Proven by mutation in
       both directions.
-- [ ] `SETUP-PR-AGENT.md` and `DESIGN.md` no longer claim `issues: write` is
+      `npm test` 751 pass / 0 fail; `npm run validate:metadata` validated
+      action.yml, 3 workflows, 7 examples, 1160 tracked public paths.
+- [x] `SETUP-PR-AGENT.md` and `DESIGN.md` no longer claim `issues: write` is
       needed for the comment channel, and cite what actually covers it.
+      `SETUP-PR-AGENT.md:342` now reads "**not** required and should not be"
+      selected.
 - [ ] A live run on the durable lane at `cheap` or `deep` confirms PR-Agent
       still publishes with the reduced grant. **This one requires the
       credentialed pilot and the owner's approval under
@@ -131,7 +137,15 @@ bind. This is a grant that does not grant anything needed.
       *permission* question; it does not prove PR-Agent's own behaviour end to
       end. If approval is withheld, this criterion is recorded unmet rather
       than quietly satisfied by the probe.
-- [ ] The fleet carries the reduced grant, verified from each default branch.
+      **UNMET.** Approval was never given, so Phase 5 never opened. Carried
+      forward parked to
+      `.trellis/tasks/08-23-pr-agent-reduced-grant-live-confirmation/`, whose
+      unpark trigger is any consumer moving off `copilot`. Not waived, not
+      satisfied by the probes.
+- [x] The fleet carries the reduced grant, verified from each default branch.
+      9 of 9 at pin `6ba1eff` with zero `issues: write`, enumerated from each
+      default branch's `.github/workflows/sd-review.yml` on 2026-08-24. Table
+      in `implement.md` Phase 6.
 
 ## Out of scope
 

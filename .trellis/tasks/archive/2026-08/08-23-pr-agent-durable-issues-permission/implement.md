@@ -102,6 +102,14 @@ Patch, not minor: no contract, schema, or input changes. Follow
 
 ## Phase 5 — the credentialed confirmation, if approved
 
+**Closed 2026-08-23 as handed off, not done.** Owner approval was never given,
+so the phase never opened, and this task is being archived rather than held
+open waiting for a decision that has no forcing date. The five items below are
+carried verbatim into
+`.trellis/tasks/08-23-pr-agent-reduced-grant-live-confirmation/`, parked, with
+the unpark trigger stated there: **any consumer moving off `copilot`**. They
+are left unticked here because they were not done.
+
 **Status as of 2026-08-23: not started. Owner approval has not been given, so
 the phase never opened.** Phase 6 proceeded without it, which this phase's own
 text authorizes: the fleet is installed `REVIEW_ROUTE_MODE=copilot` with
