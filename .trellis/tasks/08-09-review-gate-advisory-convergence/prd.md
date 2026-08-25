@@ -699,3 +699,68 @@ is meant to remove.
       miscitation, so the release cannot be confused with the gate being weak.
       Severity and miscitation are separate axes — `test_one_advisory_finding_does_not_release_a_blocking_sibling`
       shows the ceiling is per-finding, not a whole-receipt verdict.
+
+## 2026-08-25 — the binary claim above is out of date, and criterion 6 is parked
+
+Two things changed after the provider-switch section was written, and one of
+them makes a statement in it false as of today.
+
+### The patches are back, from a fork
+
+"The prism patches have been retired. `~/repos/ai/prism/prism` is the stock
+binary again (it rejects `chunkMaxBytes`)" was true on 2026-08-24 and is not
+true now. The work was rebuilt on a personal fork, `sdelmas/prism`, whose `main`
+carries both fix branches as merge commits, and `~/bin/common/prism` resolves to
+a binary built from it. Nothing in this repository or the other eight consumers
+selects that build by configuration — the pack and the chunked provider both
+invoke the bare string `prism`, and the wrapper on `PATH` is the only one. The
+fleet runs the fork because there is nothing else to run, which is worth stating
+plainly: it is not a setting anyone can check, so it is also not a setting
+anyone can get wrong.
+
+No change goes to `dshills/prism`; the `upstream` push URL is `DISABLED` by
+owner directive.
+
+### A fifth defect, and why the chunked provider stays
+
+`scripts/prism-chunked-review.py` justified itself by two stock-prism defects —
+the unreachable chunker and `.prism/rules.json` never loading. Both are fixed in
+the fork, so read literally the script argued for its own deletion. Measuring
+before deleting found a third defect that the script never named and that keeps
+it load-bearing: `NeedsChunking` gates on its own `ChunkThreshold` constant of
+100 KB rather than on `ChunkMaxBytes`, so a delta below 100 KB never reaches
+`SplitIntoChunks` at all and the configured 20 KB chunk size is simply not
+consulted.
+
+A/B on this repository's own delta, same binary, `main..HEAD`, 47,563 bytes
+across 8 files:
+
+| path | findings | severity | wall clock |
+| --- | --- | --- | --- |
+| plain `prism review range` | 15 | 1 high, 6 medium, 8 low | 81.7s |
+| `prism-chunked-review.py` | 19 | 8 medium, 11 low | 51.9s, 3 chunks |
+
+The band that matters — larger than one good prompt, smaller than prism's
+chunking gate — is where ordinary branches live. Recorded in the script's
+docstring so the next reader does not repeat the deletion attempt.
+
+This is a fourth axis for the non-convergence thesis, and the sharpest one yet:
+the same provider, the same model, the same diff and the same binary produce
+different finding sets depending only on how the diff was cut. Convergence that
+depends on chunk boundaries is no more the property this task wants than
+convergence that depends on which model is configured.
+
+### Criterion 6 cannot close here — parking
+
+The remaining criterion needs a disposition ground for "this finding is right,
+and the answer is still no". The vocabulary has `rebutted` and `miscited`;
+neither fits a finding that is true, understood, and deliberately accepted. That
+ground is pack-owned, and it is filed as sd-ai-command-pack task
+`08-24-accepted-finding-disposition-ground`, whose own final criterion is this
+replay reaching `eligible`.
+
+Waiting is the correct state, but leaving the task `in_progress` misreports it
+as work in flight. Parked against that dependency, on the same convention the
+2026-08-09 and 2026-08-15 parks used. It resumes when the pack ships the ground
+— not on a pack refresh, which is the mistake the 2026-08-24 note already
+records for requirement 3.
