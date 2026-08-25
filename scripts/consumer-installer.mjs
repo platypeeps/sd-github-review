@@ -252,7 +252,6 @@ async function installOrUpdate(command, options, dependencies) {
   const sourceRoot = dependencies.sourceRoot ?? path.resolve(import.meta.dirname, "..");
   const sources = await readManagedSources(sourceRoot);
   const templateSource = sources.workflow;
-  const templateSha = sha256(templateSource);
   const version = await readSourceVersion(sourceRoot);
   const release = resolveSourceRelease({
     sourceRoot,
