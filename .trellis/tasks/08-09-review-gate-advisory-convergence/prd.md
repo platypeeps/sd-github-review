@@ -1,9 +1,17 @@
 # Local review gate cannot converge under advisory-mode prism findings
 
-## STILL BLOCKED — but on half of what it was
+## The gate shipped; the replay that would prove it is blocked elsewhere
 
-**Re-checked 2026-08-24. Nothing has moved since 2026-08-20, and the evidence
-below says why no future pack refresh alone will move it either.**
+**Rewritten 2026-08-24, replacing a header that said "STILL BLOCKED ... no
+future pack refresh alone will move it".** A pack refresh did move it. The
+missing requirement 3 — severity usable in the gate decision — shipped upstream
+in 0.71.47 (PR #536), is adopted here at `medium`, and five of the six
+acceptance criteria are now met with test evidence.
+
+The sixth, replaying PR #70, is **unmet and was attempted**. It is blocked on
+provider tooling — prism returns clean without reviewing any range, and the
+Kimi code models spend their whole output budget on reasoning — not on the gate
+this task is about. Full measurements in "Replay" below.
 
 The header this replaces was written 2026-08-09 and quoted a gate that no longer
 exists. Requirements 1, 2 and 4 have since been met upstream; **requirement 3 —
@@ -167,16 +175,421 @@ The available exits are all wrong:
 
 ## Acceptance criteria
 
-- [ ] A finding verified and refuted against the checkout can be dispositioned through a
+**Reconciled 2026-08-24 against sd-ai-command-pack 0.71.47 (PR #536, merged
+`7b5262f3`), which is where the gate this task was parked on actually lives.**
+Five of six are met with test evidence upstream. The sixth is the replay, and it
+is recorded **unmet** — not inferred from the five that pass.
+
+- [x] A finding verified and refuted against the checkout can be dispositioned through a
       documented `sd-review` control, with the reason recorded in the receipt.
-- [ ] The typed result distinguishes "no findings" from "findings dispositioned", and
+      — `--local-disposition '<id>=rebutted'`; the pack's review-stage test
+      module, `test_rebutted_local_finding_clears_the_gate_but_stays_visible`.
+- [x] The typed result distinguishes "no findings" from "findings dispositioned", and
       `remoteGate` reflects the difference.
-- [ ] A synthetic `high correctness` finding still blocks with no disposition supplied — asserted
+      — `_remote_gate` reports `local-stage-terminal`, `local-findings-dispositioned`
+      and `local-advisory-released`, strongest claim first; asserted by
+      `test_disposition_reason_outranks_advisory_release`.
+- [x] A synthetic `high correctness` finding still blocks with no disposition supplied — asserted
       by a test, not by inspection.
-- [ ] `sd-review`'s public control list documents whatever control this adds, and documents
+      — `test_advisory_ceiling_does_not_release_a_high_finding`, plus
+      `test_advisory_predicate_keeps_a_floor_a_wider_vocabulary_cannot_lower`
+      which pins the floor directly, since at the permitted ceilings the
+      end-to-end test passes even with the floor deleted.
+- [x] `sd-review`'s public control list documents whatever control this adds, and documents
       `--attempt-id`, which exists in the CLI but not in the skill.
+      — both corrected in `templates/.agents/skills/sd-review/SKILL.md` in PR #536.
 - [ ] The three-round PR #70 sequence, replayed against the new gate, terminates without a
       human round-extension decision.
+      — **UNMET, and now for a precise reason. Replayed twice on 2026-08-24.**
+      The ceiling works: 30 of 37 findings released as advisory once
+      `severityOverrides` stopped overwriting severity with a category lookup.
+      All seven survivors were verified against the checkout and **none is a
+      defect in the change**; four were dispositioned as `rebutted` or
+      `miscited`, leaving `outstanding: 3` and `remoteGate: blocked`. The three
+      are accurate and deliberate, so no existing ground fits them. See "Second
+      replay" below and the additional requirement it records.
+      **Filed upstream 2026-08-24** as sd-ai-command-pack task
+      `08-24-accepted-finding-disposition-ground`, whose final acceptance
+      criterion is this replay reaching `eligible`. This criterion cannot close
+      here: the ground it needs is pack-owned.
+
+## Replay, 2026-08-24 — run, and the four provider defects it exposed
+
+**The replay ran.** The ceiling releases, the floor holds, and the receipt says
+so. What it took to get there was four fixes in `prism`, none of them in this
+repository or in the pack.
+
+Replay target, reconstructed rather than assumed: PR #70's merge commit is
+`9a6cdb99`, whose parents give base `c3ec5f64` and head `2880186`. That range is
+23 files and 1407 insertions, and the historical `.prism/rules.json` at that head
+is **byte-identical** to today's, so the severity mapping under test is the one
+the original rounds ran under.
+
+`.sd-ai-command-pack/review.json` sets `policy.localAdvisorySeverityCeiling:
+"medium"`, and the plan carries it: `localAdvisorySeverityCeiling: "medium"` with
+`policyDigest: b8c4553b…`. So the ceiling reaches receipt identity.
+
+### What the gate did, on real findings
+
+Two runs against the same range, `--local-policy optional --fix none --no-reuse`:
+
+| run | provider | findings | advisory | outstanding | `remoteGate` |
+| --- | --- | --- | --- | --- | --- |
+| `replay-fixed-r1` | gito | 5 (1 low, 2 medium, 2 high) | 3 | 2 | `blocked` / `actionable-local-findings` |
+| `replay-fixed-r2` | prism | 35 (2 low, 28 medium, 5 high) | 30 | 5 | `blocked` / `actionable-local-findings` |
+
+Both times the outstanding count is exactly the set of `high` findings and
+nothing else. The ceiling released every `low` and `medium` without a hand
+disposition of any of them; the `high` ones still block. That is the mechanism
+this task asked for, observed end to end on provider output rather than on a
+synthetic fixture. prism exited 0 in 84.8s.
+
+### Correction: prism was not returning clean without reviewing
+
+An earlier revision of this section, and commit `1a9335a` which carried it,
+recorded **"prism's range and commit modes return clean without reviewing"** as
+cause 3 and called it the blocker. That characterization is wrong and is
+withdrawn.
+
+A logging HTTP proxy in front of the provider captured what prism actually sent:
+one well-formed request carrying the entire 110054-character diff. Replaying that
+exact prompt by hand returned `[]` — 2 characters of text, 4 output tokens, 3.2
+seconds. prism transmitted correctly and reported what it received. **The model
+returned an empty array on a whole-diff prompt.** The same prompt shape over a
+single 14 KB file returned 8 findings.
+
+So the observable — `Findings: 0` in about 2 seconds — was real, and the
+mechanism behind it was not the one recorded. It was the whole-diff prompt
+degenerating, which is downstream of the first defect below.
+
+### The four defects, all silent
+
+Each one leaves the review exiting zero with a finding count printed, so nothing
+tells the caller what was skipped. Fixed in `~/repos/ai/prism` on
+`fix/chunking-rules-maxtokens`, commit `1bad8d6`; `go test ./...` passes.
+
+1. **Chunking could never split.** `reviewPipeline` passed `cfg.MaxDiffBytes` to
+   `SplitIntoChunks`, but `MaxDiffBytes` has already truncated the diff by the
+   time chunking runs, so `maxBytes >= len(diff)` by construction and every diff
+   became exactly one chunk. `SplitIntoChunks` was unreachable in practice. Chunk
+   size is now its own setting, `chunkMaxBytes`, default 20000. On this range: 1
+   request before, 7 after. This is what was producing the degenerate `[]`.
+2. **`.prism/rules.json` was never loaded.** `LoadRules("")` returned nil and
+   nothing defaulted the path, so the repository's `focus` categories,
+   `severityOverrides` and `review-recurrence-prevention` required rule reached
+   the model only when a caller passed `--rules` explicitly. **The pack never
+   does** — there is no `rules` reference anywhere in
+   `templates/scripts/sd-ai-command-pack-review-local.py`. So this repository's
+   entire review policy has been inert for every pack-driven prism review, here
+   and in every other consumer, for as long as the thin install has existed.
+   `LoadRules` now falls back to `.prism/rules.json` when it exists.
+
+   This also withdraws the rationale in commit `bc793bb`, which justified the
+   `medium` ceiling by "this repository's own `.prism/rules.json`
+   `severityOverrides`". Those overrides had never been applied to anything. The
+   ceiling choice stands on its own — `high` is not a permitted ceiling value, so
+   `medium` is the widest release the pack allows — and the overrides only start
+   mattering now that the rules load.
+3. **`MaxTokens` was hardcoded to 8192** at five call sites. Reasoning models
+   spend the budget thinking before answering, so an exhausted budget yields an
+   empty completion rather than a short one. Measured directly against Moonshot
+   on a 40 KB slice of this diff:
+
+   ```
+   kimi-k2.7-code            finish_reason: length  content_len: 0  reasoning_len: 9060
+   kimi-k2.7-code-highspeed  finish_reason: length  content_len: 0  reasoning_len: 9316
+   ```
+
+   Zero answer, all thinking — the whole of `empty text content in API
+   response`. At `max_tokens: 16000` the highspeed model finishes with
+   `finish_reason: stop`. Now `cfg.MaxTokens`, default 8192.
+4. **Provider HTTP timeouts were hardcoded.** Same root cause: with a reasoning
+   model the answer arrives in one late burst after thinking completes, so a
+   fixed 120s deadline expires on a request that is still healthy — `context
+   deadline exceeded ... awaiting headers`. Overridable with
+   `PRISM_REQUEST_TIMEOUT_SECONDS`; per-provider defaults unchanged.
+
+Also added: a stderr warning when `--max-diff-bytes` truncates. The existing
+marker is in-band and addressed to the model; a caller reading `Findings: 0` had
+no way to tell a clean review from one that never saw most of the change.
+
+### Two more, outside prism
+
+**`GITO_ENV_FILE` does not redirect gito's model.** The wrapper sources the
+override, but gito re-reads `~/.gito/.env` itself with `load_dotenv(override=True)`,
+so the real file wins. The first replay's own log proves it: `Can't resolve
+tiktoken encoding for 'kimi-k2.7-code'` while the override said
+`kimi-k2.7-code-highspeed`. Changing gito's model required editing
+`~/.gito/.env` directly, which is what unblocked the gito run above.
+
+**The receipt's per-finding `disposition` does not record the ceiling.**
+`_disposition_counts` counts advisory findings but never writes back, so
+`receipt.disposition.advisory` reads 30 while all 35 entries in
+`receipt.findings[]` still carry `"disposition": "outstanding"`. A consumer
+filtering per-finding gets the pre-ceiling answer and disagrees with the
+aggregate the gate actually used. Upstream follow-up, recorded alongside 4b.3 and
+4b.4 in `08-24-local-gate-advisory-severity/implement.md`.
+
+### What this establishes, and what it does not
+
+Established: the ceiling is adopted, reaches the plan, changes the policy digest,
+and releases sub-ceiling findings from real provider output while `high` findings
+still block. Criterion 3's floor holds on live data, not only on the fixture.
+
+Not established, and the reason criterion 6 stays unmet: the replay **blocks**.
+Five `high` prism findings and two `high` gito findings are outstanding, so a
+caller reaching this point still needs either a disposition per finding or a
+human `review.round-extension` — the same exit the original three rounds needed.
+Whether those `high` findings are real defects has not been checked against the
+checkout, and until it is, "the gate blocks correctly" and "the gate cannot
+terminate" are indistinguishable from the receipt alone.
+
+Nor is this a faithful replay of the 2026-08-09 sequence. Defect 2 means the
+original three rounds ran with **no rules loaded at all**, and defect 1 means they
+ran as a single whole-diff prompt. Today's run loads the rules and sends seven
+chunks, which is why it produces 35 findings where round 1 produced 9. The gate
+under test is the new one; the provider under it is also new. The convergence
+question — does round 2 share findings with round 1 — needs a second round at a
+new head to answer, and has not been run.
+
+## Second replay, 2026-08-24 — the workaround, the severity measurement, and the answer
+
+Everything below ran against PR #70's range (`c3ec5f64...2880186`) with
+`PRISM_BIN` pointed at the **unpatched** prism binary — confirmed stock by its
+rejection of `chunkMaxBytes` — so none of it depends on the patches in
+`~/repos/ai/prism`.
+
+### The provider defects have a repo-side workaround
+
+`scripts/prism-chunked-review.py` does the chunking on the caller's side and
+passes `--rules`, wired in through the pack's own `argv` adapter in
+`.sd-ai-command-pack/review.json` — the one path `pack.install-audit` allows. No
+pack change, no patched binary:
+
+```
+prism-chunked: 23 files, 147018 diff bytes, 9 chunks of at most 20000
+exit 0, 56.0s, 37 findings
+```
+
+One chunk before, nine after.
+
+**Correction, 2026-08-24.** This section previously claimed the rules reached
+the model, on the grounds that all 37 findings carried categories drawn from
+`focus` and nothing outside it. That is not evidence of anything.
+`internal/review/prompt.go:28` hardcodes the identical eight categories into
+every prompt prism builds — `bug, security, performance, correctness, style,
+maintainability, testing, docs` — and this repository's `focus` array is that
+same list. Every finding prism has ever produced satisfies the test, rules file
+or no rules file. `BuildRulesPromptSection` (`internal/review/rules.go:52`) does
+render `focus` and `required` into the prompt when a rules file loads, so the
+plumbing exists; what is missing is any observation that distinguishes the two
+cases. The chunking numbers above are unaffected — those come from the
+provider's own diagnostic line, not from the finding set.
+
+Two of the four defects have no workaround. An earlier run of the same provider
+against Moonshot lost 6 of 9 chunks to prism's hardcoded 120s client deadline
+and came back `unavailable` with 3 findings. Neither that nor the hardcoded
+`MaxTokens: 8192` is reachable from the caller — both are avoided by provider
+choice, not fixed. **The workaround is the argv provider plus a non-reasoning
+provider; the argv provider alone is not sufficient.**
+
+### `severityOverrides` was destroying the axis this task depends on
+
+Requirement 3 asks for severity or category to be usable in the gate decision.
+Measured, they were the same axis, and the configured one could not release
+anything.
+
+**Corrected 2026-08-24, same day.** This was first written as "two runs
+identical but for the rules file", which is wrong about the mechanism. The
+second run completed in 0.6s — a prism cache replay, not nine fresh model
+calls — and the severities differ because `ApplySeverityOverrides`
+(`internal/review/rules.go:82`, applied at `engine.go:166` and `:396`) is a
+**client-side post-process** that rewrites each finding's severity from its
+category *after* the model answers. The cache key does not include the rules
+file, which is why the replay hit at all.
+
+That makes the conclusion stronger, not weaker: severity under this rules file
+was not merely *observed* to equal category, it is a deterministic overwrite in
+code. The rules text also asks the model for the same mapping
+(`BuildRulesPromptSection`), but the model's own rating never survives the
+overwrite. The counts below are one model run with the rewrite applied and not
+applied:
+
+| | high | medium | low | advisory | outstanding |
+| --- | --- | --- | --- | --- | --- |
+| with `severityOverrides` | 19 | 15 | 3 | 18 | 19 |
+| without | 7 | 25 | 5 | 30 | 7 |
+
+With the map, `high` was exactly `correctness 14 + security 3 + bug 2 = 19`, and
+advisory was exactly `docs 4 + maintainability 7 + testing 4 + style 3 = 18`.
+Both sides exact. Severity carried no per-finding information at all — it was a
+lookup on category, and `.prism/rules.json` pinned `bug`, `correctness` and
+`security` to `high` regardless of what the finding said. A `medium` ceiling
+under that map is not a severity ceiling; it is a category filter that can never
+release a `correctness` observation however trivial.
+
+Removing the map, the model's own rating survives, severity varies within
+categories, and the ceiling releases 30 of 37. This is the opposite of the "narrowing the rules would suppress signal"
+note recorded further down: the map was not adding signal, it was overwriting
+the model's own judgement with a constant. `severityOverrides` has been removed
+from `.prism/rules.json`; `focus` and the four required checks are untouched.
+
+### The seven survivors, verified against the checkout
+
+Every remaining `high` finding was read against its cited path and line at
+`2880186`. **None is a defect in the change.**
+
+| citation | verdict |
+| --- | --- |
+| `examples/sd-review.yml:70` — token grants write to a third-party container | accurate, and deliberate; :67-69 is an inline comment explaining the isolation |
+| `examples/sd-review.yml:109` — empty API key vars for non-selected providers | accurate, trivial impact |
+| `examples/sd-review.yml:148` — image digest may not match | **refuted** — pinned `@sha256:cae31b…`; a digest pin *is* the identity |
+| `scripts/consumer-installer.mjs:185` — `JSON.stringify` key-order sensitivity | accurate mechanism; consequence is one redundant idempotent rewrite. Cited :185, code is :182 |
+| `scripts/consumer-installer.mjs:232` — manifest mutated via spread | **refuted** — `{...pendingManifest}` builds a new object, and `createManifest` fully resolves at :220-226. Cited :232, code is :228 |
+| `scripts/consumer-installer.mjs:252` — partial write corrupts state | **refuted** — the pending→active protocol *is* the recovery mechanism |
+| `test/installer-modules.test.js:192` — name-extraction regex | **miscited** — the regex is at :211-212; :192 is `early.descriptor = {...}` |
+
+The third refutation is the important one. That exact claim was raised and
+refuted on 2026-08-09 — it is quoted in the "Observed on PR #70" section above as
+one of the two that "claimed a real defect were refuted by the code". Fifteen
+days and a different provider configuration later it came back verbatim. **A
+rebuttal at one head does not survive to the next run.** That is the PRD's
+"necessary but not sufficient" thesis, measured rather than reasoned.
+
+### Applying the dispositions: the gate still does not converge
+
+Four of the seven are dispositionable with today's vocabulary — three `rebutted`
+and one `miscited`. Applied against the same receipt (`run: reused`, no provider
+re-invocation):
+
+```
+"advisory": 30, "dispositioned": 4, "outstanding": 3
+remoteGate: {"state": "blocked", "reason": "actionable-local-findings"}
+```
+
+**Three findings block, and none of them can be dispositioned without lying.**
+`sd-review.yml:70` is *true*: the token does grant write access to a third-party
+container. It is a deliberate, documented decision — the surrounding comment
+narrows the grant specifically so the container cannot write durable receipts.
+Calling that `rebutted` would be exactly the false classification claim
+requirement 1 forbids. The same applies to `:109` and to the `JSON.stringify`
+observation: accurate, understood, and not worth a code change.
+
+So the remaining gap is not severity, and not miscitation. Both of those now
+work. It is that the vocabulary has a ground for *"this finding is wrong"* and a
+ground for *"this finding is pointed at the wrong place"*, and no ground for
+**"this finding is right, and the answer is still no."**
+
+### Additional requirement, measured 2026-08-24
+
+- An accurate finding that the repository accepts — a deliberate design
+  decision, or an observation whose consequence is not worth a change — must be
+  dispositionable on that ground, distinctly from `rebutted`. Without it, three
+  of seven verified-correct findings block a merge with no exit but a human
+  round-extension, which is the failure this task exists to remove.
+
+## Provider switch, 2026-08-24 — and why it does not close criterion 6
+
+The prism patches have been retired. `~/repos/ai/prism/prism` is the stock
+binary again (it rejects `chunkMaxBytes`), and both providers moved off the
+Kimi reasoning models, which is what the patches' `MaxTokens` and timeout fixes
+existed to accommodate.
+
+Moonshot lists no non-reasoning model — `kimi-k2.6` (HTTP 400),
+`kimi-k2.7-code`, `kimi-k2.7-code-highspeed`, `kimi-k3`. DeepInfra does.
+Probed at `max_tokens: 8192`, stock prism's hardcoded cap, on a 5 KB diff:
+
+```
+Qwen/Qwen3-Coder-480B-A35B-Instruct-Turbo   3.9s  finish=stop  content=188  reasoning=0
+Qwen/Qwen3-235B-A22B-Instruct-2507          9.7s  finish=stop  content=253  reasoning=0
+Qwen/Qwen3-Next-80B-A3B-Instruct            0.6s  finish=stop  content=146  reasoning=0
+kimi-k2.7-code                                 —  finish=length content=  0  reasoning=9060
+```
+
+Both `~/.prism/.env` and `~/.gito/.env` now point at
+`Qwen/Qwen3-Coder-480B-A35B-Instruct-Turbo` on DeepInfra. gito's
+`MAX_CONCURRENT_TASKS` went from 4 to 12 — gito issues one request per changed
+file and its own default is 40, so 4 was running a 23-file branch as six serial
+waves. gito on a one-commit range now completes in 12.8s; on Kimi it hit the
+600s timeout.
+
+### The gate converges, and that is not good news
+
+Full replay, stock binary, chunked provider, no `severityOverrides`:
+
+| provider | findings | high | advisory | outstanding | gate |
+| --- | --- | --- | --- | --- | --- |
+| anthropic `claude-sonnet-4-6` | 37 | 7 | 30 | 7 | blocked |
+| deepinfra `Qwen3-Coder-480B` | 35 | **0** | 35 | 0 | **eligible** |
+
+19.2s, all nine chunks clean. The receipt reaches `eligible` with no
+disposition, no round-extension, and no human decision — which is literally
+what the final acceptance criterion asks for.
+
+**It should not be counted.** Qwen rated nothing `high` at all. The gate did not
+converge because the ceiling correctly released observations; it converged
+because the provider never engages the floor. A model that never says `high`
+turns a severity ceiling into a rubber stamp, and criterion 3 — a `high`
+correctness finding must still block — would pass upstream on a fixture while
+being unreachable in practice here.
+
+The two providers also barely agree: **4 of roughly 34 finding locations
+overlap**, and where anthropic raised three `high` security findings — including
+`GITHUB__USER_TOKEN` being handed to a third-party container — Qwen raised one,
+at `medium`. That is this task's non-convergence thesis appearing on a third
+axis: not just across rounds and across heads, but across providers on an
+identical diff.
+
+So criterion 6 stays unmet. Convergence that depends on which model is
+configured is not the property this task is asking for.
+
+### Settled configuration: `anthropic/claude-sonnet-4.6` via OpenRouter
+
+Qwen was replaced after benchmarking eight non-reasoning models on one 8 KB diff
+at `max_tokens: 8192`, scoring the two things the Qwen run failed — does the
+model rate anything `high`, and does it catch `GITHUB__USER_TOKEN` reaching a
+third-party container:
+
+```
+anthropic/claude-sonnet-4.6   $3.00/$15.00   ~6s    high=2,2     caught 1 of 2
+qwen/qwen3-coder-plus         $0.65/$3.25    2.7s   high=1,1,1   caught 3 of 3
+amazon/nova-pro-v1            $0.80/$3.20    1.2s   high=1       missed
+openai/gpt-4.1                $2.00/$8.00    2.8s   high=0       missed
+moonshotai/kimi-k2-0905       $0.60/$2.50    6-15s  high=0       caught
+mistralai/mistral-medium-3.1  $0.40/$2.00    4.3s   high=0       caught
+qwen/qwen3-max                $0.78/$3.90    2.6s   high=0       missed
+Qwen3-Coder-480B (previous)   $0.30/$1.00    2.4s   high=0       caught
+```
+
+Zero-`high` is a model property, not an artifact of the prompt: sonnet returns
+two `high` findings on the identical prompt where six others return none. Cost
+is not the deciding factor at this volume — a full 147 KB branch review is about
+40k input and 5k output tokens, roughly $0.20 on sonnet against $0.04 on the
+cheapest option. Sonnet is reasoning-capable but does not reason unless asked;
+both probes returned `finish_reason: stop` with zero reasoning tokens, so it
+stays inside stock prism's hardcoded 8192-token cap.
+
+Full replay on the stock binary, nine chunks, 50.2s, exit 0:
+
+```
+27 findings -> 16 low, 9 medium, 2 high
+advisory 25, outstanding 2, remoteGate blocked / actionable-local-findings
+```
+
+Both `high` findings are security, and both follow the pattern already
+established. `examples/sd-review.yml:115` — "all provider API keys injected
+unconditionally" — is accurate in form and trivial in impact: the env vars are
+always present, with `|| ''` supplying empty values for non-selected providers.
+`examples/sd-review.yml:152` — "pinned by digest but image name uses mutable tag
+pattern" — is **refuted**: the line reads `pragent/pr-agent@sha256:cae31b…` and
+carries no tag at all.
+
+**This is the cleaner statement of the same result.** With a provider that does
+engage the floor, the gate blocks — and the findings it blocks on are, once
+verified, one trivially-accurate observation and one false claim. Neither is a
+defect in the change. So the gap is not provider calibration and not the
+ceiling: it is still the missing disposition ground recorded above. Two capable
+providers, two different finding sets, same structural outcome.
 
 ## Notes
 
@@ -274,8 +687,15 @@ is meant to remove.
 
 ### Additional acceptance criterion
 
-- [ ] A finding whose cited path and line do not contain the described code can
+- [x] A finding whose cited path and line do not contain the described code can
       be dispositioned on that ground specifically, distinctly from a finding
       that is real but low-severity — asserted by a test that supplies a `high`
       severity finding with a bad citation and shows it does not block, while a
       `high` finding with a good citation still does.
+      — `--local-disposition '<id>=miscited@<path>:<line>'`, a ground distinct
+      from `rebutted`. Both halves are in one test in the pack's review-stage
+      test module, `test_miscited_releases_a_high_finding_that_otherwise_blocks`:
+      the same `high` finding blocks with no disposition and clears with the
+      miscitation, so the release cannot be confused with the gate being weak.
+      Severity and miscitation are separate axes — `test_one_advisory_finding_does_not_release_a_blocking_sibling`
+      shows the ceiling is per-finding, not a whole-receipt verdict.
