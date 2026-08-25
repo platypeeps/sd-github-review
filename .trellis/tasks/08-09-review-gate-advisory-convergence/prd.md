@@ -210,8 +210,9 @@ is recorded **unmet** — not inferred from the five that pass.
       replay" below and the additional requirement it records.
       **Filed upstream 2026-08-24** as sd-ai-command-pack task
       `08-24-accepted-finding-disposition-ground`, whose final acceptance
-      criterion is this replay reaching `eligible`. This criterion cannot close
-      here: the ground it needs is pack-owned.
+      criterion is this replay reaching `eligible`. The ground shipped in pack
+      **0.71.51**; what closes this criterion is restated structurally in the
+      2026-08-25 section "What closing criterion 6 actually requires".
 
 ## Replay, 2026-08-24 — run, and the four provider defects it exposed
 
@@ -764,3 +765,57 @@ as work in flight. Parked against that dependency, on the same convention the
 2026-08-09 and 2026-08-15 parks used. It resumes when the pack ships the ground
 — not on a pack refresh, which is the mistake the 2026-08-24 note already
 records for requirement 3.
+
+## 2026-08-25 — the ground shipped, and what closing criterion 6 requires
+
+`accepted` shipped in sd-ai-command-pack **0.71.51** (PR #541). The vocabulary
+is now `rebutted`, `miscited`, `accepted`, in both the stage and the controller,
+and a receipt carrying an accepted finding reaches `remoteGate: eligible` with
+`reason: local-findings-accepted` — a fourth gate reason, distinct from
+`local-findings-dispositioned`, so a waiver is legible as a waiver in the
+receipt rather than being folded in with rebuttals. The dependency this task was
+parked against is discharged.
+
+### What closing criterion 6 actually requires
+
+The criterion has been carried alongside one run's arithmetic — `advisory: 30,
+dispositioned: 4, outstanding: 3` — and those numbers are not a target. The
+replay history in this file records **37**, **35**, and **27** findings across
+three runs, differing by provider, by model, and (per the fourth axis above) by
+chunk boundary alone. A criterion stated in counts cannot be met except by
+coincidence, and a near miss can always be argued into a pass. That is the
+failure mode this restatement exists to remove.
+
+Criterion 6 closes when, in a single replay of the PR #70 sequence:
+
+1. Every finding the gate treats as blocking is verified against the checkout,
+   individually, with the verification recorded.
+2. Each is dispositioned on the ground that matches what verification found —
+   `rebutted` where the finding is wrong, `miscited` where it points at the
+   wrong place, `accepted` where it is right and the answer is deliberately
+   still no, each `accepted` carrying its reason.
+3. The gate reports `remoteGate.state == "eligible"`. Where any finding was
+   accepted, `remoteGate.reason == "local-findings-accepted"`.
+4. No human round-extension decision is spent.
+
+No finding count appears in that list, because no finding count is the property
+under test. What is under test is that the vocabulary can express the true
+disposition of every blocking finding a real replay produces.
+
+### The failure condition, named before the run
+
+If verification finds that a blocking finding is a **genuine defect in the
+change**, `accepted` is the wrong disposition and the correct action is to fix
+the code. The ground existing does not make that outcome a pass, and reaching
+`eligible` by accepting a real defect is the specific abuse this criterion must
+not reward. Record it as a failed replay and fix the finding.
+
+### Cost, stated because it is not free
+
+The replay is a live paid provider run against `sdelmas/prism`. The A/B above
+puts a pass in the 52–82s band, though that was measured on this repository's
+own delta rather than on PR #70's larger range, so treat it as an order of
+magnitude and not a budget. There is no stored receipt to redispose: each
+attempt is a new call producing a new finding set.
+That is a reason to state the criterion structurally before spending one, not a
+reason to defer it.
