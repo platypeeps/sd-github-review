@@ -2040,7 +2040,12 @@ for (const { destination } of DURABLE_CASES) {
     const target = await makeTarget();
     const github = new FakeGitHub({ secrets: [SECRET_NAME] });
     await runConsumerInstaller({ command: "install", target, routeMode: TEST_ROUTE_MODE, reviewFloor: TEST_REVIEW_FLOOR }, { sourceRoot, github });
-    const schema2Manifest = await downgradeToSchema2(target);
+    await downgradeToSchema2(target);
+    assert.equal(
+      (await readManifest(target)).schemaVersion,
+      2,
+      "the fixture is a schema-2 install before the update runs",
+    );
     const sourcePath = destination === DESCRIPTOR_PATH ? DESCRIPTOR_SOURCE_PATH : DURABLE_TEMPLATE_PATH;
     const sourceBytes = await readFile(path.join(sourceRoot, sourcePath), "utf8");
     await writeManagedFile(target, destination, sourceBytes);
@@ -2056,7 +2061,6 @@ for (const { destination } of DURABLE_CASES) {
       before,
       "an adopted byte-identical file is recorded, not rewritten",
     );
-    assert.equal(schema2Manifest.schemaVersion, 2);
   });
 }
 
