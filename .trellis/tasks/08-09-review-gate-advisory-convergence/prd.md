@@ -182,8 +182,8 @@ is recorded **unmet** — not inferred from the five that pass.
 
 - [x] A finding verified and refuted against the checkout can be dispositioned through a
       documented `sd-review` control, with the reason recorded in the receipt.
-      — `--local-disposition '<id>=rebutted'`; `tests/test_review_stage.py`
-      `test_rebutted_local_finding_clears_the_gate_but_stays_visible`.
+      — `--local-disposition '<id>=rebutted'`; the pack's review-stage test
+      module, `test_rebutted_local_finding_clears_the_gate_but_stays_visible`.
 - [x] The typed result distinguishes "no findings" from "findings dispositioned", and
       `remoteGate` reflects the difference.
       — `_remote_gate` reports `local-stage-terminal`, `local-findings-dispositioned`
@@ -689,8 +689,8 @@ is meant to remove.
       severity finding with a bad citation and shows it does not block, while a
       `high` finding with a good citation still does.
       — `--local-disposition '<id>=miscited@<path>:<line>'`, a ground distinct
-      from `rebutted`. Both halves are in one test,
-      `tests/test_review_stage.py::test_miscited_releases_a_high_finding_that_otherwise_blocks`:
+      from `rebutted`. Both halves are in one test in the pack's review-stage
+      test module, `test_miscited_releases_a_high_finding_that_otherwise_blocks`:
       the same `high` finding blocks with no disposition and clears with the
       miscitation, so the release cannot be confused with the gate being weak.
       Severity and miscitation are separate axes — `test_one_advisory_finding_does_not_release_a_blocking_sibling`
