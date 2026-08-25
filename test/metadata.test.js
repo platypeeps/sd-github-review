@@ -344,7 +344,16 @@ test("publishes pinned standalone and durable PR-Agent workflows", async () => {
     const steps = Object.values(workflow.jobs).flatMap((job) => job.steps ?? []);
     const preflight = steps.find((step) => step.id === "pr-agent-config");
     return execFileAsync("bash", ["-c", preflight.run], {
+      // PATH and HOME are the shell's, not the script's. Replacing `env`
+      // wholesale left bash with neither, which passes on a host whose default
+      // PATH holds nothing that needs them and fails on one where it does -- a
+      // Homebrew node shim exits non-zero on an unset HOME, so the assertion
+      // read a shim failure as the preflight rejecting. The isolation this
+      // wants is of the REVIEW_* inputs, and those are still the only thing
+      // supplied.
       env: {
+        PATH: process.env.PATH,
+        HOME: process.env.HOME,
         REVIEW_BACKEND_ID: "pr-agent",
         REVIEW_MODEL_PROVIDER: provider,
         REVIEW_MODEL: model,
