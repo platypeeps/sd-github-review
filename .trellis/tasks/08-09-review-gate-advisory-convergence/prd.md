@@ -208,6 +208,10 @@ is recorded **unmet** — not inferred from the five that pass.
       `miscited`, leaving `outstanding: 3` and `remoteGate: blocked`. The three
       are accurate and deliberate, so no existing ground fits them. See "Second
       replay" below and the additional requirement it records.
+      **Filed upstream 2026-08-24** as sd-ai-command-pack task
+      `08-24-accepted-finding-disposition-ground`, whose final acceptance
+      criterion is this replay reaching `eligible`. This criterion cannot close
+      here: the ground it needs is pack-owned.
 
 ## Replay, 2026-08-24 — run, and the four provider defects it exposed
 
