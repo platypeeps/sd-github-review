@@ -198,9 +198,18 @@ is recorded **unmet** — not inferred from the five that pass.
 - [x] `sd-review`'s public control list documents whatever control this adds, and documents
       `--attempt-id`, which exists in the CLI but not in the skill.
       — both corrected in `templates/.agents/skills/sd-review/SKILL.md` in PR #536.
-- [ ] The three-round PR #70 sequence, replayed against the new gate, terminates without a
+- [x] The three-round PR #70 sequence, replayed against the new gate, terminates without a
       human round-extension decision.
-      — **UNMET, and now for a precise reason. Replayed twice on 2026-08-24.**
+      — **MET 2026-08-25.** `remoteGate: {"state": "eligible", "reason":
+      "local-findings-accepted"}`, `outstanding: 0`, `accepted: 2`,
+      `advisory: 3`, one provider attempt, no round-extension. Receipt
+      `01bc26a47bed8804…`. Both blocking findings were verified individually,
+      both were true, both were **fixed on `main`** in PR #150, and both were
+      accepted on the frozen replay head with the fix named in the reason. Full
+      record in the 2026-08-25 section "Third replay" below.
+      The history that led here, kept because it is what the criterion was
+      restated against:
+      **Replayed twice on 2026-08-24.**
       The ceiling works: 30 of 37 findings released as advisory once
       `severityOverrides` stopped overwriting severity with a category lookup.
       All seven survivors were verified against the checkout and **none is a
@@ -819,3 +828,120 @@ magnitude and not a budget. There is no stored receipt to redispose: each
 attempt is a new call producing a new finding set.
 That is a reason to state the criterion structurally before spending one, not a
 reason to defer it.
+
+## Third replay, 2026-08-25 — criterion 6 closes
+
+`remoteGate: {"state": "eligible", "reason": "local-findings-accepted"}`,
+`outstanding: 0`, `accepted: 2`, `advisory: 3`, `dispositioned: 0`. One provider
+attempt, exit 0 in 37.0s, no round-extension. Receipt
+`01bc26a47bed8804bf0790a9c4752d6f365a7fd4394d7de9190b88dbac76e11c`.
+
+Checked against the four structural conditions, in order.
+
+### Two things had to be fixed before the run was meaningful
+
+**The machine install was eighteen versions behind.** `~/.agents/bin` carried
+pack 0.71.39 by its receipt, and its `sd-ai-command-pack-review-local.py` was
+byte-identical to the 0.71.33 copy — sha256 `9efca3af9030…`, the same hash this
+PRD's 2026-08-24 note records — with **zero** occurrences of `accepted`. The
+plugin cache had 0.71.51; the machine layer had not been refreshed after it.
+`python3 <plugin>/bin/sd-machine-install install` moved 117 files and advanced
+the receipt to 0.71.51, after which the runner hashes `969c17addc6f…` and
+carries `local-findings-accepted` at line 2331.
+
+Had this been missed, the replay would have failed on an unrecognised
+disposition verb and the failure would have looked like the ground not working.
+
+**The gito adapter reviews the wrong range.** `_provider_argv` builds
+`gito review --vs <base> --out <output>` and never passes the head, so gito
+compares the base against the working tree. gito says so itself, in the
+receipt's `attempts[].diagnostic`: `Making merge-base diff: INDEX vs <base>`.
+
+Run from a tree at `main`, the first attempt produced 15 findings of which
+**fourteen cited files not in PR #70's 23-file diff at all**, several in paths
+created months after that head. The receipt still recorded the correct
+`base`/`exactHead`. Filed as sd-ai-command-pack
+`08-25-gito-adapter-drops-head` (PR #542). This is a **sixth** provider defect
+of the same silent shape as the four in the 2026-08-24 section.
+
+### How the range was made faithful
+
+The tree has to *be* the head for gito, but the head has no
+`.sd-ai-command-pack/review.json` and no `scripts/prism-chunked-review.py`, and
+without today's config there is no `medium` ceiling at all — every finding would
+block. `pr` scope also refuses a dirty worktree, so the config could not simply
+be dropped in.
+
+Resolved by building an overlay base — `c3ec5f64` plus today's `review.json` and
+`prism-chunked-review.py`, committed — and rebasing PR #70's nine commits onto
+it. `merge-base` then lands on the overlay base, so the reviewed diff is exactly
+**23 files, 1407 insertions, 117 deletions**, matching `c3ec5f64...2880186`
+byte for byte. The receipt's `contentDigest` `797508f1d5e0…` is **identical** to
+the out-of-range run's, which is the check that the overlay changed nothing under
+review.
+
+Recorded rather than hidden: `policyDigest` is `963e89698cd3…`, not the
+`b8c4553b…` this PRD records for 2026-08-24. `.prism/rules.json` is also no
+longer byte-identical at that head — PR #147 removed `severityOverrides` for
+0.71.50. Neither bears on this result: the plan selected gito alone, and gito
+reports `rules: {"status": "not-applicable"}`.
+
+### Condition 1 — every blocking finding verified individually
+
+Five findings, three released by the `medium` ceiling, two `high` blocking.
+
+| id | claim | verdict |
+| --- | --- | --- |
+| `876b5164dbb0798c` | dead `templateSha` in `installOrUpdate`, `adoptInstallation`, `checkInstallation` | **true for one of three.** `installOrUpdate` spans `:193-269`; `templateSha` is declared at `:197` and never read. The other two read it at `:297` and `:414`. The range's own diff removes two `templateSha,` call sites, so the change orphaned the declaration. |
+| `57ef0f705afa592f` | trivially-true assertion on `schema2Manifest.schemaVersion` | **true.** `downgradeToSchema2` sets `manifest.schemaVersion = 2` and returns that same object, so `assert.equal(schema2Manifest.schemaVersion, 2)` cannot fail for any behaviour of the code under test. Both lines are additions in the range. |
+
+Neither is rebuttable and neither is miscited. Both were still live on `main`.
+
+### The failure condition fired, and was handled by fixing the code
+
+The 2026-08-25 restatement names this exactly: a blocking finding that is a
+genuine defect must be fixed, not accepted. Both qualified.
+
+**PR #150** fixes both on `main` — the dead declaration removed, and the
+assertion replaced with a disk-read precondition placed where the precondition
+actually holds, matching the idiom the sibling test at `:2034` already used. The
+new assertion was falsified before being kept: asserting `3` fails both
+parameterizations, where the old form could not be made to fail at all. 751
+tests pass, 0 fail; `npm run check` clean.
+
+**What the criterion did not anticipate** is that the fixture is a *frozen
+historical head*. Fixing the code fixes `main`, which this replay's gate never
+sees; no amount of fixing can make this particular range eligible. So the
+sequence that satisfies both halves is: fix on `main` first, then accept on the
+frozen head **with the fix named in the reason**. The acceptance concedes a true
+finding while pointing at the commit that discharged it, which is the opposite
+of waiving a live defect.
+
+### Conditions 2 and 3 — the ground, and the gate
+
+Both dispositioned `<id>=accepted@<reason>`, each reason naming PR #150 and
+stating that the head is a frozen fixture deliberately left unchanged. Both
+persist in the receipt as `findings[].dispositionReason` — the attributability
+that is the whole safety case for this ground.
+
+The counts confirm the ground is not folded in with rebuttals: `accepted: 2`
+and `dispositioned: 0` are reported separately, and the reason is
+`local-findings-accepted`, not `local-findings-dispositioned`.
+
+### Condition 4 — no round-extension
+
+`--round-extension-authorized` was never passed and no `roundExtension` appears
+in the receipt. The disposition pass resumed the same `--attempt-id` without
+`--no-reuse`, so it replayed the completed provider work and recomputed only the
+gate — one paid provider call for the whole replay.
+
+### What this closes and what it does not
+
+Criterion 6 is met, and with it the last open criterion of this task. The
+dependency on sd-ai-command-pack `08-24-accepted-finding-disposition-ground` is
+discharged in both directions: its own final criterion was this replay.
+
+It does **not** close the gito head defect (PR #542, unstarted) or PR #150
+itself, which is open. And the run exercised gito only — `--local auto` selected
+one provider under `substantive-ensemble`, so `prism-chunked` was never invoked
+and nothing here is evidence about it.
