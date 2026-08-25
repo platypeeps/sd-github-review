@@ -17,10 +17,22 @@ both are silent -- the review exits zero and prints a finding count either way:
   and required checks only apply when a caller passes ``--rules``. The pack
   never does.
 
+Both are fixed in the prism build this machine runs (``sdelmas/prism`` main),
+so neither is the reason this script survives. A third defect is, and it is the
+one that keeps the script load-bearing: ``NeedsChunking`` gates on its own
+``ChunkThreshold`` constant of 100 KB, not on ``ChunkMaxBytes``. A delta under
+100 KB therefore never reaches ``SplitIntoChunks`` at all, and the configured
+20 KB chunk size is simply not consulted. Measured on this repository's own
+47.5 KB, 8-file delta: one unchunked prism request returned 15 findings in
+81.7s, while three 20 KB chunks returned 19 in 51.9s. The interesting band --
+larger than one good prompt, smaller than prism's chunking gate -- is where
+ordinary branches live.
+
 This script does the chunking on the caller's side and passes ``--rules``, so
-both are addressed without a patched prism binary and without a pack change. It
-groups the changed files by their diff size, runs one ``prism review range``
-per group with ``--paths``, and merges the results into the argv adapter's
+all three are addressed without a further prism change and without a pack
+change. It groups the changed files by their diff size, runs one
+``prism review range`` per group with ``--paths``, and merges the results into
+the argv adapter's
 payload contract:
 
     {"status": "findings"|"clean", "findings": [{summary, path, line, severity, family}]}
