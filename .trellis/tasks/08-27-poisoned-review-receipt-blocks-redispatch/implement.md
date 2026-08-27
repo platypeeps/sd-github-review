@@ -134,9 +134,15 @@ match a fake that reproduces the very defect under repair.
 
 ## Rollback
 
-Steps 2 and 4 are independent single-function edits; either reverts alone. No
-migration, no persisted-format change — a receipt written by the fixed code is
-the same schema, and the only difference is which state it records.
+No migration and no persisted-format change: a receipt written by the fixed
+code is the same schema, and the only difference is which state it records.
+
+The two edits do **not** revert independently, and an earlier version of this
+section claimed they did. Step 4 imports `LANDING_ABSENT` and
+`LANDING_UNVERIFIED` from `src/reviewer-dispatch.js` (`src/operations.js:13-16`),
+so reverting step 2 alone removes exports that step 4 still names and the module
+fails to link. Step 4 reverts alone if only the durable call site is in
+question; a revert of step 2 has to take step 4 with it.
 
 ## Explicitly not in this task
 

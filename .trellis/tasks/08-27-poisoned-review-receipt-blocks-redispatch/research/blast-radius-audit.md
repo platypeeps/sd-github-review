@@ -34,9 +34,14 @@ credits were restored and it still could not obtain one. See
 
 **No merged pull request ever shipped claiming a review floor it did not
 receive.** The PRD's open question — "how many past PRs recorded a satisfied
-review floor without an actual review?" — is answered: none. The silent-failure
-mode is real, but it has produced exactly one instance, and that instance was
-caught before merge.
+review floor without an actual review?" — is answered: none. #156 is the one
+observed instance of the silent-failure mode, and it was caught before it could
+merge on a false claim.
+
+#156 has since merged, on 2026-08-27, without a Copilot review — but by an
+explicit owner decision recorded as such, not behind a receipt claiming a review
+it never had. That distinction is the whole point of this audit: a review floor
+deliberately left unmet is not the same thing as one silently reported as met.
 
 This lowers the urgency of the defect without lowering its severity. The
 verification gap in `reviewer-dispatch.js` is still a real hole that reports
