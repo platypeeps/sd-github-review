@@ -38,13 +38,24 @@ const RISK_INPUTS = {
   reviewDrafts: false,
 };
 
-function fakeClient({ requestedUsers = [], reviews = [] } = {}) {
+// `landsRequest: false` models the defect this service exists to catch: GitHub
+// returns a non-error response to requestReviewer and adds nobody.
+// `probeThrows: true` models a post-probe that cannot be read at all.
+function fakeClient({
+  requestedUsers = [],
+  reviews = [],
+  landsRequest = true,
+  probeThrows = false,
+} = {}) {
   const calls = [];
+  let users = [...requestedUsers];
+  let posted = false;
   return {
     calls,
     async getRequestedReviewers() {
       calls.push("getRequestedReviewers");
-      return { users: requestedUsers };
+      if (probeThrows && posted) throw new Error("probe unavailable");
+      return { users: [...users] };
     },
     async listPullRequestReviews() {
       calls.push("listPullRequestReviews");
@@ -52,9 +63,12 @@ function fakeClient({ requestedUsers = [], reviews = [] } = {}) {
     },
     async requestReviewer(number, reviewer) {
       calls.push(["requestReviewer", number, reviewer]);
+      posted = true;
+      if (landsRequest) users.push({ login: reviewer });
     },
     async removeRequestedReviewer(number, reviewer) {
       calls.push(["removeRequestedReviewer", number, reviewer]);
+      users = users.filter((user) => user.login !== reviewer);
     },
   };
 }
@@ -117,6 +131,7 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyPresent: true,
     requested: false,
     rerequested: false,
+    landing: "not-attempted",
   });
   // Already requested short-circuits before listing reviews or requesting.
   assert.ok(!requested.calls.includes("listPullRequestReviews"));
@@ -138,6 +153,7 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyPresent: true,
     requested: false,
     rerequested: false,
+    landing: "not-attempted",
   });
 
   // A DISMISSED review at the head is not presence; the reviewer is requested.
@@ -156,6 +172,7 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyPresent: false,
     requested: true,
     rerequested: false,
+    landing: "confirmed",
   });
   assert.ok(dismissed.calls.some((call) => Array.isArray(call) && call[0] === "requestReviewer"));
 
@@ -173,6 +190,7 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyPresent: false,
     requested: true,
     rerequested: false,
+    landing: "confirmed",
   });
   assert.deepEqual(fresh.calls.filter((call) => Array.isArray(call)), [["requestReviewer", 42, REVIEWER]]);
 
@@ -193,6 +211,7 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyPresent: true,
     requested: true,
     rerequested: true,
+    landing: "confirmed",
   });
   assert.deepEqual(
     forcedPending.calls.filter((call) => Array.isArray(call)),
@@ -215,11 +234,63 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyPresent: true,
     requested: true,
     rerequested: true,
+    landing: "confirmed",
   });
   assert.deepEqual(
     forcedReviewed.calls.filter((call) => Array.isArray(call)),
     [["requestReviewer", 42, REVIEWER]],
   );
+});
+
+// Regression: PR #156. GitHub returned a non-error response to requestReviewer
+// and added nobody; deriving `requested` from the pre-call probe reported that
+// as a landed request, which minted a durable receipt claiming a review that
+// never happened and then blocked every retry.
+test("a requestReviewer that adds nobody is reported as absent, not requested", async () => {
+  const silent = fakeClient({ landsRequest: false });
+  const result = await requestCopilotReviewer({
+    client: silent,
+    pullRequestNumber: 42,
+    reviewer: REVIEWER,
+    headSha: HEAD,
+  });
+  assert.deepEqual(result, {
+    alreadyRequested: false,
+    alreadyReviewed: false,
+    alreadyPresent: false,
+    requested: false,
+    rerequested: false,
+    landing: "absent",
+  });
+  // The POST was attempted, and the post-probe is what caught it.
+  assert.ok(silent.calls.some((call) => Array.isArray(call) && call[0] === "requestReviewer"));
+  assert.equal(silent.calls.filter((call) => call === "getRequestedReviewers").length, 2);
+});
+
+test("an unreadable post-probe is unverified, never a landed request", async () => {
+  const blind = fakeClient({ landsRequest: true, probeThrows: true });
+  const result = await requestCopilotReviewer({
+    client: blind,
+    pullRequestNumber: 42,
+    reviewer: REVIEWER,
+    headSha: HEAD,
+  });
+  assert.equal(result.landing, "unverified");
+  assert.equal(result.requested, false);
+});
+
+test("an authorized rerequest that does not land is not reported as rerequested", async () => {
+  const silentForce = fakeClient({ requestedUsers: [{ login: REVIEWER }], landsRequest: false });
+  const result = await requestCopilotReviewer({
+    client: silentForce,
+    pullRequestNumber: 42,
+    reviewer: REVIEWER,
+    headSha: HEAD,
+    forceRerequest: true,
+  });
+  assert.equal(result.landing, "absent");
+  assert.equal(result.requested, false);
+  assert.equal(result.rerequested, false);
 });
 
 test("selectProtocolRoute returns the exact explicit-branch shape", () => {

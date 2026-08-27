@@ -49,6 +49,12 @@ class FakeGitHubClient {
     this.calls = [];
     this.createError = null;
     this.requestError = null;
+    // A 2xx requestReviewer that adds nobody, and a post-request probe that
+    // cannot be read. Both are what PR #156 hit; neither throws, so neither is
+    // reachable through requestError.
+    this.landsRequest = true;
+    this.probeError = null;
+    this.posted = false;
     this.comparison = null;
     this.draft = false;
   }
@@ -101,6 +107,7 @@ class FakeGitHubClient {
 
   async getRequestedReviewers(number) {
     this.calls.push(["getRequestedReviewers", number]);
+    if (this.probeError && this.posted) throw this.probeError;
     return { users: clone(this.requestedUsers), teams: [] };
   }
 
@@ -112,7 +119,8 @@ class FakeGitHubClient {
   async requestReviewer(number, reviewer) {
     this.calls.push(["requestReviewer", number, reviewer]);
     if (this.requestError) throw this.requestError;
-    this.requestedUsers.push({ login: reviewer });
+    this.posted = true;
+    if (this.landsRequest) this.requestedUsers.push({ login: reviewer });
     return { users: clone(this.requestedUsers) };
   }
 
@@ -576,6 +584,52 @@ test("ambiguous Copilot dispatch returns reconciliation state and never suggests
   assert.equal(harness.outputs.get("dispatch-phase"), "started");
   assert.match(harness.outputs.get("reconciliation-error"), /connection closed/u);
   assert.equal(harness.outputs.get("adapter-request"), "");
+});
+
+test("a Copilot request that lands nobody never mints an observed receipt", async () => {
+  const request = clone(requestByName.get("explicit copilot"));
+  const client = new FakeGitHubClient(request.headSha);
+  // The exact PR #156 shape: the POST returns 2xx and the reviewer set is
+  // unchanged afterwards. Nothing throws, so the old code took the success
+  // path and wrote a satisfied receipt for a review that was never requested.
+  client.landsRequest = false;
+  const harness = createHarness(client);
+
+  await assert.rejects(
+    () => harness.run("route", request),
+    /durable receipt that needs reconciliation/u,
+  );
+
+  assert.notEqual(harness.outputs.get("durable-state"), "observed");
+  assert.equal(harness.outputs.get("durable-state"), "reconciliation-required");
+  assert.equal(harness.outputs.get("reconciliation-required"), "true");
+  assert.equal(harness.outputs.get("dispatch-allowed"), "false");
+  assert.equal(harness.outputs.get("copilot-requested"), "false");
+  // "started", not "observed": the receipt was never advanced, so a later
+  // attempt is not short-circuited by a satisfied phase.
+  assert.equal(harness.outputs.get("dispatch-phase"), "started");
+  assert.match(harness.outputs.get("reconciliation-error"), /absent/u);
+  assert.equal(harness.outputs.get("adapter-request"), "");
+});
+
+test("an unreadable post-request probe reconciles as unknown, not as absent", async () => {
+  const request = clone(requestByName.get("explicit copilot"));
+  const client = new FakeGitHubClient(request.headSha);
+  client.probeError = new Error("reviewer listing unavailable");
+  const harness = createHarness(client);
+
+  await assert.rejects(
+    () => harness.run("route", request),
+    /durable receipt that needs reconciliation/u,
+  );
+
+  assert.equal(harness.outputs.get("durable-state"), "reconciliation-required");
+  assert.equal(harness.outputs.get("copilot-requested"), "false");
+  // A failed probe and an observed-absent reviewer are both non-success, but
+  // they are different facts and the receipt must not conflate them.
+  const error = harness.outputs.get("reconciliation-error");
+  assert.match(error, /could not verify/u);
+  assert.doesNotMatch(error, /was absent/u);
 });
 
 test("none and query operations mirror durable receipt state without dispatch", async () => {

@@ -36,24 +36,36 @@ after the call**. Concretely — re-probe `getRequestedReviewers` once after the
 POST, and derive `requested` from that observation instead of from
 `!alreadyPresent`.
 
-Three outcomes, all explicit:
+Four outcomes, all explicit, carried on a new `landing` field:
 
-| post-probe | meaning | `requested` | `landed` |
+| post-probe | meaning | `requested` | `landing` |
 |---|---|---|---|
-| reviewer present | request landed | `true` | `true` |
-| reviewer absent | POST returned 2xx and added nobody | `false` | `false` |
-| probe itself failed | unknown, do not guess | `false` | `null` |
+| no POST was needed | reviewer already present | `false` | `not-attempted` |
+| reviewer present | request landed | `true` | `confirmed` |
+| reviewer absent | POST returned 2xx and added nobody | `false` | `absent` |
+| probe itself failed | unknown, do not guess | `false` | `unverified` |
 
-The distinction between the second and third rows matters: an absent reviewer is
+The distinction between `absent` and `unverified` matters: an absent reviewer is
 a *known* failure, while a failed probe is *unknown* and must not be reported as
 either success or a clean failure. Both are non-success, so both fail closed —
 but they are recorded differently so the receipt does not overclaim in either
 direction, and so a human reconciling the failure can tell "GitHub accepted the
 call and added nobody" from "we could not find out".
 
+**Deviation from the first draft, adopted during implementation.** This design
+originally specified a three-state `landed: true | false | null`. That is
+ambiguous: `null` would have meant both "no POST was attempted" and "a POST
+happened and the probe failed" — the one case where nothing is wrong and the one
+case where something might be badly wrong, sharing a value. The call site has to
+tell them apart to decide between `observe` and the failure path, so `landed` was
+replaced with the four-state `landing` enum above, exported from
+`src/reviewer-dispatch.js` as `LANDING_NOT_ATTEMPTED`, `LANDING_CONFIRMED`,
+`LANDING_ABSENT`, and `LANDING_UNVERIFIED`. Same contract, one more state, no
+overloaded null.
+
 Callers must be able to tell "already there, nothing to do" from "we asked and it
 worked". `alreadyPresent` already carries the first, so the existing fields stay;
-`landed` is added rather than overloading `requested`.
+`landing` is added rather than overloading `requested`.
 
 ## What this actually recovers, and what it does not
 

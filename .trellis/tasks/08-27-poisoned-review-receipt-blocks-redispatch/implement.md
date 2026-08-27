@@ -6,6 +6,13 @@ Ordered plan. Context order: this file, `design.md`, `prd.md`,
 Run `node --test test/shared-service-parity.test.js test/operations.test.js`
 after steps 1-3 rather than discovering breakage at the final gate.
 
+**Naming note.** Steps 1, 2, and 4 below say `landed: true | false | null`. That
+three-state field did not survive implementation — `null` conflated "no POST was
+needed" with "the probe failed". It became the four-state `landing` enum
+(`not-attempted` / `confirmed` / `absent` / `unverified`); see `design.md`,
+"Deviation from the first draft". Read `landed: false` as `landing: absent` and
+`landed: null` as `landing: unverified` throughout this file.
+
 ## Steps
 
 1. **Write the failing regression test first** (AC2), in
@@ -97,10 +104,12 @@ after steps 1-3 rather than discovering breakage at the final gate.
    Automatic recovery is explicitly out of scope — see `design.md`, "What this
    actually recovers, and what it does not".
 
-7. **Full gate.** `npm test`, then `npm run check`, `npm run validate:metadata`,
-   `npm run validate:ci-parity`. Note `npm run check`'s syntax list does not
-   include `reviewer-dispatch.js`; that is pre-existing and out of scope, but
-   `node --check src/reviewer-dispatch.js` is worth running by hand.
+7. **Full gate.** `npm run check:full`, which chains `npm test`,
+   `npm run test:coverage`, `npm run check`, `npm run validate:metadata`, and
+   `npm run validate:ci-parity`. An earlier draft of this step claimed
+   `npm run check`'s syntax list omits `reviewer-dispatch.js` and recommended
+   checking it by hand; that was wrong — `package.json`'s `check` script does
+   include `node --check src/reviewer-dispatch.js`.
 
 ## Validation
 
@@ -111,6 +120,17 @@ after steps 1-3 rather than discovering breakage at the final gate.
 - `npm test` — full suite. Baseline re-verified on this task branch
   2026-08-27: `tests 751 / pass 751 / fail 0`. Expect 751 plus the cases added
   in steps 1, 5, and 6, with 0 failures.
+
+Result, run 2026-08-27 after step 7: `tests 756 / pass 756 / fail 0` — the 751
+baseline plus the three parity regressions (step 1) and the two durable-path
+cases (steps 5 and 6). `npm run check:full` exits 0.
+
+One test outside the planned set needed changing: `test/action.test.js:213`,
+"automatic sensitive routing requests Copilot once and reports outputs",
+asserted exactly one `getRequestedReviewers` call. The landing probe makes it
+two. Its fake was also non-landing, so it was made stateful the same way step 3
+handles the parity fake — otherwise the assertion would have been relaxed to
+match a fake that reproduces the very defect under repair.
 
 ## Rollback
 

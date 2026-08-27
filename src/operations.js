@@ -9,7 +9,11 @@ import {
 import { DEFAULT_STRANDED_RECEIPT_MINUTES, DURABLE_STATES, ReceiptStore } from "./receipt.js";
 import { selectProtocolRoute } from "./router.js";
 import { buildRiskContext } from "./risk-context.js";
-import { requestCopilotReviewer } from "./reviewer-dispatch.js";
+import {
+  LANDING_ABSENT,
+  LANDING_UNVERIFIED,
+  requestCopilotReviewer,
+} from "./reviewer-dispatch.js";
 import { normalizeMode, parseList } from "./normalize.js";
 import {
   operationNames,
@@ -447,20 +451,41 @@ async function routeOperation({ request, client, store, env, now }) {
         forceRerequest:
           Boolean(request.rerequestOf) && booleanInput("rerequest-authorized", false, env),
       });
-      const completedAt = timestamp(now);
-      result = await store.observe({
-        pullRequestNumber: request.pullRequestNumber,
-        headSha: request.headSha,
-        logicalDispatchId: request.logicalDispatchId,
-        alreadyPresent: !dispatch.requested,
-        observations: {
-          latencyMs: elapsedMilliseconds(result.receipt, completedAt),
-          costTier: backend.costTier,
-        },
-        workflowUrl: workflowUrl(env),
-        completedAt,
-      });
-      result.copilotRequested = dispatch.requested;
+      // A POST that added nobody, or one whose outcome could not be read, is a
+      // failed dispatch -- not a satisfied receipt. Recording it as `observed`
+      // is what let PR #156 claim a review request that never landed and then
+      // block every retry behind its own false claim. Fail closed instead; the
+      // receipt store deliberately routes a failed dispatch to a human
+      // (see receipt.js:200-204), so this escalates rather than self-heals.
+      if (dispatch.landing === LANDING_ABSENT || dispatch.landing === LANDING_UNVERIFIED) {
+        result = {
+          state: "reconciliation-required",
+          receipt: result.receipt,
+          receiptVerified: true,
+          dispatchAllowed: false,
+          reconciliationRequired: true,
+          copilotRequested: false,
+          error:
+            dispatch.landing === LANDING_ABSENT
+              ? `requested reviewer ${backend.reviewAuthors[0]} was absent after the request was accepted`
+              : `could not verify whether requested reviewer ${backend.reviewAuthors[0]} was added`,
+        };
+      } else {
+        const completedAt = timestamp(now);
+        result = await store.observe({
+          pullRequestNumber: request.pullRequestNumber,
+          headSha: request.headSha,
+          logicalDispatchId: request.logicalDispatchId,
+          alreadyPresent: !dispatch.requested,
+          observations: {
+            latencyMs: elapsedMilliseconds(result.receipt, completedAt),
+            costTier: backend.costTier,
+          },
+          workflowUrl: workflowUrl(env),
+          completedAt,
+        });
+        result.copilotRequested = dispatch.requested;
+      }
     } catch (error) {
       result = {
         state: "reconciliation-required",
