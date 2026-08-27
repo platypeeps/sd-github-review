@@ -38,6 +38,11 @@ never checked.
 This is not Copilot being unavailable or slow: `copilot-pull-request-reviewer`
 reviewed PRs #148, #149, #150, #151, #152, and #153 in this same repository.
 
+**That inference was wrong**, and it is kept here because it shaped the
+investigation. Every one of those reviews predates the credit exhaustion, so
+they say nothing about availability at the time of this observation — which was
+in fact a form of unavailability. See `research/why-github-added-nobody.md`.
+
 ## Why it is self-sustaining
 
 The receipt is keyed on head SHA plus `requestFingerprint`. Because it exists

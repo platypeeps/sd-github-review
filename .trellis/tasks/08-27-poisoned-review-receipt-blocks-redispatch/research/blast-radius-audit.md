@@ -68,3 +68,10 @@ timeline, so it would not detect a PR that was reviewed by Copilot for unrelated
 reasons while its receipt was independently wrong. For the question asked — did
 any merged PR ship unreviewed — the outcome check is the right and sufficient
 one.
+
+It also reads review state as it stands now, not as it stood at each merge, so
+it cannot by itself establish that a review existed *before* the merge rather
+than being attached around it. Copilot reviews are requested pre-merge and none
+was observed arriving afterwards, so the distinction did not bite here; it is
+recorded because the audit's phrasing elsewhere ("caught before it could merge")
+claims more than this method measures.
