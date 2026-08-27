@@ -24,6 +24,11 @@ does not define a custom error hierarchy.
   and accepts only `success`, `failure`, `cancelled`, or `skipped`. It maps
   non-success outcomes to bounded error codes and never accepts provider error
   text.
+- A mutation that returns without throwing is not evidence that it took
+  effect. Verify a reviewer request by re-reading the requested-reviewer set
+  after the POST; never derive success from the probe taken before it. A
+  non-landing request fails closed to reconciliation rather than advancing a
+  receipt.
 - `GitHubClient#request()` includes the HTTP method, path, and GitHub response
   message when a request fails. It retries eligible `GET` failures at most
   three total attempts through an injected sleeper, but never retries a
@@ -50,6 +55,8 @@ does not define a custom error hierarchy.
 | Primary/secondary rate-limit delay at or below 60 seconds | Honor the GitHub-directed wait before a safe read retry |
 | GitHub-directed delay above 60 seconds | Throw with bounded limit context; never retry sooner than directed |
 | Reviewer or Check Run mutation transport failure | Make one attempt and let the caller reconcile or fail closed |
+| Reviewer request accepted but the reviewer is absent afterwards | Report `landing=absent` and `requested=false`; return reconciliation required rather than observing the receipt |
+| Post-request reviewer probe throws | Report `landing=unverified`; fail closed and record the outcome as unknown, never as a clean absence |
 | More than 3,000 files in automatic mode | Throw and require an explicit route |
 | Unrelated event | Emit a successful `none` decision, not an error |
 | Unsupported protocol schema major or malformed identity | Throw a field-specific error before hashing or future dispatch |

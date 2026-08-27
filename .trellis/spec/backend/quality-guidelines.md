@@ -355,6 +355,10 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 - `routeReview(context) -> { route, reason }`
 - `GitHubClient.listPullRequestFiles(number) -> Promise<string[]>`
 - `GitHubClient.requestReviewer(number, reviewer) -> Promise<object|null>`
+- `requestCopilotReviewer({ client, pullRequestNumber, reviewer, headSha,
+  forceRerequest }) -> Promise<{ alreadyRequested, alreadyReviewed,
+  alreadyPresent, requested, rerequested, landing }>`, where `landing` is
+  `not-attempted|confirmed|absent|unverified`
 
 ### 3. Contracts
 
@@ -382,6 +386,13 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
   and only evidence-backed rate-limit HTTP 403 responses. Directed waits use
   `retry-after`, then zero-remaining `x-ratelimit-reset`, then the 60-second
   secondary fallback; over-cap directives fail rather than being shortened.
+- A mutation's success is read back, never inferred. `requested: true` means
+  the reviewer was observed present in a probe taken *after* the POST.
+  GitHub can return a non-error response to `requestReviewer` and add nobody,
+  so a pre-call probe is evidence about the old state only. `landing` carries
+  which of the four outcomes actually occurred; `absent` (accepted, added
+  nobody) and `unverified` (post-probe itself failed) are distinct facts and
+  must not collapse into one another.
 
 ### 4. Validation & Error Matrix
 
@@ -400,6 +411,8 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 | Rate-limit directive exceeds 60 seconds | Throw with allow-listed limit context and make no early retry |
 | Interrupted reviewer request or Check Run mutation | Make exactly one mutation attempt; reconcile/fail closed in the owning layer |
 | Existing Copilot request/review for current HEAD | Do not request again; emit `copilot-requested=false` |
+| Reviewer POST returns non-error and the post-probe finds nobody | `landing=absent`, `requested=false`; the durable caller fails closed to `reconciliation-required` and never calls `store.observe` |
+| Post-probe itself throws after the POST | `landing=unverified`, `requested=false`; fail closed, and report the outcome as unknown rather than as absent |
 
 ### 5. Good/Base/Bad Cases
 
@@ -415,6 +428,11 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 - Router tests assert the entire precedence order and exact route/reason pair.
 - Orchestration tests inject a client and assert both outputs and forbidden
   calls such as `listPullRequestFiles()` or `requestReviewer()`.
+- An injected client's `requestReviewer` adds the reviewer to the set its
+  `getRequestedReviewers` returns. A fake that accepts the POST and adds
+  nobody *is* the `landing=absent` defect, so a happy-path case built on one
+  asserts success against a client reproducing the failure. Non-landing
+  behavior is an explicit per-test opt-out, never the fake's default.
 - Transport tests assert the API-version/auth headers, pagination termination,
   request payload, safe retry/status matrix, injected delay sequence,
   primary/secondary limit context, mutation non-retry, and surfaced error text.
@@ -432,6 +450,23 @@ const decision = routeReview({ configuredMode, commandMode, labelMode, files });
 // sensitive-path evaluation can still affect the decision.
 const explicitMode = resolveExplicitMode({ configuredMode, commandMode, labelMode });
 const files = explicitMode ? [] : await client.listPullRequestFiles(number);
+```
+
+```js
+// Wrong: `requested` restates the probe taken before the call. A 2xx that
+// added nobody is reported as a landed request, and the durable caller mints
+// a satisfied receipt for a review that was never requested.
+if (!alreadyPresent) {
+  await client.requestReviewer(pullRequestNumber, reviewer);
+}
+return { alreadyPresent, requested: !alreadyPresent };
+
+// Correct: read the state back and report what is there.
+if (!alreadyPresent) {
+  await client.requestReviewer(pullRequestNumber, reviewer);
+  const landing = await probeLanding(client, pullRequestNumber, reviewer);
+  return { alreadyPresent, requested: landing === LANDING_CONFIRMED, landing };
+}
 ```
 
 ## Scenario: Validate Public Repository Metadata
