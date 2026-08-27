@@ -78,10 +78,18 @@ configured, was reported as honored, and was silently not applied.
   accepted the request. Absent that evidence the dispatch is a failure and must
   be recorded as one; failing closed is required, since an unreviewed PR that
   reports a satisfied review floor is the harmful outcome.
-- A receipt whose claimed request cannot be corroborated must not block
-  re-dispatch. Recovery must not require changing the head SHA, and must not
-  require deleting controller state or a direct reviewer fallback, both of which
-  the review skill forbids.
+- A receipt whose claimed request cannot be corroborated must be recorded as a
+  failure and must not read as satisfied. It must not silently occupy the
+  satisfied state that today blocks every retry.
+  **Scope correction (adversarial review, C-8):** this must NOT be read as a
+  requirement for automatic re-dispatch at an unchanged head. `receipt.js:217`
+  (`mutationFailure`) sets `dispatchAllowed: false`, and `receipt.js:200-204`
+  states the intent plainly — "A failed dispatch is known broken rather than
+  running, so age is irrelevant to it and it always needs a human", with
+  `reconciliation-required` "reserved for cases needing a human". Automatic
+  recovery would contradict that deliberate decision. The deliverable is a
+  correctly classified, loudly surfaced failure a human can act on, which
+  `fail-on-reconciliation: true` already escalates.
 - Re-dispatch recovery must stay idempotent for the healthy case: a genuinely
   delayed review must not be re-requested merely because it has not arrived yet.
   The skill's existing warning against incrementing the attempt for a delayed
@@ -99,13 +107,19 @@ configured, was reported as honored, and was silently not applied.
    current behavior.
 3. After the fix, a dispatch that does not land is recorded as failed, not
    `requested`, and the run does not report success.
-4. After the fix, a receipt in the stalled state permits re-dispatch at an
-   unchanged head, without deleting state and without a direct reviewer
-   fallback.
+4. After the fix, a dispatch that does not land produces a receipt that reads as
+   a failure needing reconciliation — not as satisfied — so it no longer
+   silently blocks the lane, and `fail-on-reconciliation: true` surfaces it.
+   Automatic re-dispatch at an unchanged head is explicitly NOT claimed; see the
+   scope correction above.
 5. A genuinely pending review is still not re-requested — the healthy
    idempotent path is proven unchanged by test.
-6. PR #156 is either reviewed through the recovered lane or explicitly closed
-   out, with its disposition recorded.
+6. PR #156's disposition is explicitly decided and recorded. Note (adversarial
+   review, C-10): the fix does **not** retroactively repair #156's existing
+   receipt. That receipt is already written at head `de440b6` and still reads
+   satisfied, so the coordinator will keep short-circuiting to it regardless of
+   this change. #156 needs a deliberate owner decision — reconciliation, a new
+   head, or closing it out — and that decision is not a deliverable of the fix.
 
 ## Out of scope
 

@@ -6,7 +6,7 @@ empty), so the code that ran on PR #156 is the code below.
 
 ## The claim is computed before the call, from the wrong thing
 
-`src/reviewer-dispatch.js:39-43`:
+`src/reviewer-dispatch.js:40-43`:
 
 ```js
 if (!alreadyPresent) {
