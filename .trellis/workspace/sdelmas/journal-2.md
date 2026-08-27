@@ -1350,3 +1350,41 @@ Reviewed what was still open after the 0.6.1 work and closed the two things that
 - Hold 0.6.2 until a substantive change justifies the nine-repo pin rollout that follows a release
 - Unpark 08-23-pr-agent-reduced-grant-live-confirmation if any consumer moves off REVIEW_ROUTE_MODE=copilot
 - A-018 remains the only open audit finding; its owner task 07-25-deliver-routed-review-configuration has not moved since July
+
+
+## Session 83: Record the 08-04 park falsification: one premise dead
+<!-- trellis-session: v=2 fp=3f1394631d58336f -->
+
+**Date**: 2026-08-27
+**Task**: Record the 08-04 park falsification: one premise dead
+**Branch**: `chore/record-08-04-park-falsification`
+
+### Summary
+
+Re-ran the falsification the 08-04 park text prescribes and recorded the result in that task's notes without starting it. Reachability still holds; the distribution premise is falsified. Notes-only change to a planning task; src/ and test/ untouched.
+
+### Main Changes
+
+- Re-derived reachability by walking static, dynamic, and require import edges from src/index.js: 9,398/13,396 lines unreachable (70.2%), against 9,390/13,136 (71%) at park time. Every relative specifier resolved; src/index.js confirmed the sole entrypoint (action.yml:277; package.json has no main/bin/exports).
+- Falsified the distribution premise: all 9/9 registry consumers now carry config/routed-review-setup-v1.json at content SHA e3098ec4, including the four that 404'd on 2026-08-15. All nine pin sd-github-review@6ba1eff0 (PR #138), 24 commits behind main.
+- Recorded the outcome in .trellis/tasks/08-04-define-v2-receipt-and-identity-contracts/task.json notes. Clause A of the resume condition (v1 actually distributed) is met for the first time; clause B (v2-governance scope deliberately revalidated as still wanted) stays open. blockedOn stays null per the 08-20 unpark-all; the note is descriptive, not a gate.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `70379dbe9b64ed7be6610c78271c2319c08c59d1` | chore(08-04): record park falsification, one premise dead |
+
+### Testing
+
+- [OK] Read-only falsification pass; no code or test changes, so no suite was run for this commit
+- [OK] PR #156 required checks green on 70379db: route pass, test pass
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
