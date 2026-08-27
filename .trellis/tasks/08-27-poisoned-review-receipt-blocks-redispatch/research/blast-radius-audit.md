@@ -32,11 +32,17 @@ credits were restored and it still could not obtain one. See
 
 ## What this settles
 
-**No merged pull request ever shipped claiming a review floor it did not
-receive.** The PRD's open question — "how many past PRs recorded a satisfied
-review floor without an actual review?" — is answered: none. #156 is the one
-observed instance of the silent-failure mode, and it was caught before it could
-merge on a false claim.
+**No merged pull request in this repository's history shipped without a Copilot
+review.** That is exactly what the method measures — whether a review exists on
+the PR — and it is the outcome that matters.
+
+It does not settle the PRD's question as worded. "How many past PRs recorded a
+satisfied review floor without an actual review?" is a question about receipts,
+and this audit reads none. What it does establish is that the answer cannot
+matter for any merged PR: whatever a receipt claimed, a review was in fact
+there, so no false claim can have let an unreviewed change through. #156 is the
+one observed instance of the silent-failure mode, and it did not merge on that
+receipt.
 
 #156 has since merged, on 2026-08-27, without a Copilot review — but by an
 explicit owner decision recorded as such, not behind a receipt claiming a review
