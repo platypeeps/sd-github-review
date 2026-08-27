@@ -4,16 +4,33 @@
 
 One function changes behavior: `requestCopilotReviewer` in
 `src/reviewer-dispatch.js`. Its callers — `src/index.js:266` (standalone) and
-`src/operations.js:442` (durable) — keep their current shape. The receipt store,
-the routing decision, the idempotency key, and the coordinator are untouched.
+`src/operations.js:442` (durable) — keep their current shape. The routing
+decision, the idempotency key, and the coordinator are untouched.
 
-This is deliberate. The defect is that one function reports an outcome it never
-checked; the smallest correct fix is to make it check. Widening the change into
-receipt-store or coordinator recovery semantics would couple this fix to the
-`sd-review` skill's state rules, which forbid deleting controller state, and to
-the receipt store's deliberate human-in-the-loop contract. Recording the failure
-correctly is the whole of this change; recovering from it is a separate question
-kept out of scope on purpose (see "What this actually recovers").
+The defect is that one function reports an outcome it never checked, and the
+smallest correct fix is to make it check. Recording the failure correctly is the
+whole of this change; *recovering* from it — re-dispatching, clearing a poisoned
+receipt — stays out of scope, because that is what would couple this fix to the
+`sd-review` skill's state rules and to the store's human-in-the-loop contract.
+
+**Boundary widened during implementation, on review.** The store is no longer
+untouched. `ReceiptStore` gains one transition, `dispatchFailed`, which writes
+`dispatch.status: "failed"` at phase `"started"`.
+
+This was not scope creep, it was a hole in the original boundary. `receiptState`
+already defines that exact state and already treats it as age-irrelevant
+reconciliation (`receipt.js:199-209`) — the store was built to read it and
+nothing ever wrote it. Without the writer the failure is reported in memory by
+the run that saw it and then vanishes: the stored receipt still reads
+`requested`/`started`, which `receiptState` classifies as **in-flight** until
+`strandedAfterMinutes` (default 360) elapses. So a dispatch this code just
+proved dead would read as possibly-running for six hours, and the design's own
+claim below — a loud, correctly classified failure a human can act on — would
+have held for exactly one run. Found by Copilot on PR #157, and AC3 had asked
+for it literally — "recorded as failed, not `requested`" names the very field
+the first implementation left alone.
+
+No schema change and no new state: the state existed, the writer did not.
 
 ## Current contract
 
@@ -71,9 +88,12 @@ worked". `alreadyPresent` already carries the first, so the existing fields stay
 
 `src/operations.js:449` currently passes `alreadyPresent: !dispatch.requested`
 into `store.observe`, which is what mints the satisfied receipt. With `requested`
-now false on a non-landed request, that call must instead take the failure path —
-the same one the existing `catch` block uses for a throwing `requestReviewer`,
-producing `reconciliation-required` rather than `observed`.
+now false on a non-landed request, that call must instead take the failure path,
+producing `reconciliation-required` rather than `observed`, and must persist it
+through `store.dispatchFailed` so the next read of the receipt reaches the same
+conclusion. The existing `catch` path for a throwing `requestReviewer` shares
+both the shape and, before this change, the same missing write; both now go
+through one helper.
 
 **This makes the failure loud. It does not make it self-healing**, and an earlier
 draft of this design claimed otherwise. `receipt.js:217` (`mutationFailure`) sets
@@ -89,12 +109,15 @@ having on its own:
 | | before | after |
 |---|---|---|
 | receipt state | `observed` (satisfied) | `reconciliation-required` |
+| stored receipt | `requested` / `started` | `failed` / `started` |
+| next run reads | satisfied, short-circuits | `reconciliation-required`, at any age |
 | run result | green | fails, via `fail-on-reconciliation: true` |
 | operator sees | nothing | an escalated, correctly-named failure |
 | review floor | silently unapplied | visibly unmet |
 
 A silent false success becomes a loud, correctly classified failure a human can
-act on. That is the whole deliverable. Whether the lane should additionally
+act on, and it stays that way across runs rather than only in the run that
+observed it. That is the whole deliverable. Whether the lane should additionally
 self-recover at an unchanged head is a separate question that touches the receipt
 store's human-in-the-loop contract, and it needs its own decision rather than
 being smuggled in here.

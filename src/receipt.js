@@ -806,6 +806,48 @@ export class ReceiptStore {
     return result;
   }
 
+  // A dispatch that provably did not land is known broken, not running.
+  // Without this transition the receipt stays `requested`/`started`, which
+  // receiptState reads as in-flight until strandedAfterMinutes elapses -- so a
+  // failure the caller just proved would be invisible to every read for six
+  // hours. receiptState already gates on `failed` at phase "started" and calls
+  // it age-irrelevant; this is the writer for the state it was built to read.
+  async dispatchFailed({
+    pullRequestNumber,
+    headSha,
+    logicalDispatchId,
+    workflowUrl,
+    completedAt,
+  }) {
+    const { elected } = await this.#electedRecords(pullRequestNumber, lower(headSha));
+    const record = elected.get(lower(logicalDispatchId));
+    if (!record) throw new Error("durable receipt was not found for dispatch failure");
+    if (record.receipt.dispatch.phase === "observed") {
+      throw new Error("observed receipts cannot transition to a failed dispatch");
+    }
+    // Already failed: the state is what the caller wants and rewriting it would
+    // only move completedAt. Report it rather than mutating a settled receipt.
+    if (record.receipt.dispatch.status === "failed") {
+      return {
+        state: "reconciliation-required",
+        receipt: record.receipt,
+        dispatchAllowed: false,
+        reconciliationRequired: true,
+      };
+    }
+    const receipt = decodeReceipt({
+      ...record.receipt,
+      dispatch: {
+        ...record.receipt.dispatch,
+        status: "failed",
+        phase: "started",
+        completedAt: isoTimestamp(completedAt ?? this.now, "receipt dispatch failure timestamp"),
+        ...(workflowUrl ? { workflowUrl } : {}),
+      },
+    });
+    return this.#updateRecord(record, receipt);
+  }
+
   async compareSuccessor(requestValue) {
     const request = decodeReviewRequest(requestValue);
     this.#assertRepository(request);

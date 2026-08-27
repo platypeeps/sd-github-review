@@ -112,6 +112,15 @@ configured, was reported as honored, and was silently not applied.
    current behavior.
 3. After the fix, a dispatch that does not land is recorded as failed, not
    `requested`, and the run does not report success.
+
+   **Note, 2026-08-27.** The first implementation met the second half and missed
+   the first: the run failed, but the stored receipt kept
+   `dispatch.status: "requested"` at `phase: "started"`, which `receiptState`
+   reads as in-flight until `strandedAfterMinutes` (default 360) elapses. The
+   failure was real for one run and then read as possibly-running for six hours.
+   Copilot caught it on PR #157. `ReceiptStore.dispatchFailed` now writes the
+   `failed` status the store already knew how to read, and both the non-landing
+   branch and the throwing `catch` path go through it.
 4. After the fix, a dispatch that does not land produces a receipt that reads as
    a failure needing reconciliation — not as satisfied — so it no longer
    silently blocks the lane, and `fail-on-reconciliation: true` surfaces it.

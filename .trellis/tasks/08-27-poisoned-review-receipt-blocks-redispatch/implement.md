@@ -132,6 +132,26 @@ two. Its fake was also non-landing, so it was made stateful the same way step 3
 handles the parity fake — otherwise the assertion would have been relaxed to
 match a fake that reproduces the very defect under repair.
 
+8. **Persist the failure** (added on review, AC3). The steps above classify the
+   failure in memory but leave the stored receipt at
+   `dispatch.status: "requested"` / `phase: "started"`, which `receiptState`
+   reads as in-flight for `strandedAfterMinutes` (default 360). Add
+   `ReceiptStore.dispatchFailed` in `src/receipt.js`, writing
+   `status: "failed"` at `phase: "started"` — the state `receiptState`
+   (`:199-209`) already treats as age-irrelevant reconciliation and that nothing
+   wrote. Route both the non-landing branch and the throwing `catch` path in
+   `src/operations.js` through one helper that calls it and still fails closed
+   if the persist itself fails.
+
+   Test it on the *stored* receipt, not the in-memory result: run `route`, then
+   run `query` at the same head and assert `dispatch.status === "failed"` and
+   `state === "reconciliation-required"` with the clock unmoved. Asserting the
+   run's own outputs cannot distinguish the fixed code from the broken code.
+
+   Result, run 2026-08-27: `tests 758 / pass 758 / fail 0`. Reverting only
+   `src/receipt.js` and `src/operations.js` fails exactly the two new cases
+   (33 of 35 pass in `test/operations.test.js`). `npm run check:full` exits 0.
+
 ## Rollback
 
 No migration and no persisted-format change: a receipt written by the fixed

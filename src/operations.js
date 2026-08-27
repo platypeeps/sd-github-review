@@ -458,18 +458,17 @@ async function routeOperation({ request, client, store, env, now }) {
       // receipt store deliberately routes a failed dispatch to a human
       // (see receipt.js:200-204), so this escalates rather than self-heals.
       if (dispatch.landing === LANDING_ABSENT || dispatch.landing === LANDING_UNVERIFIED) {
-        result = {
-          state: "reconciliation-required",
+        result = await failDispatch({
+          store,
+          request,
+          env,
+          now,
           receipt: result.receipt,
-          receiptVerified: true,
-          dispatchAllowed: false,
-          reconciliationRequired: true,
-          copilotRequested: false,
-          error:
+          message:
             dispatch.landing === LANDING_ABSENT
               ? `requested reviewer ${backend.reviewAuthors[0]} was absent after the request was accepted`
               : `could not verify whether requested reviewer ${backend.reviewAuthors[0]} was added`,
-        };
+        });
       } else {
         const completedAt = timestamp(now);
         result = await store.observe({
@@ -487,18 +486,50 @@ async function routeOperation({ request, client, store, env, now }) {
         result.copilotRequested = dispatch.requested;
       }
     } catch (error) {
-      result = {
-        state: "reconciliation-required",
+      // Same reasoning as the non-landing branch: a throwing requestReviewer is
+      // a dispatch that is over, and the receipt has to say so.
+      result = await failDispatch({
+        store,
+        request,
+        env,
+        now,
         receipt: result.receipt,
-        receiptVerified: true,
-        dispatchAllowed: false,
-        reconciliationRequired: true,
-        copilotRequested: false,
-        error: error instanceof Error ? error.message : String(error),
-      };
+        message: error instanceof Error ? error.message : String(error),
+      });
     }
   }
   return { result, adapter, changedLines, sensitiveCount: sensitiveFiles.length };
+}
+
+// Persist the failure; do not merely report it. Without the durable write the
+// receipt stays `requested`/`started`, which receiptState reads as in-flight
+// until `strandedAfterMinutes` elapses -- so a dead dispatch this run proved
+// would read as possibly-running for the next six hours. If the persist itself
+// fails there is nothing further to try: keep the state pinned to
+// reconciliation-required and carry both errors, since both are true.
+async function failDispatch({ store, request, env, now, receipt, message }) {
+  let persisted = null;
+  let persistError = null;
+  try {
+    persisted = await store.dispatchFailed({
+      pullRequestNumber: request.pullRequestNumber,
+      headSha: request.headSha,
+      logicalDispatchId: request.logicalDispatchId,
+      workflowUrl: workflowUrl(env),
+      completedAt: timestamp(now),
+    });
+  } catch (error) {
+    persistError = error instanceof Error ? error.message : String(error);
+  }
+  return {
+    state: "reconciliation-required",
+    receipt: persisted?.receipt ?? receipt,
+    receiptVerified: true,
+    dispatchAllowed: false,
+    reconciliationRequired: true,
+    copilotRequested: false,
+    error: [message, persisted?.error, persistError].filter(Boolean).join("; "),
+  };
 }
 
 async function finalizeOperation({ request, store, env, now }) {

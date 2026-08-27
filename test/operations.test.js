@@ -632,6 +632,54 @@ test("an unreadable post-request probe reconciles as unknown, not as absent", as
   assert.doesNotMatch(error, /was absent/u);
 });
 
+// The failure has to outlive the run that observed it. Without the durable
+// write the receipt keeps `status: "requested"` / `phase: "started"`, which
+// receiptState reads as in-flight until strandedAfterMinutes (default 360)
+// elapses -- so every retry for six hours would report a dead dispatch as one
+// that might still be running. The store already treats `failed` at phase
+// "started" as age-irrelevant reconciliation; this proves the writer reaches it.
+test("a dispatch that did not land is recorded as failed, not left reading in-flight", async () => {
+  const request = clone(requestByName.get("explicit copilot"));
+  const client = new FakeGitHubClient(request.headSha);
+  client.landsRequest = false;
+  const harness = createHarness(client);
+
+  await assert.rejects(
+    () => harness.run("route", request),
+    /durable receipt that needs reconciliation/u,
+  );
+
+  // The stored receipt, not the in-memory result: this is the part a later run
+  // reads.
+  const queried = await harness.run("query", request);
+  assert.equal(queried.receipt.dispatch.status, "failed");
+  assert.equal(queried.receipt.dispatch.phase, "started");
+  // Age-irrelevant. The clock has not moved, so a receipt still reading
+  // "requested" would classify as in-flight here.
+  assert.equal(queried.state, "reconciliation-required");
+  assert.equal(harness.outputs.get("durable-state"), "reconciliation-required");
+  assert.equal(harness.outputs.get("dispatch-allowed"), "false");
+});
+
+test("a throwing review request is recorded as failed too", async () => {
+  const request = clone(requestByName.get("explicit copilot"));
+  const client = new FakeGitHubClient(request.headSha);
+  client.requestError = new Error("connection closed after review request");
+  const harness = createHarness(client);
+
+  await assert.rejects(
+    () => harness.run("route", request),
+    /durable receipt that needs reconciliation/u,
+  );
+
+  // Before the query run overwrites the outputs.
+  assert.match(harness.outputs.get("reconciliation-error"), /connection closed/u);
+
+  const queried = await harness.run("query", request);
+  assert.equal(queried.receipt.dispatch.status, "failed");
+  assert.equal(queried.state, "reconciliation-required");
+});
+
 test("none and query operations mirror durable receipt state without dispatch", async () => {
   const request = clone(requestByName.get("explicit none"));
   const client = new FakeGitHubClient(request.headSha);

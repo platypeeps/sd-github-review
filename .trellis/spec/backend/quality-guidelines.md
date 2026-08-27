@@ -359,6 +359,10 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
   forceRerequest }) -> Promise<{ alreadyRequested, alreadyReviewed,
   alreadyPresent, requested, rerequested, landing }>`, where `landing` is
   `not-attempted|confirmed|absent|unverified`
+- `ReceiptStore.dispatchFailed({ pullRequestNumber, headSha, logicalDispatchId,
+  workflowUrl, completedAt }) -> Promise<{ state, receipt, dispatchAllowed,
+  reconciliationRequired }>`, writing `dispatch.status: "failed"` at
+  `dispatch.phase: "started"`
 
 ### 3. Contracts
 
@@ -393,6 +397,14 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
   which of the four outcomes actually occurred; `absent` (accepted, added
   nobody) and `unverified` (post-probe itself failed) are distinct facts and
   must not collapse into one another.
+- A failure is persisted, not just returned. A caller that classifies a
+  dispatch as failed writes that to the durable receipt before returning.
+  `receiptState` reads `status: "failed"` at `phase: "started"` as
+  age-irrelevant `reconciliation-required`, but reads a receipt still saying
+  `requested` at that phase as **in-flight** until `strandedAfterMinutes`
+  elapses (default 360). So an in-memory-only failure is invisible to every
+  later read for that whole window — the failure holds for the run that saw it
+  and no longer.
 
 ### 4. Validation & Error Matrix
 
@@ -413,6 +425,9 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 | Existing Copilot request/review for current HEAD | Do not request again; emit `copilot-requested=false` |
 | Reviewer POST returns non-error and the post-probe finds nobody | `landing=absent`, `requested=false`; the durable caller fails closed to `reconciliation-required` and never calls `store.observe` |
 | Post-probe itself throws after the POST | `landing=unverified`, `requested=false`; fail closed, and report the outcome as unknown rather than as absent |
+| Any classified dispatch failure, including a throwing `requestReviewer` | Call `store.dispatchFailed` before returning, so a later read reaches the same verdict; still fail closed if that write itself fails, carrying both errors |
+| `dispatchFailed` on a receipt already at `phase: "observed"` | Throw; a settled observation is not rewritable into a failure |
+| `dispatchFailed` on a receipt already `status: "failed"` | Return the existing `reconciliation-required` state without mutating; the transition is idempotent |
 
 ### 5. Good/Base/Bad Cases
 
@@ -433,6 +448,11 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
   nobody *is* the `landing=absent` defect, so a happy-path case built on one
   asserts success against a client reproducing the failure. Non-landing
   behavior is an explicit per-test opt-out, never the fake's default.
+- A durable-failure test asserts the **stored** receipt, not the run's own
+  outputs: run the operation, then re-read the receipt at the same head with
+  the clock unmoved and assert `dispatch.status === "failed"` and
+  `state === "reconciliation-required"`. Output-only assertions pass equally
+  against code that never persists, so they cannot detect this defect.
 - Transport tests assert the API-version/auth headers, pagination termination,
   request payload, safe retry/status matrix, injected delay sequence,
   primary/secondary limit context, mutation non-retry, and surfaced error text.

@@ -29,6 +29,12 @@ does not define a custom error hierarchy.
   after the POST; never derive success from the probe taken before it. A
   non-landing request fails closed to reconciliation rather than advancing a
   receipt.
+- A failure that is classified but not persisted lasts one run. Write the
+  failed state to the durable receipt before returning: `receiptState` reads
+  `status: "failed"` at `phase: "started"` as reconciliation regardless of age,
+  but reads one still saying `requested` at that phase as in-flight until
+  `strandedAfterMinutes` (default 360). Reporting without writing hands the next
+  six hours of readers a dead dispatch labelled as possibly-running.
 - `GitHubClient#request()` includes the HTTP method, path, and GitHub response
   message when a request fails. It retries eligible `GET` failures at most
   three total attempts through an injected sleeper, but never retries a
@@ -57,6 +63,8 @@ does not define a custom error hierarchy.
 | Reviewer or Check Run mutation transport failure | Make one attempt and let the caller reconcile or fail closed |
 | Reviewer request accepted but the reviewer is absent afterwards | Report `landing=absent` and `requested=false`; return reconciliation required rather than observing the receipt |
 | Post-request reviewer probe throws | Report `landing=unverified`; fail closed and record the outcome as unknown, never as a clean absence |
+| Any classified dispatch failure, landing or throwing | Persist it via `store.dispatchFailed` before returning, so a later read reaches the same verdict |
+| The `dispatchFailed` write itself fails | Stay `reconciliation-required` and carry both the original and the persist error; never downgrade the verdict because the write failed |
 | More than 3,000 files in automatic mode | Throw and require an explicit route |
 | Unrelated event | Emit a successful `none` decision, not an error |
 | Unsupported protocol schema major or malformed identity | Throw a field-specific error before hashing or future dispatch |
