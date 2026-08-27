@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 82
-- **Last Active**: 2026-08-24
+- **Total Sessions**: 83
+- **Last Active**: 2026-08-27
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1352 | Active |
+| `journal-2.md` | ~1381 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 83 | 2026-08-27 | Record the 08-04 park falsification: one premise dead | `70379dbe9b64ed7be6610c78271c2319c08c59d1` | `chore/record-08-04-park-falsification` |
 | 82 | 2026-08-24 | Close the issues: write task with its fourth criterion unmet, and clear the stale pilot pull requests | `862b410`, `6a09704` | `main` |
 | 81 | 2026-08-23 | Gate the published release tag/commit pair, and close the 0.6.1 fleet rollout | `81cfc14`, `b330a7b` | `main` |
 | 80 | 2026-08-23 | Drop the dead issues: write grant from every shipped lane | `ce00104`, `da6abea` | `fix/drop-dead-issues-write` |
