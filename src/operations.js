@@ -453,7 +453,12 @@ async function routeOperation({ request, client, store, env, now }) {
           Boolean(request.rerequestOf) && booleanInput("rerequest-authorized", false, env),
       });
     } catch (error) {
-      // The request is over and nothing landed, so the receipt has to say so.
+      // A throw does not prove GitHub received nothing -- the POST may well
+      // have been accepted before the connection died. It proves we cannot
+      // claim it landed, and an unverifiable dispatch must not read as
+      // satisfied. `failed` states that this dispatch did not verifiably
+      // complete and routes it to a human, rather than asserting anything
+      // about the outside world we did not observe.
       result = await failDispatch({
         store,
         request,

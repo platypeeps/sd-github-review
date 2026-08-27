@@ -32,9 +32,12 @@ credits were restored and it still could not obtain one. See
 
 ## What this settles
 
-**Of the 153 pull requests merged or closed before this task, none shipped
-without a Copilot review.** That is exactly what the method measures — whether a
-review exists on the PR — and it is the outcome that matters. The claim is
+**Every one of the 153 pull requests merged or closed before this task carries
+a Copilot review.** That is exactly what the method measures — whether a review
+exists on the PR now — and it is the outcome that matters. It is deliberately
+not phrased as "none shipped unreviewed": the query reads present state, so it
+cannot by itself place the review before the merge. See the caveat below for
+why that distinction did not bite here. The claim is
 bounded to that population on purpose: #156 merged without one later the same
 day, and an unbounded present-tense version of this sentence would now be
 false.

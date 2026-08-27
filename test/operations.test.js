@@ -666,6 +666,9 @@ test("a dispatch that did not land is recorded as failed, not left reading in-fl
   assert.equal(harness.outputs.get("dispatch-allowed"), "false");
 });
 
+// `failed` is a statement about our evidence, not about GitHub: a throw may
+// have followed an accepted POST. What must not happen is the receipt reading
+// as satisfied on a dispatch nobody verified, so it fails closed to a human.
 test("a throwing review request is recorded as failed too", async () => {
   const request = clone(requestByName.get("explicit copilot"));
   const client = new FakeGitHubClient(request.headSha);
