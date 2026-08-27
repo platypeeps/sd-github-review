@@ -461,12 +461,15 @@ if (!alreadyPresent) {
 }
 return { alreadyPresent, requested: !alreadyPresent };
 
-// Correct: read the state back and report what is there.
+// Correct: read the state back and report what is there. Every branch
+// returns -- the already-present case is a real, verified presence and needs
+// its own outcome, distinct from a POST that was attempted.
 if (!alreadyPresent) {
   await client.requestReviewer(pullRequestNumber, reviewer);
   const landing = await probeLanding(client, pullRequestNumber, reviewer);
   return { alreadyPresent, requested: landing === LANDING_CONFIRMED, landing };
 }
+return { alreadyPresent, requested: false, landing: LANDING_NOT_ATTEMPTED };
 ```
 
 ## Scenario: Validate Public Repository Metadata
