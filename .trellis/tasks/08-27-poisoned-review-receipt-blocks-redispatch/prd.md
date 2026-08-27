@@ -129,11 +129,11 @@ configured, was reported as honored, and was silently not applied.
    identically from a clean start, ruling out anything specific to #156.
    Root cause is the zero-seat condition above.
 
-   **#156 and #157 are therefore both blocked on an organization billing
-   setting, not on code.** Neither can obtain a Copilot review until a seat is
-   restored. Both remain open pending that; if the owner decides not to
-   restore a seat, each needs an explicit merge-without-review decision
-   through the housekeeping gate. That decision is recorded as still open.
+   **#156 and #157 are therefore both blocked on Copilot account credits, not
+   on code.** Neither can obtain a Copilot review until credits are restored or
+   the quota cycle resets. Both remain open pending that; if the owner decides
+   not to wait, each needs an explicit merge-without-review decision through
+   the housekeeping gate. That decision is recorded as still open.
 
 ## Out of scope
 
@@ -141,9 +141,9 @@ configured, was reported as honored, and was silently not applied.
   or its disposition is deliberately decided; it is the live reproduction.
   (Understood as of 2026-08-27 — see AC6 — but still unmerged, now blocked on
   the seat rather than on the investigation.)
-- Restoring an organization Copilot seat. It is the actual remedy for the
-  review lane and only the owner can do it; no change in this repository
-  substitutes for it.
+- Restoring Copilot credits on the licensing account. It is the actual remedy
+  for the review lane and only the owner can do it; no change in this
+  repository substitutes for it.
 - The 08-04 v2-governance clause-B decision, which #156 only records.
 - The plugin version conflict (0.71.33 / 0.71.60) and the fleet pin gap
   (9 consumers at `@6ba1eff0`, 24 commits behind `main`). Both are real and both
@@ -156,15 +156,19 @@ configured, was reported as honored, and was silently not applied.
   `allow-bookkeeping-none: false` was set. Whether that classification is
   implicated or incidental is unknown.
 - ~~Why did GitHub not add the reviewer on this PR?~~ **Answered 2026-08-27:
-  the organization has zero Copilot seats** (`/orgs/platypeeps/copilot/billing`
-  reports `total: 0`, `seat_management_setting: "unconfigured"`). A direct
-  `POST .../requested_reviewers` returns HTTP 200 with an empty
-  `requested_reviewers`, with this action's code entirely out of the path, for
-  both `copilot-pull-request-reviewer[bot]` and `Copilot`. This is not specific
-  to #156, to a head, or to a diff shape. See
-  `research/why-github-added-nobody.md`, which also corrects the "transient"
-  framing in `research/divergence-point.md` and the "exactly one instance"
-  conclusion in `research/blast-radius-audit.md`.
+  the personal Copilot seat licensing these repositories hit its credit
+  limit.** While credits are exhausted GitHub accepts a reviewer request and
+  adds nobody. A direct `POST .../requested_reviewers` returns HTTP 200 with an
+  empty `requested_reviewers`, with this action's code entirely out of the
+  path, for both `copilot-pull-request-reviewer[bot]` and `Copilot`. Not
+  specific to #156, to a head, or to a diff shape.
+
+  An interim version of this answer named the organization's zero Copilot seat
+  count as the cause. It is not: that is the normal state for a personally
+  licensed user and was equally true while reviews were landing on 08-25 and
+  08-26. See `research/why-github-added-nobody.md`, which also corrects the
+  "transient" framing in `research/divergence-point.md` and the "exactly one
+  instance" conclusion in `research/blast-radius-audit.md`.
 - Is this the same root cause as the 2026-08-26 CI-trigger gaps on
   sd-ai-command-pack PR #564, where pushes produced no run and an empty commit
   was the escape? The shapes rhyme; that was attributed to a GitHub Actions
