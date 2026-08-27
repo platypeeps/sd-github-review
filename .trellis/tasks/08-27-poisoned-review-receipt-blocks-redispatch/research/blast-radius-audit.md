@@ -38,9 +38,17 @@ caught before merge.
 This lowers the urgency of the defect without lowering its severity. The
 verification gap in `reviewer-dispatch.js` is still a real hole that reports
 success without evidence; it has simply not been exercised destructively before
-now. The fix remains worth doing on its own merits, and the fact that #156 is
-the first occurrence in 154 PRs is itself a useful signal about how rare the
-underlying GitHub behavior is.
+now.
+
+**Correction, 2026-08-27.** The sentence that followed here called #156 "the
+first occurrence in 154 PRs" and read that as a signal that the underlying
+GitHub behavior is rare. That inference does not hold. The measurement above
+stands — every merged and closed PR carries a Copilot review, and none shipped
+unreviewed — but it counts reviews that exist, not dispatches that landed, and
+those are not the same thing. On #151 and #153 the `review_requested` event
+precedes the action's own run, so the action did not cause them. How often the
+action's POST actually landed is not measured by this audit and is not
+knowable from it. See `why-github-added-nobody.md`.
 
 ## Caveat on method
 

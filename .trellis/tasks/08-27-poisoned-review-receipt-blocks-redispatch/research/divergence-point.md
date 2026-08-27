@@ -63,9 +63,15 @@ probe that would notice the reviewer is still absent never runs again. Verified
 empirically: `--attempt 2` returned attempt 1's receipt (same
 `logicalDispatchId`, same `workflowUrl`, `attempt: 1`) and created no new run.
 
-The verification gap is what converts a transient GitHub behavior into a
-permanent stall. Without it, the next attempt would re-probe, find the reviewer
-absent, and re-POST.
+The verification gap is what converts a GitHub behavior into a silent one.
+
+**Correction, 2026-08-27.** An earlier version of this paragraph called that
+behavior *transient* and claimed "the next attempt would re-probe, find the
+reviewer absent, and re-POST." Both are wrong. The behavior is the steady
+state whenever the organization has no Copilot seat, and a re-POST at a fresh
+head was tried and changed nothing. See `why-github-added-nobody.md`. The gap
+is still real and still worth closing — it is what makes a permanent condition
+look green — but it is not the difference between recovering and stalling.
 
 ## What is confirmed vs still unknown
 
