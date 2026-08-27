@@ -32,7 +32,8 @@ reason:            routine pull request within configured risk limits;
 
 GitHub, at 20:50Z — 2h48m later — reports `reviews: []`, `reviewRequests: []`,
 `comments: []`. No review-request event exists anywhere in the PR timeline. The
-request was never made.
+POST was issued and did not throw; it simply added no reviewer, and the lane
+never checked.
 
 This is not Copilot being unavailable or slow: `copilot-pull-request-reviewer`
 reviewed PRs #148, #149, #150, #151, #152, and #153 in this same repository.
@@ -63,11 +64,16 @@ configured, was reported as honored, and was silently not applied.
 
 ## Requirements
 
-- Determine where the request-landed claim diverges from reality: whether the
-  action never issued the request, issued it and swallowed a failure, or treated
-  an existing durable route as evidence that a request had already been made.
-  `Durable route observed` is the prime suspect and must be confirmed or
-  eliminated with evidence, not assumed.
+- **Divergence point is now identified** (`research/divergence-point.md`):
+  `src/reviewer-dispatch.js:43` returns `requested: !alreadyPresent`, computed
+  from the pre-call probe, while the `client.requestReviewer` response is
+  awaited and discarded. Nothing re-probes afterwards, so a non-throwing
+  response that adds no reviewer still reports success.
+  `src/operations.js:449` feeds that unverified claim into `store.observe` as
+  `alreadyPresent: !dispatch.requested`, producing the `observed` receipt. The
+  `Durable route observed` line is `operations.js:241` rendering that state —
+  a symptom, not the cause. `src/` is identical between the pinned `@6ba1eff0`
+  and `main`, so this is the code that ran.
 - A receipt may record `requested` only on positive evidence that GitHub
   accepted the request. Absent that evidence the dispatch is a failure and must
   be recorded as one; failing closed is required, since an unreviewed PR that
@@ -116,6 +122,12 @@ configured, was reported as honored, and was silently not applied.
   `.trellis/**`, which the lane classifies via `bookkeeping-paths`, and
   `allow-bookkeeping-none: false` was set. Whether that classification is
   implicated or incidental is unknown.
+- Why did GitHub not add the reviewer on this PR? Still unknown, and separate
+  from the verification gap. `copilot-pull-request-reviewer` reviewed #148-#153
+  in this repository, so it is not blanket ineligibility. The POST did not throw
+  (a throw yields `reconciliation-required`, not `observed`), so it returned a
+  non-error response and added nobody. Closing the verification gap does not
+  require answering this, but an audit probably should.
 - Is this the same root cause as the 2026-08-26 CI-trigger gaps on
   sd-ai-command-pack PR #564, where pushes produced no run and an empty commit
   was the escape? The shapes rhyme; that was attributed to a GitHub Actions
