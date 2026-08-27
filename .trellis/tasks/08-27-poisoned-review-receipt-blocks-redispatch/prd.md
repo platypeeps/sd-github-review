@@ -127,20 +127,32 @@ configured, was reported as honored, and was silently not applied.
    lane re-dispatched and still added no reviewer, which ruled out the
    receipt as the live blocker. PR #157 — this task's own fix — behaved
    identically from a clean start, ruling out anything specific to #156.
-   Root cause is the zero-seat condition above.
+   Root cause is the credit exhaustion recorded under Open questions.
 
-   **#156 and #157 are therefore both blocked on Copilot account credits, not
-   on code.** Neither can obtain a Copilot review until credits are restored or
-   the quota cycle resets. Both remain open pending that; if the owner decides
-   not to wait, each needs an explicit merge-without-review decision through
-   the housekeeping gate. That decision is recorded as still open.
+   **Resolved 2026-08-27, after credits were restored.** #157 took the reviewer
+   request immediately and received a clean Copilot review. #156 did not: five
+   requests across three heads and both reviewer identities each returned HTTP
+   200 with zero `review_requested` events, in the same minutes that #157 worked
+   as a control. So the credit exhaustion explains the outage, not #156's own
+   refusal, and why that PR specifically is unreviewable was not established
+   here. The leading hypothesis — untested, and recorded as a hypothesis — is
+   that Copilot declines a PR with nothing reviewable in it; #156 is a one-line
+   change to a single `.trellis/**` JSON file.
+
+   Owner then decided to merge #156 without a Copilot review. It went through
+   the `sd-housekeeping` gate and merged at 2026-08-27T23:05:26Z (merge commit
+   `5972e7d`). Worth recording precisely, because the framing going in was
+   wrong: the gate has no review floor to waive. Its first run refused with
+   `finish_work_missing`, and once a `planning`-mode finish-work receipt existed
+   (`planningSubtype: journal-only-recovery`, over a journal session citing the
+   work commit) it merged on green checks, zero unresolved review threads, and
+   exact head agreement. No waiver was exercised and none was needed.
 
 ## Out of scope
 
-- Merging PR #156. It stays open and unmerged until this defect is understood
-  or its disposition is deliberately decided; it is the live reproduction.
-  (Understood as of 2026-08-27 — see AC6 — but still unmerged, now blocked on
-  the seat rather than on the investigation.)
+- Merging PR #156. It was held open as the live reproduction until its
+  disposition was deliberately decided. Decided and merged 2026-08-27 by owner
+  decision; see AC6.
 - Restoring Copilot credits on the licensing account. It is the actual remedy
   for the review lane and only the owner can do it; no change in this
   repository substitutes for it.
@@ -162,6 +174,10 @@ configured, was reported as honored, and was silently not applied.
   empty `requested_reviewers`, with this action's code entirely out of the
   path, for both `copilot-pull-request-reviewer[bot]` and `Copilot`. Not
   specific to #156, to a head, or to a diff shape.
+
+  Confirmed by restoration: credits returned the same day, and #157 took the
+  request and was reviewed within a minute. The answer holds for the outage.
+  It does not cover #156, which stayed unreviewable after the restore; see AC6.
 
   An interim version of this answer named the organization's zero Copilot seat
   count as the cause. It is not: that is the normal state for a personally

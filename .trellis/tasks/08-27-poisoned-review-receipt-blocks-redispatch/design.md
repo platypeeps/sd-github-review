@@ -149,8 +149,13 @@ piece of work and out of scope here.
 
 ## Risk
 
-Low, and the blast-radius audit (`research/blast-radius-audit.md`) bounds it: 0
-of 148 merged PRs ever hit this, so the changed branch is rare in practice. The
-failure direction is also the safe one — the fix makes a silent success into a
-loud failure, so a mistake surfaces as a blocked review lane rather than an
-unreviewed merge.
+Low, because the failure direction is the safe one: the fix turns a silent
+success into a loud failure, so a mistake surfaces as a blocked review lane
+rather than an unreviewed merge.
+
+How often the changed branch is taken is not bounded here. The blast-radius
+audit (`research/blast-radius-audit.md`) establishes that every merged PR in
+this repository's history carries a Copilot review, so none shipped claiming a
+review floor it did not receive — but per that file's own correction it counts
+reviews that exist, not dispatches that landed, so it cannot say how often the
+POST added nobody.

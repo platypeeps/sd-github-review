@@ -25,7 +25,10 @@ nobody wrote down. Coverage confirmed complete: 154 rows returned; numbering run
 | OPEN | 1 | **1** (#156) |
 
 The only pull request in the repository's history without a Copilot review is
-PR #156 — the live reproduction, still open and unmerged.
+PR #156 — the live reproduction. It was open and unmerged when this audit ran;
+it was merged without a Copilot review on 2026-08-27 by owner decision, after
+credits were restored and it still could not obtain one. See
+`why-github-added-nobody.md`.
 
 ## What this settles
 
