@@ -822,8 +822,14 @@ export class ReceiptStore {
     const { elected } = await this.#electedRecords(pullRequestNumber, lower(headSha));
     const record = elected.get(lower(logicalDispatchId));
     if (!record) throw new Error("durable receipt was not found for dispatch failure");
-    if (record.receipt.dispatch.phase === "observed") {
-      throw new Error("observed receipts cannot transition to a failed dispatch");
+    // Only a live dispatch can fail. "observed" is settled, "acknowledged" has
+    // its own failed form through acknowledge(), and "not-started" is a skip --
+    // forcing any of them to "started" here would rewrite history rather than
+    // record an outcome.
+    if (record.receipt.dispatch.phase !== "started") {
+      throw new Error(
+        `only a started dispatch can be recorded as failed, not ${record.receipt.dispatch.phase}`,
+      );
     }
     // Already failed: the state is what the caller wants and rewriting it would
     // only move completedAt. Report it rather than mutating a settled receipt.

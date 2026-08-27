@@ -55,6 +55,10 @@ class FakeGitHubClient {
     this.landsRequest = true;
     this.probeError = null;
     this.posted = false;
+    // Breaks only the receipt read that `observe` performs, and only after the
+    // reviewer request landed -- the one case where the dispatch succeeded and
+    // the observation did not.
+    this.observeError = null;
     this.comparison = null;
     this.draft = false;
   }
@@ -77,6 +81,7 @@ class FakeGitHubClient {
 
   async listCheckRuns(head, name) {
     this.calls.push(["listCheckRuns", head, name]);
+    if (this.observeError && this.posted) throw this.observeError;
     return clone(this.checks.get(head) ?? []);
   }
 
@@ -678,6 +683,32 @@ test("a throwing review request is recorded as failed too", async () => {
   const queried = await harness.run("query", request);
   assert.equal(queried.receipt.dispatch.status, "failed");
   assert.equal(queried.state, "reconciliation-required");
+});
+
+// The dispatch and its observation are separate failure domains. Sharing one
+// catch meant a landed request whose receipt advance failed got written as a
+// failed dispatch -- recording a review that was requested as one that never
+// was. Caught by Copilot reviewing PR #157.
+test("a failed observation of a landed request is not recorded as a failed dispatch", async () => {
+  const request = clone(requestByName.get("explicit copilot"));
+  const client = new FakeGitHubClient(request.headSha);
+  client.observeError = new Error("check run listing unavailable");
+  const harness = createHarness(client);
+
+  await assert.rejects(
+    () => harness.run("route", request),
+    /durable receipt that needs reconciliation/u,
+  );
+
+  // Reconciliation, yes -- but the reviewer really was requested.
+  assert.equal(harness.outputs.get("durable-state"), "reconciliation-required");
+  assert.equal(harness.outputs.get("copilot-requested"), "true");
+  assert.match(harness.outputs.get("reconciliation-error"), /check run listing unavailable/u);
+
+  client.observeError = null;
+  const queried = await harness.run("query", request);
+  assert.notEqual(queried.receipt.dispatch.status, "failed");
+  assert.equal(queried.receipt.dispatch.status, "requested");
 });
 
 test("none and query operations mirror durable receipt state without dispatch", async () => {

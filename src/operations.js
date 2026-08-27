@@ -442,8 +442,9 @@ async function routeOperation({ request, client, store, env, now }) {
   if (result.dispatchAllowed && backend?.kind === "external") {
     adapter = adapterRequest(result.receipt);
   } else if (result.dispatchAllowed && backend?.kind === "copilot") {
+    let dispatch = null;
     try {
-      const dispatch = await requestCopilotReviewer({
+      dispatch = await requestCopilotReviewer({
         client,
         pullRequestNumber: request.pullRequestNumber,
         reviewer: backend.reviewAuthors[0],
@@ -451,25 +452,42 @@ async function routeOperation({ request, client, store, env, now }) {
         forceRerequest:
           Boolean(request.rerequestOf) && booleanInput("rerequest-authorized", false, env),
       });
-      // A POST that added nobody, or one whose outcome could not be read, is a
-      // failed dispatch -- not a satisfied receipt. Recording it as `observed`
-      // is what let PR #156 claim a review request that never landed and then
-      // block every retry behind its own false claim. Fail closed instead; the
-      // receipt store deliberately routes a failed dispatch to a human
-      // (see receipt.js:200-204), so this escalates rather than self-heals.
-      if (dispatch.landing === LANDING_ABSENT || dispatch.landing === LANDING_UNVERIFIED) {
-        result = await failDispatch({
-          store,
-          request,
-          env,
-          now,
-          receipt: result.receipt,
-          message:
-            dispatch.landing === LANDING_ABSENT
-              ? `requested reviewer ${backend.reviewAuthors[0]} was absent after the request was accepted`
-              : `could not verify whether requested reviewer ${backend.reviewAuthors[0]} was added`,
-        });
-      } else {
+    } catch (error) {
+      // The request is over and nothing landed, so the receipt has to say so.
+      result = await failDispatch({
+        store,
+        request,
+        env,
+        now,
+        receipt: result.receipt,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+    // A POST that added nobody, or one whose outcome could not be read, is a
+    // failed dispatch -- not a satisfied receipt. Recording it as `observed`
+    // is what let PR #156 claim a review request that never landed and then
+    // block every retry behind its own false claim. Fail closed instead; the
+    // receipt store deliberately routes a failed dispatch to a human
+    // (see receipt.js:200-204), so this escalates rather than self-heals.
+    if (dispatch && (dispatch.landing === LANDING_ABSENT || dispatch.landing === LANDING_UNVERIFIED)) {
+      result = await failDispatch({
+        store,
+        request,
+        env,
+        now,
+        receipt: result.receipt,
+        message:
+          dispatch.landing === LANDING_ABSENT
+            ? `requested reviewer ${backend.reviewAuthors[0]} was absent after the request was accepted`
+            : `could not verify whether requested reviewer ${backend.reviewAuthors[0]} was added`,
+      });
+    } else if (dispatch) {
+      // Observation is a separate failure domain and must not share the
+      // dispatch's catch. The request landed here; if only the receipt advance
+      // fails, writing `failed` would record a review that was requested as one
+      // that never was. Reconcile in memory and leave the dispatch record
+      // alone.
+      try {
         const completedAt = timestamp(now);
         result = await store.observe({
           pullRequestNumber: request.pullRequestNumber,
@@ -484,18 +502,17 @@ async function routeOperation({ request, client, store, env, now }) {
           completedAt,
         });
         result.copilotRequested = dispatch.requested;
+      } catch (error) {
+        result = {
+          state: "reconciliation-required",
+          receipt: result.receipt,
+          receiptVerified: true,
+          dispatchAllowed: false,
+          reconciliationRequired: true,
+          copilotRequested: dispatch.requested,
+          error: error instanceof Error ? error.message : String(error),
+        };
       }
-    } catch (error) {
-      // Same reasoning as the non-landing branch: a throwing requestReviewer is
-      // a dispatch that is over, and the receipt has to say so.
-      result = await failDispatch({
-        store,
-        request,
-        env,
-        now,
-        receipt: result.receipt,
-        message: error instanceof Error ? error.message : String(error),
-      });
     }
   }
   return { result, adapter, changedLines, sensitiveCount: sensitiveFiles.length };

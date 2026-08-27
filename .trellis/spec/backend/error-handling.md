@@ -64,6 +64,7 @@ does not define a custom error hierarchy.
 | Reviewer request accepted but the reviewer is absent afterwards | Report `landing=absent` and `requested=false`; return reconciliation required rather than observing the receipt |
 | Post-request reviewer probe throws | Report `landing=unverified`; fail closed and record the outcome as unknown, never as a clean absence |
 | Any classified dispatch failure, landing or throwing | Persist it via `store.dispatchFailed` before returning, so a later read reaches the same verdict |
+| Observation fails after the request landed | Reconcile in memory only. The dispatch succeeded; a separate failure domain must not share its catch, or a requested review is recorded as one that never happened |
 | The `dispatchFailed` write itself fails | Stay `reconciliation-required` and carry both the original and the persist error; never downgrade the verdict because the write failed |
 | More than 3,000 files in automatic mode | Throw and require an explicit route |
 | Unrelated event | Emit a successful `none` decision, not an error |
