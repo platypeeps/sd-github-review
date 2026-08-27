@@ -150,5 +150,6 @@ question; a revert of step 2 has to take step 4 with it.
   Separate work, named in `design.md` under compatibility.
 - Determining why GitHub added no reviewer on #156. Open question in `prd.md`;
   the fix is correct without it.
-- Merging or unblocking PR #156 (AC6 records its disposition; it is the live
-  reproduction and an empty commit would destroy it).
+- Merging or unblocking PR #156. It was held as the live reproduction while
+  this work ran, and an empty commit would have destroyed it. Its disposition
+  was decided separately and is recorded in `prd.md`, AC6.

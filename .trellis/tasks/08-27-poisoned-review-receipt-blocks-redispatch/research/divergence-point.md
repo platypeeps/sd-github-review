@@ -79,9 +79,15 @@ look green — but it is not the difference between recovering and stalling.
 positive evidence that GitHub accepted the request. This is structural and
 head-independent.
 
-**Not confirmed:** *why* GitHub did not add the reviewer on this particular PR.
-`copilot-pull-request-reviewer` reviewed PRs #148-#153 in this same repository,
-so it is not a blanket ineligibility. The POST did not throw — a throw would have
-produced `reconciliation-required`, not `observed` — so it returned a
-non-error response and added nobody. Determining that cause is separate from,
-and not a prerequisite for, closing the verification gap.
+**Not confirmed when this file was written:** *why* GitHub did not add the
+reviewer on this particular PR. `copilot-pull-request-reviewer` reviewed PRs
+#148-#153 in this same repository, so it was not a blanket ineligibility. The
+POST did not throw — a throw would have produced `reconciliation-required`, not
+`observed` — so it returned a non-error response and added nobody. Determining
+that cause was separate from, and not a prerequisite for, closing the
+verification gap.
+
+**Answered since, in part.** The repository-wide outage was exhausted Copilot
+credits on the licensing account; restoring them brought the lane back with no
+code change. #156 itself stayed unreviewable afterwards and that remains
+unexplained. See `why-github-added-nobody.md`.

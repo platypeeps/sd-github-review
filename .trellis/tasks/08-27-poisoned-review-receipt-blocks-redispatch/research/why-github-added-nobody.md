@@ -15,10 +15,10 @@ REST access: no endpoint exposes personal Copilot entitlement or credit state,
 and the token in use has no billing-admin scope. It was confirmed behaviourally
 a few hours later, when the credits came back — see below.
 
-It fits every observation. Copilot reviewed PRs in this repository through
-2026-08-26T16:07Z and none after; the failure is uniform across pull
-requests, head SHAs, diff shapes, and both reviewer identities; and nothing
-throws anywhere in the path.
+It fits every observation from the outage. Copilot reviewed PRs in this
+repository through 2026-08-26T16:07Z and none between then and the restore;
+across that window the failure was uniform over pull requests, head SHAs, diff
+shapes, and both reviewer identities; and nothing threw anywhere in the path.
 
 ## The API-level reproduction
 

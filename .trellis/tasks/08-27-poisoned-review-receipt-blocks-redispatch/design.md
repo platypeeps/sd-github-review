@@ -99,9 +99,10 @@ self-recover at an unchanged head is a separate question that touches the receip
 store's human-in-the-loop contract, and it needs its own decision rather than
 being smuggled in here.
 
-Note this also means the fix does not repair PR #156. Its receipt is already
-written at `de440b6` and already reads satisfied; nothing in this change rewrites
-an existing receipt. #156 needs its own disposition.
+Note this also means the fix does not repair PR #156. Its receipt was already
+written at `de440b6` and already read satisfied; nothing in this change rewrites
+an existing receipt, so #156 needed its own disposition. It got one: merged
+without a Copilot review on 2026-08-27 by owner decision. See `prd.md`, AC6.
 
 ## Why the healthy idempotent path is unaffected
 
