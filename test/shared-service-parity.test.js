@@ -47,6 +47,7 @@ function fakeClient({
   landsRequest = true,
   probeThrows = false,
   probeBody = undefined,
+  canonicalLogin = null,
 } = {}) {
   const calls = [];
   let users = [...requestedUsers];
@@ -68,7 +69,10 @@ function fakeClient({
     async requestReviewer(number, reviewer) {
       calls.push(["requestReviewer", number, reviewer]);
       posted = true;
-      if (landsRequest) users.push({ login: reviewer });
+      // GitHub stores its own canonical casing, not the string it was sent.
+      // Echoing the argument back would make a casing test compare a value to
+      // itself and pass against an exact-match implementation.
+      if (landsRequest) users.push({ login: canonicalLogin ?? reviewer });
     },
     async removeRequestedReviewer(number, reviewer) {
       calls.push(["removeRequestedReviewer", number, reviewer]);
@@ -305,13 +309,19 @@ test("a post-probe with no readable reviewer set is unverified, not absent", asy
 // configured reviewer string. An exact comparison would read this landed
 // request as absent and fail a healthy dispatch closed.
 test("a login differing only in case is the same reviewer, not an absent one", async () => {
-  const cased = fakeClient();
+  const cased = fakeClient({ canonicalLogin: REVIEWER });
   const result = await requestCopilotReviewer({
     client: cased,
     pullRequestNumber: 42,
     reviewer: REVIEWER.toUpperCase(),
     headSha: HEAD,
   });
+  // The POST was sent the uppercase string and the probe read back the
+  // canonical one, so the comparison genuinely spans two casings.
+  assert.deepEqual(
+    cased.calls.filter((call) => Array.isArray(call)),
+    [["requestReviewer", 42, REVIEWER.toUpperCase()]],
+  );
   assert.equal(result.landing, "confirmed");
   assert.equal(result.requested, true);
 

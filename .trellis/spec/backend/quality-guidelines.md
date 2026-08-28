@@ -490,14 +490,17 @@ return { alreadyPresent, requested: !alreadyPresent };
 // -- a throw here would propagate as a dispatch error and lose the
 // distinction between "GitHub added nobody" and "we could not find out".
 async function probeLanding(client, pullRequestNumber, reviewer) {
+  let after;
   try {
-    const after = await client.getRequestedReviewers(pullRequestNumber);
-    return after?.users?.some((user) => user.login === reviewer)
-      ? LANDING_CONFIRMED
-      : LANDING_ABSENT;
+    after = await client.getRequestedReviewers(pullRequestNumber);
   } catch {
     return LANDING_UNVERIFIED;
   }
+  // A 2xx with no readable reviewer set is not evidence of absence.
+  if (!Array.isArray(after?.users)) return LANDING_UNVERIFIED;
+  return after.users.some((user) => sameLogin(user?.login, reviewer))
+    ? LANDING_CONFIRMED
+    : LANDING_ABSENT;
 }
 
 // Every branch returns -- the already-present case is a real, verified

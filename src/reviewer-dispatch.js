@@ -6,8 +6,11 @@
 // listing is skipped when no head SHA is available so a standalone event
 // without a head never over-fetches. The GitHub client is injected.
 //
-// `requested` reports whether the reviewer is present AFTER the call, never
-// whether we merely intended to add them. GitHub can return a non-error
+// `requested` reports whether THIS CALL added the reviewer, confirmed by
+// reading the set back afterwards -- never whether we merely intended to. It is
+// deliberately false when the reviewer was already present and no POST was
+// needed: that is a real presence, but this call did not create it, and
+// `alreadyPresent` is the field that reports it. GitHub can return a non-error
 // response to requestReviewer and add nobody; deriving `requested` from the
 // pre-call probe reported that as success, which minted a durable receipt
 // claiming a review request that never landed. `landing` carries the evidence.
