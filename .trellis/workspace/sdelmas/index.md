@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 84
-- **Last Active**: 2026-08-27
+- **Total Sessions**: 85
+- **Last Active**: 2026-08-28
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1422 | Active |
+| `journal-2.md` | ~1461 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 85 | 2026-08-28 | Refresh sd-ai-command-pack to 0.71.62 | `34687031138d169b10a194a166923c05165cbcac` | `chore/pack-refresh-0.71.62` |
 | 84 | 2026-08-27 | Persist a failed review dispatch instead of only reporting it | `1c6d451`, `b31b5c5`, `5c18db0` | `task/08-27-poisoned-review-receipt` |
 | 83 | 2026-08-27 | Record the 08-04 park falsification: one premise dead | `70379dbe9b64ed7be6610c78271c2319c08c59d1` | `chore/record-08-04-park-falsification` |
 | 82 | 2026-08-24 | Close the issues: write task with its fourth criterion unmet, and clear the stale pilot pull requests | `862b410`, `6a09704` | `main` |
