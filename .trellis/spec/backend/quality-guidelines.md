@@ -483,9 +483,24 @@ if (!alreadyPresent) {
 }
 return { alreadyPresent, requested: !alreadyPresent };
 
-// Correct: read the state back and report what is there. Every branch
-// returns -- the already-present case is a real, verified presence and needs
-// its own outcome, distinct from a POST that was attempted.
+// Correct: read the state back and report what is there. The probe is the
+// whole point, so it must answer for every outcome including its own failure
+// -- a throw here would propagate as a dispatch error and lose the
+// distinction between "GitHub added nobody" and "we could not find out".
+async function probeLanding(client, pullRequestNumber, reviewer) {
+  try {
+    const after = await client.getRequestedReviewers(pullRequestNumber);
+    return after?.users?.some((user) => user.login === reviewer)
+      ? LANDING_CONFIRMED
+      : LANDING_ABSENT;
+  } catch {
+    return LANDING_UNVERIFIED;
+  }
+}
+
+// Every branch returns -- the already-present case is a real, verified
+// presence and needs its own outcome, distinct from a POST that was
+// attempted. `unverified` is not confirmed, so it never reports as requested.
 if (!alreadyPresent) {
   await client.requestReviewer(pullRequestNumber, reviewer);
   const landing = await probeLanding(client, pullRequestNumber, reviewer);
