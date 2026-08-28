@@ -20,17 +20,32 @@ export const LANDING_CONFIRMED = "confirmed";
 export const LANDING_ABSENT = "absent";
 export const LANDING_UNVERIFIED = "unverified";
 
+// GitHub logins are case-insensitive, and the API echoes its own canonical
+// casing, which need not match the configured reviewer string. An exact
+// comparison would read a landed request as absent.
+function sameLogin(left, right) {
+  return typeof left === "string" && typeof right === "string"
+    && left.toLowerCase() === right.toLowerCase();
+}
+
 // Re-read the requested-reviewer set and report what is actually there. A probe
-// that throws yields `unverified` rather than a guess in either direction.
+// that throws yields `unverified` rather than a guess in either direction, and
+// so does a response with no readable reviewer set: `request()` returns
+// undefined for a 2xx with an empty body, and `absent` is a positive claim --
+// "GitHub accepted the request and added nobody" -- that this probe is the only
+// source of. Falling through to it on an unreadable payload would manufacture
+// the exact evidence the caller fails closed on.
 async function probeLanding(client, pullRequestNumber, reviewer) {
+  let after;
   try {
-    const after = await client.getRequestedReviewers(pullRequestNumber);
-    return after?.users?.some((user) => user.login === reviewer)
-      ? LANDING_CONFIRMED
-      : LANDING_ABSENT;
+    after = await client.getRequestedReviewers(pullRequestNumber);
   } catch {
     return LANDING_UNVERIFIED;
   }
+  if (!Array.isArray(after?.users)) return LANDING_UNVERIFIED;
+  return after.users.some((user) => sameLogin(user?.login, reviewer))
+    ? LANDING_CONFIRMED
+    : LANDING_ABSENT;
 }
 
 export async function requestCopilotReviewer({
@@ -41,13 +56,13 @@ export async function requestCopilotReviewer({
   forceRerequest = false,
 }) {
   const requested = await client.getRequestedReviewers(pullRequestNumber);
-  const alreadyRequested = Boolean(requested.users?.some((user) => user.login === reviewer));
+  const alreadyRequested = Boolean(requested.users?.some((user) => sameLogin(user?.login, reviewer)));
   const alreadyReviewed = Boolean(
     !alreadyRequested
       && headSha
       && (await client.listPullRequestReviews(pullRequestNumber)).some(
         (review) =>
-          review.user?.login === reviewer
+          sameLogin(review.user?.login, reviewer)
           && review.commit_id?.toLowerCase() === headSha.toLowerCase()
           && review.state !== "DISMISSED",
       ),

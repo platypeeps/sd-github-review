@@ -46,6 +46,7 @@ function fakeClient({
   reviews = [],
   landsRequest = true,
   probeThrows = false,
+  probeBody = undefined,
 } = {}) {
   const calls = [];
   let users = [...requestedUsers];
@@ -55,6 +56,9 @@ function fakeClient({
     async getRequestedReviewers() {
       calls.push("getRequestedReviewers");
       if (probeThrows && posted) throw new Error("probe unavailable");
+      // A 2xx whose body the client could not turn into a reviewer set: the
+      // client returns undefined for an empty body on an ok response.
+      if (probeBody !== undefined && posted) return probeBody.value;
       return { users: [...users] };
     },
     async listPullRequestReviews() {
@@ -277,6 +281,52 @@ test("an unreadable post-probe is unverified, never a landed request", async () 
   });
   assert.equal(result.landing, "unverified");
   assert.equal(result.requested, false);
+});
+
+// `absent` is a positive claim -- GitHub accepted the request and added nobody
+// -- and the caller fails closed on it. A 2xx the client could not read into a
+// reviewer set is not that claim; reporting it as one manufactures the very
+// evidence the contract distinguishes.
+test("a post-probe with no readable reviewer set is unverified, not absent", async () => {
+  for (const value of [undefined, null, {}, { users: null }, { users: "nope" }]) {
+    const blind = fakeClient({ landsRequest: true, probeBody: { value } });
+    const result = await requestCopilotReviewer({
+      client: blind,
+      pullRequestNumber: 42,
+      reviewer: REVIEWER,
+      headSha: HEAD,
+    });
+    assert.equal(result.landing, "unverified", `payload ${JSON.stringify(value)}`);
+    assert.equal(result.requested, false);
+  }
+});
+
+// GitHub echoes its own canonical casing for a login, which need not match the
+// configured reviewer string. An exact comparison would read this landed
+// request as absent and fail a healthy dispatch closed.
+test("a login differing only in case is the same reviewer, not an absent one", async () => {
+  const cased = fakeClient();
+  const result = await requestCopilotReviewer({
+    client: cased,
+    pullRequestNumber: 42,
+    reviewer: REVIEWER.toUpperCase(),
+    headSha: HEAD,
+  });
+  assert.equal(result.landing, "confirmed");
+  assert.equal(result.requested, true);
+
+  // The pre-call presence probe reads the same rule, so an already-requested
+  // reviewer is not re-POSTed merely because the casing differs.
+  const present = fakeClient({ requestedUsers: [{ login: REVIEWER }] });
+  const presentResult = await requestCopilotReviewer({
+    client: present,
+    pullRequestNumber: 42,
+    reviewer: REVIEWER.toUpperCase(),
+    headSha: HEAD,
+  });
+  assert.equal(presentResult.alreadyRequested, true);
+  assert.equal(presentResult.landing, "not-attempted");
+  assert.ok(!present.calls.some((call) => Array.isArray(call) && call[0] === "requestReviewer"));
 });
 
 test("an authorized rerequest that does not land is not reported as rerequested", async () => {
