@@ -38,13 +38,31 @@ const RISK_INPUTS = {
   reviewDrafts: false,
 };
 
-function fakeClient({ requestedUsers = [], reviews = [] } = {}) {
+// `landsRequest: false` models the defect this service exists to catch: GitHub
+// returns a non-error response to requestReviewer and adds nobody.
+// `probeThrows: true` models a post-probe that cannot be read at all.
+function fakeClient({
+  requestedUsers = [],
+  reviews = [],
+  landsRequest = true,
+  probeThrows = false,
+  probeBody = undefined,
+  preProbeBody = undefined,
+  canonicalLogin = null,
+} = {}) {
   const calls = [];
+  let users = [...requestedUsers];
+  let posted = false;
   return {
     calls,
     async getRequestedReviewers() {
       calls.push("getRequestedReviewers");
-      return { users: requestedUsers };
+      if (probeThrows && posted) throw new Error("probe unavailable");
+      // A 2xx whose body the client could not turn into a reviewer set: the
+      // client returns null for an empty body on an ok response.
+      if (probeBody !== undefined && posted) return probeBody.value;
+      if (preProbeBody !== undefined && !posted) return preProbeBody.value;
+      return { users: [...users] };
     },
     async listPullRequestReviews() {
       calls.push("listPullRequestReviews");
@@ -52,9 +70,15 @@ function fakeClient({ requestedUsers = [], reviews = [] } = {}) {
     },
     async requestReviewer(number, reviewer) {
       calls.push(["requestReviewer", number, reviewer]);
+      posted = true;
+      // GitHub stores its own canonical casing, not the string it was sent.
+      // Echoing the argument back would make a casing test compare a value to
+      // itself and pass against an exact-match implementation.
+      if (landsRequest) users.push({ login: canonicalLogin ?? reviewer });
     },
     async removeRequestedReviewer(number, reviewer) {
       calls.push(["removeRequestedReviewer", number, reviewer]);
+      users = users.filter((user) => user.login !== reviewer);
     },
   };
 }
@@ -117,6 +141,7 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyPresent: true,
     requested: false,
     rerequested: false,
+    landing: "not-attempted",
   });
   // Already requested short-circuits before listing reviews or requesting.
   assert.ok(!requested.calls.includes("listPullRequestReviews"));
@@ -138,6 +163,7 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyPresent: true,
     requested: false,
     rerequested: false,
+    landing: "not-attempted",
   });
 
   // A DISMISSED review at the head is not presence; the reviewer is requested.
@@ -156,6 +182,7 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyPresent: false,
     requested: true,
     rerequested: false,
+    landing: "confirmed",
   });
   assert.ok(dismissed.calls.some((call) => Array.isArray(call) && call[0] === "requestReviewer"));
 
@@ -173,6 +200,7 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyPresent: false,
     requested: true,
     rerequested: false,
+    landing: "confirmed",
   });
   assert.deepEqual(fresh.calls.filter((call) => Array.isArray(call)), [["requestReviewer", 42, REVIEWER]]);
 
@@ -193,6 +221,7 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyPresent: true,
     requested: true,
     rerequested: true,
+    landing: "confirmed",
   });
   assert.deepEqual(
     forcedPending.calls.filter((call) => Array.isArray(call)),
@@ -215,11 +244,141 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyPresent: true,
     requested: true,
     rerequested: true,
+    landing: "confirmed",
   });
   assert.deepEqual(
     forcedReviewed.calls.filter((call) => Array.isArray(call)),
     [["requestReviewer", 42, REVIEWER]],
   );
+});
+
+// Regression: PR #156. GitHub returned a non-error response to requestReviewer
+// and added nobody; deriving `requested` from the pre-call probe reported that
+// as a landed request, which minted a durable receipt claiming a review that
+// never happened and then blocked every retry.
+test("a requestReviewer that adds nobody is reported as absent, not requested", async () => {
+  const silent = fakeClient({ landsRequest: false });
+  const result = await requestCopilotReviewer({
+    client: silent,
+    pullRequestNumber: 42,
+    reviewer: REVIEWER,
+    headSha: HEAD,
+  });
+  assert.deepEqual(result, {
+    alreadyRequested: false,
+    alreadyReviewed: false,
+    alreadyPresent: false,
+    requested: false,
+    rerequested: false,
+    landing: "absent",
+  });
+  // The POST was attempted, and the post-probe is what caught it.
+  assert.ok(silent.calls.some((call) => Array.isArray(call) && call[0] === "requestReviewer"));
+  assert.equal(silent.calls.filter((call) => call === "getRequestedReviewers").length, 2);
+});
+
+test("an unreadable post-probe is unverified, never a landed request", async () => {
+  const blind = fakeClient({ landsRequest: true, probeThrows: true });
+  const result = await requestCopilotReviewer({
+    client: blind,
+    pullRequestNumber: 42,
+    reviewer: REVIEWER,
+    headSha: HEAD,
+  });
+  assert.equal(result.landing, "unverified");
+  assert.equal(result.requested, false);
+});
+
+// `absent` is a positive claim -- GitHub accepted the request and added nobody
+// -- and the caller fails closed on it. A 2xx the client could not read into a
+// reviewer set is not that claim; reporting it as one manufactures the very
+// evidence the contract distinguishes.
+test("a post-probe with no readable reviewer set is unverified, not absent", async () => {
+  for (const value of [undefined, null, {}, { users: null }, { users: "nope" }]) {
+    const blind = fakeClient({ landsRequest: true, probeBody: { value } });
+    const result = await requestCopilotReviewer({
+      client: blind,
+      pullRequestNumber: 42,
+      reviewer: REVIEWER,
+      headSha: HEAD,
+    });
+    assert.equal(result.landing, "unverified", `payload ${JSON.stringify(value)}`);
+    assert.equal(result.requested, false);
+  }
+});
+
+// `GitHubClient.request()` answers null for a 2xx with an empty body, so the
+// pre-request probe can return no object at all. Dereferencing it would throw
+// before the POST, replacing the fail-closed path with an unhandled exception.
+test("an unreadable pre-request probe still posts and defers to the post-probe", async () => {
+  for (const value of [null, undefined, {}, { users: null }]) {
+    const blind = fakeClient({ preProbeBody: { value }, landsRequest: true });
+    const result = await requestCopilotReviewer({
+      client: blind,
+      pullRequestNumber: 42,
+      reviewer: REVIEWER,
+      headSha: HEAD,
+    });
+    const label = `payload ${JSON.stringify(value ?? null)}`;
+    // Unreadable is "not known to be present", never "already there".
+    assert.equal(result.alreadyRequested, false, label);
+    assert.deepEqual(
+      blind.calls.filter((call) => Array.isArray(call)),
+      [["requestReviewer", 42, REVIEWER]],
+      label,
+    );
+    // The post-probe, not the unreadable pre-probe, renders the verdict.
+    assert.equal(result.landing, "confirmed", label);
+    assert.equal(result.requested, true, label);
+  }
+});
+
+// GitHub echoes its own canonical casing for a login, which need not match the
+// configured reviewer string. An exact comparison would read this landed
+// request as absent and fail a healthy dispatch closed.
+test("a login differing only in case is the same reviewer, not an absent one", async () => {
+  const cased = fakeClient({ canonicalLogin: REVIEWER });
+  const result = await requestCopilotReviewer({
+    client: cased,
+    pullRequestNumber: 42,
+    reviewer: REVIEWER.toUpperCase(),
+    headSha: HEAD,
+  });
+  // The POST was sent the uppercase string and the probe read back the
+  // canonical one, so the comparison genuinely spans two casings.
+  assert.deepEqual(
+    cased.calls.filter((call) => Array.isArray(call)),
+    [["requestReviewer", 42, REVIEWER.toUpperCase()]],
+  );
+  assert.equal(result.landing, "confirmed");
+  assert.equal(result.requested, true);
+
+  // The pre-call presence probe reads the same rule, so an already-requested
+  // reviewer is not re-POSTed merely because the casing differs.
+  const present = fakeClient({ requestedUsers: [{ login: REVIEWER }] });
+  const presentResult = await requestCopilotReviewer({
+    client: present,
+    pullRequestNumber: 42,
+    reviewer: REVIEWER.toUpperCase(),
+    headSha: HEAD,
+  });
+  assert.equal(presentResult.alreadyRequested, true);
+  assert.equal(presentResult.landing, "not-attempted");
+  assert.ok(!present.calls.some((call) => Array.isArray(call) && call[0] === "requestReviewer"));
+});
+
+test("an authorized rerequest that does not land is not reported as rerequested", async () => {
+  const silentForce = fakeClient({ requestedUsers: [{ login: REVIEWER }], landsRequest: false });
+  const result = await requestCopilotReviewer({
+    client: silentForce,
+    pullRequestNumber: 42,
+    reviewer: REVIEWER,
+    headSha: HEAD,
+    forceRerequest: true,
+  });
+  assert.equal(result.landing, "absent");
+  assert.equal(result.requested, false);
+  assert.equal(result.rerequested, false);
 });
 
 test("selectProtocolRoute returns the exact explicit-branch shape", () => {

@@ -5,6 +5,51 @@
 // the durable path wraps it with receipt observe/reconciliation. The review
 // listing is skipped when no head SHA is available so a standalone event
 // without a head never over-fetches. The GitHub client is injected.
+//
+// `requested` reports whether THIS CALL added the reviewer, confirmed by
+// reading the set back afterwards -- never whether we merely intended to. It is
+// deliberately false when the reviewer was already present and no POST was
+// needed: that is a real presence, but this call did not create it, and
+// `alreadyPresent` is the field that reports it. GitHub can return a non-error
+// response to requestReviewer and add nobody; deriving `requested` from the
+// pre-call probe reported that as success, which minted a durable receipt
+// claiming a review request that never landed. `landing` carries the evidence.
+
+// Landing outcomes. `not-attempted` and `unverified` are distinct on purpose:
+// the first means no POST was needed, the second means a POST happened and we
+// could not find out what it did. Neither may be read as a landed request.
+export const LANDING_NOT_ATTEMPTED = "not-attempted";
+export const LANDING_CONFIRMED = "confirmed";
+export const LANDING_ABSENT = "absent";
+export const LANDING_UNVERIFIED = "unverified";
+
+// GitHub logins are case-insensitive, and the API echoes its own canonical
+// casing, which need not match the configured reviewer string. An exact
+// comparison would read a landed request as absent.
+function sameLogin(left, right) {
+  return typeof left === "string" && typeof right === "string"
+    && left.toLowerCase() === right.toLowerCase();
+}
+
+// Re-read the requested-reviewer set and report what is actually there. A probe
+// that throws yields `unverified` rather than a guess in either direction, and
+// so does a response with no readable reviewer set: `request()` returns `null`
+// for a 2xx with an empty body, and `absent` is a positive claim --
+// "GitHub accepted the request and added nobody" -- that this probe is the only
+// source of. Falling through to it on an unreadable payload would manufacture
+// the exact evidence the caller fails closed on.
+async function probeLanding(client, pullRequestNumber, reviewer) {
+  let after;
+  try {
+    after = await client.getRequestedReviewers(pullRequestNumber);
+  } catch {
+    return LANDING_UNVERIFIED;
+  }
+  if (!Array.isArray(after?.users)) return LANDING_UNVERIFIED;
+  return after.users.some((user) => sameLogin(user?.login, reviewer))
+    ? LANDING_CONFIRMED
+    : LANDING_ABSENT;
+}
 
 export async function requestCopilotReviewer({
   client,
@@ -13,14 +58,19 @@ export async function requestCopilotReviewer({
   headSha,
   forceRerequest = false,
 }) {
+  // `request()` answers `null` for a 2xx with an empty body, so this probe can
+  // yield no object at all. Reading `.users` off it directly would throw before
+  // any POST, turning an unreadable pre-probe into an unhandled exception
+  // instead of the fail-closed path. Unreadable means "not known to be
+  // present", so the POST still happens and `probeLanding` renders the verdict.
   const requested = await client.getRequestedReviewers(pullRequestNumber);
-  const alreadyRequested = Boolean(requested.users?.some((user) => user.login === reviewer));
+  const alreadyRequested = Boolean(requested?.users?.some((user) => sameLogin(user?.login, reviewer)));
   const alreadyReviewed = Boolean(
     !alreadyRequested
       && headSha
       && (await client.listPullRequestReviews(pullRequestNumber)).some(
         (review) =>
-          review.user?.login === reviewer
+          sameLogin(review.user?.login, reviewer)
           && review.commit_id?.toLowerCase() === headSha.toLowerCase()
           && review.state !== "DISMISSED",
       ),
@@ -35,10 +85,35 @@ export async function requestCopilotReviewer({
       await client.removeRequestedReviewer(pullRequestNumber, reviewer);
     }
     await client.requestReviewer(pullRequestNumber, reviewer);
-    return { alreadyRequested, alreadyReviewed, alreadyPresent, requested: true, rerequested: true };
+    const landing = await probeLanding(client, pullRequestNumber, reviewer);
+    const landed = landing === LANDING_CONFIRMED;
+    return {
+      alreadyRequested,
+      alreadyReviewed,
+      alreadyPresent,
+      requested: landed,
+      rerequested: landed,
+      landing,
+    };
   }
   if (!alreadyPresent) {
     await client.requestReviewer(pullRequestNumber, reviewer);
+    const landing = await probeLanding(client, pullRequestNumber, reviewer);
+    return {
+      alreadyRequested,
+      alreadyReviewed,
+      alreadyPresent,
+      requested: landing === LANDING_CONFIRMED,
+      rerequested: false,
+      landing,
+    };
   }
-  return { alreadyRequested, alreadyReviewed, alreadyPresent, requested: !alreadyPresent, rerequested: false };
+  return {
+    alreadyRequested,
+    alreadyReviewed,
+    alreadyPresent,
+    requested: false,
+    rerequested: false,
+    landing: LANDING_NOT_ATTEMPTED,
+  };
 }

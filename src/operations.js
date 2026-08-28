@@ -9,7 +9,11 @@ import {
 import { DEFAULT_STRANDED_RECEIPT_MINUTES, DURABLE_STATES, ReceiptStore } from "./receipt.js";
 import { selectProtocolRoute } from "./router.js";
 import { buildRiskContext } from "./risk-context.js";
-import { requestCopilotReviewer } from "./reviewer-dispatch.js";
+import {
+  LANDING_ABSENT,
+  LANDING_UNVERIFIED,
+  requestCopilotReviewer,
+} from "./reviewer-dispatch.js";
 import { normalizeMode, parseList } from "./normalize.js";
 import {
   operationNames,
@@ -438,8 +442,9 @@ async function routeOperation({ request, client, store, env, now }) {
   if (result.dispatchAllowed && backend?.kind === "external") {
     adapter = adapterRequest(result.receipt);
   } else if (result.dispatchAllowed && backend?.kind === "copilot") {
+    let dispatch = null;
     try {
-      const dispatch = await requestCopilotReviewer({
+      dispatch = await requestCopilotReviewer({
         client,
         pullRequestNumber: request.pullRequestNumber,
         reviewer: backend.reviewAuthors[0],
@@ -447,33 +452,114 @@ async function routeOperation({ request, client, store, env, now }) {
         forceRerequest:
           Boolean(request.rerequestOf) && booleanInput("rerequest-authorized", false, env),
       });
-      const completedAt = timestamp(now);
-      result = await store.observe({
-        pullRequestNumber: request.pullRequestNumber,
-        headSha: request.headSha,
-        logicalDispatchId: request.logicalDispatchId,
-        alreadyPresent: !dispatch.requested,
-        observations: {
-          latencyMs: elapsedMilliseconds(result.receipt, completedAt),
-          costTier: backend.costTier,
-        },
-        workflowUrl: workflowUrl(env),
-        completedAt,
-      });
-      result.copilotRequested = dispatch.requested;
     } catch (error) {
-      result = {
-        state: "reconciliation-required",
+      // A throw does not prove GitHub received nothing -- the POST may well
+      // have been accepted before the connection died. It proves we cannot
+      // claim it landed, and an unverifiable dispatch must not read as
+      // satisfied. `failed` states that this dispatch did not verifiably
+      // complete and routes it to a human, rather than asserting anything
+      // about the outside world we did not observe.
+      result = await failDispatch({
+        store,
+        request,
+        env,
+        now,
         receipt: result.receipt,
-        receiptVerified: true,
-        dispatchAllowed: false,
-        reconciliationRequired: true,
-        copilotRequested: false,
-        error: error instanceof Error ? error.message : String(error),
-      };
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+    // A POST that added nobody, or one whose outcome could not be read, is a
+    // failed dispatch -- not a satisfied receipt. Recording it as `observed`
+    // is what let PR #156 claim a review request that never landed and then
+    // block every retry behind its own false claim. Fail closed instead; the
+    // receipt store deliberately routes a failed dispatch to a human
+    // (see receipt.js:200-204), so this escalates rather than self-heals.
+    if (dispatch && (dispatch.landing === LANDING_ABSENT || dispatch.landing === LANDING_UNVERIFIED)) {
+      result = await failDispatch({
+        store,
+        request,
+        env,
+        now,
+        receipt: result.receipt,
+        message:
+          dispatch.landing === LANDING_ABSENT
+            ? `requested reviewer ${backend.reviewAuthors[0]} was absent after the request was accepted`
+            : `could not verify whether requested reviewer ${backend.reviewAuthors[0]} was added`,
+      });
+    } else if (dispatch) {
+      // Observation is a separate failure domain and must not share the
+      // dispatch's catch. The request landed here; if only the receipt advance
+      // fails, writing `failed` would record a review that was requested as one
+      // that never was. Reconcile in memory and leave the dispatch record
+      // alone.
+      try {
+        const completedAt = timestamp(now);
+        result = await store.observe({
+          pullRequestNumber: request.pullRequestNumber,
+          headSha: request.headSha,
+          logicalDispatchId: request.logicalDispatchId,
+          alreadyPresent: !dispatch.requested,
+          observations: {
+            latencyMs: elapsedMilliseconds(result.receipt, completedAt),
+            costTier: backend.costTier,
+          },
+          workflowUrl: workflowUrl(env),
+          completedAt,
+        });
+        result.copilotRequested = dispatch.requested;
+      } catch (error) {
+        result = {
+          state: "reconciliation-required",
+          receipt: result.receipt,
+          receiptVerified: true,
+          dispatchAllowed: false,
+          reconciliationRequired: true,
+          copilotRequested: dispatch.requested,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
     }
   }
   return { result, adapter, changedLines, sensitiveCount: sensitiveFiles.length };
+}
+
+// Persist the failure; do not merely report it. Without the durable write the
+// receipt stays `requested`/`started`, which receiptState reads as in-flight
+// until `strandedAfterMinutes` elapses -- so a dead dispatch this run proved
+// would read as possibly-running for the next six hours. If the persist itself
+// fails there is nothing further to try: keep the state pinned to
+// reconciliation-required and carry both errors, since both are true.
+async function failDispatch({ store, request, env, now, receipt, message }) {
+  let persisted = null;
+  let persistError = null;
+  try {
+    persisted = await store.dispatchFailed({
+      pullRequestNumber: request.pullRequestNumber,
+      headSha: request.headSha,
+      logicalDispatchId: request.logicalDispatchId,
+      workflowUrl: workflowUrl(env),
+      completedAt: timestamp(now),
+    });
+  } catch (error) {
+    persistError = error instanceof Error ? error.message : String(error);
+  }
+  return {
+    state: "reconciliation-required",
+    receipt: persisted?.receipt ?? receipt,
+    // The store's own verdict, never a forced `true`. #updateRecord answers
+    // `receiptVerified: false` when updateCheckRun or the re-read fails, and a
+    // throw means nothing was written at all -- in both cases the receipt we
+    // hand back is not durable evidence of this failure. Asserting it were
+    // would emit an unpersisted receipt as durable, which is the same false
+    // claim about the outside world this whole path exists to stop. The
+    // success return omits the key, and every consumer tests `=== false`, so
+    // undefined still reads as verified.
+    receiptVerified: persisted ? persisted.receiptVerified : false,
+    dispatchAllowed: false,
+    reconciliationRequired: true,
+    copilotRequested: false,
+    error: [message, persisted?.error, persistError].filter(Boolean).join("; "),
+  };
 }
 
 async function finalizeOperation({ request, store, env, now }) {

@@ -414,6 +414,40 @@ test("a duplicate receipt never authorizes a second dispatch and finalize resolv
   assert.ok(client.checks.get(request.headSha).some((check) => check.id === 777));
 });
 
+// dispatchFailed writes phase "started". Without the guard it would force an
+// acknowledged or observed receipt back to "started", rewriting history rather
+// than recording an outcome.
+test("dispatchFailed records only a live dispatch, never a settled one", async () => {
+  const request = clone(requestByName.get("explicit cheap"));
+  const client = new FakeGitHubClient({ headSha: request.headSha });
+  const store = makeStore(client);
+  const started = await store.begin(request, cheapBeginOptions());
+
+  await store.acknowledge({
+    pullRequestNumber: request.pullRequestNumber,
+    headSha: request.headSha,
+    logicalDispatchId: started.receipt.logicalDispatchId,
+    acknowledgment: {
+      schemaVersion: 1,
+      logicalDispatchId: started.receipt.logicalDispatchId,
+      backendId: "pr-agent",
+      status: "acknowledged",
+      acknowledgedAt: "2026-07-23T12:30:10Z",
+      findingChannels: ["conversation-comment"],
+    },
+  });
+
+  await assert.rejects(
+    store.dispatchFailed({
+      pullRequestNumber: request.pullRequestNumber,
+      headSha: request.headSha,
+      logicalDispatchId: started.receipt.logicalDispatchId,
+      completedAt: "2026-07-23T12:30:20Z",
+    }),
+    /only a started dispatch can be recorded as failed/u,
+  );
+});
+
 test("acknowledgment and observation advance phases monotonically", async () => {
   const request = clone(requestByName.get("explicit cheap"));
   const client = new FakeGitHubClient({ headSha: request.headSha });

@@ -21,6 +21,10 @@ function createHarness(overrides = {}) {
     listPullRequestReviews: 0,
     requestReviewer: [],
   };
+  // The reviewer set is stateful because the dispatcher re-reads it after the
+  // POST. A fake whose requestReviewer adds nobody is the PR #156 failure, not
+  // the happy path, so these tests would silently stop testing success.
+  let users = [...(overrides.requestedUsers ?? [])];
   const client = {
     async getPullRequest() {
       calls.getPullRequest += 1;
@@ -33,7 +37,7 @@ function createHarness(overrides = {}) {
     },
     async getRequestedReviewers() {
       calls.getRequestedReviewers += 1;
-      return { users: overrides.requestedUsers ?? [] };
+      return { users: [...users] };
     },
     async listPullRequestReviews() {
       calls.listPullRequestReviews += 1;
@@ -41,6 +45,7 @@ function createHarness(overrides = {}) {
     },
     async requestReviewer(number, reviewer) {
       calls.requestReviewer.push({ number, reviewer });
+      users.push({ login: reviewer });
     },
   };
   const outputs = new Map();
@@ -210,7 +215,10 @@ test("automatic sensitive routing requests Copilot once and reports outputs", as
 
   assert.equal(result.decision.route, "copilot");
   assert.equal(harness.calls.listPullRequestFiles, 1);
-  assert.equal(harness.calls.getRequestedReviewers, 1);
+  // Two reads, not one: the presence probe before the POST and the landing
+  // probe after it. The second is what makes `copilot-requested` evidence
+  // rather than a restatement of the first.
+  assert.equal(harness.calls.getRequestedReviewers, 2);
   assert.deepEqual(harness.calls.requestReviewer, [
     { number: 23, reviewer: "copilot-pull-request-reviewer[bot]" },
   ]);
@@ -338,6 +346,7 @@ function createIdentityHarness(overrides = {}) {
     requestReviewer: [],
   };
   let factories = 0;
+  const identityUsers = [];
   const client = {
     async getPullRequest(number) {
       numbers.getPullRequest.push(number);
@@ -349,14 +358,15 @@ function createIdentityHarness(overrides = {}) {
     },
     async getRequestedReviewers(number) {
       numbers.getRequestedReviewers.push(number);
-      return { users: [] };
+      return { users: [...identityUsers] };
     },
     async listPullRequestReviews(number) {
       numbers.listPullRequestReviews.push(number);
       return [];
     },
-    async requestReviewer(number) {
+    async requestReviewer(number, reviewer) {
       numbers.requestReviewer.push(number);
+      identityUsers.push({ login: reviewer });
     },
   };
   const run = ({ event, eventName = "pull_request", env = {} }) =>

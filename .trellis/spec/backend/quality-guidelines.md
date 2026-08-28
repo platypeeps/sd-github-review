@@ -355,6 +355,17 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 - `routeReview(context) -> { route, reason }`
 - `GitHubClient.listPullRequestFiles(number) -> Promise<string[]>`
 - `GitHubClient.requestReviewer(number, reviewer) -> Promise<object|null>`
+- `requestCopilotReviewer({ client, pullRequestNumber, reviewer, headSha,
+  forceRerequest }) -> Promise<{ alreadyRequested, alreadyReviewed,
+  alreadyPresent, requested, rerequested, landing }>`, where `landing` is
+  `not-attempted|confirmed|absent|unverified`
+- `ReceiptStore.dispatchFailed({ pullRequestNumber, headSha, logicalDispatchId,
+  workflowUrl, completedAt }) -> Promise<{ state, receipt, dispatchAllowed,
+  reconciliationRequired, receiptVerified?, error? }>`, writing
+  `dispatch.status: "failed"` at `dispatch.phase: "started"`. `receiptVerified`
+  and `error` appear only when the durable write itself failed; the success and
+  already-failed returns omit both, so `undefined` reads as verified. Callers
+  propagate the value rather than asserting one
 
 ### 3. Contracts
 
@@ -382,6 +393,21 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
   and only evidence-backed rate-limit HTTP 403 responses. Directed waits use
   `retry-after`, then zero-remaining `x-ratelimit-reset`, then the 60-second
   secondary fallback; over-cap directives fail rather than being shortened.
+- A mutation's success is read back, never inferred. `requested: true` means
+  the reviewer was observed present in a probe taken *after* the POST.
+  GitHub can return a non-error response to `requestReviewer` and add nobody,
+  so a pre-call probe is evidence about the old state only. `landing` carries
+  which of the four outcomes actually occurred; `absent` (accepted, added
+  nobody) and `unverified` (post-probe itself failed) are distinct facts and
+  must not collapse into one another.
+- A failure is persisted, not just returned. A caller that classifies a
+  dispatch as failed writes that to the durable receipt before returning.
+  `receiptState` reads `status: "failed"` at `phase: "started"` as
+  age-irrelevant `reconciliation-required`, but reads a receipt still saying
+  `requested` at that phase as **in-flight** until `strandedAfterMinutes`
+  elapses (default 360). So an in-memory-only failure is invisible to every
+  later read for that whole window — the failure holds for the run that saw it
+  and no longer.
 
 ### 4. Validation & Error Matrix
 
@@ -400,6 +426,16 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 | Rate-limit directive exceeds 60 seconds | Throw with allow-listed limit context and make no early retry |
 | Interrupted reviewer request or Check Run mutation | Make exactly one mutation attempt; reconcile/fail closed in the owning layer |
 | Existing Copilot request/review for current HEAD | Do not request again; emit `copilot-requested=false` |
+| Reviewer POST returns non-error and the post-probe finds nobody | `landing=absent`, `requested=false`; the durable caller fails closed to `reconciliation-required` and never calls `store.observe` |
+| Post-probe itself throws after the POST | `landing=unverified`, `requested=false`; fail closed, and report the outcome as unknown rather than as absent |
+| Any classified *dispatch* failure — a non-landing POST or a throwing `requestReviewer` | Call `store.dispatchFailed` before returning, so a later read reaches the same verdict; still fail closed if that write itself fails, carrying both errors |
+| The request landed but the receipt advance (`store.observe`) failed | Reconcile in memory with `copilotRequested` still true; do **not** write a failed dispatch. The reviewer was requested, and recording otherwise is a second false claim in the opposite direction |
+| Post-request probe returns a 2xx with no readable reviewer set (`null` body, `users` missing or non-array) | `unverified`, never `absent`. `absent` is a positive claim — GitHub accepted and added nobody — and this probe is its only source; falling through manufactures the evidence the caller fails closed on |
+| Pre-request probe returns a 2xx with an empty body (`request()` yields `null`) | Read it with optional chaining. Unreadable is "not known to be present", so the POST still happens and the post-probe renders the verdict; dereferencing it throws before any POST and loses the fail-closed path |
+| Comparing a reviewer login | Case-insensitively. GitHub echoes its own canonical casing, which need not match the configured reviewer string; an exact match reads a landed request as absent |
+| `dispatchFailed` on a receipt not at `phase: "started"` | Throw. `observed` is settled, `acknowledged` has its own failed form via `acknowledge()`, `not-started` is a skip |
+| `dispatchFailed` on a receipt already `status: "failed"` | Return the existing `reconciliation-required` state without mutating; the transition is idempotent |
+| The durable write of that failure itself fails (`updateCheckRun` rejects, the re-read fails, or `dispatchFailed` throws) | Propagate the store's `receiptVerified`, never a forced `true`. An unpersisted receipt published as durable evidence is the same false claim one layer up. The success return omits the key and every consumer tests `=== false`, so `undefined` still reads as verified |
 
 ### 5. Good/Base/Bad Cases
 
@@ -415,6 +451,16 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 - Router tests assert the entire precedence order and exact route/reason pair.
 - Orchestration tests inject a client and assert both outputs and forbidden
   calls such as `listPullRequestFiles()` or `requestReviewer()`.
+- An injected client's `requestReviewer` adds the reviewer to the set its
+  `getRequestedReviewers` returns. A fake that accepts the POST and adds
+  nobody *is* the `landing=absent` defect, so a happy-path case built on one
+  asserts success against a client reproducing the failure. Non-landing
+  behavior is an explicit per-test opt-out, never the fake's default.
+- A durable-failure test asserts the **stored** receipt, not the run's own
+  outputs: run the operation, then re-read the receipt at the same head with
+  the clock unmoved and assert `dispatch.status === "failed"` and
+  `state === "reconciliation-required"`. Output-only assertions pass equally
+  against code that never persists, so they cannot detect this defect.
 - Transport tests assert the API-version/auth headers, pagination termination,
   request payload, safe retry/status matrix, injected delay sequence,
   primary/secondary limit context, mutation non-retry, and surfaced error text.
@@ -432,6 +478,44 @@ const decision = routeReview({ configuredMode, commandMode, labelMode, files });
 // sensitive-path evaluation can still affect the decision.
 const explicitMode = resolveExplicitMode({ configuredMode, commandMode, labelMode });
 const files = explicitMode ? [] : await client.listPullRequestFiles(number);
+```
+
+```js
+// Wrong: `requested` restates the probe taken before the call. A 2xx that
+// added nobody is reported as a landed request, and the durable caller mints
+// a satisfied receipt for a review that was never requested.
+if (!alreadyPresent) {
+  await client.requestReviewer(pullRequestNumber, reviewer);
+}
+return { alreadyPresent, requested: !alreadyPresent };
+
+// Correct: read the state back and report what is there. The probe is the
+// whole point, so it must answer for every outcome including its own failure
+// -- a throw here would propagate as a dispatch error and lose the
+// distinction between "GitHub added nobody" and "we could not find out".
+async function probeLanding(client, pullRequestNumber, reviewer) {
+  let after;
+  try {
+    after = await client.getRequestedReviewers(pullRequestNumber);
+  } catch {
+    return LANDING_UNVERIFIED;
+  }
+  // A 2xx with no readable reviewer set is not evidence of absence.
+  if (!Array.isArray(after?.users)) return LANDING_UNVERIFIED;
+  return after.users.some((user) => sameLogin(user?.login, reviewer))
+    ? LANDING_CONFIRMED
+    : LANDING_ABSENT;
+}
+
+// Every branch returns -- the already-present case is a real, verified
+// presence and needs its own outcome, distinct from a POST that was
+// attempted. `unverified` is not confirmed, so it never reports as requested.
+if (!alreadyPresent) {
+  await client.requestReviewer(pullRequestNumber, reviewer);
+  const landing = await probeLanding(client, pullRequestNumber, reviewer);
+  return { alreadyPresent, requested: landing === LANDING_CONFIRMED, landing };
+}
+return { alreadyPresent, requested: false, landing: LANDING_NOT_ATTEMPTED };
 ```
 
 ## Scenario: Validate Public Repository Metadata

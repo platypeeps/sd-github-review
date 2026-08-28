@@ -49,6 +49,20 @@ class FakeGitHubClient {
     this.calls = [];
     this.createError = null;
     this.requestError = null;
+    // A 2xx requestReviewer that adds nobody, and a post-request probe that
+    // cannot be read. Both are what PR #156 hit; neither throws, so neither is
+    // reachable through requestError.
+    this.landsRequest = true;
+    this.probeError = null;
+    this.posted = false;
+    // Breaks only the receipt read that `observe` performs, and only after the
+    // reviewer request landed -- the one case where the dispatch succeeded and
+    // the observation did not.
+    this.observeError = null;
+    // Breaks only the durable write of the dispatch failure: the transition
+    // runs after the reviewer request, so gating on `posted` leaves begin()
+    // intact.
+    this.failPersistError = null;
     this.comparison = null;
     this.draft = false;
   }
@@ -71,6 +85,7 @@ class FakeGitHubClient {
 
   async listCheckRuns(head, name) {
     this.calls.push(["listCheckRuns", head, name]);
+    if (this.observeError && this.posted) throw this.observeError;
     return clone(this.checks.get(head) ?? []);
   }
 
@@ -85,6 +100,7 @@ class FakeGitHubClient {
 
   async updateCheckRun(id, payload) {
     this.calls.push(["updateCheckRun", id, clone(payload)]);
+    if (this.failPersistError && this.posted) throw this.failPersistError;
     for (const [head, checks] of this.checks.entries()) {
       const index = checks.findIndex((check) => check.id === id);
       if (index === -1) continue;
@@ -101,6 +117,7 @@ class FakeGitHubClient {
 
   async getRequestedReviewers(number) {
     this.calls.push(["getRequestedReviewers", number]);
+    if (this.probeError && this.posted) throw this.probeError;
     return { users: clone(this.requestedUsers), teams: [] };
   }
 
@@ -112,7 +129,8 @@ class FakeGitHubClient {
   async requestReviewer(number, reviewer) {
     this.calls.push(["requestReviewer", number, reviewer]);
     if (this.requestError) throw this.requestError;
-    this.requestedUsers.push({ login: reviewer });
+    this.posted = true;
+    if (this.landsRequest) this.requestedUsers.push({ login: reviewer });
     return { users: clone(this.requestedUsers) };
   }
 
@@ -576,6 +594,157 @@ test("ambiguous Copilot dispatch returns reconciliation state and never suggests
   assert.equal(harness.outputs.get("dispatch-phase"), "started");
   assert.match(harness.outputs.get("reconciliation-error"), /connection closed/u);
   assert.equal(harness.outputs.get("adapter-request"), "");
+});
+
+test("a Copilot request that lands nobody never mints an observed receipt", async () => {
+  const request = clone(requestByName.get("explicit copilot"));
+  const client = new FakeGitHubClient(request.headSha);
+  // The exact PR #156 shape: the POST returns 2xx and the reviewer set is
+  // unchanged afterwards. Nothing throws, so the old code took the success
+  // path and wrote a satisfied receipt for a review that was never requested.
+  client.landsRequest = false;
+  const harness = createHarness(client);
+
+  await assert.rejects(
+    () => harness.run("route", request),
+    /durable receipt that needs reconciliation/u,
+  );
+
+  assert.notEqual(harness.outputs.get("durable-state"), "observed");
+  assert.equal(harness.outputs.get("durable-state"), "reconciliation-required");
+  assert.equal(harness.outputs.get("reconciliation-required"), "true");
+  assert.equal(harness.outputs.get("dispatch-allowed"), "false");
+  assert.equal(harness.outputs.get("copilot-requested"), "false");
+  // "started", not "observed": the receipt was never advanced, so a later
+  // attempt is not short-circuited by a satisfied phase.
+  assert.equal(harness.outputs.get("dispatch-phase"), "started");
+  assert.match(harness.outputs.get("reconciliation-error"), /absent/u);
+  assert.equal(harness.outputs.get("adapter-request"), "");
+});
+
+test("an unreadable post-request probe reconciles as unknown, not as absent", async () => {
+  const request = clone(requestByName.get("explicit copilot"));
+  const client = new FakeGitHubClient(request.headSha);
+  client.probeError = new Error("reviewer listing unavailable");
+  const harness = createHarness(client);
+
+  await assert.rejects(
+    () => harness.run("route", request),
+    /durable receipt that needs reconciliation/u,
+  );
+
+  assert.equal(harness.outputs.get("durable-state"), "reconciliation-required");
+  assert.equal(harness.outputs.get("copilot-requested"), "false");
+  // A failed probe and an observed-absent reviewer are both non-success, but
+  // they are different facts and the receipt must not conflate them.
+  const error = harness.outputs.get("reconciliation-error");
+  assert.match(error, /could not verify/u);
+  assert.doesNotMatch(error, /was absent/u);
+});
+
+// A receipt is durable evidence only if it was actually stored. #updateRecord
+// answers `receiptVerified: false` when the check-run write fails, and forcing
+// `true` over it published an unpersisted receipt as durable -- the same shape
+// of false claim, one layer up, that this task exists to remove.
+test("a failure whose own persist fails is not published as verified evidence", async () => {
+  const request = clone(requestByName.get("explicit copilot"));
+  const client = new FakeGitHubClient(request.headSha);
+  client.landsRequest = false;
+  client.failPersistError = new Error("check run update rejected");
+  const harness = createHarness(client);
+
+  await assert.rejects(
+    () => harness.run("route", request),
+    /durable receipt that needs reconciliation/u,
+  );
+
+  assert.equal(harness.outputs.get("receipt-verified"), "false");
+  assert.equal(harness.outputs.get("receipt"), "");
+  // Both failures are true and both are reported: the dispatch did not land,
+  // and the record of that did not stick.
+  const error = harness.outputs.get("reconciliation-error");
+  assert.match(error, /was absent/u);
+  assert.match(error, /check run update rejected/u);
+  // The verdict still fails closed.
+  assert.equal(harness.outputs.get("durable-state"), "reconciliation-required");
+  assert.equal(harness.outputs.get("dispatch-allowed"), "false");
+});
+
+// The failure has to outlive the run that observed it. Without the durable
+// write the receipt keeps `status: "requested"` / `phase: "started"`, which
+// receiptState reads as in-flight until strandedAfterMinutes (default 360)
+// elapses -- so every retry for six hours would report a dead dispatch as one
+// that might still be running. The store already treats `failed` at phase
+// "started" as age-irrelevant reconciliation; this proves the writer reaches it.
+test("a dispatch that did not land is recorded as failed, not left reading in-flight", async () => {
+  const request = clone(requestByName.get("explicit copilot"));
+  const client = new FakeGitHubClient(request.headSha);
+  client.landsRequest = false;
+  const harness = createHarness(client);
+
+  await assert.rejects(
+    () => harness.run("route", request),
+    /durable receipt that needs reconciliation/u,
+  );
+
+  // The stored receipt, not the in-memory result: this is the part a later run
+  // reads.
+  const queried = await harness.run("query", request);
+  assert.equal(queried.receipt.dispatch.status, "failed");
+  assert.equal(queried.receipt.dispatch.phase, "started");
+  // Age-irrelevant. The clock has not moved, so a receipt still reading
+  // "requested" would classify as in-flight here.
+  assert.equal(queried.state, "reconciliation-required");
+  assert.equal(harness.outputs.get("durable-state"), "reconciliation-required");
+  assert.equal(harness.outputs.get("dispatch-allowed"), "false");
+});
+
+// `failed` is a statement about our evidence, not about GitHub: a throw may
+// have followed an accepted POST. What must not happen is the receipt reading
+// as satisfied on a dispatch nobody verified, so it fails closed to a human.
+test("a throwing review request is recorded as failed too", async () => {
+  const request = clone(requestByName.get("explicit copilot"));
+  const client = new FakeGitHubClient(request.headSha);
+  client.requestError = new Error("connection closed after review request");
+  const harness = createHarness(client);
+
+  await assert.rejects(
+    () => harness.run("route", request),
+    /durable receipt that needs reconciliation/u,
+  );
+
+  // Before the query run overwrites the outputs.
+  assert.match(harness.outputs.get("reconciliation-error"), /connection closed/u);
+
+  const queried = await harness.run("query", request);
+  assert.equal(queried.receipt.dispatch.status, "failed");
+  assert.equal(queried.state, "reconciliation-required");
+});
+
+// The dispatch and its observation are separate failure domains. Sharing one
+// catch meant a landed request whose receipt advance failed got written as a
+// failed dispatch -- recording a review that was requested as one that never
+// was. Caught by Copilot reviewing PR #157.
+test("a failed observation of a landed request is not recorded as a failed dispatch", async () => {
+  const request = clone(requestByName.get("explicit copilot"));
+  const client = new FakeGitHubClient(request.headSha);
+  client.observeError = new Error("check run listing unavailable");
+  const harness = createHarness(client);
+
+  await assert.rejects(
+    () => harness.run("route", request),
+    /durable receipt that needs reconciliation/u,
+  );
+
+  // Reconciliation, yes -- but the reviewer really was requested.
+  assert.equal(harness.outputs.get("durable-state"), "reconciliation-required");
+  assert.equal(harness.outputs.get("copilot-requested"), "true");
+  assert.match(harness.outputs.get("reconciliation-error"), /check run listing unavailable/u);
+
+  client.observeError = null;
+  const queried = await harness.run("query", request);
+  assert.notEqual(queried.receipt.dispatch.status, "failed");
+  assert.equal(queried.receipt.dispatch.status, "requested");
 });
 
 test("none and query operations mirror durable receipt state without dispatch", async () => {
