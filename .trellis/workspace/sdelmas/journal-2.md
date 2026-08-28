@@ -1432,3 +1432,41 @@ Closed the poisoned-receipt defect on PR #157. A dispatch that did not land was 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 85: Refresh sd-ai-command-pack to 0.71.62
+<!-- trellis-session: v=2 fp=63f43542997b5ed6 -->
+
+**Date**: 2026-08-28
+**Task**: Refresh sd-ai-command-pack to 0.71.62
+**Branch**: `chore/pack-refresh-0.71.62`
+
+### Summary
+
+Advanced the thin sd-ai-command-pack pin from 0.71.60 to 0.71.62 under fleet campaign refresh-0.71.62-20260828T115500Z-clear. Installer-managed receipts only; no product-code edits.
+
+### Main Changes
+
+- Advanced the .sd-ai-command-pack thin pin from 0.71.60 to 0.71.62 (manifest and provenance receipts).
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `34687031138d169b10a194a166923c05165cbcac` | chore(pack): refresh sd-ai-command-pack to 0.71.62 |
+
+### Testing
+
+- [OK] npm test: 764 pass, 0 fail.
+- [OK] npm run check and npm run validate:metadata: passed.
+- [OK] npm run check:full: passed, zero findings.
+- [OK] install.py --check --audit: audit passed, platforms claude/gemini/github/opencode, installed 0.71.62.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
