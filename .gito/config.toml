@@ -38,7 +38,17 @@ exclude_files = [
   ".trellis/tasks/archive/**",
   ".ruff_cache/**",
   ".venv/**",
-  ".sd-ai-command-pack/**",
+  # .sd-ai-command-pack mixes installed payload with repo-owned configuration.
+  # Exclude only the copied and generated surfaces. review.json is this
+  # repository's own review-provider configuration: excluding it left a
+  # config-only PR with nothing in local review scope, which the coordinator
+  # reports as `local provider failure blocks remote routing` rather than as
+  # an empty diff -- the same failure the .trellis/workspace carve-out above
+  # was written to prevent.
+  ".sd-ai-command-pack/bin/**",
+  ".sd-ai-command-pack/installed-targets.txt",
+  ".sd-ai-command-pack/manifest.json",
+  ".sd-ai-command-pack/provenance.json",
   "node_modules/**",
 ]
 

@@ -1470,3 +1470,44 @@ Advanced the thin sd-ai-command-pack pin from 0.71.60 to 0.71.62 under fleet cam
 ### Next Steps
 
 - None - task complete
+
+
+## Session 86: Enable the codex local review lane and keep repo-owned review config in scope
+<!-- trellis-session: v=2 fp=3d4639514501e0c9 -->
+
+**Date**: 2026-08-28
+**Task**: Enable the codex local review lane and keep repo-owned review config in scope
+**Branch**: `chore/review-config-codex-lane`
+
+### Summary
+
+Pack 0.71.61 made codex the first default local review lane, but the default provider list does not merge into a repository that ships its own .sd-ai-command-pack/review.json, so this repository had been running without the lane. Adding it surfaced a second defect: .gito/config.toml excluded the whole .sd-ai-command-pack tree, leaving a review-config-only diff with nothing in local review scope, which the coordinator reported as a provider failure rather than an empty diff.
+
+### Main Changes
+
+- Added the codex provider to .sd-ai-command-pack/review.json as the first lane, matching the pack's own configuration
+- Replaced the blanket .sd-ai-command-pack/** gito exclusion with the four copied and generated surfaces by name, keeping repo-owned review.json reviewable
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fc8a1581400edb10c12e8c436c14ee000fc6935b` | chore(sd-review): enable the codex local review lane |
+| `fd2263a` | fix(gito): keep repo-owned review config in local review scope |
+
+### Testing
+
+- [OK] The pack's own configuration loader enumerates codex first, enabled, cost tier none
+- [OK] gito reports 'No issues found in 2 files' against the merge base, where it previously reviewed nothing
+- [OK] npm test passed 764 tests with 0 failures
+- [OK] npm run check and npm run validate:metadata exited 0
+- [OK] sd-review scope=pr reported ready: codex clean, gito clean, remote observation clean
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Merge PR #161 through the housekeeping gate
