@@ -33,8 +33,8 @@ function sameLogin(left, right) {
 
 // Re-read the requested-reviewer set and report what is actually there. A probe
 // that throws yields `unverified` rather than a guess in either direction, and
-// so does a response with no readable reviewer set: `request()` returns
-// undefined for a 2xx with an empty body, and `absent` is a positive claim --
+// so does a response with no readable reviewer set: `request()` returns `null`
+// for a 2xx with an empty body, and `absent` is a positive claim --
 // "GitHub accepted the request and added nobody" -- that this probe is the only
 // source of. Falling through to it on an unreadable payload would manufacture
 // the exact evidence the caller fails closed on.
@@ -58,8 +58,13 @@ export async function requestCopilotReviewer({
   headSha,
   forceRerequest = false,
 }) {
+  // `request()` answers `null` for a 2xx with an empty body, so this probe can
+  // yield no object at all. Reading `.users` off it directly would throw before
+  // any POST, turning an unreadable pre-probe into an unhandled exception
+  // instead of the fail-closed path. Unreadable means "not known to be
+  // present", so the POST still happens and `probeLanding` renders the verdict.
   const requested = await client.getRequestedReviewers(pullRequestNumber);
-  const alreadyRequested = Boolean(requested.users?.some((user) => sameLogin(user?.login, reviewer)));
+  const alreadyRequested = Boolean(requested?.users?.some((user) => sameLogin(user?.login, reviewer)));
   const alreadyReviewed = Boolean(
     !alreadyRequested
       && headSha

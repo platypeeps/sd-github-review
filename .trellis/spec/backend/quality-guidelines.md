@@ -361,8 +361,11 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
   `not-attempted|confirmed|absent|unverified`
 - `ReceiptStore.dispatchFailed({ pullRequestNumber, headSha, logicalDispatchId,
   workflowUrl, completedAt }) -> Promise<{ state, receipt, dispatchAllowed,
-  reconciliationRequired }>`, writing `dispatch.status: "failed"` at
-  `dispatch.phase: "started"`
+  reconciliationRequired, receiptVerified?, error? }>`, writing
+  `dispatch.status: "failed"` at `dispatch.phase: "started"`. `receiptVerified`
+  and `error` appear only when the durable write itself failed; the success and
+  already-failed returns omit both, so `undefined` reads as verified. Callers
+  propagate the value rather than asserting one
 
 ### 3. Contracts
 
@@ -427,7 +430,8 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 | Post-probe itself throws after the POST | `landing=unverified`, `requested=false`; fail closed, and report the outcome as unknown rather than as absent |
 | Any classified *dispatch* failure — a non-landing POST or a throwing `requestReviewer` | Call `store.dispatchFailed` before returning, so a later read reaches the same verdict; still fail closed if that write itself fails, carrying both errors |
 | The request landed but the receipt advance (`store.observe`) failed | Reconcile in memory with `copilotRequested` still true; do **not** write a failed dispatch. The reviewer was requested, and recording otherwise is a second false claim in the opposite direction |
-| Post-request probe returns a 2xx with no readable reviewer set (`undefined` body, `users` missing or non-array) | `unverified`, never `absent`. `absent` is a positive claim — GitHub accepted and added nobody — and this probe is its only source; falling through manufactures the evidence the caller fails closed on |
+| Post-request probe returns a 2xx with no readable reviewer set (`null` body, `users` missing or non-array) | `unverified`, never `absent`. `absent` is a positive claim — GitHub accepted and added nobody — and this probe is its only source; falling through manufactures the evidence the caller fails closed on |
+| Pre-request probe returns a 2xx with an empty body (`request()` yields `null`) | Read it with optional chaining. Unreadable is "not known to be present", so the POST still happens and the post-probe renders the verdict; dereferencing it throws before any POST and loses the fail-closed path |
 | Comparing a reviewer login | Case-insensitively. GitHub echoes its own canonical casing, which need not match the configured reviewer string; an exact match reads a landed request as absent |
 | `dispatchFailed` on a receipt not at `phase: "started"` | Throw. `observed` is settled, `acknowledged` has its own failed form via `acknowledge()`, `not-started` is a skip |
 | `dispatchFailed` on a receipt already `status: "failed"` | Return the existing `reconciliation-required` state without mutating; the transition is idempotent |

@@ -47,6 +47,7 @@ function fakeClient({
   landsRequest = true,
   probeThrows = false,
   probeBody = undefined,
+  preProbeBody = undefined,
   canonicalLogin = null,
 } = {}) {
   const calls = [];
@@ -58,8 +59,9 @@ function fakeClient({
       calls.push("getRequestedReviewers");
       if (probeThrows && posted) throw new Error("probe unavailable");
       // A 2xx whose body the client could not turn into a reviewer set: the
-      // client returns undefined for an empty body on an ok response.
+      // client returns null for an empty body on an ok response.
       if (probeBody !== undefined && posted) return probeBody.value;
+      if (preProbeBody !== undefined && !posted) return preProbeBody.value;
       return { users: [...users] };
     },
     async listPullRequestReviews() {
@@ -302,6 +304,32 @@ test("a post-probe with no readable reviewer set is unverified, not absent", asy
     });
     assert.equal(result.landing, "unverified", `payload ${JSON.stringify(value)}`);
     assert.equal(result.requested, false);
+  }
+});
+
+// `GitHubClient.request()` answers null for a 2xx with an empty body, so the
+// pre-request probe can return no object at all. Dereferencing it would throw
+// before the POST, replacing the fail-closed path with an unhandled exception.
+test("an unreadable pre-request probe still posts and defers to the post-probe", async () => {
+  for (const value of [null, undefined, {}, { users: null }]) {
+    const blind = fakeClient({ preProbeBody: { value }, landsRequest: true });
+    const result = await requestCopilotReviewer({
+      client: blind,
+      pullRequestNumber: 42,
+      reviewer: REVIEWER,
+      headSha: HEAD,
+    });
+    const label = `payload ${JSON.stringify(value ?? null)}`;
+    // Unreadable is "not known to be present", never "already there".
+    assert.equal(result.alreadyRequested, false, label);
+    assert.deepEqual(
+      blind.calls.filter((call) => Array.isArray(call)),
+      [["requestReviewer", 42, REVIEWER]],
+      label,
+    );
+    // The post-probe, not the unreadable pre-probe, renders the verdict.
+    assert.equal(result.landing, "confirmed", label);
+    assert.equal(result.requested, true, label);
   }
 });
 
