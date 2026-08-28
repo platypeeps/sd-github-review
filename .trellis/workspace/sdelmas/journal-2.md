@@ -1388,3 +1388,47 @@ Re-ran the falsification the 08-04 park text prescribes and recorded the result 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 84: Persist a failed review dispatch instead of only reporting it
+<!-- trellis-session: v=2 fp=8e0b4714ad609b8a -->
+
+**Date**: 2026-08-27
+**Task**: Persist a failed review dispatch instead of only reporting it
+**Branch**: `task/08-27-poisoned-review-receipt`
+
+### Summary
+
+Closed the poisoned-receipt defect on PR #157. A dispatch that did not land was classified correctly but never written down, so the stored receipt stayed requested/started and read as in-flight for six hours. Added ReceiptStore.dispatchFailed and routed both failure paths through it, then fixed two regressions the local provider caught in that fix.
+
+### Main Changes
+
+- src/receipt.js: added ReceiptStore.dispatchFailed, the writer for the failed/started state receiptState was already built to read. Refuses any phase but started -- observed is settled, acknowledged has its own failed form, not-started is a skip -- and is idempotent on an already-failed receipt.
+- src/operations.js: a non-landing or unverifiable dispatch now persists the failure through failDispatch before returning, carrying both errors if the persist itself fails. Observation got its own catch: a failed receipt advance after a request that did land must not be recorded as a dispatch that never happened.
+- Corrected two claims that outran their evidence: a throw does not prove GitHub received nothing, and the blast-radius audit's present-state query cannot support a merge-time claim.
+- .trellis/spec/backend/{quality-guidelines,error-handling}.md: recorded the persistence contract, the observe-versus-dispatch split, and that a durable-failure test must assert the stored receipt -- output-only assertions pass against code that never persists.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1c6d451` | fix(review): persist a failed dispatch instead of only reporting it |
+| `b31b5c5` | fix(review): keep a failed observation out of the dispatch record |
+| `5c18db0` | docs(review): say what the evidence supports, not more |
+
+### Testing
+
+- [OK] node --test: 760/760 pass, 0 fail
+- [OK] sd-check gate: GATE_EXIT=0
+- [OK] Regression proof, persistence pair against pre-fix source: 33/35 pass, 2 fail
+- [OK] Regression proof, round-8 pair against pre-fix source: 55/57 pass, 2 fail
+- [OK] sd-review scope=pr at 5c18db0: status ready, exit 0, zero limitations, Copilot reviewed, 0 unresolved threads
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
