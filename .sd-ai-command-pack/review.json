@@ -4,6 +4,26 @@
     {
       "scopes": [
         "worktree",
+        "branch_delta"
+      ],
+      "dataHandling": "private-network",
+      "qualityTier": "deep",
+      "enabled": true,
+      "id": "codex",
+      "adapter": "codex",
+      "argv": [],
+      "costTier": "none",
+      "timeoutSeconds": 900,
+      "version": "builtin-v1",
+      "outcomeByExitCode": {
+        "0": "clean",
+        "1": "unavailable",
+        "2": "unavailable"
+      }
+    },
+    {
+      "scopes": [
+        "worktree",
         "branch_delta",
         "codebase"
       ],
