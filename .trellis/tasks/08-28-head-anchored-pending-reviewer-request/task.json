@@ -2,7 +2,7 @@
   "id": "head-anchored-pending-reviewer-request",
   "name": "head-anchored-pending-reviewer-request",
   "title": "Anchor a pending reviewer request to the head it was made for",
-  "description": "alreadyRequested is not head-anchored, so a request made for an earlier head reads as presence at every later head and the lane wedges",
+  "description": "The alreadyRequested check is not head-anchored, so a reviewer request made for an earlier head reads as presence at every later head and the lane wedges on a review nobody requested.",
   "status": "planning",
   "dev_type": null,
   "scope": null,

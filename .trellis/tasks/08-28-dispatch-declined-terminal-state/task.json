@@ -2,7 +2,7 @@
   "id": "dispatch-declined-terminal-state",
   "name": "dispatch-declined-terminal-state",
   "title": "Give the receipt a terminal state for a backend that declined the pull request",
-  "description": "DISPATCH_STATUSES has no declined state, so a size rejection lands in failed alongside transport failures and the receipt cannot say why",
+  "description": "DISPATCH_STATUSES has no declined state, so a backend that refuses the pull request is recorded as failed alongside transport failures and the receipt cannot say which occurred.",
   "status": "planning",
   "dev_type": null,
   "scope": null,
