@@ -59,6 +59,10 @@ class FakeGitHubClient {
     // reviewer request landed -- the one case where the dispatch succeeded and
     // the observation did not.
     this.observeError = null;
+    // Breaks only the durable write of the dispatch failure: the transition
+    // runs after the reviewer request, so gating on `posted` leaves begin()
+    // intact.
+    this.failPersistError = null;
     this.comparison = null;
     this.draft = false;
   }
@@ -96,6 +100,7 @@ class FakeGitHubClient {
 
   async updateCheckRun(id, payload) {
     this.calls.push(["updateCheckRun", id, clone(payload)]);
+    if (this.failPersistError && this.posted) throw this.failPersistError;
     for (const [head, checks] of this.checks.entries()) {
       const index = checks.findIndex((check) => check.id === id);
       if (index === -1) continue;
@@ -635,6 +640,34 @@ test("an unreadable post-request probe reconciles as unknown, not as absent", as
   const error = harness.outputs.get("reconciliation-error");
   assert.match(error, /could not verify/u);
   assert.doesNotMatch(error, /was absent/u);
+});
+
+// A receipt is durable evidence only if it was actually stored. #updateRecord
+// answers `receiptVerified: false` when the check-run write fails, and forcing
+// `true` over it published an unpersisted receipt as durable -- the same shape
+// of false claim, one layer up, that this task exists to remove.
+test("a failure whose own persist fails is not published as verified evidence", async () => {
+  const request = clone(requestByName.get("explicit copilot"));
+  const client = new FakeGitHubClient(request.headSha);
+  client.landsRequest = false;
+  client.failPersistError = new Error("check run update rejected");
+  const harness = createHarness(client);
+
+  await assert.rejects(
+    () => harness.run("route", request),
+    /durable receipt that needs reconciliation/u,
+  );
+
+  assert.equal(harness.outputs.get("receipt-verified"), "false");
+  assert.equal(harness.outputs.get("receipt"), "");
+  // Both failures are true and both are reported: the dispatch did not land,
+  // and the record of that did not stick.
+  const error = harness.outputs.get("reconciliation-error");
+  assert.match(error, /was absent/u);
+  assert.match(error, /check run update rejected/u);
+  // The verdict still fails closed.
+  assert.equal(harness.outputs.get("durable-state"), "reconciliation-required");
+  assert.equal(harness.outputs.get("dispatch-allowed"), "false");
 });
 
 // The failure has to outlive the run that observed it. Without the durable

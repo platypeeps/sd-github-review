@@ -546,7 +546,15 @@ async function failDispatch({ store, request, env, now, receipt, message }) {
   return {
     state: "reconciliation-required",
     receipt: persisted?.receipt ?? receipt,
-    receiptVerified: true,
+    // The store's own verdict, never a forced `true`. #updateRecord answers
+    // `receiptVerified: false` when updateCheckRun or the re-read fails, and a
+    // throw means nothing was written at all -- in both cases the receipt we
+    // hand back is not durable evidence of this failure. Asserting it were
+    // would emit an unpersisted receipt as durable, which is the same false
+    // claim about the outside world this whole path exists to stop. The
+    // success return omits the key, and every consumer tests `=== false`, so
+    // undefined still reads as verified.
+    receiptVerified: persisted ? persisted.receiptVerified : false,
     dispatchAllowed: false,
     reconciliationRequired: true,
     copilotRequested: false,

@@ -429,6 +429,7 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 | The request landed but the receipt advance (`store.observe`) failed | Reconcile in memory with `copilotRequested` still true; do **not** write a failed dispatch. The reviewer was requested, and recording otherwise is a second false claim in the opposite direction |
 | `dispatchFailed` on a receipt not at `phase: "started"` | Throw. `observed` is settled, `acknowledged` has its own failed form via `acknowledge()`, `not-started` is a skip |
 | `dispatchFailed` on a receipt already `status: "failed"` | Return the existing `reconciliation-required` state without mutating; the transition is idempotent |
+| The durable write of that failure itself fails (`updateCheckRun` rejects, the re-read fails, or `dispatchFailed` throws) | Propagate the store's `receiptVerified`, never a forced `true`. An unpersisted receipt published as durable evidence is the same false claim one layer up. The success return omits the key and every consumer tests `=== false`, so `undefined` still reads as verified |
 
 ### 5. Good/Base/Bad Cases
 
