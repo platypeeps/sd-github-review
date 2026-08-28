@@ -1511,3 +1511,45 @@ Pack 0.71.61 made codex the first default local review lane, but the default pro
 ### Next Steps
 
 - Merge PR #161 through the housekeeping gate
+
+
+## Session 87: File the three open review-dispatch defects as planning tasks
+<!-- trellis-session: v=2 fp=d1100bb7e500d4bb -->
+
+**Date**: 2026-08-28
+**Task**: File the three open review-dispatch defects as planning tasks
+**Branch**: `task/08-28-review-dispatch-defects`
+
+### Summary
+
+Every open issue in this repository now has a Trellis planning task. Each defect was verified against src/ at 4906b28 rather than taken from the issue text; two of the three cite line numbers that moved when PR #157 landed. No task was started and nothing was implemented.
+
+### Main Changes
+
+- Filed 08-28-dispatch-declined-terminal-state for issue #154, narrowed to item 3: DISPATCH_STATUSES at src/protocol.js:62 has no declined state, so a backend refusal reads as a transport failure. PR #157 already closed items 1 and 2.
+- Filed 08-28-remote-attempt-separate-from-local-round for issue #155: the coordinator sends its local round counter as request.attempt and the guard at src/protocol.js:570 rejects attempt > 1 without rerequestOf, so a PR needing more than one local round cannot dispatch.
+- Filed 08-28-head-anchored-pending-reviewer-request for issue #158: alreadyRequested at src/reviewer-dispatch.js:67 is not head-anchored while alreadyReviewed is, so a request made for an earlier head satisfies presence at every later one and the POST is skipped at :99.
+- Ran the planning adversarial review contract; one concern raised against the PRD text (GitHub size limit stated as established cause when the issue leaves it unconfirmed) and addressed.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `02df2b34a97e5b34ad0b10ed24b27c4bfcfd3c65` | docs(trellis): file the three open review-dispatch defects as planning tasks |
+
+### Testing
+
+- [OK] DISPATCH_STATUSES confirmed at src/protocol.js:62 lacking a declined state
+- [OK] attempt guard confirmed at src/protocol.js:570 (issue cited 569; moved by PR #157)
+- [OK] alreadyRequested confirmed at src/reviewer-dispatch.js:67-78 (issue cited 43-55; moved by PR #157)
+- [OK] alreadyPresent short-circuit returns LANDING_NOT_ATTEMPTED (reviewer-dispatch.js:117, constant :21)
+- [OK] failed maps to reconciliation-required (operations.js:512, :547)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
