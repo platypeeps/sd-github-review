@@ -93,5 +93,19 @@
         "costTier": "low"
       }
     }
+  },
+  {
+    "name": "local review rounds forwarded as the remote attempt",
+    "error": "remote dispatch counter for this head and must be 1 on the first dispatch; 6 without request.rerequestOf",
+    "value": {
+      "schemaVersion": 1,
+      "correlationId": "corr-invalid",
+      "attempt": 6,
+      "repository": { "owner": "platypeeps", "name": "sd-github-review" },
+      "pullRequestNumber": 42,
+      "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "route": "copilot",
+      "policyVersion": "policy-v1"
+    }
   }
 ]

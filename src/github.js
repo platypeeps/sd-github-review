@@ -112,16 +112,28 @@ function formatRateLimit(context) {
 }
 
 function responseError(method, path, response, result, attempt, decision) {
-  const message = typeof result?.message === "string"
+  // An empty `message` is as useless as a missing one: fall back to the
+  // status line so neither the prose nor `apiMessage` can go blank.
+  const message = typeof result?.message === "string" && result.message !== ""
     ? result.message
     : `${response.status} ${response.statusText}`;
   const attempts = attempt > 1 ? `; attempts=${attempt}` : "";
   const cap = decision.capExceeded
     ? `; required retry delay exceeds ${MAX_RETRY_DELAY_MS}ms cap`
     : "";
-  return new Error(
+  const error = new Error(
     `GitHub API ${method} ${path} failed: ${message}${attempts}${formatRateLimit(decision.context)}${cap}`,
   );
+  // A response GitHub actually sent is a different fact from a connection that
+  // died, and the reviewer-dispatch path needs to tell them apart: a 422 on a
+  // reviewer request is the backend refusing this pull request, which no retry
+  // can change, while a transport failure says nothing about the request at
+  // all. Carry the status and GitHub's own message as data rather than asking
+  // callers to parse them back out of the prose. Transport and timeout errors
+  // deliberately carry neither.
+  error.status = response.status;
+  error.apiMessage = message;
+  return error;
 }
 
 function transportError(method, path, error, attempt) {

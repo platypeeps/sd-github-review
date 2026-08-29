@@ -162,7 +162,11 @@ decoding and `scripts/validate-action-metadata.mjs` both read that contract, so
 this document cannot drift from the runtime independently.
 
 The durable identity is derived from repository, pull request, full head SHA,
-and attempt. Correlation IDs are aliases, not permission to dispatch again. A
+and attempt. `attempt` is the remote dispatch counter for that head — 1 on the
+first dispatch regardless of how many local review rounds preceded it, and
+above 1 only for an authorized same-head re-request carrying `rerequestOf`;
+forwarding a local round counter into it is rejected by name. Correlation IDs
+are aliases, not permission to dispatch again. A
 matching retry returns the existing receipt; a conflicting fingerprint fails;
 an uncertain mutation leaves the receipt in `reconciliation-required` with
 dispatch forbidden. Two refinements: a matching retry against a receipt that
@@ -179,8 +183,22 @@ setup discovery. It lets adapters such as PR-Agent record `success`, `failure`,
 `cancelled`, or `skipped` without accepting provider output or unbounded error
 text.
 
-For Copilot, `route` checks both pending requests and non-dismissed reviews on
-the exact head before requesting. For `cheap` and `deep`, it emits one bounded
+For Copilot, `route` checks pending requests on the pull request and
+non-dismissed reviews on the exact head before requesting. A review is anchored
+by its `commit_id`; a pending request is not, and nothing GitHub exposes proves
+which head it was made for (commit timestamps are committer-written, not
+server-observed). The
+receipt store is the evidence instead: a first-attempt `route` dispatches only
+when no receipt records prior dispatched work for the head, so a request found
+pending then was not made here and is re-requested (removed and re-added, so
+GitHub notifies for this head); an authorized same-head re-request removes a
+pending reviewer anyway. The cost is at most one extra review per head, paid
+only when a request was pending as the head's first dispatch ran — made by a
+person, another workflow, or the repository's automatic Copilot review
+setting, for this head or an earlier one; a repository with automatic Copilot
+review enabled should not also route to `copilot`. A reviewer request GitHub answers with 422 is
+recorded `declined` with GitHub's own message; it blocks the gate exactly as
+`failed` does and differs only in what the receipt tells the operator. For `cheap` and `deep`, it emits one bounded
 `adapter-request`. The consumer-owned adapter writes findings to its declared
 review, comment, or check channels and returns one v1 acknowledgment. Only then
 does `finalize` complete the receipt. `none` records a skipped receipt without
@@ -421,10 +439,13 @@ A typical external adapter runs only when
 `pull-request-number`. Provider credentials belong on that adapter step, never
 on the router step.
 
-For Copilot, the action first checks pending requested reviewers. If Copilot
-has already left a non-dismissed review on the current head commit, it also
-suppresses a repeat request. The route remains `copilot`, while
-`copilot-requested=false` explains that no new side effect occurred.
+For Copilot, the action checks pending requested reviewers and non-dismissed
+reviews on the current head commit before requesting. A review on the current
+head suppresses a repeat request in both modes. A pending request is kept only
+by the standalone action, which holds no record of which head it was made
+for; the durable `route` re-requests it, as described under durable
+operations. The route remains `copilot`, while `copilot-requested=false`
+explains that no new side effect occurred.
 
 Durable operations retain the compatible route outputs and add the canonical
 `receipt`, `receipt-id`, `logical-dispatch-id`, `request-fingerprint`,

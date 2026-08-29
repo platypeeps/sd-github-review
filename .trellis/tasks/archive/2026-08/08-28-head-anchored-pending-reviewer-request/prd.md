@@ -86,9 +86,12 @@ unreviewed at its head.
 - Preserve the fail-closed reading of an unreadable pre-probe: unreadable means
   "not known to be present", the POST still happens, and `probeLanding` renders
   the verdict.
-- Detection must not depend on an operator noticing. A receipt that reached
-  `observed` through `alreadyPresent` at a head with no corresponding
-  `review_requested` event is an anomaly and must surface as one.
+- Detection must not depend on an operator noticing. No receipt may reach
+  `observed` through `alreadyPresent` on the strength of a pending request
+  whose head is unproven. (Amended during review: the first draft asked for
+  such a receipt to be written and flagged as an anomaly; a satisfied receipt
+  the gate reads as `existing` is not a detectable anomaly, so the case is
+  removed rather than flagged.)
 
 ## Non-goals
 
@@ -96,7 +99,13 @@ unreviewed at its head.
 - The empty-commit workaround. Removing the need for it is the point; blocking
   it is not.
 
-## Open design question
+## Design question (resolved)
+
+Resolved during review — see `design.md`. All three directions below were
+rejected: 1 and 2 depend on commit timestamps, which are committer-written and
+prove nothing in either direction; 3 leaves the gate passing on an unproven
+head. The shipped rule is record-based: the durable path re-requests any
+pending request it holds no receipt for at the head. Recorded for history:
 
 Three directions were recorded on the issue, none validated:
 
@@ -108,17 +117,22 @@ Three directions were recorded on the issue, none validated:
 3. At minimum, surface the anomaly without changing dispatch behavior.
 
 1 and 2 need the same evidence and differ mainly in where the comparison lives.
-3 is strictly weaker but independently worth having. Decide before implementing,
-and record why the others were rejected.
+3 is strictly weaker but independently worth having. (Decision and rejection
+reasons are above and in `design.md`.)
 
 ## Acceptance Criteria
 
-- [ ] A pending request made for an earlier head does not satisfy presence at a
+- [x] A pending request made for an earlier head does not satisfy presence at a
       later head, proven by a test reproducing the PR #157 timeline.
-- [ ] A pending request made for the current head still satisfies presence, with
-      no duplicate POST.
-- [ ] The `forceRerequest` path is unchanged, proven by a test.
-- [ ] An unreadable pre-probe still takes the fail-closed path.
-- [ ] A receipt reaching `observed` via `alreadyPresent` at a head with no
-      matching `review_requested` event is surfaced as an anomaly.
-- [ ] Issue #158 is closed by the change.
+- [x] A review already anchored to the current head by `commit_id` still
+      satisfies presence, with no duplicate POST. (Amended during review: a
+      *pending* request cannot be proven to be for the current head from any
+      server-observed evidence, so the durable path re-requests it once rather
+      than inherit it; see `design.md`.)
+- [x] The `forceRerequest` path is unchanged, proven by a test.
+- [x] An unreadable pre-probe still takes the fail-closed path.
+- [x] No receipt reaches `observed` via `alreadyPresent` on the strength of a
+      pending request at a head with no matching `review_requested` event.
+      (Amended during review: the durable path no longer has that case, so
+      there is no anomaly to surface; the receipt records a proven request.)
+- [x] Issue #158 is closed by the change.

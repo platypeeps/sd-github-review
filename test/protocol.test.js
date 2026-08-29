@@ -377,7 +377,7 @@ test("decodes canonical receipts for Copilot, external comments, external checks
   }
   assert.deepEqual(
     receipts.map((entry) => decodeReceipt(entry.value).selectedRoute),
-    ["copilot", "cheap", "deep", "none", "copilot", "cheap"],
+    ["copilot", "cheap", "deep", "none", "copilot", "cheap", "copilot"],
   );
 });
 
@@ -852,11 +852,24 @@ test("a same-head retry must declare what it retries", () => {
   const base = requestByName.get("explicit cheap");
   assert.throws(
     () => decodeReviewRequest({ ...clone(base), attempt: 2 }),
-    /request\.attempt above 1 requires request\.rerequestOf identifying the prior attempt/u,
+    /request\.attempt is the remote dispatch counter for this head and must be 1 on the first dispatch; 2 without request\.rerequestOf/u,
   );
   assert.throws(
     () => decodeReviewRequest({ ...clone(base), attempt: 7 }),
-    /request\.attempt above 1 requires request\.rerequestOf/u,
+    /7 without request\.rerequestOf claims a same-head re-request of remote attempt 6 that was never made/u,
+  );
+  // Issue #155: the rejection must name the counter that is wrong, and must
+  // not send a first-dispatch operator to re-request handling. The old text
+  // ended "...identifying the prior attempt", which is exactly where it sent
+  // them.
+  assert.throws(
+    () => decodeReviewRequest({ ...clone(base), attempt: 6 }),
+    (error) => {
+      assert.match(error.message, /remote dispatch counter/u);
+      assert.match(error.message, /Local review rounds must not be forwarded as request\.attempt/u);
+      assert.doesNotMatch(error.message, /identifying the prior attempt/u);
+      return true;
+    },
   );
   // attempt 1 is the ordinary first dispatch and must stay unencumbered.
   assert.doesNotThrow(() => decodeReviewRequest({ ...clone(base), attempt: 1 }));

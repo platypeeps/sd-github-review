@@ -12,6 +12,7 @@ import { buildRiskContext } from "./risk-context.js";
 import {
   LANDING_ABSENT,
   LANDING_UNVERIFIED,
+  LANDING_DECLINED,
   requestCopilotReviewer,
 } from "./reviewer-dispatch.js";
 import { normalizeMode, parseList } from "./normalize.js";
@@ -451,6 +452,13 @@ async function routeOperation({ request, client, store, env, now }) {
         headSha: request.headSha,
         forceRerequest:
           Boolean(request.rerequestOf) && booleanInput("rerequest-authorized", false, env),
+        // begin() authorized this dispatch: for a first attempt that means
+        // no receipt records prior dispatched work at this head, so any
+        // reviewer request found pending now was not made by this action at
+        // this head (issue #158); an authorized later attempt forces the
+        // re-request regardless. The service removes and re-requests it
+        // rather than read it as coverage.
+        rerequestPending: true,
       });
     } catch (error) {
       // A throw does not prove GitHub received nothing -- the POST may well
@@ -474,7 +482,23 @@ async function routeOperation({ request, client, store, env, now }) {
     // block every retry behind its own false claim. Fail closed instead; the
     // receipt store deliberately routes a failed dispatch to a human
     // (see receipt.js:200-204), so this escalates rather than self-heals.
-    if (dispatch && (dispatch.landing === LANDING_ABSENT || dispatch.landing === LANDING_UNVERIFIED)) {
+    if (dispatch && dispatch.landing === LANDING_DECLINED) {
+      // GitHub parsed the request and refused it for this pull request. Same
+      // gate as a failure, but the receipt says which refusal it was, so the
+      // next reader does not mistake a reviewer that will never accept this
+      // head for a network error worth retrying.
+      result = await declineDispatch({
+        store,
+        request,
+        env,
+        now,
+        receipt: result.receipt,
+        reason: dispatch.declined.message,
+        message:
+          `reviewer request for ${backend.reviewAuthors[0]} was declined by GitHub `
+          + `(HTTP ${dispatch.declined.status}): ${dispatch.declined.message}`,
+      });
+    } else if (dispatch && (dispatch.landing === LANDING_ABSENT || dispatch.landing === LANDING_UNVERIFIED)) {
       result = await failDispatch({
         store,
         request,
@@ -554,6 +578,35 @@ async function failDispatch({ store, request, env, now, receipt, message }) {
     // claim about the outside world this whole path exists to stop. The
     // success return omits the key, and every consumer tests `=== false`, so
     // undefined still reads as verified.
+    receiptVerified: persisted ? persisted.receiptVerified : false,
+    dispatchAllowed: false,
+    reconciliationRequired: true,
+    copilotRequested: false,
+    error: [message, persisted?.error, persistError].filter(Boolean).join("; "),
+  };
+}
+
+// Sibling of failDispatch for the backend's own refusal. Same persistence
+// posture, same fail-closed result shape; the recorded state and the error
+// text name the decline.
+async function declineDispatch({ store, request, env, now, receipt, reason, message }) {
+  let persisted = null;
+  let persistError = null;
+  try {
+    persisted = await store.dispatchDeclined({
+      pullRequestNumber: request.pullRequestNumber,
+      headSha: request.headSha,
+      logicalDispatchId: request.logicalDispatchId,
+      workflowUrl: workflowUrl(env),
+      completedAt: timestamp(now),
+      reason,
+    });
+  } catch (error) {
+    persistError = error instanceof Error ? error.message : String(error);
+  }
+  return {
+    state: "reconciliation-required",
+    receipt: persisted?.receipt ?? receipt,
     receiptVerified: persisted ? persisted.receiptVerified : false,
     dispatchAllowed: false,
     reconciliationRequired: true,

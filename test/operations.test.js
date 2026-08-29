@@ -136,7 +136,12 @@ class FakeGitHubClient {
 
   async removeRequestedReviewer(number, reviewer) {
     this.calls.push(["removeRequestedReviewer", number, reviewer]);
-    this.requestedUsers = this.requestedUsers.filter((user) => user.login !== reviewer);
+    // GitHub matches logins case-insensitively; so must the fake, or removing
+    // a differently-cased pending reviewer no-ops and the post-request probe
+    // reads the stale entry as a landed request.
+    this.requestedUsers = this.requestedUsers.filter(
+      (user) => user.login.toLowerCase() !== reviewer.toLowerCase(),
+    );
     return { users: clone(this.requestedUsers) };
   }
 
@@ -570,6 +575,126 @@ test("policy-authorized Copilot rerequest issues a new native review while repla
   assert.notEqual(second.receipt.logicalDispatchId, first.receipt.logicalDispatchId);
   assert.equal(harness.outputs.get("copilot-requested"), "true");
   assert.equal(client.calls.filter(([name]) => name === "requestReviewer").length, 2);
+});
+
+// Issue #158, the PR #157 timeline. Copilot was requested at 00:41:21 for
+// d594433; c5e94e0 was pushed at 00:43:06 with that request still pending. The
+// run at c5e94e0 saw Copilot in requested_reviewers, issued no POST, and wrote
+// a satisfied receipt -- for a review that Copilot then anchored to d594433.
+// begin() authorized this dispatch because no receipt exists for the head, so
+// the pending request was not made here: it is removed and re-requested, and
+// the receipt records a request this run proved landed, never an inherited
+// presence. No timeline or commit evidence is read -- none of it proves which
+// head a pending request is for.
+test("a pending request found at a head with no receipt is re-requested, not inherited", async () => {
+  const request = clone(requestByName.get("explicit copilot"));
+  const client = new FakeGitHubClient(request.headSha);
+  const reviewer = backendByName.get("native Copilot").reviewAuthors[0];
+  client.requestedUsers = [{ login: reviewer.toUpperCase() }];
+  const harness = createHarness(client);
+
+  const result = await harness.run("route", request);
+
+  assert.equal(result.state, "observed");
+  assert.equal(result.receipt.dispatch.status, "requested");
+  assert.equal(harness.outputs.get("copilot-requested"), "true");
+  // Removed then re-added, so GitHub notifies for this head.
+  assert.deepEqual(
+    client.calls.filter(([name]) => name === "removeRequestedReviewer" || name === "requestReviewer")
+      .map(([name]) => name),
+    ["removeRequestedReviewer", "requestReviewer"],
+  );
+  assert.ok(!client.calls.some(([name]) => name === "listIssueTimeline" || name === "getCommit"));
+
+  // The receipt now answers for this head: a replay makes no further POST.
+  const replay = await harness.run("route", { ...clone(request), correlationId: "corr-replay" });
+  assert.equal(replay.state, "existing");
+  assert.equal(replay.receipt.dispatch.status, "requested");
+  assert.equal(client.calls.filter(([name]) => name === "requestReviewer").length, 1);
+});
+
+// A review anchored to this head by commit_id is proven coverage and is the
+// one presence that still short-circuits the POST.
+test("a review already anchored to the head still satisfies presence without a POST", async () => {
+  const request = clone(requestByName.get("explicit copilot"));
+  const client = new FakeGitHubClient(request.headSha);
+  const reviewer = backendByName.get("native Copilot").reviewAuthors[0];
+  client.reviews = [{ user: { login: reviewer }, commit_id: request.headSha, state: "COMMENTED" }];
+  const harness = createHarness(client);
+
+  const result = await harness.run("route", request);
+
+  assert.equal(result.state, "observed");
+  assert.equal(result.receipt.dispatch.status, "already-present");
+  assert.equal(harness.outputs.get("copilot-requested"), "false");
+  assert.equal(client.calls.filter(([name]) => name === "requestReviewer").length, 0);
+  assert.equal(client.calls.filter(([name]) => name === "removeRequestedReviewer").length, 0);
+});
+
+// Issue #154. GitHub answered the reviewer request with a 422: it parsed the
+// request and refused it for this pull request. That is a different fact from
+// a connection that dropped, and the receipt must say which -- both block the
+// gate identically.
+test("a backend that declines the pull request is recorded as declined, not failed", async () => {
+  const request = clone(requestByName.get("explicit copilot"));
+  const declinedClient = new FakeGitHubClient(request.headSha);
+  declinedClient.requestError = Object.assign(
+    new Error("GitHub API POST /repos/platypeeps/sd-github-review/pulls/42/requested_reviewers failed: Copilot cannot review this pull request"),
+    { status: 422, apiMessage: "Copilot cannot review this pull request" },
+  );
+  const declined = createHarness(declinedClient);
+
+  await assert.rejects(
+    () => declined.run("route", request),
+    /durable receipt that needs reconciliation/u,
+  );
+  assert.equal(declined.outputs.get("durable-state"), "reconciliation-required");
+  assert.equal(declined.outputs.get("dispatch-status"), "declined");
+  assert.equal(declined.outputs.get("dispatch-allowed"), "false");
+  assert.equal(declined.outputs.get("copilot-requested"), "false");
+  assert.match(
+    declined.outputs.get("reconciliation-error"),
+    /declined by GitHub \(HTTP 422\): Copilot cannot review this pull request/u,
+  );
+
+  const declinedReceipt = (await declined.run("query", request)).receipt;
+  assert.equal(declinedReceipt.dispatch.status, "declined");
+  assert.equal(declinedReceipt.dispatch.phase, "started");
+  assert.equal(declinedReceipt.dispatch.declineReason, "Copilot cannot review this pull request");
+
+  // The same request through a transport failure: same gate, different receipt.
+  const failedClient = new FakeGitHubClient(request.headSha);
+  failedClient.requestError = new Error("connection closed after review request");
+  const failed = createHarness(failedClient);
+  await assert.rejects(() => failed.run("route", request), /needs reconciliation/u);
+  assert.equal(failed.outputs.get("dispatch-status"), "failed");
+  const failedReceipt = (await failed.run("query", request)).receipt;
+  assert.equal(failedReceipt.dispatch.status, "failed");
+  assert.equal(failedReceipt.dispatch.declineReason, undefined);
+  assert.notEqual(declinedReceipt.dispatch.status, failedReceipt.dispatch.status);
+
+  // A decline is terminal: the replay reads the settled receipt, authorizes no
+  // dispatch, and issues no second POST.
+  await assert.rejects(() => declined.run("route", request), /needs reconciliation/u);
+  assert.equal(declined.outputs.get("dispatch-allowed"), "false");
+  assert.equal(declined.outputs.get("dispatch-status"), "declined");
+  assert.equal(declinedClient.calls.filter(([name]) => name === "requestReviewer").length, 1);
+});
+
+// A 4xx that is not 422 says nothing about the pull request -- a 403 is the
+// token, a 404 the endpoint -- and stays a failure.
+test("a non-422 API refusal stays a failed dispatch", async () => {
+  const request = clone(requestByName.get("explicit copilot"));
+  const client = new FakeGitHubClient(request.headSha);
+  client.requestError = Object.assign(new Error("GitHub API POST failed: Resource not accessible by integration"), {
+    status: 403,
+    apiMessage: "Resource not accessible by integration",
+  });
+  const harness = createHarness(client);
+
+  await assert.rejects(() => harness.run("route", request), /needs reconciliation/u);
+  assert.equal(harness.outputs.get("dispatch-status"), "failed");
+  assert.match(harness.outputs.get("reconciliation-error"), /Resource not accessible/u);
 });
 
 test("ambiguous Copilot dispatch returns reconciliation state and never suggests fallback", async () => {
@@ -1057,7 +1182,7 @@ test("a bare attempt bump is refused end to end", async () => {
   const bumped = { ...clone(request), correlationId: "corr-bare-bump", attempt: 2 };
   await assert.rejects(
     () => harness.run("route", bumped, env),
-    /request\.attempt above 1 requires request\.rerequestOf/u,
+    /remote dispatch counter for this head and must be 1 on the first dispatch/u,
   );
 
   assert.equal(

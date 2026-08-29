@@ -11,7 +11,11 @@ inputs:
     required: false
     default: standalone
   review-request:
-    description: "Canonical v1 review-request JSON for route, finalize, or query."
+    description: >-
+      Canonical v1 review-request JSON for route, finalize, or query. Its
+      attempt field is the remote dispatch counter for the head: 1 on the
+      first dispatch regardless of local review rounds, and above 1 only for
+      an authorized same-head re-request carrying rerequestOf.
     required: false
     default: ""
   adapter-acknowledgment:

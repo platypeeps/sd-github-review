@@ -6,7 +6,70 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Added
+
+- **A receipt can now say the backend refused the pull request.** A reviewer
+  request GitHub answers with HTTP 422 — the backend received the POST, parsed
+  it, and refused it, with its own reason in the response body — is recorded as
+  `dispatch.status: "declined"` with the backend's own message in
+  `dispatch.declineReason`, and `reconciliation-error` names it as
+  `declined by GitHub (HTTP 422): …`. The gate is unchanged: a decline at phase
+  `started` reads `reconciliation-required` exactly as `failed` does, so no
+  consumer switching on `durable-state` has to learn a new value. What changes
+  is that an operator reading a blocked lane can tell a reviewer that will
+  never accept this head from a connection that dropped. Transport errors,
+  timeouts, 5xx, 403, and 404 stay `failed`; nothing infers a decline from diff
+  size or message text. A 422 GitHub raises for endpoint spam settles the
+  same way — it did before too, as `failed` — and the recovery is the
+  existing authorized re-request. Standalone mode has no receipt to record
+  the decline in and keeps failing the job, as a thrown 422 always did, with
+  the same `declined by GitHub (HTTP 422): …` message. Closes #154.
+
 ### Fixed
+
+- **A pending Copilot request made for an earlier head satisfied presence at
+  every later one.** `requestCopilotReviewer` read "Copilot is a requested
+  reviewer" as coverage of the current head, but the requested-reviewers
+  payload carries no commit anchor: when the head moved while a request was
+  outstanding, the run at the new head issued no POST, wrote a satisfied
+  receipt, and the lane waited forever for an exact-head review nobody had
+  asked for. Observed on this repository's own PR #157 (request at `00:41:21`
+  for `d594433`, `c5e94e0` pushed at `00:43:06`, receipt at `c5e94e0` read
+  `requested/observed` with no `review_requested` event for it).
+
+  Nothing GitHub exposes proves which head a pending request was made for,
+  and a commit's own timestamps are written by the committer rather than
+  observed by the server, so no comparison against them is used. The receipt
+  store is the evidence instead: the durable `route` dispatches only when no
+  receipt exists for the head, so a request it finds pending was not made by
+  it at this head. It is removed and re-added, so GitHub notifies for this
+  head, and the receipt records a request this run proved landed rather than
+  an inherited presence. A review already anchored to the head by `commit_id`
+  still short-circuits. The cost — one extra review at a head where someone
+  else had already requested the reviewer — is accepted. The `forceRerequest`
+  path is unchanged. Standalone (non-durable) runs hold no such record and
+  keep today's behaviour; the service reports the presence as
+  `unanchored-request` so the caller knows the head is unproven, and an
+  unreadable pre-probe now reports `presence: unverified` rather than
+  `absent`. Closes #158.
+- **A late adapter acknowledgment could overwrite a settled dispatch.**
+  `acknowledge` on a receipt already written `failed` or `declined` at phase
+  `started` rewrote it to `requested`/`acknowledged`, erasing the outcome that
+  had routed it to a human. It is now rejected.
+- **The bare-attempt rejection sent operators to re-request handling.**
+  `request.attempt` is the remote dispatch counter for the head: 1 on the first
+  dispatch however many local review rounds preceded it. A coordinator that
+  forwarded its local round counter arrived with `attempt: 6` and no
+  `rerequestOf` and was told the request "requires request.rerequestOf
+  identifying the prior attempt" — pointing at re-request handling when no
+  remote attempt had ever been made. The rejection now names the counter and
+  its rule (`request.attempt is the remote dispatch counter for this head and
+  must be 1 on the first dispatch; 6 without request.rerequestOf claims a
+  same-head re-request of remote attempt 5 that was never made …`), and the
+  semantics are written into `action.yml` and `DESIGN.md`. The guard itself is
+  unchanged; relaxing it on store state would re-open the authorization bypass
+  it closes. The counter fix belongs to the coordinator and is tracked as
+  platypeeps/sd-ai-command-pack#589; #155 stays open until it lands.
 
 - **Published setup prose paired a release tag with a commit git does not
   agree with, and nothing checked the pair.** `SETUP-PR-AGENT.md`'s `.git`-less

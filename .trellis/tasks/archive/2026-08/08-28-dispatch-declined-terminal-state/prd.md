@@ -60,10 +60,10 @@ established cause.
 
 ## Acceptance Criteria
 
-- [ ] `DISPATCH_STATUSES` carries a decline state, and `receiptState` maps it to
+- [x] `DISPATCH_STATUSES` carries a decline state, and `receiptState` maps it to
       a gate-blocking outcome.
-- [ ] A declined dispatch and a transport failure produce different receipts,
+- [x] A declined dispatch and a transport failure produce different receipts,
       proven by a test over both paths.
-- [ ] The decline receipt names the reason the backend gave.
-- [ ] A test asserts the decline state does not open the remote gate.
-- [ ] Issue #154 is closed by the change.
+- [x] The decline receipt names the reason the backend gave.
+- [x] A test asserts the decline state does not open the remote gate.
+- [x] Issue #154 is closed by the change.

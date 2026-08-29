@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import {
+  DECLINE_REASON_MAX_BYTES,
   decodeAdapterAcknowledgment,
   decodeReceipt,
   decodeReviewRequest,
@@ -53,11 +54,14 @@ function headFromPullRequest(pullRequest) {
 function completedReceipt(receipt) {
   return receipt.dispatch.status === "skipped"
     || receipt.dispatch.status === "failed"
+    || receipt.dispatch.status === "declined"
     || receipt.dispatch.phase === "observed";
 }
 
 function checkConclusion(receipt) {
-  if (receipt.dispatch.status === "failed") return "failure";
+  if (receipt.dispatch.status === "failed" || receipt.dispatch.status === "declined") {
+    return "failure";
+  }
   if (receipt.dispatch.status === "skipped") return "neutral";
   return "success";
 }
@@ -198,8 +202,14 @@ function startedReceiptIsStranded(receipt, now, strandedAfterMinutes) {
 // safe to ship.
 function receiptState(receipt, { now, strandedAfterMinutes } = {}) {
   // A failed dispatch is known broken rather than running, so age is
-  // irrelevant to it and it always needs a human.
-  if (receipt.dispatch.status === "failed" && receipt.dispatch.phase === "started") {
+  // irrelevant to it and it always needs a human. A declined one is the
+  // backend's own refusal of the pull request and needs one just as much; it
+  // shares the gate and differs only in what `dispatch-status` and the
+  // recorded reason tell that human.
+  if (
+    (receipt.dispatch.status === "failed" || receipt.dispatch.status === "declined")
+    && receipt.dispatch.phase === "started"
+  ) {
     return "reconciliation-required";
   }
   if (receipt.dispatch.phase === "started") {
@@ -722,6 +732,19 @@ export class ReceiptStore {
     ) {
       throw new Error("acknowledgment findingChannels must match the durable receipt backend");
     }
+    // A dispatch settled at phase "started" -- dispatchFailed or
+    // dispatchDeclined wrote it -- is terminal and routed to a human. A late
+    // adapter acknowledgment must not rewrite it to `requested`/`acknowledged`
+    // and erase the failure, or the decline and its reason, that settled it.
+    if (
+      record.receipt.dispatch.phase === "started"
+      && (record.receipt.dispatch.status === "failed"
+        || record.receipt.dispatch.status === "declined")
+    ) {
+      throw new Error(
+        `acknowledgment cannot follow a dispatch already settled as ${record.receipt.dispatch.status}`,
+      );
+    }
     if (record.receipt.dispatch.phase === "observed") {
       if (decoded.status !== "acknowledged") {
         throw new Error("failed acknowledgment cannot follow an observed receipt");
@@ -773,8 +796,12 @@ export class ReceiptStore {
     const { elected } = await this.#electedRecords(pullRequestNumber, lower(headSha));
     const record = elected.get(lower(logicalDispatchId));
     if (!record) throw new Error("durable receipt was not found for observation");
-    if (record.receipt.dispatch.status === "failed" || record.receipt.dispatch.status === "skipped") {
-      throw new Error("failed or skipped receipts cannot transition to observed");
+    if (
+      record.receipt.dispatch.status === "failed"
+      || record.receipt.dispatch.status === "declined"
+      || record.receipt.dispatch.status === "skipped"
+    ) {
+      throw new Error("failed, declined, or skipped receipts cannot transition to observed");
     }
     if (
       record.receipt.backend?.kind === "external"
@@ -819,21 +846,86 @@ export class ReceiptStore {
     workflowUrl,
     completedAt,
   }) {
+    return this.#settleDispatch({
+      pullRequestNumber,
+      headSha,
+      logicalDispatchId,
+      workflowUrl,
+      completedAt,
+      status: "failed",
+      what: "failed",
+    });
+  }
+
+  // The backend looked at the pull request and refused it. Same guards and the
+  // same gate as a failure; what differs is that the receipt names the refusal,
+  // so an operator reading a blocked lane is not left to tell a reviewer that
+  // will never accept this head apart from a connection that dropped.
+  async dispatchDeclined({
+    pullRequestNumber,
+    headSha,
+    logicalDispatchId,
+    workflowUrl,
+    completedAt,
+    reason,
+  }) {
+    if (typeof reason !== "string" || reason.trim().length === 0) {
+      throw new Error("a declined dispatch must carry the backend's reason");
+    }
+    // GitHub's message is unbounded; the receipt field is not. A reason the
+    // protocol would refuse must not make the decline unpersistable -- that
+    // would leave the started receipt reading as in flight until the
+    // stranded timeout, the exact stale state this writer exists to prevent.
+    // Cut on code-point boundaries until it fits the byte budget: slicing
+    // UTF-16 units would leave a lone surrogate behind. One pass, summing
+    // each code point's encoded width.
+    let declineReason = "";
+    let bytes = 0;
+    for (const codePoint of reason.trim()) {
+      bytes += Buffer.byteLength(codePoint, "utf8");
+      if (bytes > DECLINE_REASON_MAX_BYTES) break;
+      declineReason += codePoint;
+    }
+    declineReason = declineReason.trimEnd();
+    return this.#settleDispatch({
+      pullRequestNumber,
+      headSha,
+      logicalDispatchId,
+      workflowUrl,
+      completedAt,
+      status: "declined",
+      what: "declined",
+      extra: { declineReason },
+    });
+  }
+
+  async #settleDispatch({
+    pullRequestNumber,
+    headSha,
+    logicalDispatchId,
+    workflowUrl,
+    completedAt,
+    status,
+    what,
+    extra = {},
+  }) {
     const { elected } = await this.#electedRecords(pullRequestNumber, lower(headSha));
     const record = elected.get(lower(logicalDispatchId));
-    if (!record) throw new Error("durable receipt was not found for dispatch failure");
+    if (!record) throw new Error(`durable receipt was not found for dispatch ${what === "failed" ? "failure" : "decline"}`);
     // Only a live dispatch can fail. "observed" is settled, "acknowledged" has
     // its own failed form through acknowledge(), and "not-started" is a skip --
     // forcing any of them to "started" here would rewrite history rather than
     // record an outcome.
     if (record.receipt.dispatch.phase !== "started") {
       throw new Error(
-        `only a started dispatch can be recorded as failed, not ${record.receipt.dispatch.phase}`,
+        `only a started dispatch can be recorded as ${what}, not ${record.receipt.dispatch.phase}`,
       );
     }
-    // Already failed: the state is what the caller wants and rewriting it would
-    // only move completedAt. Report it rather than mutating a settled receipt.
-    if (record.receipt.dispatch.status === "failed") {
+    // Already settled as failed or declined: the state is what the caller wants
+    // and rewriting it would only move completedAt -- or, worse, overwrite a
+    // specific refusal with a generic failure. Report it rather than mutating a
+    // settled receipt.
+    if (record.receipt.dispatch.status === "failed" || record.receipt.dispatch.status === "declined") {
       return {
         state: "reconciliation-required",
         receipt: record.receipt,
@@ -845,10 +937,11 @@ export class ReceiptStore {
       ...record.receipt,
       dispatch: {
         ...record.receipt.dispatch,
-        status: "failed",
+        status,
         phase: "started",
-        completedAt: isoTimestamp(completedAt ?? this.now, "receipt dispatch failure timestamp"),
+        completedAt: isoTimestamp(completedAt ?? this.now, `receipt dispatch ${what} timestamp`),
         ...(workflowUrl ? { workflowUrl } : {}),
+        ...extra,
       },
     });
     return this.#updateRecord(record, receipt);

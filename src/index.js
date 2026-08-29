@@ -3,7 +3,7 @@ import { pathToFileURL } from "node:url";
 import { GitHubClient } from "./github.js";
 import { normalizeOperation, runDurableAction, writeDurableSummary } from "./operations.js";
 import { buildRiskContext } from "./risk-context.js";
-import { requestCopilotReviewer } from "./reviewer-dispatch.js";
+import { LANDING_DECLINED, requestCopilotReviewer } from "./reviewer-dispatch.js";
 import {
   ignoredEventDecision,
   isTrustedCommand,
@@ -263,12 +263,24 @@ export async function runAction({
 
   let copilotRequested = false;
   if (decision.route === "copilot" && booleanInput("request-copilot", true, env)) {
+    const reviewer = input("copilot-reviewer", "copilot-pull-request-reviewer[bot]", env);
     const dispatch = await requestCopilotReviewer({
       client: getClient(),
       pullRequestNumber,
-      reviewer: input("copilot-reviewer", "copilot-pull-request-reviewer[bot]", env),
+      reviewer,
       headSha: pullRequest.head?.sha,
     });
+    // The service returns a 422 as `landing: declined` instead of throwing so
+    // the durable path can record it. Standalone has no receipt to record it
+    // in, and before that change a 422 threw and failed the job; a decline
+    // read as `copilot-requested: false` would be a silent downgrade of a
+    // terminal refusal. Keep it a job failure that names GitHub's reason.
+    if (dispatch.landing === LANDING_DECLINED) {
+      throw new Error(
+        `reviewer request for ${reviewer} was declined by GitHub `
+        + `(HTTP ${dispatch.declined.status}): ${dispatch.declined.message}`,
+      );
+    }
     copilotRequested = dispatch.requested;
   }
 

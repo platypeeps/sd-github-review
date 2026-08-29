@@ -49,6 +49,7 @@ function fakeClient({
   probeBody = undefined,
   preProbeBody = undefined,
   canonicalLogin = null,
+  requestError = null,
 } = {}) {
   const calls = [];
   let users = [...requestedUsers];
@@ -70,6 +71,7 @@ function fakeClient({
     },
     async requestReviewer(number, reviewer) {
       calls.push(["requestReviewer", number, reviewer]);
+      if (requestError) throw requestError;
       posted = true;
       // GitHub stores its own canonical casing, not the string it was sent.
       // Echoing the argument back would make a casing test compare a value to
@@ -78,7 +80,10 @@ function fakeClient({
     },
     async removeRequestedReviewer(number, reviewer) {
       calls.push(["removeRequestedReviewer", number, reviewer]);
-      users = users.filter((user) => user.login !== reviewer);
+      // GitHub matches logins case-insensitively; the fake must too, or a
+      // removal of a differently-cased pending reviewer silently no-ops and
+      // the re-request test proves nothing.
+      users = users.filter((user) => user.login.toLowerCase() !== reviewer.toLowerCase());
     },
   };
 }
@@ -141,9 +146,11 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyPresent: true,
     requested: false,
     rerequested: false,
+    presence: "unanchored-request",
     landing: "not-attempted",
   });
   // Already requested short-circuits before listing reviews or requesting.
+  // A caller holding no record of the request is told the head is unproven.
   assert.ok(!requested.calls.includes("listPullRequestReviews"));
   assert.ok(!requested.calls.some((call) => Array.isArray(call) && call[0] === "requestReviewer"));
 
@@ -163,6 +170,7 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyPresent: true,
     requested: false,
     rerequested: false,
+    presence: "reviewed-head",
     landing: "not-attempted",
   });
 
@@ -182,6 +190,7 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyPresent: false,
     requested: true,
     rerequested: false,
+    presence: "absent",
     landing: "confirmed",
   });
   assert.ok(dismissed.calls.some((call) => Array.isArray(call) && call[0] === "requestReviewer"));
@@ -200,6 +209,7 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyPresent: false,
     requested: true,
     rerequested: false,
+    presence: "absent",
     landing: "confirmed",
   });
   assert.deepEqual(fresh.calls.filter((call) => Array.isArray(call)), [["requestReviewer", 42, REVIEWER]]);
@@ -221,6 +231,7 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyPresent: true,
     requested: true,
     rerequested: true,
+    presence: "unanchored-request",
     landing: "confirmed",
   });
   assert.deepEqual(
@@ -244,6 +255,7 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
     alreadyPresent: true,
     requested: true,
     rerequested: true,
+    presence: "reviewed-head",
     landing: "confirmed",
   });
   assert.deepEqual(
@@ -256,6 +268,136 @@ test("the shared reviewer-dispatch probe covers requested, reviewed, dismissed, 
 // and added nobody; deriving `requested` from the pre-call probe reported that
 // as a landed request, which minted a durable receipt claiming a review that
 // never happened and then blocked every retry.
+// Issue #158: a pending reviewer request carries no head. A caller that holds
+// no record of a request for this head says so with `rerequestPending`, and
+// the pending reviewer is removed and re-requested so GitHub notifies for this
+// head. No commit or timeline evidence is consulted: nothing GitHub exposes
+// proves which head a pending request was made for.
+test("a pending request the caller has no record of is re-requested", async () => {
+  const pending = fakeClient({ requestedUsers: [{ login: REVIEWER.toUpperCase() }] });
+  const result = await requestCopilotReviewer({
+    client: pending,
+    pullRequestNumber: 42,
+    reviewer: REVIEWER,
+    headSha: HEAD,
+    rerequestPending: true,
+  });
+  assert.deepEqual(result, {
+    alreadyRequested: true,
+    alreadyReviewed: false,
+    alreadyPresent: true,
+    requested: true,
+    rerequested: true,
+    presence: "unanchored-request",
+    landing: "confirmed",
+  });
+  assert.deepEqual(
+    pending.calls.filter((call) => Array.isArray(call)),
+    [["removeRequestedReviewer", 42, REVIEWER], ["requestReviewer", 42, REVIEWER]],
+  );
+
+  // An exact-head review is anchored by commit_id and is never re-requested
+  // on this ground.
+  const reviewed = fakeClient({
+    reviews: [{ user: { login: REVIEWER }, commit_id: HEAD, state: "COMMENTED" }],
+  });
+  const reviewedResult = await requestCopilotReviewer({
+    client: reviewed,
+    pullRequestNumber: 42,
+    reviewer: REVIEWER,
+    headSha: HEAD,
+    rerequestPending: true,
+  });
+  assert.equal(reviewedResult.presence, "reviewed-head");
+  assert.equal(reviewedResult.landing, "not-attempted");
+  assert.deepEqual(reviewed.calls.filter((call) => Array.isArray(call)), []);
+
+  // A pending request and an exact-head review can coexist. The review proves
+  // coverage of this head, so the request is left alone even under the flag.
+  const both = fakeClient({
+    requestedUsers: [{ login: REVIEWER }],
+    reviews: [{ user: { login: REVIEWER }, commit_id: HEAD, state: "COMMENTED" }],
+  });
+  const bothResult = await requestCopilotReviewer({
+    client: both,
+    pullRequestNumber: 42,
+    reviewer: REVIEWER,
+    headSha: HEAD,
+    rerequestPending: true,
+  });
+  assert.equal(bothResult.presence, "reviewed-head");
+  assert.equal(bothResult.alreadyRequested, true);
+  assert.equal(bothResult.landing, "not-attempted");
+  assert.deepEqual(both.calls.filter((call) => Array.isArray(call)), []);
+
+  // Without the caller's statement the pending request keeps its presence and
+  // is reported for what it is: present, head unproven.
+  const kept = fakeClient({ requestedUsers: [{ login: REVIEWER }] });
+  const keptResult = await requestCopilotReviewer({
+    client: kept,
+    pullRequestNumber: 42,
+    reviewer: REVIEWER,
+  });
+  assert.equal(keptResult.presence, "unanchored-request");
+  assert.equal(keptResult.landing, "not-attempted");
+  assert.deepEqual(kept.calls.filter((call) => Array.isArray(call)), []);
+});
+
+// Issue #154: a 422 is GitHub refusing this pull request, terminal and named.
+// Any other throw is not classified and propagates as before.
+test("a 422 on the reviewer request is a decline, anything else propagates", async () => {
+  const declining = fakeClient({
+    requestError: Object.assign(new Error("GitHub API POST failed: Copilot cannot review this pull request"), {
+      status: 422,
+      apiMessage: "Copilot cannot review this pull request",
+    }),
+  });
+  const declinedResult = await requestCopilotReviewer({
+    client: declining,
+    pullRequestNumber: 42,
+    reviewer: REVIEWER,
+    headSha: HEAD,
+  });
+  assert.deepEqual(declinedResult, {
+    alreadyRequested: false,
+    alreadyReviewed: false,
+    alreadyPresent: false,
+    requested: false,
+    rerequested: false,
+    presence: "absent",
+    landing: "declined",
+    declined: { status: 422, message: "Copilot cannot review this pull request" },
+  });
+
+  const forced = fakeClient({
+    requestedUsers: [{ login: REVIEWER }],
+    requestError: Object.assign(new Error("refused"), { status: 422, apiMessage: "" }),
+  });
+  const forcedResult = await requestCopilotReviewer({
+    client: forced,
+    pullRequestNumber: 42,
+    reviewer: REVIEWER,
+    headSha: HEAD,
+    forceRerequest: true,
+  });
+  assert.equal(forcedResult.landing, "declined");
+  assert.equal(forcedResult.rerequested, false);
+  assert.deepEqual(forcedResult.declined, { status: 422, message: "Unprocessable Entity" });
+
+  const transport = fakeClient({ requestError: new Error("socket hang up") });
+  await assert.rejects(
+    requestCopilotReviewer({ client: transport, pullRequestNumber: 42, reviewer: REVIEWER, headSha: HEAD }),
+    /socket hang up/u,
+  );
+  const forbidden = fakeClient({
+    requestError: Object.assign(new Error("forbidden"), { status: 403, apiMessage: "forbidden" }),
+  });
+  await assert.rejects(
+    requestCopilotReviewer({ client: forbidden, pullRequestNumber: 42, reviewer: REVIEWER, headSha: HEAD }),
+    /forbidden/u,
+  );
+});
+
 test("a requestReviewer that adds nobody is reported as absent, not requested", async () => {
   const silent = fakeClient({ landsRequest: false });
   const result = await requestCopilotReviewer({
@@ -270,6 +412,7 @@ test("a requestReviewer that adds nobody is reported as absent, not requested", 
     alreadyPresent: false,
     requested: false,
     rerequested: false,
+    presence: "absent",
     landing: "absent",
   });
   // The POST was attempted, and the post-probe is what caught it.
@@ -320,8 +463,10 @@ test("an unreadable pre-request probe still posts and defers to the post-probe",
       headSha: HEAD,
     });
     const label = `payload ${JSON.stringify(value ?? null)}`;
-    // Unreadable is "not known to be present", never "already there".
+    // Unreadable is "not known to be present", never "already there" -- and
+    // never "absent", which is a positive claim the probe could not make.
     assert.equal(result.alreadyRequested, false, label);
+    assert.equal(result.presence, "unverified", label);
     assert.deepEqual(
       blind.calls.filter((call) => Array.isArray(call)),
       [["requestReviewer", 42, REVIEWER]],

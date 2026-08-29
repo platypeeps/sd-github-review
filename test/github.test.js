@@ -376,6 +376,54 @@ test("never retries an interrupted reviewer request", async () => {
   assert.deepEqual(sleeps, []);
 });
 
+// A response GitHub sent and a connection that died are different facts, and
+// reviewer-dispatch classifies a 422 as the backend declining the pull request.
+// The status and GitHub's message travel as data; transport errors carry none.
+test("a response error carries the HTTP status and GitHub's message as data", async () => {
+  const declined = createClient(async () =>
+    jsonResponse({ message: "Copilot cannot review this pull request" }, {
+      status: 422,
+      statusText: "Unprocessable Content",
+    }),
+  );
+  await assert.rejects(
+    declined.requestReviewer(4, "copilot-pull-request-reviewer[bot]"),
+    (error) => {
+      assert.equal(error.status, 422);
+      assert.equal(error.apiMessage, "Copilot cannot review this pull request");
+      assert.match(error.message, /Copilot cannot review this pull request/u);
+      return true;
+    },
+  );
+
+  // An empty message is not authoritative: the status line stands in for it
+  // so neither the prose nor `apiMessage` is blank.
+  const blank = createClient(async () =>
+    jsonResponse({ message: "" }, { status: 422, statusText: "Unprocessable Content" }),
+  );
+  await assert.rejects(
+    blank.requestReviewer(4, "copilot-pull-request-reviewer[bot]"),
+    (error) => {
+      assert.equal(error.status, 422);
+      assert.equal(error.apiMessage, "422 Unprocessable Content");
+      assert.match(error.message, /failed: 422 Unprocessable Content/u);
+      return true;
+    },
+  );
+
+  const transport = createClient(async () => {
+    throw new Error("socket hang up");
+  });
+  await assert.rejects(
+    transport.requestReviewer(4, "copilot-pull-request-reviewer[bot]"),
+    (error) => {
+      assert.equal(error.status, undefined);
+      assert.equal(error.apiMessage, undefined);
+      return true;
+    },
+  );
+});
+
 test("reads requested and completed reviews and sends the documented request payload", async () => {
   const calls = [];
   const client = createClient(async (url, options) => {

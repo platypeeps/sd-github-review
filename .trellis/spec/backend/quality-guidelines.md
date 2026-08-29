@@ -278,7 +278,8 @@ published setup descriptor/on-demand workflows.
 | Attempt greater than one with rerequest authorization off | Reject before adapter dispatch |
 | Authorized valid rerequest | Create one distinct attempt receipt and dispatch once |
 | Configured independent-review floor | Do not reduce an automatic route below the selected floor |
-| Current-head Copilot pending/reviewed | Mark already present; do not request again |
+| Copilot review anchored to the current head by `commit_id` | Mark already present; do not request again |
+| Copilot request pending at a head with no prior dispatch record (`rerequestPending`) | Remove and re-request; the receipt records the proven landing, never the inherited presence |
 | Valid adapter request plus success outcome | Emit acknowledged JSON with the same logical ID, backend ID, and finding channels; construct no GitHub client |
 | Failure/cancelled/skipped adapter outcome | Emit failed JSON with `adapter-failed`, `adapter-cancelled`, or `adapter-skipped` |
 | Malformed request or unsupported outcome | Throw before emitting an acknowledgment |
@@ -355,10 +356,14 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 - `routeReview(context) -> { route, reason }`
 - `GitHubClient.listPullRequestFiles(number) -> Promise<string[]>`
 - `GitHubClient.requestReviewer(number, reviewer) -> Promise<object|null>`
+- `GitHubClient.removeRequestedReviewer(number, reviewer) -> Promise<object|null>`
 - `requestCopilotReviewer({ client, pullRequestNumber, reviewer, headSha,
-  forceRerequest }) -> Promise<{ alreadyRequested, alreadyReviewed,
-  alreadyPresent, requested, rerequested, landing }>`, where `landing` is
-  `not-attempted|confirmed|absent|unverified`
+  forceRerequest, rerequestPending }) -> Promise<{ alreadyRequested,
+  alreadyReviewed, alreadyPresent, requested, rerequested, presence, landing,
+  declined? }>`, where `landing` is
+  `not-attempted|confirmed|absent|unverified|declined` (`declined` carries
+  `declined: { status: 422, message }`) and `presence` is
+  `absent|reviewed-head|unanchored-request|unverified`
 - `ReceiptStore.dispatchFailed({ pullRequestNumber, headSha, logicalDispatchId,
   workflowUrl, completedAt }) -> Promise<{ state, receipt, dispatchAllowed,
   reconciliationRequired, receiptVerified?, error? }>`, writing
@@ -366,6 +371,14 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
   and `error` appear only when the durable write itself failed; the success and
   already-failed returns omit both, so `undefined` reads as verified. Callers
   propagate the value rather than asserting one
+- `ReceiptStore.dispatchDeclined({ pullRequestNumber, headSha, logicalDispatchId,
+  workflowUrl, completedAt, reason }) -> Promise<{ state, receipt, dispatchAllowed,
+  reconciliationRequired, receiptVerified?, error? }>`, writing
+  `dispatch.status: "declined"` at `dispatch.phase: "started"` with
+  `dispatch.declineReason` (GitHub's message, non-blank, truncated on code
+  points to `DECLINE_REASON_MAX_BYTES` = 512). Same guards and return shape as
+  `dispatchFailed`; an already-settled `failed` or `declined` receipt is
+  reported, not rewritten.
 
 ### 3. Contracts
 
@@ -397,9 +410,9 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
   the reviewer was observed present in a probe taken *after* the POST.
   GitHub can return a non-error response to `requestReviewer` and add nobody,
   so a pre-call probe is evidence about the old state only. `landing` carries
-  which of the four outcomes actually occurred; `absent` (accepted, added
-  nobody) and `unverified` (post-probe itself failed) are distinct facts and
-  must not collapse into one another.
+  which of the five outcomes actually occurred; `absent` (accepted, added
+  nobody), `unverified` (post-probe itself failed), and `declined` (GitHub
+  answered 422) are distinct facts and must not collapse into one another.
 - A failure is persisted, not just returned. A caller that classifies a
   dispatch as failed writes that to the durable receipt before returning.
   `receiptState` reads `status: "failed"` at `phase: "started"` as
@@ -425,10 +438,12 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 | Permission/validation response without transient evidence | Throw after one request |
 | Rate-limit directive exceeds 60 seconds | Throw with allow-listed limit context and make no early retry |
 | Interrupted reviewer request or Check Run mutation | Make exactly one mutation attempt; reconcile/fail closed in the owning layer |
-| Existing Copilot request/review for current HEAD | Do not request again; emit `copilot-requested=false` |
+| Existing Copilot review anchored to the current HEAD | Do not request again; emit `copilot-requested=false` |
+| Existing Copilot request pending when the durable route dispatches | Remove, re-request, probe; emit `copilot-requested=true` only on a confirmed landing |
 | Reviewer POST returns non-error and the post-probe finds nobody | `landing=absent`, `requested=false`; the durable caller fails closed to `reconciliation-required` and never calls `store.observe` |
 | Post-probe itself throws after the POST | `landing=unverified`, `requested=false`; fail closed, and report the outcome as unknown rather than as absent |
-| Any classified *dispatch* failure — a non-landing POST or a throwing `requestReviewer` | Call `store.dispatchFailed` before returning, so a later read reaches the same verdict; still fail closed if that write itself fails, carrying both errors |
+| Reviewer POST answered with HTTP 422 | `landing=declined` with `declined: { status, message }`, never a throw; the durable caller calls `store.dispatchDeclined` (same gate as failed, reason recorded), standalone fails the job naming the reason |
+| Any other classified *dispatch* failure — a non-landing POST or a throwing `requestReviewer` (transport, 5xx, 403, 404) | Call `store.dispatchFailed` before returning, so a later read reaches the same verdict; still fail closed if that write itself fails, carrying both errors |
 | The request landed but the receipt advance (`store.observe`) failed | Reconcile in memory with `copilotRequested` still true; do **not** write a failed dispatch. The reviewer was requested, and recording otherwise is a second false claim in the opposite direction |
 | Post-request probe returns a 2xx with no readable reviewer set (`null` body, `users` missing or non-array) | `unverified`, never `absent`. `absent` is a positive claim — GitHub accepted and added nobody — and this probe is its only source; falling through manufactures the evidence the caller fails closed on |
 | Pre-request probe returns a 2xx with an empty body (`request()` yields `null`) | Read it with optional chaining. Unreadable is "not known to be present", so the POST still happens and the post-probe renders the verdict; dereferencing it throws before any POST and loses the fail-closed path |
@@ -516,6 +531,48 @@ if (!alreadyPresent) {
   return { alreadyPresent, requested: landing === LANDING_CONFIRMED, landing };
 }
 return { alreadyPresent, requested: false, landing: LANDING_NOT_ATTEMPTED };
+```
+
+```js
+// Wrong: a pending reviewer request is read as coverage of the current head.
+// The requested-reviewers payload carries no commit anchor, so a request made
+// for an earlier head satisfies presence at every later one and the lane
+// waits forever for an exact-head review nobody asked for (issue #158).
+const alreadyPresent = alreadyRequested || alreadyReviewed;
+if (!alreadyPresent) { /* POST */ }
+
+// Correct: only a review is head-anchored (by commit_id). For a pending
+// request the caller supplies the evidence the API cannot: the durable path
+// dispatches only when no receipt exists for this head, so a request it finds
+// pending was not made by it here. It says so with `rerequestPending`, and
+// the reviewer is removed and re-requested so GitHub notifies for this head.
+// Do not reach for commit timestamps as a substitute: author and committer
+// dates are written by the committer, not observed by the server, and prove
+// nothing about which head a request was made for in either direction.
+if (forceRerequest || (alreadyRequested && rerequestPending)) {
+  if (alreadyRequested) await client.removeRequestedReviewer(pullRequestNumber, reviewer);
+  return { ...base, presence, ...(await requestAndProbe(client, pullRequestNumber, reviewer)) };
+}
+```
+
+```js
+// Wrong: every throw from requestReviewer becomes `failed`. A 422 -- GitHub
+// parsed the request and refused it for this pull request -- reads the same
+// as a dropped connection, and the operator retries a POST that GitHub has
+// already answered (issue #154).
+try { await client.requestReviewer(n, reviewer); } catch { return failed(); }
+
+// Correct: classify on the one observable the API gives -- the HTTP status the
+// client carries as `error.status` -- and record GitHub's own message. The
+// state says GitHub refused the POST, not why and not what the reviewer
+// intends: the verbatim message is the operator's evidence. Never infer a
+// decline from diff size or message text; 403/404/5xx/transport stay
+// `failed`. The gate is identical (reconciliation-required); only legibility
+// changes, through `dispatch-status: declined` and `declineReason`.
+if (error?.status === 422) {
+  return { landing: LANDING_DECLINED, declined: { status: 422, message: error.apiMessage } };
+}
+throw error;
 ```
 
 ## Scenario: Validate Public Repository Metadata
