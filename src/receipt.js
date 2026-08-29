@@ -877,12 +877,16 @@ export class ReceiptStore {
     // would leave the started receipt reading as in flight until the
     // stranded timeout, the exact stale state this writer exists to prevent.
     // Cut on code-point boundaries until it fits the byte budget: slicing
-    // UTF-16 units would leave a lone surrogate behind.
-    const codePoints = Array.from(reason.trim());
-    while (Buffer.byteLength(codePoints.join(""), "utf8") > DECLINE_REASON_MAX_BYTES) {
-      codePoints.pop();
+    // UTF-16 units would leave a lone surrogate behind. One pass, summing
+    // each code point's encoded width.
+    let declineReason = "";
+    let bytes = 0;
+    for (const codePoint of reason.trim()) {
+      bytes += Buffer.byteLength(codePoint, "utf8");
+      if (bytes > DECLINE_REASON_MAX_BYTES) break;
+      declineReason += codePoint;
     }
-    const declineReason = codePoints.join("").trimEnd();
+    declineReason = declineReason.trimEnd();
     return this.#settleDispatch({
       pullRequestNumber,
       headSha,
