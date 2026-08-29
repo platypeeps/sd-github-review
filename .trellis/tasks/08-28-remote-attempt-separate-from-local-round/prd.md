@@ -65,11 +65,27 @@ actually wrong.
 
 ## Acceptance Criteria
 
+Split by owner. The counter itself is derived in the `sd-review` coordinator
+(sd-ai-command-pack), tracked there as platypeeps/sd-ai-command-pack#589; this
+repository owns the field's contract and the rejection. `design.md` records
+the split and why no request-shape change is made here.
+
+### This repository
+
+- [x] `request.attempt` is documented as the remote dispatch counter — in
+      `src/protocol.js` beside the guard, in `action.yml`'s `review-request`
+      description, and in `DESIGN.md` — with one shape and no ambiguity.
+- [x] The rejection for a real violation names the remote attempt counter and
+      no longer sends the operator to re-request handling, proven by a test.
+- [x] A genuine second remote dispatch (`attempt: 2` with `rerequestOf` for the
+      first) still decodes, proven by a test.
+
+### Coordinator (parked on sd-ai-command-pack#589)
+
 - [ ] A pull request whose local review took more than one round dispatches on
-      its first remote attempt as `attempt: 1`, proven by a test.
+      its first remote attempt as `attempt: 1`.
 - [ ] A genuine second remote dispatch arrives as `attempt: 2` carrying
       `rerequestOf` for the first.
 - [ ] Local rounds do not change the remote attempt number.
-- [ ] The rejection for a real violation names the remote attempt counter.
 - [ ] No path requires `--attempt-id` to recover from a first dispatch.
-- [ ] Issue #155 is closed by the change.
+- [ ] Issue #155 is closed once both halves have landed.

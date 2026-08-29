@@ -113,12 +113,12 @@ and record why the others were rejected.
 
 ## Acceptance Criteria
 
-- [ ] A pending request made for an earlier head does not satisfy presence at a
+- [x] A pending request made for an earlier head does not satisfy presence at a
       later head, proven by a test reproducing the PR #157 timeline.
-- [ ] A pending request made for the current head still satisfies presence, with
+- [x] A pending request made for the current head still satisfies presence, with
       no duplicate POST.
-- [ ] The `forceRerequest` path is unchanged, proven by a test.
-- [ ] An unreadable pre-probe still takes the fail-closed path.
-- [ ] A receipt reaching `observed` via `alreadyPresent` at a head with no
+- [x] The `forceRerequest` path is unchanged, proven by a test.
+- [x] An unreadable pre-probe still takes the fail-closed path.
+- [x] A receipt reaching `observed` via `alreadyPresent` at a head with no
       matching `review_requested` event is surfaced as an anomaly.
-- [ ] Issue #158 is closed by the change.
+- [x] Issue #158 is closed by the change.
