@@ -147,8 +147,13 @@ export async function requestCopilotReviewer({
   const probeReadable = Array.isArray(requested?.users);
   const alreadyRequested = probeReadable
     && requested.users.some((user) => sameLogin(user?.login, reviewer));
+  // A pending request and an exact-head review can coexist (someone
+  // re-requested after a review landed). A caller about to replace an
+  // unanchored request must see the review first: it proves this head is
+  // covered, and the request must then be left alone. A caller that keeps
+  // pending requests does not need the listing.
   const alreadyReviewed = Boolean(
-    !alreadyRequested
+    (!alreadyRequested || rerequestPending)
       && headSha
       && (await client.listPullRequestReviews(pullRequestNumber)).some(
         (review) =>
@@ -169,7 +174,7 @@ export async function requestCopilotReviewer({
   // reviewer. GitHub does not re-notify a reviewer already in the requested
   // set, so a pending reviewer is removed before being re-requested. The
   // same removal serves a pending request the caller holds no record of.
-  if (forceRerequest || (alreadyRequested && rerequestPending)) {
+  if (forceRerequest || (alreadyRequested && rerequestPending && !alreadyReviewed)) {
     if (alreadyRequested) {
       await client.removeRequestedReviewer(pullRequestNumber, reviewer);
     }

@@ -312,6 +312,24 @@ test("a pending request the caller has no record of is re-requested", async () =
   assert.equal(reviewedResult.landing, "not-attempted");
   assert.deepEqual(reviewed.calls.filter((call) => Array.isArray(call)), []);
 
+  // A pending request and an exact-head review can coexist. The review proves
+  // coverage of this head, so the request is left alone even under the flag.
+  const both = fakeClient({
+    requestedUsers: [{ login: REVIEWER }],
+    reviews: [{ user: { login: REVIEWER }, commit_id: HEAD, state: "COMMENTED" }],
+  });
+  const bothResult = await requestCopilotReviewer({
+    client: both,
+    pullRequestNumber: 42,
+    reviewer: REVIEWER,
+    headSha: HEAD,
+    rerequestPending: true,
+  });
+  assert.equal(bothResult.presence, "reviewed-head");
+  assert.equal(bothResult.alreadyRequested, true);
+  assert.equal(bothResult.landing, "not-attempted");
+  assert.deepEqual(both.calls.filter((call) => Array.isArray(call)), []);
+
   // Without the caller's statement the pending request keeps its presence and
   // is reported for what it is: present, head unproven.
   const kept = fakeClient({ requestedUsers: [{ login: REVIEWER }] });

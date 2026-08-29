@@ -561,11 +561,14 @@ test("dispatchDeclined records the backend's refusal and blocks the gate like a 
     ...identity,
     logicalDispatchId: long.receipt.logicalDispatchId,
     completedAt: "2026-07-23T12:40:00Z",
-    reason: "é".repeat(600),
+    reason: "😀".repeat(200),
   });
   assert.equal(longDeclined.receipt.dispatch.status, "declined");
   assert.ok(Buffer.byteLength(longDeclined.receipt.dispatch.declineReason, "utf8") <= 512);
-  assert.ok(longDeclined.receipt.dispatch.declineReason.startsWith("ééé"));
+  assert.ok(longDeclined.receipt.dispatch.declineReason.startsWith("😀😀"));
+  // Cut on code points: no lone surrogate survives the truncation.
+  assert.ok(longDeclined.receipt.dispatch.declineReason.isWellFormed());
+  assert.equal(Buffer.byteLength(longDeclined.receipt.dispatch.declineReason, "utf8"), 512);
 });
 
 test("acknowledgment and observation advance phases monotonically", async () => {

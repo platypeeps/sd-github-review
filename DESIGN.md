@@ -439,10 +439,13 @@ A typical external adapter runs only when
 `pull-request-number`. Provider credentials belong on that adapter step, never
 on the router step.
 
-For Copilot, the action first checks pending requested reviewers. If Copilot
-has already left a non-dismissed review on the current head commit, it also
-suppresses a repeat request. The route remains `copilot`, while
-`copilot-requested=false` explains that no new side effect occurred.
+For Copilot, the action checks pending requested reviewers and non-dismissed
+reviews on the current head commit before requesting. A review on the current
+head suppresses a repeat request in both modes. A pending request is kept only
+by the standalone action, which holds no record of which head it was made
+for; the durable `route` re-requests it, as described under durable
+operations. The route remains `copilot`, while `copilot-requested=false`
+explains that no new side effect occurred.
 
 Durable operations retain the compatible route outputs and add the canonical
 `receipt`, `receipt-id`, `logical-dispatch-id`, `request-fingerprint`,

@@ -86,9 +86,12 @@ unreviewed at its head.
 - Preserve the fail-closed reading of an unreadable pre-probe: unreadable means
   "not known to be present", the POST still happens, and `probeLanding` renders
   the verdict.
-- Detection must not depend on an operator noticing. A receipt that reached
-  `observed` through `alreadyPresent` at a head with no corresponding
-  `review_requested` event is an anomaly and must surface as one.
+- Detection must not depend on an operator noticing. No receipt may reach
+  `observed` through `alreadyPresent` on the strength of a pending request
+  whose head is unproven. (Amended during review: the first draft asked for
+  such a receipt to be written and flagged as an anomaly; a satisfied receipt
+  the gate reads as `existing` is not a detectable anomaly, so the case is
+  removed rather than flagged.)
 
 ## Non-goals
 

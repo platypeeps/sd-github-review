@@ -876,11 +876,13 @@ export class ReceiptStore {
     // protocol would refuse must not make the decline unpersistable -- that
     // would leave the started receipt reading as in flight until the
     // stranded timeout, the exact stale state this writer exists to prevent.
-    // Cut on character boundaries until it fits the byte budget.
-    let declineReason = reason.trim();
-    while (Buffer.byteLength(declineReason, "utf8") > DECLINE_REASON_MAX_BYTES) {
-      declineReason = declineReason.slice(0, -1).trimEnd();
+    // Cut on code-point boundaries until it fits the byte budget: slicing
+    // UTF-16 units would leave a lone surrogate behind.
+    const codePoints = Array.from(reason.trim());
+    while (Buffer.byteLength(codePoints.join(""), "utf8") > DECLINE_REASON_MAX_BYTES) {
+      codePoints.pop();
     }
+    const declineReason = codePoints.join("").trimEnd();
     return this.#settleDispatch({
       pullRequestNumber,
       headSha,
