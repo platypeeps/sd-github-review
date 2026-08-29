@@ -80,7 +80,10 @@ function fakeClient({
     },
     async removeRequestedReviewer(number, reviewer) {
       calls.push(["removeRequestedReviewer", number, reviewer]);
-      users = users.filter((user) => user.login !== reviewer);
+      // GitHub matches logins case-insensitively; the fake must too, or a
+      // removal of a differently-cased pending reviewer silently no-ops and
+      // the re-request test proves nothing.
+      users = users.filter((user) => user.login.toLowerCase() !== reviewer.toLowerCase());
     },
   };
 }

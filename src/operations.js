@@ -452,10 +452,12 @@ async function routeOperation({ request, client, store, env, now }) {
         headSha: request.headSha,
         forceRerequest:
           Boolean(request.rerequestOf) && booleanInput("rerequest-authorized", false, env),
-        // begin() authorized this dispatch, which it does only when no receipt
-        // exists for this head: any reviewer request found pending now was
-        // not made by this action at this head (issue #158). The service
-        // removes and re-requests it rather than read it as coverage.
+        // begin() authorized this dispatch: for a first attempt that means
+        // no receipt records prior dispatched work at this head, so any
+        // reviewer request found pending now was not made by this action at
+        // this head (issue #158); an authorized later attempt forces the
+        // re-request regardless. The service removes and re-requests it
+        // rather than read it as coverage.
         rerequestPending: true,
       });
     } catch (error) {

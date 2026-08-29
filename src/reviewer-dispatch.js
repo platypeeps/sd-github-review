@@ -73,8 +73,12 @@ async function probeLanding(client, pullRequestNumber, reviewer) {
 }
 
 // A 422 is GitHub saying it parsed the request and refuses it for this pull
-// request -- validation failed, the reviewer cannot be requested here, or
-// whatever else the API's own message says. That is the one status the API
+// request -- validation failed, the reviewer cannot be requested here, the
+// endpoint reports it was spammed, or whatever else the API's own message
+// says. Some of those clear on their own; none clears by repeating the same
+// POST at the same head, which is why the receipt settles (as a thrown 422
+// already did, as `failed`) and the sanctioned recovery is an authorized
+// re-request. That is the one status the API
 // gives that separates "the backend refused this POST" from "we do not know
 // what happened": transport errors, timeouts, 5xx, and auth failures all
 // carry no such statement and stay on the throw path, where the caller
@@ -103,17 +107,23 @@ async function requestAndProbe(client, pullRequestNumber, reviewer) {
 }
 
 // `rerequestPending` is the caller's statement that it holds no record of a
-// reviewer request for this head. The durable path can say that: it only
-// dispatches when no receipt exists for the head, so a request it finds
-// pending was not made by it at this head -- either it belongs to an earlier
-// head, or someone else made it. Neither can be told apart from the API, and
-// only the first would be a wrong thing to re-request, so the pending
-// reviewer is removed and re-requested (removal is what makes GitHub notify
-// again). Cost: at most one extra review per head, and only when a request
-// for this head was already pending. That is bought deliberately -- no
-// evidence GitHub exposes proves which head a pending request is for, and a
-// commit's own timestamps are written by the committer, not observed by the
-// server, so nothing derived from them is a proof in either direction.
+// reviewer request for this head. The durable path can say that: its first
+// attempt dispatches only when no receipt records prior dispatched work for
+// the head (a later authorized attempt forces the re-request anyway), so a
+// request it finds pending was not made by it at this head -- either it
+// belongs to an earlier head, or someone else made it. Neither can be told
+// apart from the API, and only the first would be a wrong thing to
+// re-request, so the pending reviewer is removed and re-requested (removal
+// is what makes GitHub notify again). Cost: at most one extra review per
+// head, and only when someone else -- a person, another workflow, or the
+// repository's automatic Copilot review setting -- requested the reviewer at
+// this head first. That is bought deliberately -- no evidence GitHub exposes
+// proves which head a pending request is for, and a commit's own timestamps
+// are written by the committer, not observed by the server, so nothing
+// derived from them is a proof in either direction. A gate prefers a loud
+// duplicate to a silent bypass. If the POST after the removal fails, the
+// caller records the failure and routes it to a human, the same posture as
+// a failed authorized re-request.
 //
 // A caller with no such record (standalone, or no head at all) leaves it off:
 // the pending request keeps its presence and is reported `unanchored-request`

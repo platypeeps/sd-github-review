@@ -278,7 +278,8 @@ published setup descriptor/on-demand workflows.
 | Attempt greater than one with rerequest authorization off | Reject before adapter dispatch |
 | Authorized valid rerequest | Create one distinct attempt receipt and dispatch once |
 | Configured independent-review floor | Do not reduce an automatic route below the selected floor |
-| Current-head Copilot pending/reviewed | Mark already present; do not request again |
+| Copilot review anchored to the current head by `commit_id` | Mark already present; do not request again |
+| Copilot request pending at a head with no prior dispatch record (`rerequestPending`) | Remove and re-request; the receipt records the proven landing, never the inherited presence |
 | Valid adapter request plus success outcome | Emit acknowledged JSON with the same logical ID, backend ID, and finding channels; construct no GitHub client |
 | Failure/cancelled/skipped adapter outcome | Emit failed JSON with `adapter-failed`, `adapter-cancelled`, or `adapter-skipped` |
 | Malformed request or unsupported outcome | Throw before emitting an acknowledgment |
@@ -400,9 +401,9 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
   the reviewer was observed present in a probe taken *after* the POST.
   GitHub can return a non-error response to `requestReviewer` and add nobody,
   so a pre-call probe is evidence about the old state only. `landing` carries
-  which of the four outcomes actually occurred; `absent` (accepted, added
-  nobody) and `unverified` (post-probe itself failed) are distinct facts and
-  must not collapse into one another.
+  which of the five outcomes actually occurred; `absent` (accepted, added
+  nobody), `unverified` (post-probe itself failed), and `declined` (GitHub
+  answered 422) are distinct facts and must not collapse into one another.
 - A failure is persisted, not just returned. A caller that classifies a
   dispatch as failed writes that to the durable receipt before returning.
   `receiptState` reads `status: "failed"` at `phase: "started"` as
@@ -428,7 +429,8 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 | Permission/validation response without transient evidence | Throw after one request |
 | Rate-limit directive exceeds 60 seconds | Throw with allow-listed limit context and make no early retry |
 | Interrupted reviewer request or Check Run mutation | Make exactly one mutation attempt; reconcile/fail closed in the owning layer |
-| Existing Copilot request/review for current HEAD | Do not request again; emit `copilot-requested=false` |
+| Existing Copilot review anchored to the current HEAD | Do not request again; emit `copilot-requested=false` |
+| Existing Copilot request pending when the durable route dispatches | Remove, re-request, probe; emit `copilot-requested=true` only on a confirmed landing |
 | Reviewer POST returns non-error and the post-probe finds nobody | `landing=absent`, `requested=false`; the durable caller fails closed to `reconciliation-required` and never calls `store.observe` |
 | Post-probe itself throws after the POST | `landing=unverified`, `requested=false`; fail closed, and report the outcome as unknown rather than as absent |
 | Any classified *dispatch* failure — a non-landing POST or a throwing `requestReviewer` | Call `store.dispatchFailed` before returning, so a later read reaches the same verdict; still fail closed if that write itself fails, carrying both errors |

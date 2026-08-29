@@ -19,7 +19,9 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   is that an operator reading a blocked lane can tell a reviewer that will
   never accept this head from a connection that dropped. Transport errors,
   timeouts, 5xx, 403, and 404 stay `failed`; nothing infers a decline from diff
-  size or message text. Closes #154.
+  size or message text. A 422 GitHub raises for endpoint spam settles the
+  same way — it did before too, as `failed` — and the recovery is the
+  existing authorized re-request. Closes #154.
 
 ### Fixed
 
