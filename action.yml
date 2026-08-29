@@ -11,7 +11,11 @@ inputs:
     required: false
     default: standalone
   review-request:
-    description: "Canonical v1 review-request JSON for route, finalize, or query."
+    description: >-
+      Canonical v1 review-request JSON for route, finalize, or query. Its
+      attempt field is the remote dispatch counter for the head: 1 on the
+      first dispatch regardless of local review rounds, and above 1 only for
+      an authorized same-head re-request carrying rerequestOf.
     required: false
     default: ""
   adapter-acknowledgment:
@@ -247,6 +251,11 @@ outputs:
     description: true when an uncertain side effect forbids fallback dispatch.
   reconciliation-error:
     description: Bounded diagnostic explaining why reconciliation is required.
+  dispatch-anomaly:
+    description: >-
+      Bounded diagnostic for a satisfied receipt the run could not fully prove,
+      such as a pending reviewer request that could not be anchored to this
+      head. Empty when none.
   backend:
     description: Canonical selected backend descriptor JSON.
   backend-id:

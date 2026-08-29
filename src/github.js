@@ -119,9 +119,19 @@ function responseError(method, path, response, result, attempt, decision) {
   const cap = decision.capExceeded
     ? `; required retry delay exceeds ${MAX_RETRY_DELAY_MS}ms cap`
     : "";
-  return new Error(
+  const error = new Error(
     `GitHub API ${method} ${path} failed: ${message}${attempts}${formatRateLimit(decision.context)}${cap}`,
   );
+  // A response GitHub actually sent is a different fact from a connection that
+  // died, and the reviewer-dispatch path needs to tell them apart: a 422 on a
+  // reviewer request is the backend refusing this pull request, which no retry
+  // can change, while a transport failure says nothing about the request at
+  // all. Carry the status and GitHub's own message as data rather than asking
+  // callers to parse them back out of the prose. Transport and timeout errors
+  // deliberately carry neither.
+  error.status = response.status;
+  error.apiMessage = message;
+  return error;
 }
 
 function transportError(method, path, error, attempt) {
@@ -381,6 +391,25 @@ export class GitHubClient {
       method: "PATCH",
       body: payload,
     });
+  }
+
+  // Issue timeline, all pages. `review_requested` events are the only record
+  // GitHub keeps of *when* a reviewer was requested; the requested-reviewers
+  // set carries no timestamp and no head, so a pending request cannot be
+  // anchored to a head without this.
+  async listIssueTimeline(number) {
+    const events = [];
+    for (let page = 1; ; page += 1) {
+      const batch = await this.request(
+        `/repos/${this.owner}/${this.repo}/issues/${number}/timeline?per_page=100&page=${page}`,
+      );
+      events.push(...batch);
+      if (batch.length < 100) return events;
+    }
+  }
+
+  getCommit(sha) {
+    return this.request(`/repos/${this.owner}/${this.repo}/commits/${sha}`);
   }
 
   getRequestedReviewers(number) {

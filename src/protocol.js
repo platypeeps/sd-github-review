@@ -59,7 +59,18 @@ const SUCCESSOR_CLASSES = new Set([
   "oversized",
   "changed-head",
 ]);
-const DISPATCH_STATUSES = new Set(["requested", "already-present", "skipped", "failed"]);
+// `declined` is the backend's own refusal of this pull request -- GitHub
+// answered the reviewer request with a 422 -- and is terminal: no retry at the
+// same head can change it. It blocks the remote gate exactly as `failed` does
+// (receipt.js maps both at phase "started" to reconciliation-required); the
+// difference is legibility, carried by `declineReason`, not gate strength.
+const DISPATCH_STATUSES = new Set(["requested", "already-present", "skipped", "failed", "declined"]);
+// For an already-present dispatch: whether the presence was proven to belong
+// to this head (`head`) or was a pending reviewer request whose head could not
+// be established (`unverified`). The latter is the durable trace of issue
+// #158's silent case and is what a later reader gates or alarms on.
+const PRESENCE_ANCHORS = new Set(["head", "unverified"]);
+const DECLINE_REASON_MAX_BYTES = 512;
 const DISPATCH_PHASES = new Set(["not-started", "started", "acknowledged", "observed"]);
 const ACK_STATUSES = new Set(["acknowledged", "failed"]);
 const CONTRIBUTIONS = new Set(["lowered", "unchanged", "ignored"]);
@@ -565,9 +576,20 @@ function normalizeReviewRequest(value, { verifyCompatibility = true } = {}) {
   // so it reads as a clean new review. review-request is a free-text
   // workflow_dispatch input, which makes that an authorization bypass available
   // to anyone who can dispatch the workflow.
+  //
+  // `attempt` counts dispatches to the routed backend for this exact head --
+  // the REMOTE attempt. It is 1 on the first dispatch however many local review
+  // rounds preceded it, and n+1 only for an authorized same-head re-request of
+  // remote attempt n. A coordinator that forwards its local fix-and-recheck
+  // round counter here arrives with attempt 6 and no rerequestOf on a head
+  // that was never dispatched (issue #155), so the rejection names the counter
+  // rather than sending the operator to re-request handling.
   if (attempt > 1 && !rerequestOf) {
     throw new Error(
-      "request.attempt above 1 requires request.rerequestOf identifying the prior attempt",
+      "request.attempt is the remote dispatch counter for this head and must be 1 on the first "
+        + `dispatch; ${attempt} without request.rerequestOf claims a same-head re-request of remote `
+        + `attempt ${attempt - 1} that was never made. Local review rounds must not be forwarded `
+        + "as request.attempt.",
     );
   }
   if (supersedes && rerequestOf) {
@@ -825,7 +847,36 @@ function dispatchValue(value, field = "receipt.dispatch") {
     ...(dispatch.workflowUrl === undefined
       ? {}
       : { workflowUrl: httpsUrlValue(dispatch.workflowUrl, `${field}.workflowUrl`) }),
+    ...(dispatch.declineReason === undefined
+      ? {}
+      : {
+          declineReason: stringValue(dispatch.declineReason, `${field}.declineReason`, {
+            maximum: DECLINE_REASON_MAX_BYTES,
+          }),
+        }),
+    ...(dispatch.presenceAnchor === undefined
+      ? {}
+      : {
+          presenceAnchor: enumValue(
+            dispatch.presenceAnchor,
+            `${field}.presenceAnchor`,
+            PRESENCE_ANCHORS,
+          ),
+        }),
   };
+  if (normalized.status === "declined") {
+    if (normalized.phase !== "started") {
+      throw new Error(`${field}.phase must be started for a declined dispatch`);
+    }
+    if (normalized.declineReason === undefined) {
+      throw new Error(`${field}.declineReason is required for a declined dispatch`);
+    }
+  } else if (normalized.declineReason !== undefined) {
+    throw new Error(`${field}.declineReason is valid only for a declined dispatch`);
+  }
+  if (normalized.presenceAnchor !== undefined && normalized.status !== "already-present") {
+    throw new Error(`${field}.presenceAnchor is valid only for an already-present dispatch`);
+  }
   if (normalized.status === "requested" && normalized.phase === "not-started") {
     throw new Error(`${field}.phase cannot be not-started after a requested dispatch`);
   }

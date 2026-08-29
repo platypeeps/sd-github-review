@@ -448,6 +448,68 @@ test("dispatchFailed records only a live dispatch, never a settled one", async (
   );
 });
 
+// Issue #154. dispatchDeclined shares dispatchFailed's guards and its gate;
+// what it adds is the backend's reason, and what it must never do is let a
+// later generic failure overwrite that reason.
+test("dispatchDeclined records the backend's refusal and blocks the gate like a failure", async () => {
+  const request = clone(requestByName.get("explicit copilot"));
+  const client = new FakeGitHubClient({ headSha: request.headSha });
+  const store = makeStore(client);
+  const started = await store.begin(request, {
+    decision: { route: "copilot", reason: "explicit copilot route selected" },
+    backend: clone(backendByName.get("native Copilot")),
+  });
+  const identity = {
+    pullRequestNumber: request.pullRequestNumber,
+    headSha: request.headSha,
+    logicalDispatchId: started.receipt.logicalDispatchId,
+  };
+
+  await assert.rejects(
+    store.dispatchDeclined({ ...identity, completedAt: "2026-07-23T12:30:05Z" }),
+    /must carry the backend's reason/u,
+  );
+
+  const declined = await store.dispatchDeclined({
+    ...identity,
+    completedAt: "2026-07-23T12:30:05Z",
+    reason: "Review cannot be requested from pull request author",
+  });
+  assert.equal(declined.receipt.dispatch.status, "declined");
+  assert.equal(declined.receipt.dispatch.phase, "started");
+  assert.equal(
+    declined.receipt.dispatch.declineReason,
+    "Review cannot be requested from pull request author",
+  );
+  assert.equal(declined.reconciliationRequired, true);
+  assert.equal(declined.dispatchAllowed, false);
+
+  // Age-irrelevant, exactly like failed: a fresh begin at the same clock reads
+  // it as needing a human and authorizes nothing.
+  const seen = await store.begin(
+    { ...clone(request), correlationId: "corr-after-decline" },
+    {
+      decision: { route: "copilot", reason: "explicit copilot route selected" },
+      backend: clone(backendByName.get("native Copilot")),
+    },
+  );
+  assert.equal(seen.state, "reconciliation-required");
+  assert.equal(seen.dispatchAllowed, false);
+
+  // Settled: a later failure report neither rewrites it nor erases the reason.
+  const failedAfter = await store.dispatchFailed({ ...identity, completedAt: "2026-07-23T12:31:00Z" });
+  assert.equal(failedAfter.receipt.dispatch.status, "declined");
+  assert.equal(failedAfter.receipt.dispatch.completedAt, "2026-07-23T12:30:05Z");
+  assert.equal(failedAfter.state, "reconciliation-required");
+
+  await assert.rejects(
+    store.observe({ ...identity, completedAt: "2026-07-23T12:32:00Z" }),
+    /declined, or skipped receipts cannot transition to observed/u,
+  );
+  const check = [...client.checks.values()].flat().find((entry) => entry.conclusion);
+  assert.equal(check.conclusion, "failure");
+});
+
 test("acknowledgment and observation advance phases monotonically", async () => {
   const request = clone(requestByName.get("explicit cheap"));
   const client = new FakeGitHubClient({ headSha: request.headSha });

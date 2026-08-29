@@ -376,6 +376,65 @@ test("never retries an interrupted reviewer request", async () => {
   assert.deepEqual(sleeps, []);
 });
 
+// A response GitHub sent and a connection that died are different facts, and
+// reviewer-dispatch classifies a 422 as the backend declining the pull request.
+// The status and GitHub's message travel as data; transport errors carry none.
+test("a response error carries the HTTP status and GitHub's message as data", async () => {
+  const declined = createClient(async () =>
+    jsonResponse({ message: "Copilot cannot review this pull request" }, {
+      status: 422,
+      statusText: "Unprocessable Content",
+    }),
+  );
+  await assert.rejects(
+    declined.requestReviewer(4, "copilot-pull-request-reviewer[bot]"),
+    (error) => {
+      assert.equal(error.status, 422);
+      assert.equal(error.apiMessage, "Copilot cannot review this pull request");
+      assert.match(error.message, /Copilot cannot review this pull request/u);
+      return true;
+    },
+  );
+
+  const transport = createClient(async () => {
+    throw new Error("socket hang up");
+  });
+  await assert.rejects(
+    transport.requestReviewer(4, "copilot-pull-request-reviewer[bot]"),
+    (error) => {
+      assert.equal(error.status, undefined);
+      assert.equal(error.apiMessage, undefined);
+      return true;
+    },
+  );
+});
+
+test("lists every issue timeline page and reads a commit by SHA", async () => {
+  const urls = [];
+  const client = createClient(async (url) => {
+    urls.push(url);
+    if (url.includes("/commits/")) {
+      return jsonResponse({ sha: "abc", commit: { committer: { date: "2026-08-27T00:43:06Z" } } });
+    }
+    const page = Number(new URL(url).searchParams.get("page"));
+    return jsonResponse(
+      page === 1
+        ? Array.from({ length: 100 }, (_, index) => ({ event: "labeled", id: index }))
+        : [{ event: "review_requested", id: 100 }],
+    );
+  });
+
+  const events = await client.listIssueTimeline(8);
+  assert.equal(events.length, 101);
+  assert.equal(events[100].event, "review_requested");
+  assert.match(urls[0], /\/repos\/platypeeps\/example\/issues\/8\/timeline\?per_page=100&page=1$/u);
+  assert.match(urls[1], /page=2$/u);
+
+  const commit = await client.getCommit("abc");
+  assert.equal(commit.commit.committer.date, "2026-08-27T00:43:06Z");
+  assert.match(urls[2], /\/repos\/platypeeps\/example\/commits\/abc$/u);
+});
+
 test("reads requested and completed reviews and sends the documented request payload", async () => {
   const calls = [];
   const client = createClient(async (url, options) => {

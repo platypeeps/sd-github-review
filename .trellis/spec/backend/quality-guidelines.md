@@ -518,6 +518,48 @@ if (!alreadyPresent) {
 return { alreadyPresent, requested: false, landing: LANDING_NOT_ATTEMPTED };
 ```
 
+```js
+// Wrong: a pending reviewer request is read as coverage of the current head.
+// The requested-reviewers payload carries no commit anchor, so a request made
+// for an earlier head satisfies presence at every later one and the lane
+// waits forever for an exact-head review nobody asked for (issue #158).
+const alreadyPresent = alreadyRequested || alreadyReviewed;
+if (!alreadyPresent) { /* POST */ }
+
+// Correct: anchor the pending request from evidence that names a time. The
+// committer date is a lower bound on when the head could have been pushed,
+// so a request created before it cannot have been for this head -- that
+// direction is a proof and is acted on (remove, re-request, probe). The other
+// direction is not a proof and is the accepted residual. Unreadable evidence
+// is `unverified`: keep the presence, but write it into the receipt and
+// surface it, rather than re-requesting on every API blip.
+const presence = alreadyReviewed
+  ? PRESENCE_REVIEWED
+  : await anchorPendingRequest(client, pullRequestNumber, reviewer, headSha);
+if (presence === PRESENCE_STALE) {
+  await client.removeRequestedReviewer(pullRequestNumber, reviewer);
+  return { ...base, ...(await requestAndProbe(client, pullRequestNumber, reviewer)) };
+}
+```
+
+```js
+// Wrong: every throw from requestReviewer becomes `failed`. A 422 -- GitHub
+// parsed the request and refused it for this pull request -- reads the same
+// as a dropped connection, and the operator retries a reviewer that will
+// never accept this head (issue #154).
+try { await client.requestReviewer(n, reviewer); } catch { return failed(); }
+
+// Correct: classify on the one observable the API gives -- the HTTP status the
+// client carries as `error.status` -- and record GitHub's own message. Never
+// infer a decline from diff size or message text; 403/404/5xx/transport stay
+// `failed`. The gate is identical (reconciliation-required); only legibility
+// changes, through `dispatch-status: declined` and `declineReason`.
+if (error?.status === 422) {
+  return { landing: LANDING_DECLINED, declined: { status: 422, message: error.apiMessage } };
+}
+throw error;
+```
+
 ## Scenario: Validate Public Repository Metadata
 
 ### 1. Scope / Trigger

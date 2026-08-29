@@ -162,6 +162,7 @@ function DURABLE_OUTPUTS() {
     "dispatch-allowed",
     "reconciliation-required",
     "reconciliation-error",
+    "dispatch-anomaly",
     "backend",
     "backend-id",
     "backend-kind",

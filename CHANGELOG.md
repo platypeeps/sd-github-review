@@ -6,7 +6,65 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Added
+
+- **A receipt can now say the backend refused the pull request.** A reviewer
+  request GitHub answers with HTTP 422 — the one status that means "parsed and
+  declined for this pull request" rather than "unknown" — is recorded as
+  `dispatch.status: "declined"` with the backend's own message in
+  `dispatch.declineReason`, and `reconciliation-error` names it as
+  `declined by GitHub (HTTP 422): …`. The gate is unchanged: a decline at phase
+  `started` reads `reconciliation-required` exactly as `failed` does, so no
+  consumer switching on `durable-state` has to learn a new value. What changes
+  is that an operator reading a blocked lane can tell a reviewer that will
+  never accept this head from a connection that dropped. Transport errors,
+  timeouts, 5xx, 403, and 404 stay `failed`; nothing infers a decline from diff
+  size or message text. Closes #154.
+- **`dispatch-anomaly` output and `dispatch.presenceAnchor`.** An
+  `already-present` receipt now records whether the pending reviewer request
+  it was satisfied by was proven to belong to this head (`head`) or could not
+  be (`unverified`). The unverified case is also emitted as a `::warning::`
+  annotation and on the new `dispatch-anomaly` output, so a satisfied receipt
+  the run could not fully prove does not pass as a proven review.
+
 ### Fixed
+
+- **A pending Copilot request made for an earlier head satisfied presence at
+  every later one.** `requestCopilotReviewer` read "Copilot is a requested
+  reviewer" as coverage of the current head, but the requested-reviewers
+  payload carries no commit anchor: when the head moved while a request was
+  outstanding, the run at the new head issued no POST, wrote a satisfied
+  receipt, and the lane waited forever for an exact-head review nobody had
+  asked for. Observed on this repository's own PR #157 (request at `00:41:21`
+  for `d594433`, `c5e94e0` pushed at `00:43:06`, receipt at `c5e94e0` read
+  `requested/observed` with no `review_requested` event for it).
+
+  A pending request is now anchored from the issue timeline's latest
+  `review_requested` event for the reviewer against the head commit's
+  committer date. A request created before the commit existed cannot have
+  been for it and is re-requested — removed and re-added, so GitHub notifies
+  for this head. A request at or after the commit date is current and needs
+  no POST. Unreadable evidence keeps the presence (re-requesting on every
+  timeline blip would buy a duplicate review each time) but records it as
+  `presenceAnchor: unverified` and surfaces the anomaly. The `forceRerequest`
+  path and the unreadable pre-probe path are unchanged. The residual — a
+  commit created locally before the request and pushed after it reads as
+  current — is accepted and documented; it is strictly narrower than the old
+  rule. Closes #158.
+- **The bare-attempt rejection sent operators to re-request handling.**
+  `request.attempt` is the remote dispatch counter for the head: 1 on the first
+  dispatch however many local review rounds preceded it. A coordinator that
+  forwarded its local round counter arrived with `attempt: 6` and no
+  `rerequestOf` and was told the request "requires request.rerequestOf
+  identifying the prior attempt" — pointing at re-request handling when no
+  remote attempt had ever been made. The rejection now names the counter and
+  its rule (`request.attempt is the remote dispatch counter for this head and
+  must be 1 on the first dispatch; 6 without request.rerequestOf claims a
+  same-head re-request of remote attempt 5 that was never made …`), and the
+  semantics are written into `action.yml` and `DESIGN.md`. The guard itself is
+  unchanged; relaxing it on store state would re-open the authorization bypass
+  it closes. The counter fix belongs to the coordinator and is tracked as
+  platypeeps/sd-ai-command-pack#589; #155 stays open until it lands.
 
 - **Published setup prose paired a release tag with a commit git does not
   agree with, and nothing checked the pair.** `SETUP-PR-AGENT.md`'s `.git`-less

@@ -12,6 +12,8 @@ import { buildRiskContext } from "./risk-context.js";
 import {
   LANDING_ABSENT,
   LANDING_UNVERIFIED,
+  LANDING_DECLINED,
+  PRESENCE_UNVERIFIED,
   requestCopilotReviewer,
 } from "./reviewer-dispatch.js";
 import { normalizeMode, parseList } from "./normalize.js";
@@ -194,6 +196,7 @@ function resultOutputs({ operation, result, adapter = "", changedLines = 0, sens
     "dispatch-allowed": String(result.dispatchAllowed === true),
     "reconciliation-required": String(result.reconciliationRequired === true),
     "reconciliation-error": result.error ? String(result.error).slice(0, 512) : "",
+    "dispatch-anomaly": result.anomaly ? String(result.anomaly).slice(0, 512) : "",
     backend: backend ? stableProtocolJson(backend) : "",
     "backend-id": backend?.id ?? "",
     "backend-kind": backend?.kind ?? "",
@@ -240,6 +243,12 @@ async function emitDurableResult(
     sensitiveCount: details.sensitiveCount ?? 0,
   });
   const receipt = details.result.receipt;
+  // Annotation, not only an output: a pending request that could not be
+  // anchored to this head leaves a green job and a satisfied receipt behind,
+  // and an operator must not have to open outputs to learn it.
+  if (details.result.anomaly) {
+    logger(`::warning::${String(details.result.anomaly).slice(0, 512)}`);
+  }
   logger(
     receipt
       ? `Durable ${details.operation} ${details.result.state} for PR #${receipt.pullRequestNumber} at ${receipt.headSha}`
@@ -474,7 +483,23 @@ async function routeOperation({ request, client, store, env, now }) {
     // block every retry behind its own false claim. Fail closed instead; the
     // receipt store deliberately routes a failed dispatch to a human
     // (see receipt.js:200-204), so this escalates rather than self-heals.
-    if (dispatch && (dispatch.landing === LANDING_ABSENT || dispatch.landing === LANDING_UNVERIFIED)) {
+    if (dispatch && dispatch.landing === LANDING_DECLINED) {
+      // GitHub parsed the request and refused it for this pull request. Same
+      // gate as a failure, but the receipt says which refusal it was, so the
+      // next reader does not mistake a reviewer that will never accept this
+      // head for a network error worth retrying.
+      result = await declineDispatch({
+        store,
+        request,
+        env,
+        now,
+        receipt: result.receipt,
+        reason: dispatch.declined.message,
+        message:
+          `reviewer request for ${backend.reviewAuthors[0]} was declined by GitHub `
+          + `(HTTP ${dispatch.declined.status}): ${dispatch.declined.message}`,
+      });
+    } else if (dispatch && (dispatch.landing === LANDING_ABSENT || dispatch.landing === LANDING_UNVERIFIED)) {
       result = await failDispatch({
         store,
         request,
@@ -492,6 +517,14 @@ async function routeOperation({ request, client, store, env, now }) {
       // fails, writing `failed` would record a review that was requested as one
       // that never was. Reconcile in memory and leave the dispatch record
       // alone.
+      // A pending reviewer request whose head could not be established is
+      // presence of a kind, but not proof that a review for THIS head will
+      // ever arrive (issue #158). It is written into the receipt and reported
+      // as an anomaly rather than trusted silently.
+      const anomaly = !dispatch.requested && dispatch.presence === PRESENCE_UNVERIFIED
+        ? `pending reviewer ${backend.reviewAuthors[0]} could not be anchored to head `
+          + `${request.headSha}; a review for this head may never arrive`
+        : null;
       try {
         const completedAt = timestamp(now);
         result = await store.observe({
@@ -499,6 +532,7 @@ async function routeOperation({ request, client, store, env, now }) {
           headSha: request.headSha,
           logicalDispatchId: request.logicalDispatchId,
           alreadyPresent: !dispatch.requested,
+          presenceAnchor: anomaly ? "unverified" : "head",
           observations: {
             latencyMs: elapsedMilliseconds(result.receipt, completedAt),
             costTier: backend.costTier,
@@ -507,6 +541,7 @@ async function routeOperation({ request, client, store, env, now }) {
           completedAt,
         });
         result.copilotRequested = dispatch.requested;
+        if (anomaly) result.anomaly = anomaly;
       } catch (error) {
         result = {
           state: "reconciliation-required",
@@ -554,6 +589,35 @@ async function failDispatch({ store, request, env, now, receipt, message }) {
     // claim about the outside world this whole path exists to stop. The
     // success return omits the key, and every consumer tests `=== false`, so
     // undefined still reads as verified.
+    receiptVerified: persisted ? persisted.receiptVerified : false,
+    dispatchAllowed: false,
+    reconciliationRequired: true,
+    copilotRequested: false,
+    error: [message, persisted?.error, persistError].filter(Boolean).join("; "),
+  };
+}
+
+// Sibling of failDispatch for the backend's own refusal. Same persistence
+// posture, same fail-closed result shape; the recorded state and the error
+// text name the decline.
+async function declineDispatch({ store, request, env, now, receipt, reason, message }) {
+  let persisted = null;
+  let persistError = null;
+  try {
+    persisted = await store.dispatchDeclined({
+      pullRequestNumber: request.pullRequestNumber,
+      headSha: request.headSha,
+      logicalDispatchId: request.logicalDispatchId,
+      workflowUrl: workflowUrl(env),
+      completedAt: timestamp(now),
+      reason,
+    });
+  } catch (error) {
+    persistError = error instanceof Error ? error.message : String(error);
+  }
+  return {
+    state: "reconciliation-required",
+    receipt: persisted?.receipt ?? receipt,
     receiptVerified: persisted ? persisted.receiptVerified : false,
     dispatchAllowed: false,
     reconciliationRequired: true,
