@@ -396,6 +396,21 @@ test("a response error carries the HTTP status and GitHub's message as data", as
     },
   );
 
+  // An empty message is not authoritative: the status line stands in for it
+  // so neither the prose nor `apiMessage` is blank.
+  const blank = createClient(async () =>
+    jsonResponse({ message: "" }, { status: 422, statusText: "Unprocessable Content" }),
+  );
+  await assert.rejects(
+    blank.requestReviewer(4, "copilot-pull-request-reviewer[bot]"),
+    (error) => {
+      assert.equal(error.status, 422);
+      assert.equal(error.apiMessage, "422 Unprocessable Content");
+      assert.match(error.message, /failed: 422 Unprocessable Content/u);
+      return true;
+    },
+  );
+
   const transport = createClient(async () => {
     throw new Error("socket hang up");
   });

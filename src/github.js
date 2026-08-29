@@ -112,7 +112,9 @@ function formatRateLimit(context) {
 }
 
 function responseError(method, path, response, result, attempt, decision) {
-  const message = typeof result?.message === "string"
+  // An empty `message` is as useless as a missing one: fall back to the
+  // status line so neither the prose nor `apiMessage` can go blank.
+  const message = typeof result?.message === "string" && result.message !== ""
     ? result.message
     : `${response.status} ${response.statusText}`;
   const attempts = attempt > 1 ? `; attempts=${attempt}` : "";

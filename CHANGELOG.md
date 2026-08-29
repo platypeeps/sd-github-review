@@ -21,7 +21,9 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   timeouts, 5xx, 403, and 404 stay `failed`; nothing infers a decline from diff
   size or message text. A 422 GitHub raises for endpoint spam settles the
   same way — it did before too, as `failed` — and the recovery is the
-  existing authorized re-request. Closes #154.
+  existing authorized re-request. Standalone mode has no receipt to record
+  the decline in and keeps failing the job, as a thrown 422 always did, with
+  the same `declined by GitHub (HTTP 422): …` message. Closes #154.
 
 ### Fixed
 

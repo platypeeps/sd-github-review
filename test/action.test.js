@@ -45,6 +45,7 @@ function createHarness(overrides = {}) {
     },
     async requestReviewer(number, reviewer) {
       calls.requestReviewer.push({ number, reviewer });
+      if (overrides.requestError) throw overrides.requestError;
       users.push({ login: reviewer });
     },
   };
@@ -226,6 +227,30 @@ test("automatic sensitive routing requests Copilot once and reports outputs", as
   assert.equal(harness.outputs.get("run-external-reviewer"), "false");
   assert.deepEqual(harness.summaries[0].sensitiveFiles, ["src/auth/session.js"]);
   assert.match(harness.logs[0], /Selected copilot for PR #23/u);
+});
+
+// Issue #154 in standalone mode. The shared service returns a 422 as a
+// `declined` landing so the durable path can record it; standalone has no
+// receipt and used to fail the job when the 422 threw. It must still fail,
+// naming GitHub's reason, rather than report `copilot-requested: false`.
+test("standalone fails the job when GitHub declines the reviewer request", async () => {
+  const harness = createHarness({
+    files: ["src/auth/session.js"],
+    requestError: Object.assign(new Error("GitHub API POST failed: Copilot cannot review this pull request"), {
+      status: 422,
+      apiMessage: "Copilot cannot review this pull request",
+    }),
+  });
+
+  await assert.rejects(
+    harness.run({
+      event: { action: "opened", pull_request: basePullRequest },
+      env: { "INPUT_SENSITIVE-PATHS": "**/auth/**", "INPUT_HIGH-RISK-ROUTE": "copilot" },
+    }),
+    /declined by GitHub \(HTTP 422\): Copilot cannot review this pull request/u,
+  );
+  assert.equal(harness.calls.requestReviewer.length, 1);
+  assert.equal(harness.outputs.get("copilot-requested"), undefined);
 });
 
 // Pins the src/index.js:249 standalone-path fallback. Every other sensitive-path
