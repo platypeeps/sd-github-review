@@ -99,7 +99,13 @@ unreviewed at its head.
 - The empty-commit workaround. Removing the need for it is the point; blocking
   it is not.
 
-## Open design question
+## Design question (resolved)
+
+Resolved during review — see `design.md`. All three directions below were
+rejected: 1 and 2 depend on commit timestamps, which are committer-written and
+prove nothing in either direction; 3 leaves the gate passing on an unproven
+head. The shipped rule is record-based: the durable path re-requests any
+pending request it holds no receipt for at the head. Recorded for history:
 
 Three directions were recorded on the issue, none validated:
 
@@ -111,8 +117,8 @@ Three directions were recorded on the issue, none validated:
 3. At minimum, surface the anomaly without changing dispatch behavior.
 
 1 and 2 need the same evidence and differ mainly in where the comparison lives.
-3 is strictly weaker but independently worth having. Decide before implementing,
-and record why the others were rejected.
+3 is strictly weaker but independently worth having. (Decision and rejection
+reasons are above and in `design.md`.)
 
 ## Acceptance Criteria
 

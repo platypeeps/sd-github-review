@@ -9,8 +9,8 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - **A receipt can now say the backend refused the pull request.** A reviewer
-  request GitHub answers with HTTP 422 — the one status that means "parsed and
-  declined for this pull request" rather than "unknown" — is recorded as
+  request GitHub answers with HTTP 422 — the backend received the POST, parsed
+  it, and refused it, with its own reason in the response body — is recorded as
   `dispatch.status: "declined"` with the backend's own message in
   `dispatch.declineReason`, and `reconciliation-error` names it as
   `declined by GitHub (HTTP 422): …`. The gate is unchanged: a decline at phase

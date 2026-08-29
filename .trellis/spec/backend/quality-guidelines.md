@@ -371,6 +371,14 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
   and `error` appear only when the durable write itself failed; the success and
   already-failed returns omit both, so `undefined` reads as verified. Callers
   propagate the value rather than asserting one
+- `ReceiptStore.dispatchDeclined({ pullRequestNumber, headSha, logicalDispatchId,
+  workflowUrl, completedAt, reason }) -> Promise<{ state, receipt, dispatchAllowed,
+  reconciliationRequired, receiptVerified?, error? }>`, writing
+  `dispatch.status: "declined"` at `dispatch.phase: "started"` with
+  `dispatch.declineReason` (GitHub's message, non-blank, truncated on code
+  points to `DECLINE_REASON_MAX_BYTES` = 512). Same guards and return shape as
+  `dispatchFailed`; an already-settled `failed` or `declined` receipt is
+  reported, not rewritten.
 
 ### 3. Contracts
 
