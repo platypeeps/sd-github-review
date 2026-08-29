@@ -136,7 +136,12 @@ class FakeGitHubClient {
 
   async removeRequestedReviewer(number, reviewer) {
     this.calls.push(["removeRequestedReviewer", number, reviewer]);
-    this.requestedUsers = this.requestedUsers.filter((user) => user.login !== reviewer);
+    // GitHub matches logins case-insensitively; so must the fake, or removing
+    // a differently-cased pending reviewer no-ops and the post-request probe
+    // reads the stale entry as a landed request.
+    this.requestedUsers = this.requestedUsers.filter(
+      (user) => user.login.toLowerCase() !== reviewer.toLowerCase(),
+    );
     return { users: clone(this.requestedUsers) };
   }
 
