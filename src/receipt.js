@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import {
+  DECLINE_REASON_MAX_BYTES,
   decodeAdapterAcknowledgment,
   decodeReceipt,
   decodeReviewRequest,
@@ -868,8 +869,17 @@ export class ReceiptStore {
     completedAt,
     reason,
   }) {
-    if (typeof reason !== "string" || reason.length === 0) {
+    if (typeof reason !== "string" || reason.trim().length === 0) {
       throw new Error("a declined dispatch must carry the backend's reason");
+    }
+    // GitHub's message is unbounded; the receipt field is not. A reason the
+    // protocol would refuse must not make the decline unpersistable -- that
+    // would leave the started receipt reading as in flight until the
+    // stranded timeout, the exact stale state this writer exists to prevent.
+    // Cut on character boundaries until it fits the byte budget.
+    let declineReason = reason.trim();
+    while (Buffer.byteLength(declineReason, "utf8") > DECLINE_REASON_MAX_BYTES) {
+      declineReason = declineReason.slice(0, -1).trimEnd();
     }
     return this.#settleDispatch({
       pullRequestNumber,
@@ -879,7 +889,7 @@ export class ReceiptStore {
       completedAt,
       status: "declined",
       what: "declined",
-      extra: { declineReason: reason },
+      extra: { declineReason },
     });
   }
 

@@ -65,7 +65,7 @@ const SUCCESSOR_CLASSES = new Set([
 // (receipt.js maps both at phase "started" to reconciliation-required); the
 // difference is legibility, carried by `declineReason`, not gate strength.
 const DISPATCH_STATUSES = new Set(["requested", "already-present", "skipped", "failed", "declined"]);
-const DECLINE_REASON_MAX_BYTES = 512;
+export const DECLINE_REASON_MAX_BYTES = 512;
 const DISPATCH_PHASES = new Set(["not-started", "started", "acknowledged", "observed"]);
 const ACK_STATUSES = new Set(["acknowledged", "failed"]);
 const CONTRIBUTIONS = new Set(["lowered", "unchanged", "ignored"]);

@@ -503,6 +503,10 @@ test("dispatchDeclined records the backend's refusal and blocks the gate like a 
     store.dispatchDeclined({ ...identity, completedAt: "2026-07-23T12:30:05Z" }),
     /must carry the backend's reason/u,
   );
+  await assert.rejects(
+    store.dispatchDeclined({ ...identity, completedAt: "2026-07-23T12:30:05Z", reason: "   " }),
+    /must carry the backend's reason/u,
+  );
 
   const declined = await store.dispatchDeclined({
     ...identity,
@@ -542,6 +546,26 @@ test("dispatchDeclined records the backend's refusal and blocks the gate like a 
   );
   const check = [...client.checks.values()].flat().find((entry) => entry.conclusion);
   assert.equal(check.conclusion, "failure");
+
+  // GitHub's message is unbounded; a reason over the receipt's byte budget is
+  // cut to fit rather than making the decline impossible to persist.
+  const longStore = makeStore(new FakeGitHubClient({ headSha: request.headSha }));
+  const long = await longStore.begin(
+    { ...clone(request), correlationId: "corr-long-reason" },
+    {
+      decision: { route: "copilot", reason: "explicit copilot route selected" },
+      backend: clone(backendByName.get("native Copilot")),
+    },
+  );
+  const longDeclined = await longStore.dispatchDeclined({
+    ...identity,
+    logicalDispatchId: long.receipt.logicalDispatchId,
+    completedAt: "2026-07-23T12:40:00Z",
+    reason: "é".repeat(600),
+  });
+  assert.equal(longDeclined.receipt.dispatch.status, "declined");
+  assert.ok(Buffer.byteLength(longDeclined.receipt.dispatch.declineReason, "utf8") <= 512);
+  assert.ok(longDeclined.receipt.dispatch.declineReason.startsWith("ééé"));
 });
 
 test("acknowledgment and observation advance phases monotonically", async () => {
