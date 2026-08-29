@@ -409,32 +409,6 @@ test("a response error carries the HTTP status and GitHub's message as data", as
   );
 });
 
-test("lists every issue timeline page and reads a commit by SHA", async () => {
-  const urls = [];
-  const client = createClient(async (url) => {
-    urls.push(url);
-    if (url.includes("/commits/")) {
-      return jsonResponse({ sha: "abc", commit: { committer: { date: "2026-08-27T00:43:06Z" } } });
-    }
-    const page = Number(new URL(url).searchParams.get("page"));
-    return jsonResponse(
-      page === 1
-        ? Array.from({ length: 100 }, (_, index) => ({ event: "labeled", id: index }))
-        : [{ event: "review_requested", id: 100 }],
-    );
-  });
-
-  const events = await client.listIssueTimeline(8);
-  assert.equal(events.length, 101);
-  assert.equal(events[100].event, "review_requested");
-  assert.match(urls[0], /\/repos\/platypeeps\/example\/issues\/8\/timeline\?per_page=100&page=1$/u);
-  assert.match(urls[1], /page=2$/u);
-
-  const commit = await client.getCommit("abc");
-  assert.equal(commit.commit.committer.date, "2026-08-27T00:43:06Z");
-  assert.match(urls[2], /\/repos\/platypeeps\/example\/commits\/abc$/u);
-});
-
 test("reads requested and completed reviews and sends the documented request payload", async () => {
   const calls = [];
   const client = createClient(async (url, options) => {

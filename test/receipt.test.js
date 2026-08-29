@@ -448,6 +448,40 @@ test("dispatchFailed records only a live dispatch, never a settled one", async (
   );
 });
 
+// The reverse guard: a dispatch settled as failed at phase "started" is
+// terminal. A late adapter acknowledgment must not rewrite it to
+// `requested`/`acknowledged` and erase the failure that routed it to a human.
+test("an acknowledgment cannot follow a dispatch already settled as failed", async () => {
+  const request = clone(requestByName.get("explicit cheap"));
+  const client = new FakeGitHubClient({ headSha: request.headSha });
+  const store = makeStore(client);
+  const started = await store.begin(request, cheapBeginOptions());
+  const identity = {
+    pullRequestNumber: request.pullRequestNumber,
+    headSha: request.headSha,
+    logicalDispatchId: started.receipt.logicalDispatchId,
+  };
+  await store.dispatchFailed({ ...identity, completedAt: "2026-07-23T12:30:20Z" });
+
+  await assert.rejects(
+    store.acknowledge({
+      ...identity,
+      acknowledgment: {
+        schemaVersion: 1,
+        logicalDispatchId: started.receipt.logicalDispatchId,
+        backendId: "pr-agent",
+        status: "acknowledged",
+        acknowledgedAt: "2026-07-23T12:30:30Z",
+        findingChannels: ["conversation-comment"],
+      },
+    }),
+    /cannot follow a dispatch already settled as failed/u,
+  );
+  const settled = await store.query(identity);
+  assert.equal(settled.dispatch.status, "failed");
+  assert.equal(settled.dispatch.phase, "started");
+});
+
 // Issue #154. dispatchDeclined shares dispatchFailed's guards and its gate;
 // what it adds is the backend's reason, and what it must never do is let a
 // later generic failure overwrite that reason.

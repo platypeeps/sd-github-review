@@ -731,6 +731,19 @@ export class ReceiptStore {
     ) {
       throw new Error("acknowledgment findingChannels must match the durable receipt backend");
     }
+    // A dispatch settled at phase "started" -- dispatchFailed or
+    // dispatchDeclined wrote it -- is terminal and routed to a human. A late
+    // adapter acknowledgment must not rewrite it to `requested`/`acknowledged`
+    // and erase the failure, or the decline and its reason, that settled it.
+    if (
+      record.receipt.dispatch.phase === "started"
+      && (record.receipt.dispatch.status === "failed"
+        || record.receipt.dispatch.status === "declined")
+    ) {
+      throw new Error(
+        `acknowledgment cannot follow a dispatch already settled as ${record.receipt.dispatch.status}`,
+      );
+    }
     if (record.receipt.dispatch.phase === "observed") {
       if (decoded.status !== "acknowledged") {
         throw new Error("failed acknowledgment cannot follow an observed receipt");
@@ -775,7 +788,6 @@ export class ReceiptStore {
     headSha,
     logicalDispatchId,
     alreadyPresent = false,
-    presenceAnchor,
     observations,
     workflowUrl,
     completedAt,
@@ -812,7 +824,6 @@ export class ReceiptStore {
         phase: "observed",
         completedAt: isoTimestamp(completedAt ?? this.now, "receipt observation timestamp"),
         ...(workflowUrl ? { workflowUrl } : {}),
-        ...(alreadyPresent && presenceAnchor ? { presenceAnchor } : {}),
       },
       ...(observations ? { observations } : {}),
     });

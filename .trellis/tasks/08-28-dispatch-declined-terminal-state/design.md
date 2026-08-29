@@ -149,3 +149,11 @@ acceptable, and the same posture every protocol addition has taken.
   sent." The body is a fixed `{ reviewers: [<login>] }` built from validated
   config; a 422 on it is still GitHub refusing that reviewer for this pull
   request, and the message is recorded verbatim so the operator sees which.
+- **C-4** (medium, addressed — review lane gito): `acknowledge` on a receipt
+  already settled `failed` or `declined` at phase `started` rewrote it to
+  `requested`/`acknowledged`. Now rejected; covered by a receipt test.
+- **C-5** (high, rebutted — review lane gito): "422 does not mean the
+  reviewer declined." The state never claims that: it records that GitHub
+  refused the POST for this pull request, keeps GitHub's message verbatim,
+  and gates identically to `failed`. Wording in the spec and service comments
+  was tightened so no reader infers reviewer intent from it.

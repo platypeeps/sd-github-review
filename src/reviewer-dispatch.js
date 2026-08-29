@@ -19,25 +19,29 @@
 // the first means no POST was needed, the second means a POST happened and we
 // could not find out what it did. Neither may be read as a landed request.
 // `declined` means GitHub received the POST, understood it, and refused it for
-// this pull request -- a terminal answer, not a transport accident.
+// this pull request -- a terminal answer from the API, not a transport
+// accident and not a statement about the reviewer's intent.
 export const LANDING_NOT_ATTEMPTED = "not-attempted";
 export const LANDING_CONFIRMED = "confirmed";
 export const LANDING_ABSENT = "absent";
 export const LANDING_UNVERIFIED = "unverified";
 export const LANDING_DECLINED = "declined";
 
-// What the presence probe found, and -- for a pending request -- which head it
-// belongs to. A pending reviewer request carries no commit anchor in the
-// requested-reviewers payload, so "Copilot is a requested reviewer" says
-// nothing about whether the request was made for THIS head. Reading it as if
-// it did is what let a request for one head satisfy presence at every later
-// one (issue #158): the run at the new head short-circuited, wrote a
-// satisfied receipt, and waited forever for an exact-head review nobody asked
-// for.
+// What the presence probe found. A review is anchored to a head by its
+// commit_id; a pending reviewer request is not -- the requested-reviewers
+// payload carries no commit and no timestamp, so "Copilot is a requested
+// reviewer" says nothing about which head the request was made for. Reading
+// it as coverage of THIS head is what let a request for one head satisfy
+// presence at every later one (issue #158): the run at the new head
+// short-circuited, wrote a satisfied receipt, and waited forever for an
+// exact-head review nobody asked for.
+//
+// `unverified` is the pre-probe itself being unreadable: presence is not
+// known either way. `unanchored-request` is a pending request whose head is
+// unknown. They are kept apart because the caller acts on them differently.
 export const PRESENCE_ABSENT = "absent";
 export const PRESENCE_REVIEWED = "reviewed-head";
-export const PRESENCE_CURRENT = "current-head";
-export const PRESENCE_STALE = "stale-request";
+export const PRESENCE_UNANCHORED = "unanchored-request";
 export const PRESENCE_UNVERIFIED = "unverified";
 
 // GitHub logins are case-insensitive, and the API echoes its own canonical
@@ -69,11 +73,14 @@ async function probeLanding(client, pullRequestNumber, reviewer) {
 }
 
 // A 422 is GitHub saying it parsed the request and refuses it for this pull
-// request. That is the one status the API gives that separates "the backend
-// declined" from "we do not know what happened": transport errors, timeouts,
-// 5xx, and auth failures all carry no such statement and stay on the throw
-// path, where the caller records them as `failed`. Nothing here infers a
-// decline from anything but the status -- not diff size, not the message.
+// request -- validation failed, the reviewer cannot be requested here, or
+// whatever else the API's own message says. That is the one status the API
+// gives that separates "the backend refused this POST" from "we do not know
+// what happened": transport errors, timeouts, 5xx, and auth failures all
+// carry no such statement and stay on the throw path, where the caller
+// records them as `failed`. Nothing here infers a decline from anything but
+// the status -- not diff size, not the message -- and nothing here claims to
+// know why GitHub refused: the message is recorded verbatim for the operator.
 function declineOf(error) {
   if (error?.status !== 422) return null;
   return {
@@ -95,60 +102,41 @@ async function requestAndProbe(client, pullRequestNumber, reviewer) {
   return { landing: await probeLanding(client, pullRequestNumber, reviewer) };
 }
 
-function latestRequestEventAt(events, reviewer) {
-  let latest = null;
-  for (const event of events) {
-    if (event?.event !== "review_requested") continue;
-    if (!sameLogin(event.requested_reviewer?.login, reviewer)) continue;
-    const at = Date.parse(event.created_at ?? "");
-    if (!Number.isFinite(at)) continue;
-    if (latest === null || at > latest) latest = at;
-  }
-  return latest;
-}
-
-// Decide which head a pending request belongs to. The committer date is a
-// lower bound on when the head could have been pushed, so a request created
-// before it cannot have been made for this head: that direction is a proof.
-// The other direction is not -- a commit created locally before the request
-// and pushed after it reads as current -- and is the accepted residual; it is
-// still strictly narrower than treating every pending request as current.
+// `rerequestPending` is the caller's statement that it holds no record of a
+// reviewer request for this head. The durable path can say that: it only
+// dispatches when no receipt exists for the head, so a request it finds
+// pending was not made by it at this head -- either it belongs to an earlier
+// head, or someone else made it. Neither can be told apart from the API, and
+// only the first would be a wrong thing to re-request, so the pending
+// reviewer is removed and re-requested (removal is what makes GitHub notify
+// again). Cost: at most one extra review per head, and only when a request
+// for this head was already pending. That is bought deliberately -- no
+// evidence GitHub exposes proves which head a pending request is for, and a
+// commit's own timestamps are written by the committer, not observed by the
+// server, so nothing derived from them is a proof in either direction.
 //
-// Evidence that cannot be read yields `unverified`, never a guess. The
-// reviewer IS present; what is unknown is which head. Re-requesting on every
-// timeline read failure would buy a duplicate review per API blip, so the
-// caller keeps today's behaviour for `unverified` and surfaces it as an
-// anomaly instead of silently trusting it.
-async function anchorPendingRequest(client, pullRequestNumber, reviewer, headSha) {
-  let events;
-  let commit;
-  try {
-    events = await client.listIssueTimeline(pullRequestNumber);
-    commit = await client.getCommit(headSha);
-  } catch {
-    return PRESENCE_UNVERIFIED;
-  }
-  if (!Array.isArray(events)) return PRESENCE_UNVERIFIED;
-  const requestedAt = latestRequestEventAt(events, reviewer);
-  const committedAt = Date.parse(commit?.commit?.committer?.date ?? "");
-  if (requestedAt === null || !Number.isFinite(committedAt)) return PRESENCE_UNVERIFIED;
-  return requestedAt < committedAt ? PRESENCE_STALE : PRESENCE_CURRENT;
-}
-
+// A caller with no such record (standalone, or no head at all) leaves it off:
+// the pending request keeps its presence and is reported `unanchored-request`
+// so the caller knows the head is unproven.
 export async function requestCopilotReviewer({
   client,
   pullRequestNumber,
   reviewer,
   headSha,
   forceRerequest = false,
+  rerequestPending = false,
 }) {
   // `request()` answers `null` for a 2xx with an empty body, so this probe can
   // yield no object at all. Reading `.users` off it directly would throw before
   // any POST, turning an unreadable pre-probe into an unhandled exception
   // instead of the fail-closed path. Unreadable means "not known to be
-  // present", so the POST still happens and `probeLanding` renders the verdict.
+  // present", so the POST still happens and `probeLanding` renders the
+  // verdict; what it is not is `absent`, which is a positive claim, so the
+  // presence is reported `unverified`.
   const requested = await client.getRequestedReviewers(pullRequestNumber);
-  const alreadyRequested = Boolean(requested?.users?.some((user) => sameLogin(user?.login, reviewer)));
+  const probeReadable = Array.isArray(requested?.users);
+  const alreadyRequested = probeReadable
+    && requested.users.some((user) => sameLogin(user?.login, reviewer));
   const alreadyReviewed = Boolean(
     !alreadyRequested
       && headSha
@@ -161,26 +149,23 @@ export async function requestCopilotReviewer({
   );
   const alreadyPresent = alreadyRequested || alreadyReviewed;
   const base = { alreadyRequested, alreadyReviewed, alreadyPresent };
+  const presence = alreadyReviewed
+    ? PRESENCE_REVIEWED
+    : alreadyRequested
+      ? PRESENCE_UNANCHORED
+      : probeReadable ? PRESENCE_ABSENT : PRESENCE_UNVERIFIED;
   // An authorized rerequest (validated one layer up) must force a fresh review
   // even when Copilot already reviewed this head or is still a requested
   // reviewer. GitHub does not re-notify a reviewer already in the requested
   // set, so a pending reviewer is removed before being re-requested. The
-  // caller has already decided to re-request, so no anchor evidence is read.
-  if (forceRerequest) {
+  // same removal serves a pending request the caller holds no record of.
+  if (forceRerequest || (alreadyRequested && rerequestPending)) {
     if (alreadyRequested) {
       await client.removeRequestedReviewer(pullRequestNumber, reviewer);
     }
     const outcome = await requestAndProbe(client, pullRequestNumber, reviewer);
     const landed = outcome.landing === LANDING_CONFIRMED;
-    return {
-      ...base,
-      requested: landed,
-      rerequested: landed,
-      presence: alreadyReviewed
-        ? PRESENCE_REVIEWED
-        : alreadyRequested ? PRESENCE_UNVERIFIED : PRESENCE_ABSENT,
-      ...outcome,
-    };
+    return { ...base, requested: landed, rerequested: landed, presence, ...outcome };
   }
   if (!alreadyPresent) {
     const outcome = await requestAndProbe(client, pullRequestNumber, reviewer);
@@ -188,37 +173,9 @@ export async function requestCopilotReviewer({
       ...base,
       requested: outcome.landing === LANDING_CONFIRMED,
       rerequested: false,
-      presence: PRESENCE_ABSENT,
-      ...outcome,
-    };
-  }
-  // A review is anchored by its commit_id; a pending request is not, so only
-  // the latter needs evidence. Without a head there is nothing to anchor to.
-  const presence = alreadyReviewed
-    ? PRESENCE_REVIEWED
-    : headSha
-      ? await anchorPendingRequest(client, pullRequestNumber, reviewer, headSha)
-      : PRESENCE_UNVERIFIED;
-  if (presence === PRESENCE_STALE) {
-    // The pending request was made for an earlier head and will produce a
-    // review anchored there. Re-request so GitHub notifies for this head; the
-    // removal is what makes GitHub treat it as a new request.
-    await client.removeRequestedReviewer(pullRequestNumber, reviewer);
-    const outcome = await requestAndProbe(client, pullRequestNumber, reviewer);
-    const landed = outcome.landing === LANDING_CONFIRMED;
-    return {
-      ...base,
-      requested: landed,
-      rerequested: landed,
       presence,
       ...outcome,
     };
   }
-  return {
-    ...base,
-    requested: false,
-    rerequested: false,
-    presence,
-    landing: LANDING_NOT_ATTEMPTED,
-  };
+  return { ...base, requested: false, rerequested: false, presence, landing: LANDING_NOT_ATTEMPTED };
 }

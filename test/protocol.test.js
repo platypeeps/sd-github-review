@@ -377,7 +377,7 @@ test("decodes canonical receipts for Copilot, external comments, external checks
   }
   assert.deepEqual(
     receipts.map((entry) => decodeReceipt(entry.value).selectedRoute),
-    ["copilot", "cheap", "deep", "none", "copilot", "cheap", "copilot", "copilot"],
+    ["copilot", "cheap", "deep", "none", "copilot", "cheap", "copilot"],
   );
 });
 

@@ -65,27 +65,6 @@ class FakeGitHubClient {
     this.failPersistError = null;
     this.comparison = null;
     this.draft = false;
-    // Anchor evidence for a pending reviewer request (issue #158): the issue
-    // timeline's review_requested events and each head commit's committer
-    // date. Absent by default, which reads as an unanchorable request.
-    this.timeline = [];
-    this.commitDates = new Map();
-    this.timelineError = null;
-    this.commitError = null;
-  }
-
-  async listIssueTimeline(number) {
-    this.calls.push(["listIssueTimeline", number]);
-    if (this.timelineError) throw this.timelineError;
-    return clone(this.timeline);
-  }
-
-  async getCommit(sha) {
-    this.calls.push(["getCommit", sha]);
-    if (this.commitError) throw this.commitError;
-    const date = this.commitDates.get(sha);
-    if (!date) throw new Error(`fake commit ${sha} not found`);
-    return { sha, commit: { committer: { date } } };
   }
 
   async getPullRequest(number) {
@@ -591,99 +570,60 @@ test("policy-authorized Copilot rerequest issues a new native review while repla
   assert.notEqual(second.receipt.logicalDispatchId, first.receipt.logicalDispatchId);
   assert.equal(harness.outputs.get("copilot-requested"), "true");
   assert.equal(client.calls.filter(([name]) => name === "requestReviewer").length, 2);
-  // The forced path decides to re-request before any presence evidence is
-  // read; head anchoring (issue #158) must not touch it.
-  assert.equal(client.calls.filter(([name]) => name === "listIssueTimeline").length, 0);
-  assert.equal(client.calls.filter(([name]) => name === "getCommit").length, 0);
 });
 
 // Issue #158, the PR #157 timeline. Copilot was requested at 00:41:21 for
 // d594433; c5e94e0 was pushed at 00:43:06 with that request still pending. The
 // run at c5e94e0 saw Copilot in requested_reviewers, issued no POST, and wrote
 // a satisfied receipt -- for a review that Copilot then anchored to d594433.
-// A request made before the head commit existed cannot have been for it.
-test("a pending request made for an earlier head is re-requested at the new head", async () => {
+// begin() authorized this dispatch because no receipt exists for the head, so
+// the pending request was not made here: it is removed and re-requested, and
+// the receipt records a request this run proved landed, never an inherited
+// presence. No timeline or commit evidence is read -- none of it proves which
+// head a pending request is for.
+test("a pending request found at a head with no receipt is re-requested, not inherited", async () => {
   const request = clone(requestByName.get("explicit copilot"));
   const client = new FakeGitHubClient(request.headSha);
   const reviewer = backendByName.get("native Copilot").reviewAuthors[0];
-  client.requestedUsers = [{ login: reviewer }];
-  client.timeline = [
-    { event: "labeled", created_at: "2026-08-27T00:40:00Z" },
-    {
-      event: "review_requested",
-      requested_reviewer: { login: reviewer },
-      created_at: "2026-08-27T00:41:21Z",
-    },
-  ];
-  client.commitDates.set(request.headSha, "2026-08-27T00:43:06Z");
+  client.requestedUsers = [{ login: reviewer.toUpperCase() }];
   const harness = createHarness(client);
 
   const result = await harness.run("route", request);
 
   assert.equal(result.state, "observed");
   assert.equal(result.receipt.dispatch.status, "requested");
-  assert.equal(result.receipt.dispatch.presenceAnchor, undefined);
   assert.equal(harness.outputs.get("copilot-requested"), "true");
-  assert.equal(harness.outputs.get("dispatch-anomaly"), "");
   // Removed then re-added, so GitHub notifies for this head.
   assert.deepEqual(
     client.calls.filter(([name]) => name === "removeRequestedReviewer" || name === "requestReviewer")
       .map(([name]) => name),
     ["removeRequestedReviewer", "requestReviewer"],
   );
+  assert.ok(!client.calls.some(([name]) => name === "listIssueTimeline" || name === "getCommit"));
+
+  // The receipt now answers for this head: a replay makes no further POST.
+  const replay = await harness.run("route", { ...clone(request), correlationId: "corr-replay" });
+  assert.equal(replay.state, "existing");
+  assert.equal(replay.receipt.dispatch.status, "requested");
+  assert.equal(client.calls.filter(([name]) => name === "requestReviewer").length, 1);
 });
 
-test("a pending request made for the current head still satisfies presence without a POST", async () => {
+// A review anchored to this head by commit_id is proven coverage and is the
+// one presence that still short-circuits the POST.
+test("a review already anchored to the head still satisfies presence without a POST", async () => {
   const request = clone(requestByName.get("explicit copilot"));
   const client = new FakeGitHubClient(request.headSha);
   const reviewer = backendByName.get("native Copilot").reviewAuthors[0];
-  client.requestedUsers = [{ login: reviewer.toUpperCase() }];
-  client.commitDates.set(request.headSha, "2026-08-27T00:43:06Z");
-  client.timeline = [
-    // An older request for a previous head, then the current one.
-    { event: "review_requested", requested_reviewer: { login: reviewer }, created_at: "2026-08-27T00:41:21Z" },
-    { event: "review_requested", requested_reviewer: { login: reviewer }, created_at: "2026-08-27T00:43:30Z" },
-  ];
+  client.reviews = [{ user: { login: reviewer }, commit_id: request.headSha, state: "COMMENTED" }];
   const harness = createHarness(client);
 
   const result = await harness.run("route", request);
 
   assert.equal(result.state, "observed");
   assert.equal(result.receipt.dispatch.status, "already-present");
-  assert.equal(result.receipt.dispatch.presenceAnchor, "head");
   assert.equal(harness.outputs.get("copilot-requested"), "false");
-  assert.equal(harness.outputs.get("dispatch-anomaly"), "");
   assert.equal(client.calls.filter(([name]) => name === "requestReviewer").length, 0);
   assert.equal(client.calls.filter(([name]) => name === "removeRequestedReviewer").length, 0);
-});
-
-// The reviewer is proven present; which head is not. Re-requesting on every
-// timeline read failure would buy a duplicate review per API blip, so the
-// presence is kept -- and written down as unverified, in the receipt and as a
-// warning annotation, so it cannot pass as a proven review of this head.
-test("an unanchorable pending request is observed as present but surfaced as an anomaly", async () => {
-  const request = clone(requestByName.get("explicit copilot"));
-  const client = new FakeGitHubClient(request.headSha);
-  const reviewer = backendByName.get("native Copilot").reviewAuthors[0];
-  client.requestedUsers = [{ login: reviewer }];
-  client.timelineError = new Error("timeline unavailable");
-  const harness = createHarness(client);
-
-  const result = await harness.run("route", request);
-
-  assert.equal(result.state, "observed");
-  assert.equal(result.receipt.dispatch.status, "already-present");
-  assert.equal(result.receipt.dispatch.presenceAnchor, "unverified");
-  assert.equal(client.calls.filter(([name]) => name === "requestReviewer").length, 0);
-  const anomaly = harness.outputs.get("dispatch-anomaly");
-  assert.match(anomaly, /could not be anchored/u);
-  assert.ok(anomaly.includes(reviewer));
-  assert.ok(anomaly.includes(request.headSha));
-  assert.ok(harness.logs.some((line) => line.startsWith("::warning::") && line.includes("could not be anchored")));
-
-  // Durable: a later reader sees the anchor, not only this run's log.
-  const queried = await harness.run("query", request);
-  assert.equal(queried.receipt.dispatch.presenceAnchor, "unverified");
 });
 
 // Issue #154. GitHub answered the reviewer request with a 422: it parsed the

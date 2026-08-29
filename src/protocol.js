@@ -65,11 +65,6 @@ const SUCCESSOR_CLASSES = new Set([
 // (receipt.js maps both at phase "started" to reconciliation-required); the
 // difference is legibility, carried by `declineReason`, not gate strength.
 const DISPATCH_STATUSES = new Set(["requested", "already-present", "skipped", "failed", "declined"]);
-// For an already-present dispatch: whether the presence was proven to belong
-// to this head (`head`) or was a pending reviewer request whose head could not
-// be established (`unverified`). The latter is the durable trace of issue
-// #158's silent case and is what a later reader gates or alarms on.
-const PRESENCE_ANCHORS = new Set(["head", "unverified"]);
 const DECLINE_REASON_MAX_BYTES = 512;
 const DISPATCH_PHASES = new Set(["not-started", "started", "acknowledged", "observed"]);
 const ACK_STATUSES = new Set(["acknowledged", "failed"]);
@@ -854,15 +849,6 @@ function dispatchValue(value, field = "receipt.dispatch") {
             maximum: DECLINE_REASON_MAX_BYTES,
           }),
         }),
-    ...(dispatch.presenceAnchor === undefined
-      ? {}
-      : {
-          presenceAnchor: enumValue(
-            dispatch.presenceAnchor,
-            `${field}.presenceAnchor`,
-            PRESENCE_ANCHORS,
-          ),
-        }),
   };
   if (normalized.status === "declined") {
     if (normalized.phase !== "started") {
@@ -873,9 +859,6 @@ function dispatchValue(value, field = "receipt.dispatch") {
     }
   } else if (normalized.declineReason !== undefined) {
     throw new Error(`${field}.declineReason is valid only for a declined dispatch`);
-  }
-  if (normalized.presenceAnchor !== undefined && normalized.status !== "already-present") {
-    throw new Error(`${field}.presenceAnchor is valid only for an already-present dispatch`);
   }
   if (normalized.status === "requested" && normalized.phase === "not-started") {
     throw new Error(`${field}.phase cannot be not-started after a requested dispatch`);

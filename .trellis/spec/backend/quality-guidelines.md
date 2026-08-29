@@ -356,9 +356,12 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 - `GitHubClient.listPullRequestFiles(number) -> Promise<string[]>`
 - `GitHubClient.requestReviewer(number, reviewer) -> Promise<object|null>`
 - `requestCopilotReviewer({ client, pullRequestNumber, reviewer, headSha,
-  forceRerequest }) -> Promise<{ alreadyRequested, alreadyReviewed,
-  alreadyPresent, requested, rerequested, landing }>`, where `landing` is
-  `not-attempted|confirmed|absent|unverified`
+  forceRerequest, rerequestPending }) -> Promise<{ alreadyRequested,
+  alreadyReviewed, alreadyPresent, requested, rerequested, presence, landing,
+  declined? }>`, where `landing` is
+  `not-attempted|confirmed|absent|unverified|declined` (`declined` carries
+  `declined: { status: 422, message }`) and `presence` is
+  `absent|reviewed-head|unanchored-request|unverified`
 - `ReceiptStore.dispatchFailed({ pullRequestNumber, headSha, logicalDispatchId,
   workflowUrl, completedAt }) -> Promise<{ state, receipt, dispatchAllowed,
   reconciliationRequired, receiptVerified?, error? }>`, writing
@@ -526,32 +529,32 @@ return { alreadyPresent, requested: false, landing: LANDING_NOT_ATTEMPTED };
 const alreadyPresent = alreadyRequested || alreadyReviewed;
 if (!alreadyPresent) { /* POST */ }
 
-// Correct: anchor the pending request from evidence that names a time. The
-// committer date is a lower bound on when the head could have been pushed,
-// so a request created before it cannot have been for this head -- that
-// direction is a proof and is acted on (remove, re-request, probe). The other
-// direction is not a proof and is the accepted residual. Unreadable evidence
-// is `unverified`: keep the presence, but write it into the receipt and
-// surface it, rather than re-requesting on every API blip.
-const presence = alreadyReviewed
-  ? PRESENCE_REVIEWED
-  : await anchorPendingRequest(client, pullRequestNumber, reviewer, headSha);
-if (presence === PRESENCE_STALE) {
-  await client.removeRequestedReviewer(pullRequestNumber, reviewer);
-  return { ...base, ...(await requestAndProbe(client, pullRequestNumber, reviewer)) };
+// Correct: only a review is head-anchored (by commit_id). For a pending
+// request the caller supplies the evidence the API cannot: the durable path
+// dispatches only when no receipt exists for this head, so a request it finds
+// pending was not made by it here. It says so with `rerequestPending`, and
+// the reviewer is removed and re-requested so GitHub notifies for this head.
+// Do not reach for commit timestamps as a substitute: author and committer
+// dates are written by the committer, not observed by the server, and prove
+// nothing about which head a request was made for in either direction.
+if (forceRerequest || (alreadyRequested && rerequestPending)) {
+  if (alreadyRequested) await client.removeRequestedReviewer(pullRequestNumber, reviewer);
+  return { ...base, presence, ...(await requestAndProbe(client, pullRequestNumber, reviewer)) };
 }
 ```
 
 ```js
 // Wrong: every throw from requestReviewer becomes `failed`. A 422 -- GitHub
 // parsed the request and refused it for this pull request -- reads the same
-// as a dropped connection, and the operator retries a reviewer that will
-// never accept this head (issue #154).
+// as a dropped connection, and the operator retries a POST that GitHub has
+// already answered (issue #154).
 try { await client.requestReviewer(n, reviewer); } catch { return failed(); }
 
 // Correct: classify on the one observable the API gives -- the HTTP status the
-// client carries as `error.status` -- and record GitHub's own message. Never
-// infer a decline from diff size or message text; 403/404/5xx/transport stay
+// client carries as `error.status` -- and record GitHub's own message. The
+// state says GitHub refused the POST, not why and not what the reviewer
+// intends: the verbatim message is the operator's evidence. Never infer a
+// decline from diff size or message text; 403/404/5xx/transport stay
 // `failed`. The gate is identical (reconciliation-required); only legibility
 // changes, through `dispatch-status: declined` and `declineReason`.
 if (error?.status === 422) {

@@ -20,12 +20,6 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   never accept this head from a connection that dropped. Transport errors,
   timeouts, 5xx, 403, and 404 stay `failed`; nothing infers a decline from diff
   size or message text. Closes #154.
-- **`dispatch-anomaly` output and `dispatch.presenceAnchor`.** An
-  `already-present` receipt now records whether the pending reviewer request
-  it was satisfied by was proven to belong to this head (`head`) or could not
-  be (`unverified`). The unverified case is also emitted as a `::warning::`
-  annotation and on the new `dispatch-anomaly` output, so a satisfied receipt
-  the run could not fully prove does not pass as a proven review.
 
 ### Fixed
 
@@ -39,18 +33,25 @@ to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   for `d594433`, `c5e94e0` pushed at `00:43:06`, receipt at `c5e94e0` read
   `requested/observed` with no `review_requested` event for it).
 
-  A pending request is now anchored from the issue timeline's latest
-  `review_requested` event for the reviewer against the head commit's
-  committer date. A request created before the commit existed cannot have
-  been for it and is re-requested — removed and re-added, so GitHub notifies
-  for this head. A request at or after the commit date is current and needs
-  no POST. Unreadable evidence keeps the presence (re-requesting on every
-  timeline blip would buy a duplicate review each time) but records it as
-  `presenceAnchor: unverified` and surfaces the anomaly. The `forceRerequest`
-  path and the unreadable pre-probe path are unchanged. The residual — a
-  commit created locally before the request and pushed after it reads as
-  current — is accepted and documented; it is strictly narrower than the old
-  rule. Closes #158.
+  Nothing GitHub exposes proves which head a pending request was made for,
+  and a commit's own timestamps are written by the committer rather than
+  observed by the server, so no comparison against them is used. The receipt
+  store is the evidence instead: the durable `route` dispatches only when no
+  receipt exists for the head, so a request it finds pending was not made by
+  it at this head. It is removed and re-added, so GitHub notifies for this
+  head, and the receipt records a request this run proved landed rather than
+  an inherited presence. A review already anchored to the head by `commit_id`
+  still short-circuits. The cost — one extra review at a head where someone
+  else had already requested the reviewer — is accepted. The `forceRerequest`
+  path is unchanged. Standalone (non-durable) runs hold no such record and
+  keep today's behaviour; the service reports the presence as
+  `unanchored-request` so the caller knows the head is unproven, and an
+  unreadable pre-probe now reports `presence: unverified` rather than
+  `absent`. Closes #158.
+- **A late adapter acknowledgment could overwrite a settled dispatch.**
+  `acknowledge` on a receipt already written `failed` or `declined` at phase
+  `started` rewrote it to `requested`/`acknowledged`, erasing the outcome that
+  had routed it to a human. It is now rejected.
 - **The bare-attempt rejection sent operators to re-request handling.**
   `request.attempt` is the remote dispatch counter for the head: 1 on the first
   dispatch however many local review rounds preceded it. A coordinator that

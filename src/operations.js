@@ -13,7 +13,6 @@ import {
   LANDING_ABSENT,
   LANDING_UNVERIFIED,
   LANDING_DECLINED,
-  PRESENCE_UNVERIFIED,
   requestCopilotReviewer,
 } from "./reviewer-dispatch.js";
 import { normalizeMode, parseList } from "./normalize.js";
@@ -196,7 +195,6 @@ function resultOutputs({ operation, result, adapter = "", changedLines = 0, sens
     "dispatch-allowed": String(result.dispatchAllowed === true),
     "reconciliation-required": String(result.reconciliationRequired === true),
     "reconciliation-error": result.error ? String(result.error).slice(0, 512) : "",
-    "dispatch-anomaly": result.anomaly ? String(result.anomaly).slice(0, 512) : "",
     backend: backend ? stableProtocolJson(backend) : "",
     "backend-id": backend?.id ?? "",
     "backend-kind": backend?.kind ?? "",
@@ -243,12 +241,6 @@ async function emitDurableResult(
     sensitiveCount: details.sensitiveCount ?? 0,
   });
   const receipt = details.result.receipt;
-  // Annotation, not only an output: a pending request that could not be
-  // anchored to this head leaves a green job and a satisfied receipt behind,
-  // and an operator must not have to open outputs to learn it.
-  if (details.result.anomaly) {
-    logger(`::warning::${String(details.result.anomaly).slice(0, 512)}`);
-  }
   logger(
     receipt
       ? `Durable ${details.operation} ${details.result.state} for PR #${receipt.pullRequestNumber} at ${receipt.headSha}`
@@ -460,6 +452,11 @@ async function routeOperation({ request, client, store, env, now }) {
         headSha: request.headSha,
         forceRerequest:
           Boolean(request.rerequestOf) && booleanInput("rerequest-authorized", false, env),
+        // begin() authorized this dispatch, which it does only when no receipt
+        // exists for this head: any reviewer request found pending now was
+        // not made by this action at this head (issue #158). The service
+        // removes and re-requests it rather than read it as coverage.
+        rerequestPending: true,
       });
     } catch (error) {
       // A throw does not prove GitHub received nothing -- the POST may well
@@ -517,14 +514,6 @@ async function routeOperation({ request, client, store, env, now }) {
       // fails, writing `failed` would record a review that was requested as one
       // that never was. Reconcile in memory and leave the dispatch record
       // alone.
-      // A pending reviewer request whose head could not be established is
-      // presence of a kind, but not proof that a review for THIS head will
-      // ever arrive (issue #158). It is written into the receipt and reported
-      // as an anomaly rather than trusted silently.
-      const anomaly = !dispatch.requested && dispatch.presence === PRESENCE_UNVERIFIED
-        ? `pending reviewer ${backend.reviewAuthors[0]} could not be anchored to head `
-          + `${request.headSha}; a review for this head may never arrive`
-        : null;
       try {
         const completedAt = timestamp(now);
         result = await store.observe({
@@ -532,7 +521,6 @@ async function routeOperation({ request, client, store, env, now }) {
           headSha: request.headSha,
           logicalDispatchId: request.logicalDispatchId,
           alreadyPresent: !dispatch.requested,
-          presenceAnchor: anomaly ? "unverified" : "head",
           observations: {
             latencyMs: elapsedMilliseconds(result.receipt, completedAt),
             costTier: backend.costTier,
@@ -541,7 +529,6 @@ async function routeOperation({ request, client, store, env, now }) {
           completedAt,
         });
         result.copilotRequested = dispatch.requested;
-        if (anomaly) result.anomaly = anomaly;
       } catch (error) {
         result = {
           state: "reconciliation-required",

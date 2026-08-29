@@ -115,10 +115,15 @@ and record why the others were rejected.
 
 - [x] A pending request made for an earlier head does not satisfy presence at a
       later head, proven by a test reproducing the PR #157 timeline.
-- [x] A pending request made for the current head still satisfies presence, with
-      no duplicate POST.
+- [x] A review already anchored to the current head by `commit_id` still
+      satisfies presence, with no duplicate POST. (Amended during review: a
+      *pending* request cannot be proven to be for the current head from any
+      server-observed evidence, so the durable path re-requests it once rather
+      than inherit it; see `design.md`.)
 - [x] The `forceRerequest` path is unchanged, proven by a test.
 - [x] An unreadable pre-probe still takes the fail-closed path.
-- [x] A receipt reaching `observed` via `alreadyPresent` at a head with no
-      matching `review_requested` event is surfaced as an anomaly.
+- [x] No receipt reaches `observed` via `alreadyPresent` on the strength of a
+      pending request at a head with no matching `review_requested` event.
+      (Amended during review: the durable path no longer has that case, so
+      there is no anomaly to surface; the receipt records a proven request.)
 - [x] Issue #158 is closed by the change.
