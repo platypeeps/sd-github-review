@@ -183,19 +183,20 @@ setup discovery. It lets adapters such as PR-Agent record `success`, `failure`,
 `cancelled`, or `skipped` without accepting provider output or unbounded error
 text.
 
-For Copilot, `route` checks both pending requests and non-dismissed reviews on
-the exact head before requesting. A review is anchored by its `commit_id`; a
-pending request is not, and nothing GitHub exposes proves which head it was
-made for (commit timestamps are committer-written, not server-observed). The
+For Copilot, `route` checks pending requests on the pull request and
+non-dismissed reviews on the exact head before requesting. A review is anchored
+by its `commit_id`; a pending request is not, and nothing GitHub exposes proves
+which head it was made for (commit timestamps are committer-written, not
+server-observed). The
 receipt store is the evidence instead: a first-attempt `route` dispatches only
 when no receipt records prior dispatched work for the head, so a request found
 pending then was not made here and is re-requested (removed and re-added, so
 GitHub notifies for this head); an authorized same-head re-request removes a
-pending reviewer anyway. The cost is at most one extra review per head, only
-when someone else — a person, another workflow, or the repository's automatic
-Copilot review setting — requested the reviewer at that head first; a
-repository with automatic Copilot review enabled should not also route to
-`copilot`. A reviewer request GitHub answers with 422 is
+pending reviewer anyway. The cost is at most one extra review per head, paid
+only when a request was pending as the head's first dispatch ran — made by a
+person, another workflow, or the repository's automatic Copilot review
+setting, for this head or an earlier one; a repository with automatic Copilot
+review enabled should not also route to `copilot`. A reviewer request GitHub answers with 422 is
 recorded `declined` with GitHub's own message; it blocks the gate exactly as
 `failed` does and differs only in what the receipt tells the operator. For `cheap` and `deep`, it emits one bounded
 `adapter-request`. The consumer-owned adapter writes findings to its declared

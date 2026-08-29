@@ -356,6 +356,7 @@ metadata, event orchestration, pure policy, and the GitHub REST API.
 - `routeReview(context) -> { route, reason }`
 - `GitHubClient.listPullRequestFiles(number) -> Promise<string[]>`
 - `GitHubClient.requestReviewer(number, reviewer) -> Promise<object|null>`
+- `GitHubClient.removeRequestedReviewer(number, reviewer) -> Promise<object|null>`
 - `requestCopilotReviewer({ client, pullRequestNumber, reviewer, headSha,
   forceRerequest, rerequestPending }) -> Promise<{ alreadyRequested,
   alreadyReviewed, alreadyPresent, requested, rerequested, presence, landing,
