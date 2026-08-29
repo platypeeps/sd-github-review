@@ -80,12 +80,23 @@ the split and why no request-shape change is made here.
 - [x] A genuine second remote dispatch (`attempt: 2` with `rerequestOf` for the
       first) still decodes, proven by a test.
 
-### Coordinator (parked on sd-ai-command-pack#589)
+### Coordinator half (parked on sd-ai-command-pack#589, not criteria of this task)
 
-- [ ] A pull request whose local review took more than one round dispatches on
-      its first remote attempt as `attempt: 1`.
-- [ ] A genuine second remote dispatch arrives as `attempt: 2` carrying
-      `rerequestOf` for the first.
-- [ ] Local rounds do not change the remote attempt number.
-- [ ] No path requires `--attempt-id` to recover from a first dispatch.
-- [ ] Issue #155 is closed once both halves have landed.
+These outcomes belong to the coordinator and are tracked on
+platypeeps/sd-ai-command-pack#589. They are recorded here so the split is
+legible, not as acceptance criteria this task can satisfy; issue #155 stays
+open until they land there.
+
+- A pull request whose local review took more than one round dispatches on
+  its first remote attempt as `attempt: 1`.
+- A genuine second remote dispatch arrives as `attempt: 2` carrying
+  `rerequestOf` for the first.
+- Local rounds do not change the remote attempt number.
+- No path requires `--attempt-id` to recover from a first dispatch.
+- Issue #155 is closed once both halves have landed.
+
+Live evidence for the coordinator defect, gathered while shipping this task:
+the `sd-review` coordinator forwarded local round 5 as `request.attempt: 5`
+for PR #164 and the routed run failed with the pre-fix rejection
+(https://github.com/platypeeps/sd-github-review/actions/runs/33234657100);
+recovery needed `--attempt 1 --attempt-id <fresh>`.
