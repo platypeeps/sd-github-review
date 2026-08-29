@@ -1590,3 +1590,58 @@ Advance the thin pack pin from 0.71.62 to 0.71.63.
 ### Next Steps
 
 - None - task complete
+
+
+## Session 89: Fix the three review-dispatch defects (#154, #155, #158) in one PR
+<!-- trellis-session: v=2 fp=3877942a5f03a6aa -->
+
+**Date**: 2026-08-28
+**Task**: Fix the three review-dispatch defects (#154, #155, #158) in one PR
+**Branch**: `task/08-28-review-dispatch-fixes`
+
+### Summary
+
+Implemented and shipped the three correctness/stability tasks as PR #164: a declined (HTTP 422) terminal dispatch state, record-based re-request of pending reviewer requests instead of inheriting them across heads, and request.attempt documented and rejected as the remote dispatch counter. Worked 12 review rounds (codex + gito local, Copilot remote), pivoted the #158 design from committer-date anchoring to a record-based rule after two lanes rejected timestamps, and archived all three tasks. The coordinator half of #155 stays parked on sd-ai-command-pack#589 with live evidence recorded.
+
+### Main Changes
+
+- declined dispatch state: 422 from requestReviewer returns landing declined; receipt writer dispatchDeclined with bounded declineReason; standalone entrypoint fails the job; acknowledge refuses settled failed/declined dispatch
+- pending reviewer request at a head with no receipt is removed and re-requested (rerequestPending); exact-head review still short-circuits; presence enum absent|reviewed-head|unanchored-request|unverified; timeline/getCommit/presenceAnchor/dispatch-anomaly removed
+- request.attempt documented as remote dispatch counter in protocol.js, action.yml, DESIGN.md; rejection message names the counter
+- spec, CHANGELOG, DESIGN.md, task PRDs/designs updated through the review loop
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `03506b0` | docs(trellis): record the parked coordinator half of #155 as scope notes, not criteria |
+| `b52fef7` | docs(review): record the dispatchDeclined contract, settle the PRD design question, and reword the 422 entry |
+| `9a15dfe` | docs(spec): give the 422 landing its own failure-matrix row |
+| `ddb53bd` | fix(dispatch): let an exact-head review outrank a pending request; cut reasons on code points |
+| `af85314` | fix(receipt): bound the persisted decline reason to the protocol budget |
+| `6169a1e` | fix(dispatch): keep a standalone 422 a job failure; never blank the API message |
+| `491a3cb` | docs(dispatch): state the pending-request cost precisely |
+| `51e8300` | test(operations): remove reviewers case-insensitively in the fake client |
+| `e54d307` | docs(dispatch): reconcile the contract tables with the re-request rule |
+| `7f746ed` | fix(dispatch): re-request a pending reviewer the action has no record of |
+| `c859cf8` | fix(dispatch): anchor pending reviewer requests, name backend declines, name the remote attempt counter |
+| `b37f4b7` | docs(trellis): design and activate the three review-dispatch defect tasks |
+| `1babec1` | chore(task): archive 08-28-remote-attempt-separate-from-local-round |
+| `2c122d1` | chore(task): archive 08-28-head-anchored-pending-reviewer-request |
+| `b59935c` | chore(task): archive 08-28-dispatch-declined-terminal-state |
+
+### Testing
+
+- [OK] node --test: 774 pass, 0 fail
+- [OK] npm run test:coverage 95.13/86.53/95.59 above floors 88/77/88
+- [OK] npm run check, validate:metadata, validate:ci-parity
+- [OK] sd-review scope=pr attempt pr164-head6-first-dispatch: status ready, remote Copilot receipt observed, 0 open threads
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

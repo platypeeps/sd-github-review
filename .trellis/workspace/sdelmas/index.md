@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-2.md`
-- **Total Sessions**: 88
+- **Total Sessions**: 89
 - **Last Active**: 2026-08-28
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-2.md` | ~1582 | Active |
+| `journal-2.md` | ~1636 | Active |
 | `journal-1.md` | ~1992 | Archived |
 <!-- @@@/auto:active-documents -->
 
@@ -30,6 +30,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 89 | 2026-08-28 | Fix the three review-dispatch defects (#154, #155, #158) in one PR | `03506b0`, `b52fef7`, `9a15dfe`, `ddb53bd`, `af85314`, `6169a1e`, `491a3cb`, `51e8300`, `e54d307`, `7f746ed`, `c859cf8`, `b37f4b7`, `1babec1`, `2c122d1`, `b59935c` | `task/08-28-review-dispatch-fixes` |
 | 88 | 2026-08-28 | Refresh sd-ai-command-pack to 0.71.63 | `5b1dacf2a4696c845a6efcbad2d2765f464f158b` | `chore/pack-refresh-0.71.63` |
 | 87 | 2026-08-28 | File the three open review-dispatch defects as planning tasks | `02df2b34a97e5b34ad0b10ed24b27c4bfcfd3c65` | `task/08-28-review-dispatch-defects` |
 | 86 | 2026-08-28 | Enable the codex local review lane and keep repo-owned review config in scope | `fc8a1581400edb10c12e8c436c14ee000fc6935b`, `fd2263a` | `chore/review-config-codex-lane` |
