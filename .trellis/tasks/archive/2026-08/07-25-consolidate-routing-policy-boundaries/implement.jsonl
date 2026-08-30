@@ -1,3 +1,0 @@
-{"file":".trellis/tasks/07-25-consolidate-routing-policy-boundaries/research/audit-finding.md","reason":"Preserve the verified A-008 evidence and single-owner remediation boundary."}
-{"file":".trellis/spec/backend/directory-structure.md","reason":"Apply the primary executable contract for this finding."}
-{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Preserve adjacent quality, error, lifecycle, or architecture guarantees."}

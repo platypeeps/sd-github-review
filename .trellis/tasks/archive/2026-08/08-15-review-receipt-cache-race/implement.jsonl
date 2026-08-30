@@ -1,1 +1,0 @@
-{"file": ".trellis/spec/backend/consumer-installer.md", "reason": "Holds the consumer-side reproduction: the two-write receipt shape, the measured started-to-observed windows, and the exact coordinator lines that cache a non-terminal receipt without re-querying it."}

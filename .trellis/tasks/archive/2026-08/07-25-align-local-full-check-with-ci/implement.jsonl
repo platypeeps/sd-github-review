@@ -1,3 +1,0 @@
-{"file":".trellis/tasks/07-25-align-local-full-check-with-ci/research/audit-finding.md","reason":"Preserve the verified A-017 evidence and single-owner remediation boundary."}
-{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Apply the primary executable contract for this finding."}
-{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"Preserve adjacent quality, error, lifecycle, or architecture guarantees."}

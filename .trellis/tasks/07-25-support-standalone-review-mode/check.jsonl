@@ -1,3 +1,0 @@
-{"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify explicit mode discrimination, unsupported capability outcomes, and managed-outage fail-closed behavior."}
-{"file": ".trellis/spec/backend/consumer-installer.md", "reason": "Verify install, migration, promotion, rollback, and no-implicit-mode-change lifecycle behavior."}
-{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Apply the repository quality gate to deterministic standalone and managed-outage behavior."}

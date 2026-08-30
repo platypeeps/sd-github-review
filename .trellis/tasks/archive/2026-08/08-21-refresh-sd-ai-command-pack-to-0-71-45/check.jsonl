@@ -1,2 +1,0 @@
-{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "States the quality bar the deterministic gate enforces; used to judge whether any gate finding is caused by this refresh or is pre-existing debt."}
-{"file": ".trellis/spec/backend/index.md", "reason": "Backend spec index; the entry point for confirming no product contract changes as a side effect of the pack refresh."}

@@ -1,1 +1,0 @@
-{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Records that this repository runs a thin install with no vendored pack payload under scripts/, which is the layout the five unavailable sd-check rows failed to resolve against."}

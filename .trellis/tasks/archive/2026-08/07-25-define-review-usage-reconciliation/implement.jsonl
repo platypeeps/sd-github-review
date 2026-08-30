@@ -1,1 +1,0 @@
-{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "Apply monotonic persistence and concurrency guidance to reconciliation."}

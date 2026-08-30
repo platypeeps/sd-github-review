@@ -1,4 +1,0 @@
-{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Defines GitHub transport boundaries and required request tests."}
-{"file": ".trellis/spec/backend/error-handling.md", "reason": "Defines fail-closed API and ambiguity diagnostics."}
-{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Defines bounded receipt and credential-redaction output."}
-{"file": ".trellis/tasks/07-23-implement-durable-routed-review-receipts/research/contract-mapping.md", "reason": "Maps approved storage, idempotency, and successor requirements."}

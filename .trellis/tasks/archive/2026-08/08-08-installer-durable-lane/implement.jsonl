@@ -1,2 +1,0 @@
-{"file": ".trellis/spec/backend/consumer-installer.md", "reason": "Specifies the consumer installer contract this task changes: what is installed, to which paths, and the idempotency requirement."}
-{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Governs where the published setup descriptor may live once it moves off the consumer discovery path."}

@@ -1,1 +1,0 @@
-{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Records the routing-input contract including the high-risk-route default this task flips; the entry at line 349 is a tracked contract that must change with the code, not narrative prose."}

@@ -1,4 +1,0 @@
-{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Defines dependency-light runtime structure, pure policy ownership, and required tests."}
-{"file": ".trellis/spec/backend/error-handling.md", "reason": "Defines field-specific fail-closed validation behavior."}
-{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Defines the credential and sensitive-data boundary for protocol diagnostics."}
-{"file": ".trellis/tasks/07-23-implement-routed-review-protocol-core/research/contract-mapping.md", "reason": "Maps the archived approved requirements into this child boundary."}
