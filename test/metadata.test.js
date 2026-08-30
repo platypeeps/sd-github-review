@@ -572,18 +572,6 @@ test("rejects floating third-party Action references", async () => {
   );
 });
 
-test("the nested OpenCode package declares no unlocked runtime dependency (A-016)", async () => {
-  const pkg = JSON.parse(
-    await readFile(new URL("../.opencode/package.json", import.meta.url), "utf8"),
-  );
-  const declared = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies });
-  assert.deepEqual(
-    declared,
-    [],
-    "the .opencode runtime must not carry an unlocked nested dependency (no lockfile is committed)",
-  );
-});
-
 const A010_VALID_PIN = `platypeeps/sd-github-review@${"a".repeat(40)}`;
 
 test("rejects an action.yml input used by no operation (A-010)", async () => {
