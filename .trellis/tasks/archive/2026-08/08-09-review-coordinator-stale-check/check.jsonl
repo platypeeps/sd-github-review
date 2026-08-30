@@ -1,2 +1,0 @@
-{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify the new test proves the stale-replay path rather than asserting the coordinator's current behavior."}
-{"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify a genuinely failing check still blocks and reports its own diagnostic unchanged."}

@@ -1,2 +1,0 @@
-{"file":".trellis/tasks/07-25-remove-unused-installer-export/research/audit-finding.md","reason":"Verify the implementation closes A-021 without broadening scope."}
-{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Verify focused regressions, exact-head behavior, privacy, and full repository gates."}

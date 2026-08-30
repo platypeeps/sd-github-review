@@ -1,2 +1,0 @@
-{"file": ".trellis/spec/backend/consumer-installer.md", "reason": "Owns the install/update/check/uninstall contract this task executes: the managed-resource table, the collision guard, manifest schema 3, and the recorded-hash rule that makes an edit to the installed workflow forfeit uninstall."}
-{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Owns the vendored-versus-repo-owned boundary and the contract/ versus config/ split; Phase 7 must update its `.github/workflows/ -- repository CI only` annotation once two more workflows land."}

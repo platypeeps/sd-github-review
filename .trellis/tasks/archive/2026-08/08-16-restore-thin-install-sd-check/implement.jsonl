@@ -1,1 +1,0 @@
-{"file": ".trellis/spec/backend/directory-structure.md", "reason": "Defines the thin-install boundary the fix had to respect: pack helpers resolve from the machine install, and nothing may be restored under scripts/."}

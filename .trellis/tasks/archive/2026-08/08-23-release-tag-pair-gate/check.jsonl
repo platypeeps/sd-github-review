@@ -1,2 +1,0 @@
-{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "verify the mutation-proof standard was actually met rather than asserted"}
-{"file": ".trellis/spec/backend/consumer-installer.md", "reason": "verify the corrected SETUP-PR-AGENT.md example still matches the documented override contract"}

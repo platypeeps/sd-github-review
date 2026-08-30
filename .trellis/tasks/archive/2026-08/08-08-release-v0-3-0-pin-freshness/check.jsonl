@@ -1,1 +1,0 @@
-{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Defines the CI gate surface that the eight unreachable v2 modules must be quarantined out of."}

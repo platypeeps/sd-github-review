@@ -1,2 +1,0 @@
-{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "States the quality bar the deterministic gate enforces; used to judge whether any gate finding is caused by this refresh or is pre-existing debt."}
-{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Frontend quality contract; confirms the npm test / check / validate:metadata gate expectations this refresh must not regress."}

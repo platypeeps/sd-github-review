@@ -2210,13 +2210,16 @@ test("no shipped workflow lets a caller supply its own review floor", () => {
 // The operator-facing docs carry runnable install invocations, and a required
 // flag added to the CLI does not fail anything when a document forgets it. The
 // file list is enumerated from the tracked tree rather than restated, so a new
-// operator document is covered the day it is added. Records under `.trellis/`
-// are excluded deliberately: archived task artifacts quote historical commands
-// and the spec quotes a `[options]` placeholder, neither of which is runnable.
+// operator document is covered the day it is added. Records under `docs/work/`
+// and `docs/spec/` are excluded deliberately: work-item artifacts quote
+// historical commands and the spec quotes a `[options]` placeholder, neither of
+// which is runnable. They lived under `.trellis/` until the framework's
+// footprint was removed and the import moved them here; the exclusion follows
+// the records rather than the directory they used to sit in.
 function documentedInstallInvocations() {
   const files = execFileSync("git", ["ls-files", "*.md"], { cwd: REPO_ROOT, encoding: "utf8" })
     .split("\n")
-    .filter((file) => file.length > 0 && !file.startsWith(".trellis/"));
+    .filter((file) => file.length > 0 && !file.startsWith("docs/work/") && !file.startsWith("docs/spec/"));
   const invocations = [];
   for (const file of files) {
     // Rejoin shell line continuations so a multi-line invocation reads as one.

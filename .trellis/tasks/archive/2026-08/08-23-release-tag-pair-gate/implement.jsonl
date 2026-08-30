@@ -1,3 +1,0 @@
-{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "code standards and the repository's rule that a gate is proven by mutation before it is trusted, which Phase 2 depends on"}
-{"file": ".trellis/spec/backend/error-handling.md", "reason": "failure-message contract the new assertion's error text must follow"}
-{"file": ".trellis/spec/backend/consumer-installer.md", "reason": "documents the --source-tag/--source-commit override path whose published example this task corrects"}

@@ -1,1 +1,0 @@
-{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Verify public metadata and diagnostics do not expose credentials or sensitive local context."}

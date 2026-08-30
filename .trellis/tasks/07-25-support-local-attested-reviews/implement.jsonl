@@ -1,3 +1,0 @@
-{"file": ".trellis/tasks/07-25-support-local-attested-reviews/research/contract-mapping.md", "reason": "Preserve the accepted execution, trust, outcome, privacy, and ownership decisions."}
-{"file": ".trellis/spec/backend/error-handling.md", "reason": "Fail closed for malformed, unauthorized, stale, and ambiguous local evidence before side effects."}
-{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Keep local artifacts, source, findings, prompts, and credentials out of outputs and Checks."}

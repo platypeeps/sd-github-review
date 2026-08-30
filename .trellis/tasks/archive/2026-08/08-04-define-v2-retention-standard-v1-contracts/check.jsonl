@@ -1,2 +1,0 @@
-{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Code standards, tests, Action safety — fixture/test wiring conventions"}
-{"file": ".trellis/tasks/08-04-define-v2-retention-standard-v1-contracts/research/deletion-receipt-gap-analysis.md", "reason": "Test wiring idiom (eachInvalid, digest lock-step, privacy non-echo) + de-dup analysis"}

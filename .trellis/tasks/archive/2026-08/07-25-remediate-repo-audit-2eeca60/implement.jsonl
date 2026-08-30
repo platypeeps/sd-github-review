@@ -1,3 +1,0 @@
-{"file":".trellis/tasks/07-25-remediate-repo-audit-2eeca60/research/finding-map.md","reason":"Preserve the one-owner mapping for all 22 audit findings."}
-{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Apply exact-head, regression, privacy, and repository gate requirements across remediation."}
-{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Coordinate findings that span Action metadata, runtime, workflows, installer, and release layers."}

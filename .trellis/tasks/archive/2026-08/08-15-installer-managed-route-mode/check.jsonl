@@ -1,1 +1,0 @@
-{"file": ".trellis/spec/backend/consumer-installer.md", "reason": "The check must confirm install/check/uninstall behaviour for the new managed variable matches the ownership and preservation rules stated here, including the manifest schema bump."}

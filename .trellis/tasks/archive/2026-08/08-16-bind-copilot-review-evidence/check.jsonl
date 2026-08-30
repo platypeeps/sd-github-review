@@ -1,3 +1,0 @@
-{"file": ".trellis/spec/backend/consumer-installer.md", "reason": "Acceptance criterion 5 lands here; verify the copilot-receipt provenance record is accurate and complete."}
-{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Check the regression tests meet the repository's coverage and assertion standards."}
-{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "The change crosses Action receipt writer, coordinator reader, and consumer spec; verify all three layers agree on what dispatch.status means."}

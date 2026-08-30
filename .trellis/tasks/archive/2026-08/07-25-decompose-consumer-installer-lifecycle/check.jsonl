@@ -1,2 +1,0 @@
-{"file":".trellis/tasks/07-25-decompose-consumer-installer-lifecycle/research/audit-finding.md","reason":"Verify the implementation closes A-009 without broadening scope."}
-{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Verify focused regressions, exact-head behavior, privacy, and full repository gates."}

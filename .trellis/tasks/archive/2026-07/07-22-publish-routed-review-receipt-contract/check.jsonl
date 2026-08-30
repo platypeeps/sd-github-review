@@ -1,4 +1,0 @@
-{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Verify focused routing, orchestration, transport, metadata, and negative-side-effect coverage plus the complete project gate."}
-{"file": ".trellis/spec/backend/error-handling.md", "reason": "Verify every malformed, stale, conflicting, duplicated, or ambiguous request fails at the documented boundary without a second dispatch."}
-{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Verify receipts and diagnostics remain bounded and exclude credentials, raw findings, source, paths, prompts, and configuration values."}
-{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Verify schemas, fixtures, Action metadata, workflow examples, durable receipts, and client-facing documentation share one versioned exact-head contract."}
