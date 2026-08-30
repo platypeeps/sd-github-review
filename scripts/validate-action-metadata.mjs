@@ -1280,8 +1280,13 @@ export async function assertPinFreshness({
 // construction. A pattern narrow enough to skip the fixtures would have to
 // guess at prose, and would drift the moment a doc reworded its sentence.
 //
-// `.trellis/` is excluded on purpose: archived task records are a historical
-// account of what was true at the time, not instructions to a consumer.
+// `docs/work/archive/` is excluded on purpose: archived task records are a
+// historical account of what was true at the time, not instructions to a
+// consumer. That exemption used to name `.trellis/`, and it followed the
+// records when they moved — an exemption left pointing at the old home would
+// have failed this gate on 42 imported archive lines that no consumer reads.
+// Live `docs/work/` items are still scanned: an open item citing a full SHA is
+// current prose, not history.
 // CHANGELOG.md is deliberately NOT excluded, even though it is also historical:
 // a changelog is where upgrade instructions live, so a full SHA printed there
 // is exactly as consumer-facing as one in a setup guide. Cite an old commit in
@@ -1461,7 +1466,8 @@ async function defaultResolveTag(repositoryRoot, tag) {
 // tracked set, so a document cannot escape the gate by being unlisted.
 async function defaultListDocuments(repositoryRoot) {
   return (await trackedRepositoryPaths(repositoryRoot)).filter(
-    (filePath) => filePath.endsWith(".md") && !filePath.startsWith(".trellis/"),
+    (filePath) =>
+      filePath.endsWith(".md") && !filePath.startsWith("docs/work/archive/"),
   );
 }
 
