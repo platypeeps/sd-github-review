@@ -1,3 +1,32 @@
+# SD GitHub review router — retired 2026-08-31
+
+> [!important] This repository is archived and read-only.
+> Its routing model lives on in
+> [`platypeeps/sd-ai-command-pack`](https://github.com/platypeeps/sd-ai-command-pack),
+> as one configuration table and a pure `route(paths, lines, draft, policy)`
+> function behind `sd-review` — **opt-in per repository**, not the mandatory
+> Action, receipt protocol, consumer installer, labels and variables this
+> repository shipped. A consuming repository opts in with
+> `sd-review setup-github`, which writes `.github/sd-review.json` and one
+> workflow; repositories in `minimal` or `guest` mode refuse it outright.
+>
+> **Why it was retired.** 30,000 lines of JavaScript — 9,390 of 13,867 in `src/`
+> unreachable — to choose among four review tiers, of which one, Copilot, was
+> the only one in real use. Its per-consumer footprint was the largest single
+> violation of the rule that a repository's tracked files belong to that
+> repository and not to the framework operating on it. The routing decision was
+> worth keeping. The infrastructure carrying it was not.
+>
+> **Existing callers keep working.** GitHub still serves this Action from an
+> archived repository, so a workflow pinned to a released tag such as
+> `platypeeps/sd-github-review@v0.6.1` continues to run exactly as before. What
+> stops is development: no new releases, no fixes, no issues.
+
+---
+
+*What follows is the README as it stood at retirement, kept as the record of
+what this Action did.*
+
 # SD GitHub review router
 
 [![CI](https://github.com/platypeeps/sd-github-review/actions/workflows/ci.yml/badge.svg)](https://github.com/platypeeps/sd-github-review/actions/workflows/ci.yml)
